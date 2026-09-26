@@ -75,7 +75,7 @@ begin
     values (new.id, auth.uid(), 'UPDATE', jsonb_build_object('old', to_jsonb(old), 'new', to_jsonb(new)));
   elsif (TG_OP = 'DELETE') then
     insert into activity_log (task_id, user_id, action, changes)
-    values (old.id, auth.uid(), 'DELETE', to_jsonb(old));
+    values (null, auth.uid(), 'DELETE', to_jsonb(old));
   end if;
   return coalesce(new, old);
 end;
