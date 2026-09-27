@@ -141,3 +141,33 @@ begin
   end if;
 end;
 $$;
+
+create or replace function restrict_assignee_task_updates()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  -- Admins and the owning Co-Admin can change anything.
+  if my_role() = 'Admin'
+     or (my_role() = 'Co-Admin' and my_committee_id() = new.committee_id) then
+    return new;
+  end if;
+
+  -- A plain assignee may only change `status` — everything else must
+  -- stay identical, or the update is rejected.
+  if (old.title, old.description, old.priority, old.primary_assignees,
+      old.assist_assignees, old.is_confidential, old.depends_on_task_id)
+     is distinct from
+     (new.title, new.description, new.priority, new.primary_assignees,
+      new.assist_assignees, new.is_confidential, new.depends_on_task_id) then
+    raise exception 'Assignees can only update a task''s status.';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger tasks_restrict_assignee_updates
+before update on tasks
+for each row execute function restrict_assignee_task_updates();
