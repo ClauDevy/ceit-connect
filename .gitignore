@@ -43,4 +43,7 @@ next-env.d.ts
 # AI & Editor specific
 .cursor/
 .claude/
-claude/
+*.code-workspace
+
+# Supabase CLI local files
+supabase/.temp/
