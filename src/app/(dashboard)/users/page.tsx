@@ -1,8 +1,24 @@
-export default function UsersPage() {
+import { createClient } from "@/lib/supabase/server";
+import { InviteUserDialog } from "@/components/users/invite-user-dialog";
+
+export default async function UsersPage() {
+  const supabase = await createClient();
+
+  const { data: committees } = await supabase
+    .from("committees")
+    .select("id, name")
+    .order("name");
+
   return (
-    <div>
-      <h1 className="text-xl font-bold text-slate-800">users</h1>
-      <p className="mt-2 text-sm text-slate-500">Placeholder — build this page's real content here.</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Users</h1>
+        <InviteUserDialog committees={committees ?? []} />
+      </div>
+
+      <p className="text-sm text-slate-500">
+        Member list coming soon — for now, use Invite User above to add new council members.
+      </p>
     </div>
   );
 }
