@@ -88,10 +88,6 @@ export default function LoginPage() {
     });
   }
 
-  // Sends a 6-digit code instead of a clickable link — links were getting
-  // pre-visited (by Gmail's security scanning) before the real click,
-  // killing them before they could be used. A typed code can't be
-  // consumed that way.
   async function handleForgotPassword() {
     if (!email) {
       setStatus("error");
@@ -120,12 +116,16 @@ export default function LoginPage() {
       return;
     }
 
-    const { error: pwError } = await supabase.auth.updateUser({
-      password: newPassword,
+    const res = await fetch("/api/complete-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: newPassword }),
     });
 
-    if (pwError) {
-      setResetError(pwError.message);
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setResetError(data.error ?? "Something went wrong");
       return;
     }
 
@@ -214,55 +214,56 @@ export default function LoginPage() {
                   : "Sign in with email link instead"}
               </button>
 
-              {mode === "password" &&
-                (resetStatus === "sent" ? (
-                  <form
-                    onSubmit={handleVerifyReset}
-                    className="mt-2 flex flex-col gap-2 rounded-xl bg-muted p-3"
-                  >
-                    <p className="text-xs text-accent-foreground">
-                      Enter the code we emailed you, plus your new password.
-                    </p>
-                    <input
-                      type="text"
-                      required
-                      placeholder="6-digit code"
-                      value={resetCode}
-                      onChange={(e) => setResetCode(e.target.value)}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm"
-                    />
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      placeholder="New password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="rounded-lg border bg-background px-3 py-2 text-sm"
-                    />
-                    {resetError && (
-                      <p className="text-xs text-destructive">{resetError}</p>
-                    )}
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-accent-foreground"
-                    >
-                      Reset Password
-                    </button>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    disabled={resetStatus === "sending"}
-                    className="text-xs font-medium text-muted-foreground underline hover:text-primary disabled:opacity-50"
-                  >
-                    {resetStatus === "sending"
-                      ? "Sending..."
-                      : "Forgot password?"}
-                  </button>
-                ))}
+              {mode === "password" && resetStatus !== "sent" && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetStatus === "sending"}
+                  className="text-xs font-medium text-muted-foreground underline hover:text-primary disabled:opacity-50"
+                >
+                  {resetStatus === "sending"
+                    ? "Sending..."
+                    : "Forgot password?"}
+                </button>
+              )}
             </form>
+
+            {mode === "password" && resetStatus === "sent" && (
+              <form
+                onSubmit={handleVerifyReset}
+                className="mt-2 flex flex-col gap-2 rounded-xl bg-muted p-3"
+              >
+                <p className="text-xs text-accent-foreground">
+                  Enter the code we emailed you, plus your new password.
+                </p>
+                <input
+                  type="text"
+                  required
+                  placeholder="6-digit code"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value)}
+                  className="rounded-lg border bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="rounded-lg border bg-background px-3 py-2 text-sm"
+                />
+                {resetError && (
+                  <p className="text-xs text-destructive">{resetError}</p>
+                )}
+                <button
+                  type="submit"
+                  className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-accent-foreground"
+                >
+                  Reset Password
+                </button>
+              </form>
+            )}
 
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />

@@ -19,30 +19,35 @@ export function InviteUserDialog({ committees }: { committees: Committee[] }) {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        fullName,
-        role,
-        committeeId: role === "Admin" ? null : committeeId,
-      }),
-    });
+    try {
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          fullName,
+          role,
+          committeeId: role === "Admin" ? null : committeeId,
+        }),
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError(data.error ?? "Something went wrong");
-      return;
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong");
+        return;
+      }
+
+      setSuccess(true);
+      setEmail("");
+      setFullName("");
+      setRole("Member");
+      setCommitteeId("");
+    } catch {
+      setError("Network error, please try again");
+    } finally {
+      setLoading(false);
     }
-
-    setSuccess(true);
-    setEmail("");
-    setFullName("");
-    setRole("Member");
-    setCommitteeId("");
   }
 
   return (
