@@ -1,0 +1,1 @@
+alter table users add column password_set boolean not null default false;
