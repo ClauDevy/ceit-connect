@@ -26,9 +26,6 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .single();
 
-  // Already has a password? Require the current one before changing it —
-  // stops someone at an unlocked, already-logged-in laptop from silently
-  // taking over the account.
   if (profile?.password_set) {
     if (!currentPassword) {
       return NextResponse.json(
@@ -54,7 +51,14 @@ export async function POST(request: Request) {
   }
 
   const adminClient = await createServiceRoleClient();
-  await adminClient.from("users").update({ password_set: true }).eq("id", user.id);
+  const { error: flagError } = await adminClient
+    .from("users")
+    .update({ password_set: true })
+    .eq("id", user.id);
+
+  if (flagError) {
+    return NextResponse.json({ error: flagError.message }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }

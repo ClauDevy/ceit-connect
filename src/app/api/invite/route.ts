@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Step 2: read + validate the new member's details
+  // Step 2: read + validate the new member's detailss
   const body = await request.json();
   const { email, fullName, role, committeeId } = body as {
     email?: string;

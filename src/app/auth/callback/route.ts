@@ -4,7 +4,15 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/home";
+
+  const rawNext = searchParams.get("next");
+  const next =
+    rawNext &&
+    rawNext.startsWith("/") &&
+    !rawNext.startsWith("//") &&
+    !rawNext.startsWith("/\\")
+      ? rawNext
+      : "/home";
 
   if (code) {
     const supabase = await createClient();
@@ -13,15 +21,17 @@ export async function GET(request: Request) {
     if (!error && data.user) {
       const provider = data.user.app_metadata?.provider;
 
-      // Google sign-in needs an extra gate: only someone who's already
-      // invited AND has already set a password (proving they completed
-      // a real first login via their invite email) may use it.
       if (provider === "google") {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("users")
           .select("password_set")
           .eq("id", data.user.id)
-          .single();
+          .maybeSingle();
+
+        if (profileError) {
+          await supabase.auth.signOut();
+          return NextResponse.redirect(`${origin}/login?error=auth`);
+        }
 
         if (!profile) {
           await supabase.auth.signOut();

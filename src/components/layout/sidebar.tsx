@@ -11,15 +11,16 @@ const NAV_ITEMS = [
   { href: "/archives", label: "Event Archives", roles: ["Admin", "Co-Admin", "Member"] },
   { href: "/dashboard", label: "Executive Dashboard", roles: ["Admin", "Co-Admin"] },
   { href: "/activity-log", label: "Activity Log", roles: ["Admin"] },
-  { href: "/users", label: "User Management", roles: ["Admin", "Co-Admin"] },
+  { href: "/users", label: "User Management", roles: ["Admin"] },
   { href: "/settings", label: "Settings", roles: ["Admin", "Co-Admin", "Member"] },
 ] as const;
 
 export function Sidebar({ user }: { user: CurrentUser }) {
   const pathname = usePathname();
 
-  const initials = user.name
-    .split(" ")
+  const initials = (user.name ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
