@@ -21,9 +21,11 @@ export default function LoginPage() {
   );
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [resetStatus, setResetStatus] = useState<"idle" | "sending" | "sent">(
-    "idle"
-  );
+  // "sent" = code emailed, not yet entered
+  // "verified" = code accepted, session established, waiting on new password
+  const [resetStatus, setResetStatus] = useState<
+    "idle" | "sending" | "sent" | "verifying" | "verified" | "saving"
+  >("idle");
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [resetError, setResetError] = useState("");
@@ -100,11 +102,15 @@ export default function LoginPage() {
     setResetStatus("sent");
   }
 
-  async function handleVerifyReset(e: React.FormEvent) {
+  // Step 1: check the typed code. This is the only step that consumes the
+  // one-time code — once it succeeds, a real session exists, so the
+  // password step below never needs to touch the code again.
+  async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault();
     setResetError("");
-    const supabase = createClient();
+    setResetStatus("verifying");
 
+    const supabase = createClient();
     const { error: verifyError } = await supabase.auth.verifyOtp({
       email,
       token: resetCode,
@@ -113,23 +119,40 @@ export default function LoginPage() {
 
     if (verifyError) {
       setResetError("That code is incorrect or has expired.");
+      setResetStatus("sent");
       return;
     }
 
-    const res = await fetch("/api/complete-reset", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: newPassword }),
-    });
+    setResetStatus("verified");
+  }
 
-    const data = await res.json().catch(() => ({}));
+  // Step 2: set the new password using the session from step 1. Safe to
+  // retry on failure — doesn't need the code again.
+  async function handleSetNewPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setResetError("");
+    setResetStatus("saving");
 
-    if (!res.ok) {
-      setResetError(data.error ?? "Something went wrong");
-      return;
+    try {
+      const res = await fetch("/api/complete-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setResetError(data.error ?? "Something went wrong");
+        setResetStatus("verified");
+        return;
+      }
+
+      window.location.href = "/home";
+    } catch {
+      setResetError("Network error — please try again.");
+      setResetStatus("verified");
     }
-
-    window.location.href = "/home";
   }
 
   return (
@@ -214,56 +237,80 @@ export default function LoginPage() {
                   : "Sign in with email link instead"}
               </button>
 
-              {mode === "password" && resetStatus !== "sent" && (
+              {mode === "password" && resetStatus === "idle" && (
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  disabled={resetStatus === "sending"}
-                  className="text-xs font-medium text-muted-foreground underline hover:text-primary disabled:opacity-50"
+                  className="text-xs font-medium text-muted-foreground underline hover:text-primary"
                 >
-                  {resetStatus === "sending"
-                    ? "Sending..."
-                    : "Forgot password?"}
+                  Forgot password?
                 </button>
+              )}
+              {mode === "password" && resetStatus === "sending" && (
+                <p className="text-xs text-muted-foreground">Sending...</p>
               )}
             </form>
 
-            {mode === "password" && resetStatus === "sent" && (
-              <form
-                onSubmit={handleVerifyReset}
-                className="mt-2 flex flex-col gap-2 rounded-xl bg-muted p-3"
-              >
-                <p className="text-xs text-accent-foreground">
-                  Enter the code we emailed you, plus your new password.
-                </p>
-                <input
-                  type="text"
-                  required
-                  placeholder="6-digit code"
-                  value={resetCode}
-                  onChange={(e) => setResetCode(e.target.value)}
-                  className="rounded-lg border bg-background px-3 py-2 text-sm"
-                />
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  placeholder="New password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="rounded-lg border bg-background px-3 py-2 text-sm"
-                />
-                {resetError && (
-                  <p className="text-xs text-destructive">{resetError}</p>
-                )}
-                <button
-                  type="submit"
-                  className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-accent-foreground"
+            {mode === "password" &&
+              (resetStatus === "sent" || resetStatus === "verifying") && (
+                <form
+                  onSubmit={handleVerifyCode}
+                  className="mt-2 flex flex-col gap-2 rounded-xl bg-muted p-3"
                 >
-                  Reset Password
-                </button>
-              </form>
-            )}
+                  <p className="text-xs text-accent-foreground">
+                    Enter the 6-digit code we emailed you.
+                  </p>
+                  <input
+                    type="text"
+                    required
+                    placeholder="6-digit code"
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value)}
+                    className="rounded-lg border bg-background px-3 py-2 text-sm"
+                  />
+                  {resetError && (
+                    <p className="text-xs text-destructive">{resetError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={resetStatus === "verifying"}
+                    className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-accent-foreground disabled:opacity-50"
+                  >
+                    {resetStatus === "verifying" ? "Checking..." : "Verify Code"}
+                  </button>
+                </form>
+              )}
+
+            {mode === "password" &&
+              (resetStatus === "verified" || resetStatus === "saving") && (
+                <form
+                  onSubmit={handleSetNewPassword}
+                  className="mt-2 flex flex-col gap-2 rounded-xl bg-muted p-3"
+                >
+                  <p className="text-xs text-accent-foreground">
+                    Code verified. Enter your new password.
+                  </p>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="New password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="rounded-lg border bg-background px-3 py-2 text-sm"
+                  />
+                  {resetError && (
+                    <p className="text-xs text-destructive">{resetError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={resetStatus === "saving"}
+                    className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-accent-foreground disabled:opacity-50"
+                  >
+                    {resetStatus === "saving" ? "Saving..." : "Set New Password"}
+                  </button>
+                </form>
+              )}
 
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
