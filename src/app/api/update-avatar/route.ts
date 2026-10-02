@@ -11,9 +11,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
-  const { avatarUrl } = await request.json();
+  let avatarUrl: unknown;
+  try {
+    ({ avatarUrl } = await request.json());
+  } catch {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
 
-  if (avatarUrl !== null && typeof avatarUrl !== "string") {
+  // Never trust a client-supplied URL directly — build the one and only
+  // valid URL for this user's own avatar file ourselves, and only allow
+  // that (optionally with a cache-busting query string) or null.
+  const {
+    data: { publicUrl: expected },
+  } = supabase.storage.from("avatars").getPublicUrl(`${user.id}/avatar.webp`);
+
+  if (
+    avatarUrl !== null &&
+    (typeof avatarUrl !== "string" || avatarUrl.split("?")[0] !== expected)
+  ) {
     return NextResponse.json({ error: "Invalid avatar URL" }, { status: 400 });
   }
 

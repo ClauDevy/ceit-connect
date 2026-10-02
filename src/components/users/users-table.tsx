@@ -40,23 +40,30 @@ export function UsersTable({
     setLoadingId(member.id);
     setError("");
 
-    const res = await fetch("/api/toggle-user-active", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: member.id, isActive: nextActive }),
-    });
+    try {
+      const res = await fetch("/api/toggle-user-active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: member.id, isActive: nextActive }),
+      });
 
-    const data = await res.json().catch(() => ({}));
-    setLoadingId(null);
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError(data.error ?? "Something went wrong");
-      return;
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong");
+        return;
+      }
+
+      setRows((prev) =>
+        prev.map((m) =>
+          m.id === member.id ? { ...m, is_active: nextActive } : m,
+        ),
+      );
+    } catch {
+      setError("Network error, please try again");
+    } finally {
+      setLoadingId(null);
     }
-
-    setRows((prev) =>
-      prev.map((m) => (m.id === member.id ? { ...m, is_active: nextActive } : m))
-    );
   }
 
   return (
@@ -77,9 +84,13 @@ export function UsersTable({
           {rows.map((member) => (
             <tr key={member.id} className="border-b last:border-0">
               <td className="px-4 py-3 font-medium">{member.full_name}</td>
-              <td className="px-4 py-3 text-muted-foreground">{member.email}</td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {member.email}
+              </td>
               <td className="px-4 py-3">{member.role}</td>
-              <td className="px-4 py-3">{committeeName(member.committee_id)}</td>
+              <td className="px-4 py-3">
+                {committeeName(member.committee_id)}
+              </td>
               <td className="px-4 py-3">
                 <span
                   className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -107,8 +118,8 @@ export function UsersTable({
                     {loadingId === member.id
                       ? "..."
                       : member.is_active
-                      ? "Deactivate"
-                      : "Reactivate"}
+                        ? "Deactivate"
+                        : "Reactivate"}
                   </button>
                 )}
               </td>

@@ -28,13 +28,13 @@ export async function POST(request: Request) {
   // Step 2: read + validate the new member's details
   const body = await request.json();
   const { email, fullName, role, committeeId } = body as {
-    email?: string;
+    email?: unknown;
     fullName?: string;
     role?: string;
     committeeId?: string | null;
   };
 
-  if (!email || !fullName || !role) {
+  if (!email || typeof email !== "string" || !fullName || !role) {
     return NextResponse.json(
       { error: "Email, name, and role are required" },
       { status: 400 }
