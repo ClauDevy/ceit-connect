@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Cropper from "react-easy-crop";
 import imageCompression from "browser-image-compression";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 type Area = { x: number; y: number; width: number; height: number };
 
@@ -50,6 +51,7 @@ export function AvatarUploader({
   );
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(currentAvatarUrl);
+  const router = useRouter();
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -120,6 +122,7 @@ export function AvatarUploader({
       setPreview(freshUrl);
       setImageSrc(null);
       setStatus("idle");
+      router.refresh();
     } catch {
       setError("Something went wrong processing the image.");
       setStatus("error");
@@ -152,6 +155,7 @@ export function AvatarUploader({
 
       setPreview(null);
       setStatus("idle");
+      router.refresh();
     } catch {
       setError("Something went wrong removing the photo.");
       setStatus("error");
