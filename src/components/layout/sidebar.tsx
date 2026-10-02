@@ -65,8 +65,17 @@ export function Sidebar({ user }: { user: CurrentUser }) {
 
       <div className="flex flex-col gap-3 border-t pt-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-display text-xs font-semibold text-primary-foreground">
-            {initials}
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary font-display text-xs font-semibold text-primary-foreground">
+            {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initials
+            )}
           </div>
           <div className="leading-tight">
             <p className="text-sm font-semibold">{user.name}</p>
