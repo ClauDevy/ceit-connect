@@ -10,6 +10,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   set_password_first:
     "Please sign in with your email link first, then set a password in Settings before using Google sign-in.",
   auth: "Something went wrong. Please try again.",
+  deactivated: "This account has been deactivated. Contact an Admin if you believe this is a mistake.",
 };
 
 export default function LoginPage() {

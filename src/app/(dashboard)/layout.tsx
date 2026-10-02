@@ -20,12 +20,12 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // Step 2: pull their app-specific profile (role, committee) from our
-  // own `users` table — auth.users only knows their email, not their
-  // role in the council.
+  // Step 2: pull their app-specific profile (role, committee, active
+  // status) from our own `users` table — auth.users only knows their
+  // email, not their role in the council.
   const { data: profile } = await supabase
     .from("users")
-    .select("id, full_name, role, committee_id, avatar_url")
+    .select("id, full_name, role, committee_id, avatar_url, is_active")
     .eq("id", user.id)
     .single();
 
@@ -34,6 +34,11 @@ export default async function DashboardLayout({
     // shouldn't normally happen (the invite flow creates both together),
     // but fail safely instead of crashing the whole layout.
     redirect("/login?error=no_profile");
+  }
+
+  if (!profile.is_active) {
+    await supabase.auth.signOut();
+    redirect("/login?error=deactivated");
   }
 
   const currentUser: CurrentUser = {
