@@ -44,8 +44,13 @@ export function PasswordSignInForm({ email, onEmailChange, onForgotPassword }: P
     }
     setError("")
     setStartingReset(true)
-    await onForgotPassword()
-    setStartingReset(false)
+    try {
+      await onForgotPassword()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to send a reset code.")
+    } finally {
+      setStartingReset(false)
+    }
   }
 
   return (

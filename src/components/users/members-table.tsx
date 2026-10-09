@@ -47,7 +47,12 @@ export function MembersTable({ members, committeeName, currentUserId, pendingId,
               <MemberStatusBadge active={member.is_active} />
             </TableCell>
             <TableCell className="text-right">
-              <MemberAction member={member} isSelf={member.id === currentUserId} onToggle={onToggle} />
+              <MemberAction
+                member={member}
+                isSelf={member.id === currentUserId}
+                pending={pendingId !== null}
+                onToggle={onToggle}
+              />
             </TableCell>
           </TableRow>
         ))}

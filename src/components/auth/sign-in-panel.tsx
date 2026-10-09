@@ -26,7 +26,10 @@ export function SignInPanel({ initialError }: { initialError?: string }) {
 
   async function startPasswordReset() {
     const supabase = createClient()
-    await supabase.auth.resetPasswordForEmail(email)
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    if (error) {
+      throw new Error(error.message)
+    }
     setView("reset")
   }
 

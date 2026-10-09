@@ -30,27 +30,36 @@ export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
     setStatus("saving")
     setError("")
 
-    const res = await fetch("/api/set-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        password,
-        ...(hasPassword ? { currentPassword } : {}),
-      }),
-    })
+    try {
+      const res = await fetch("/api/set-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password,
+          ...(hasPassword ? { currentPassword } : {}),
+        }),
+      })
 
-    const data = await res.json()
+      let parsed = true
+      const data = await res.json().catch(() => {
+        parsed = false
+        return {}
+      })
 
-    if (!res.ok) {
+      if (!parsed || !res.ok) {
+        setStatus("error")
+        setError(data.error ?? "Something went wrong")
+        return
+      }
+
+      setStatus("done")
+      setCurrentPassword("")
+      setPassword("")
+      setConfirm("")
+    } catch {
       setStatus("error")
-      setError(data.error ?? "Something went wrong")
-      return
+      setError("Something went wrong")
     }
-
-    setStatus("done")
-    setCurrentPassword("")
-    setPassword("")
-    setConfirm("")
   }
 
   if (status === "done") {
