@@ -10,10 +10,14 @@ export default async function UsersPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data: me } = await supabase
     .from("users")
     .select("role")
-    .eq("id", user!.id)
+    .eq("id", user.id)
     .single();
 
   if (me?.role !== "Admin") {
