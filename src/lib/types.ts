@@ -18,6 +18,20 @@ export interface CurrentUser {
   id: string;
   name: string;
   role: Role;
-  committeeId: string | null; 
+  committeeId: string | null;
   avatarUrl: string | null;
+}
+
+export interface Committee {
+  id: string;
+  name: string;
+}
+
+export interface Member {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  committee_id: string | null;
+  is_active: boolean;
 }
