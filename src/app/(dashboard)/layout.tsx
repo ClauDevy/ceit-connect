@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Sidebar } from "@/components/layout/sidebar";
+import { requireUser } from "@/lib/auth";
+import { AppShell } from "@/components/layout/app-shell";
 import type { CurrentUser } from "@/lib/types";
 import { BfcacheGuard } from "@/components/bfcache-guard";
 
@@ -11,14 +12,8 @@ export default async function DashboardLayout({
 }) {
   const supabase = await createClient();
 
-  // Step 1: is anyone actually logged in?
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  // Step 1: is anyone actually logged in? (shared with the page below via cache)
+  const user = await requireUser();
 
   // Step 2: pull their app-specific profile (role, committee, active
   // status) from our own `users` table — auth.users only knows their
@@ -50,12 +45,9 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <>
       <BfcacheGuard />
-      <Sidebar user={currentUser} />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 p-6">
-        {children}
-      </main>
-    </div>
+      <AppShell user={currentUser}>{children}</AppShell>
+    </>
   );
 }

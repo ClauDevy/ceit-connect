@@ -1,132 +1,112 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import { useMemo, useState } from "react"
+import { Search } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { IconInput } from "@/components/ui/icon-input"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { EmptyState } from "@/components/shared/empty-state"
+import { MembersCards } from "@/components/users/members-cards"
+import { MembersTable } from "@/components/users/members-table"
+import { useToggleMemberActive } from "@/components/users/use-toggle-member-active"
+import type { Committee, Member } from "@/lib/types"
 
-type Member = {
-  id: string;
-  full_name: string;
-  email: string;
-  role: string;
-  committee_id: string | null;
-  is_active: boolean;
-};
+type UsersTableProps = {
+  members: Member[]
+  committees: Committee[]
+  currentUserId: string
+}
 
-type Committee = { id: string; name: string };
-
-export function UsersTable({
-  members,
-  committees,
-  currentUserId,
-}: {
-  members: Member[];
-  committees: Committee[];
-  currentUserId: string;
-}) {
-  const [rows, setRows] = useState(members);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+export function UsersTable({ members: initialMembers, committees, currentUserId }: UsersTableProps) {
+  const { members, pendingId, error, setActive } = useToggleMemberActive(initialMembers)
+  const [query, setQuery] = useState("")
+  // `target` is kept after closing so the dialog text doesn't blank out mid-exit-animation.
+  const [target, setTarget] = useState<Member | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const committeeName = (id: string | null) =>
-    committees.find((c) => c.id === id)?.name ?? "—";
+    committees.find((c) => c.id === id)?.name ?? "—"
 
-  async function toggleActive(member: Member) {
-    const nextActive = !member.is_active;
-    const confirmMsg = nextActive
-      ? `Reactivate ${member.full_name}?`
-      : `Deactivate ${member.full_name}? This removes their access and deletes their profile photo.`;
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return members
+    return members.filter((m) =>
+      [m.full_name, m.email, m.role, committees.find((c) => c.id === m.committee_id)?.name ?? ""]
+        .some((field) => field.toLowerCase().includes(q))
+    )
+  }, [members, committees, query])
 
-    if (!window.confirm(confirmMsg)) return;
+  const reactivating = target ? !target.is_active : false
 
-    setLoadingId(member.id);
-    setError("");
-
-    try {
-      const res = await fetch("/api/toggle-user-active", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: member.id, isActive: nextActive }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data.error ?? "Something went wrong");
-        return;
-      }
-
-      setRows((prev) =>
-        prev.map((m) =>
-          m.id === member.id ? { ...m, is_active: nextActive } : m,
-        ),
-      );
-    } catch {
-      setError("Network error, please try again");
-    } finally {
-      setLoadingId(null);
-    }
+  async function confirmToggle() {
+    if (!target) return
+    const ok = await setActive(target, reactivating)
+    if (ok) setConfirmOpen(false)
   }
 
+  function askToToggle(member: Member) {
+    setTarget(member)
+    setConfirmOpen(true)
+  }
+
+  const listProps = { members: visible, committeeName, currentUserId, pendingId, onToggle: askToToggle }
+
   return (
-    <div className="overflow-x-auto rounded-2xl border bg-card">
-      {error && <p className="p-3 text-sm text-destructive">{error}</p>}
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted text-left text-xs font-semibold uppercase text-muted-foreground">
-            <th className="px-4 py-3">Name</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Role</th>
-            <th className="px-4 py-3">Committee</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((member) => (
-            <tr key={member.id} className="border-b last:border-0">
-              <td className="px-4 py-3 font-medium">{member.full_name}</td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {member.email}
-              </td>
-              <td className="px-4 py-3">{member.role}</td>
-              <td className="px-4 py-3">
-                {committeeName(member.committee_id)}
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    member.is_active
-                      ? "bg-muted text-accent-foreground"
-                      : "bg-secondary text-muted-foreground"
-                  }`}
-                >
-                  {member.is_active ? "Active" : "Deactivated"}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-right">
-                {member.id === currentUserId ? (
-                  <span className="text-xs text-muted-foreground">You</span>
-                ) : (
-                  <button
-                    onClick={() => toggleActive(member)}
-                    disabled={loadingId === member.id}
-                    className={`text-xs font-semibold underline disabled:opacity-50 ${
-                      member.is_active
-                        ? "text-destructive"
-                        : "text-primary hover:text-accent-foreground"
-                    }`}
-                  >
-                    {loadingId === member.id
-                      ? "..."
-                      : member.is_active
-                        ? "Deactivate"
-                        : "Reactivate"}
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full sm:max-w-xs">
+          <IconInput
+            icon={Search}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, email, committee…"
+            aria-label="Search members"
+          />
+        </div>
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {visible.length} of {members.length} {members.length === 1 ? "member" : "members"}
+        </p>
+      </div>
+
+      {error && (
+        <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      <Card className="min-w-0 overflow-hidden">
+        {visible.length === 0 ? (
+          <EmptyState
+            title={query ? "No members match that search" : "No members yet"}
+            description={query ? "Try a different name, email or committee." : "Invite your first council member to get started."}
+          />
+        ) : (
+          <>
+            <div className="hidden min-w-0 md:block">
+              <MembersTable {...listProps} />
+            </div>
+            <div className="md:hidden">
+              <MembersCards {...listProps} />
+            </div>
+          </>
+        )}
+      </Card>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`${reactivating ? "Reactivate" : "Deactivate"} ${target?.full_name ?? "member"}?`}
+        description={
+          reactivating
+            ? "They'll be able to sign in again."
+            : "This removes their access and deletes their profile photo. Their past work stays in the archives."
+        }
+        confirmLabel={reactivating ? "Reactivate" : "Deactivate"}
+        destructive={!reactivating}
+        loading={pendingId !== null}
+        onConfirm={confirmToggle}
+      />
     </div>
-  );
+  )
 }

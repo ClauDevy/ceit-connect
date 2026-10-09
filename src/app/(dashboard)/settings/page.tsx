@@ -1,39 +1,49 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
+import { PageHeader } from "@/components/shared/page-header";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { SetPasswordForm } from "@/components/settings/set-password-form";
 import { AvatarUploader } from "@/components/settings/avatar-uploader";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await requireUser();
 
   const { data: profile } = await supabase
     .from("users")
-    .select("password_set, avatar_url")
-    .eq("id", user!.id)
+    .select("full_name, password_set, avatar_url")
+    .eq("id", user.id)
     .single();
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+    <div>
+      <PageHeader
+        title="Settings"
+        description="Your profile photo and sign-in options."
+      />
 
-      <div className="max-w-sm rounded-2xl border bg-card p-6">
-        <h2 className="mb-4 text-sm font-semibold">Profile Photo</h2>
-        <AvatarUploader
-          userId={user!.id}
-          currentAvatarUrl={profile?.avatar_url ?? null}
-        />
-      </div>
+      <div className="grid max-w-xl gap-5">
+        <SettingsSection
+          title="Profile photo"
+          description="Shown next to your name across the council workspace."
+        >
+          <AvatarUploader
+            userId={user.id}
+            userName={profile?.full_name ?? ""}
+            currentAvatarUrl={profile?.avatar_url ?? null}
+          />
+        </SettingsSection>
 
-      <div className="max-w-sm rounded-2xl border bg-card p-6">
-        <h2 className="mb-1 text-sm font-semibold">Password</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          {profile?.password_set
-            ? "Update your password."
-            : "Set a password to enable email+password and Google sign-in."}
-        </p>
-        <SetPasswordForm hasPassword={!!profile?.password_set} />
+        <SettingsSection
+          title="Password"
+          description={
+            profile?.password_set
+              ? "Update your password."
+              : "Set a password to enable email and password sign-in, and Google sign-in."
+          }
+        >
+          <SetPasswordForm hasPassword={!!profile?.password_set} />
+        </SettingsSection>
       </div>
     </div>
   );
