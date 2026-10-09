@@ -15,15 +15,28 @@ export default function CreateEventPage() {
   const [error, setError] = useState("");
 
   const nameSet = name.trim().length > 0;
-  const datesSet = startDate.length > 0 && endDate.length > 0;
-  const readyToLaunch = nameSet && datesSet;
+  const startSet = startDate.length > 0;
+  const datesSet = startSet && endDate.length > 0;
+  // ISO yyyy-mm-dd strings sort the same way as the dates they represent,
+  // so a plain string comparison is enough here.
+  const datesOutOfOrder = datesSet && endDate < startDate;
+  const readyToLaunch = nameSet && datesSet && !datesOutOfOrder;
 
   async function handleSave(launch: boolean) {
     if (!nameSet) {
       setError("Give the event a name first.");
       return;
     }
-    if (launch && !readyToLaunch) {
+    // start_date is NOT NULL in the database, so even a draft needs one.
+    if (!startSet) {
+      setError("Pick a start date first — even drafts need one.");
+      return;
+    }
+    if (datesOutOfOrder) {
+      setError("The end date can't be before the start date.");
+      return;
+    }
+    if (launch && !datesSet) {
       setError("Set both a start and end date before launching.");
       return;
     }
@@ -31,33 +44,37 @@ export default function CreateEventPage() {
     setStatus("saving");
     setError("");
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (!user) {
-      setError("You're not signed in.");
+      if (!user) {
+        setError("You're not signed in.");
+        return;
+      }
+
+      const { error: insertError } = await supabase.from("events").insert({
+        name: name.trim(),
+        description: description.trim() || null,
+        start_date: startDate,
+        end_date: endDate || null,
+        status: launch ? "Active" : "Draft",
+        created_by: user.id,
+      });
+
+      if (insertError) {
+        setError(insertError.message);
+        return;
+      }
+
+      router.push("/home");
+    } catch {
+      setError("Network error, please try again.");
+    } finally {
       setStatus("idle");
-      return;
     }
-
-    const { error: insertError } = await supabase.from("events").insert({
-      name: name.trim(),
-      description: description.trim() || null,
-      start_date: startDate,
-      end_date: endDate || null,
-      status: launch ? "Active" : "Draft",
-      created_by: user.id,
-    });
-
-    if (insertError) {
-      setError(insertError.message);
-      setStatus("idle");
-      return;
-    }
-
-    router.push("/home");
   }
 
   return (
@@ -103,10 +120,14 @@ export default function CreateEventPage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-semibold">
+                <label
+                  htmlFor="event-name"
+                  className="mb-1.5 block text-sm font-semibold"
+                >
                   Event name
                 </label>
                 <input
+                  id="event-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -117,10 +138,14 @@ export default function CreateEventPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold">
+                  <label
+                    htmlFor="event-start-date"
+                    className="mb-1.5 block text-sm font-semibold"
+                  >
                     Start date
                   </label>
                   <input
+                    id="event-start-date"
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
@@ -128,26 +153,46 @@ export default function CreateEventPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold">
+                  <label
+                    htmlFor="event-end-date"
+                    className="mb-1.5 block text-sm font-semibold"
+                  >
                     End date
                   </label>
                   <input
+                    id="event-end-date"
                     type="date"
                     value={endDate}
+                    min={startDate || undefined}
+                    aria-invalid={datesOutOfOrder}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
+                {datesOutOfOrder && (
+                  <p
+                    role="alert"
+                    className="col-span-2 -mt-2 text-xs text-destructive"
+                  >
+                    End date must be on or after the start date.
+                  </p>
+                )}
               </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-sm font-semibold">Description</label>
+                  <label
+                    htmlFor="event-description"
+                    className="text-sm font-semibold"
+                  >
+                    Description
+                  </label>
                   <span className="text-xs text-muted-foreground">
                     {description.length}/300
                   </span>
                 </div>
                 <textarea
+                  id="event-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value.slice(0, 300))}
                   rows={4}
@@ -159,7 +204,7 @@ export default function CreateEventPage() {
           ) : (
             <p className="rounded-xl border-2 border-dashed p-8 text-center text-sm text-muted-foreground">
               Task Setup is coming in a follow-up update — for now, save the
-              event's basics and tasks can be added afterward.
+              event&apos;s basics and tasks can be added afterward.
             </p>
           )}
         </div>
@@ -184,18 +229,18 @@ export default function CreateEventPage() {
             <div className="flex items-center gap-2 text-xs">
               <span
                 className={`h-4 w-4 shrink-0 rounded-full border-2 ${
-                  datesSet ? "border-primary bg-primary" : "border-border"
+                  datesSet && !datesOutOfOrder
+                    ? "border-primary bg-primary"
+                    : "border-border"
                 }`}
               />
               <span className="text-muted-foreground">
-                Start &amp; end dates set
+                Valid start &amp; end dates
               </span>
             </div>
           </div>
 
-          {error && (
-            <p className="mt-3 text-xs text-destructive">{error}</p>
-          )}
+          {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
 
           <button
             onClick={() => handleSave(false)}
