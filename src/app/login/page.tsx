@@ -9,7 +9,10 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
   const initialError =
-    typeof error === "string" ? AUTH_ERROR_MESSAGES[error] : undefined;
+    typeof error === "string" &&
+    Object.prototype.hasOwnProperty.call(AUTH_ERROR_MESSAGES, error)
+      ? AUTH_ERROR_MESSAGES[error]
+      : undefined;
 
   return (
     <AuthShell>

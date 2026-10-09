@@ -36,7 +36,12 @@ export function MembersCards({ members, committeeName, currentUserId, pendingId,
               <span className="min-w-0 break-words">{committeeName(member.committee_id)}</span>
             </div>
             <div className="shrink-0">
-              <MemberAction member={member} isSelf={member.id === currentUserId} onToggle={onToggle} />
+              <MemberAction
+                member={member}
+                isSelf={member.id === currentUserId}
+                pending={pendingId !== null}
+                onToggle={onToggle}
+              />
             </div>
           </div>
         </li>

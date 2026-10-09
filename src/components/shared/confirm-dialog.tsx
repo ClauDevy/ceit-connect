@@ -33,7 +33,13 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && loading) return
+        onOpenChange(nextOpen)
+      }}
+    >
       <AlertDialogContent>
         <div className="grid gap-1.5">
           <AlertDialogTitle>{title}</AlertDialogTitle>

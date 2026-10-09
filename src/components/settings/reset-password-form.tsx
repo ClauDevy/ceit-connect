@@ -29,20 +29,29 @@ export function ResetPasswordForm() {
     setStatus("saving")
     setError("")
 
-    const res = await fetch("/api/complete-reset", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    })
+    try {
+      const res = await fetch("/api/complete-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      })
 
-    const data = await res.json()
+      let parsed = true
+      const data = await res.json().catch(() => {
+        parsed = false
+        return {}
+      })
 
-    if (!res.ok) {
+      if (!parsed || !res.ok) {
+        setStatus("error")
+        setError(data.error ?? "Something went wrong")
+        return
+      }
+      setStatus("done")
+    } catch {
       setStatus("error")
-      setError(data.error ?? "Something went wrong")
-      return
+      setError("Something went wrong")
     }
-    setStatus("done")
   }
 
   if (status === "done") {

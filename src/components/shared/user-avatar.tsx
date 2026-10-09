@@ -30,7 +30,7 @@ export function UserAvatar({ name, src, size = "md", className }: UserAvatarProp
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={name} className="size-full object-cover" />
       ) : (
-        <span aria-label={name}>{getInitials(name)}</span>
+        <span role="img" aria-label={name}>{getInitials(name)}</span>
       )}
     </span>
   )
