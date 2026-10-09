@@ -1,18 +1,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 import { InviteUserDialog } from "@/components/users/invite-user-dialog";
+import { PageHeader } from "@/components/shared/page-header";
 import { UsersTable } from "@/components/users/users-table";
 
 export default async function UsersPage() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const user = await requireUser();
 
   const { data: me } = await supabase
     .from("users")
@@ -35,16 +31,17 @@ export default async function UsersPage() {
     .order("full_name");
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-foreground">Users</h1>
-        <InviteUserDialog committees={committees ?? []} />
-      </div>
+    <div>
+      <PageHeader
+        title="User management"
+        description="Invite council members, set their roles, and deactivate the roster at the end of the year."
+        actions={<InviteUserDialog committees={committees ?? []} />}
+      />
 
       <UsersTable
         members={members ?? []}
         committees={committees ?? []}
-        currentUserId={user!.id}
+        currentUserId={user.id}
       />
     </div>
   );
