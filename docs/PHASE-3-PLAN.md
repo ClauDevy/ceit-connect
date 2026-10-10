@@ -8,7 +8,7 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 `/events/new`: name, dates, description, Save Draft / Launch Event, real insert. `events_insert` requires `created_by = auth.uid()`.
 
 ## Step 2 — Home shows real events
-- Replace Home's placeholder with a real list/timeline of events (prototype: `docs/prototypes/ceit-connect-home.html`).
+- Replace Home's placeholder with a real list/timeline of events (prototype: `docs/prototypes/index.html` — large file, read only the event list section).
 - Draft events render with a **dashed border + grey "Draft" badge** and are visible **only to their creator** (already enforced by `events_select`; verify, don't re-implement in the UI).
 - "+ New Event" button, visible to Admin and Co-Admin only, linking to `/events/new`; add the route to navigation if appropriate.
 - After saving on `/events/new`, redirect to Home so the new event is visible.
@@ -24,7 +24,7 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 
 ## Step 4 — Edit Event
 - Load an existing event (and its tasks) into the same form; only the creator or an Admin may edit (`events_update`).
-- Prototype: `docs/prototypes/ceit-connect-edit-event.html` (owner adds it).
+- Prototype: `docs/prototypes/edit-event.html` (large file, read only the parts you need).
 - **Test:** edit name/dates → saved; a non-creator Co-Admin cannot edit someone else's event.
 
 ## Step 5 — Template Auto-Import

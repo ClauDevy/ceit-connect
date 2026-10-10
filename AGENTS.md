@@ -30,7 +30,7 @@ Roles: `Admin`, `Co-Admin`, `Member`. 12 committees live in a `committees` table
 - `npm run dev` — local server (restart it after changing `.env.local`)
 - `npm run build` — **run before every PR**; it catches type errors that dev mode lets through
 - `npm run lint`
-- `npx supabase migration new <name>` — create a migration file (write SQL in it)
+- `npx supabase migration new <n>` — create a migration file (write SQL in it)
 
 ## Golden rules (each one exists because of a real bug or security finding)
 
@@ -38,7 +38,7 @@ Roles: `Admin`, `Co-Admin`, `Member`. 12 committees live in a `committees` table
 2. Every schema or policy change is a **new tracked file** in `supabase/migrations/`. Never rely on ad-hoc SQL typed into the dashboard.
 3. The service-role key is used **only** through `createServiceRoleClient()` in server-only code (route handlers, server actions) — never in a client component, never in a `NEXT_PUBLIC_*` variable. Every route that uses it must first re-verify the caller itself: logged in, correct role, **and `is_active`**.
 4. **RLS is the real security; hiding UI is only UX.** Every role check in the UI needs a matching RLS policy or server-side check.
-5. Pages must guard themselves with `requireUser()` from `@/lib/auth`. Layouts and pages render in parallel, so a layout's redirect does not stop the page below it. Never write `user!`.
+5. Pages must guard themselves. Call `requireUser()` from `@/lib/auth` (checks "logged in" only). For Admin/Co-Admin-only pages and routes, also call `getActiveProfileForRoles([...])` from the same file: it checks the role **and `is_active`**, and returns `null` when not allowed, so always handle the `null` (redirect or 403). Layouts and pages render in parallel, so a layout's redirect does not stop the page below it. Never write `user!`.
 6. Confidential tasks: read title/description through `supabase.rpc('get_task', { p_task_id })`, never a raw `select` on `tasks`.
 7. Never trust client-supplied values for security-relevant fields (`created_by`, `avatar_url`, `role`, ids). Derive them server-side or enforce them in RLS.
 8. Never read, print, or commit `.env*` files or secrets. Env vars: `NEXT_PUBLIC_SUPABASE_URL` (the **bare** project URL, no path), `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server only), `ALLOWED_EMAIL_DOMAINS`.
@@ -51,7 +51,7 @@ Roles: `Admin`, `Co-Admin`, `Member`. 12 committees live in a `committees` table
 - Reuse before creating: `src/components/ui/*` (Button, Input, FormField, Dialog, Badge, Card, Table, InlineAlert, ...) and `src/components/shared/*` (PageHeader, EmptyState, ConfirmDialog, UserAvatar).
 - Colors: use the semantic tokens only (`bg-background`, `bg-card`, `bg-primary`, `bg-muted`, `text-muted-foreground`, `text-accent-foreground`, `border`, ...). Never hard-code hex colors. Dark mode comes from the same tokens.
 - Every form field needs a matching `htmlFor` / `id`.
-- New pages go under `src/app/(dashboard)/<route>/`; new API routes at `src/app/api/<name>/route.ts`; files are kebab-case.
+- New pages go under `src/app/(dashboard)/<route>/`; new API routes at `src/app/api/<n>/route.ts`; files are kebab-case.
 - After a POST form/route, redirect with `NextResponse.redirect(url, 303)`, not 307.
 - `events.start_date` / `end_date` are `date` columns — use `yyyy-mm-dd` strings from `<input type="date">`.
 
@@ -73,6 +73,6 @@ The owner is a student learning as they build. Always:
 - `docs/PROGRESS.md` — what is done, decisions made, open items
 - `docs/PHASE-3-PLAN.md` — next work, with acceptance checks
 - `docs/GOTCHAS.md` — hard-won lessons; **read before touching auth, email, Supabase settings, or deployment**
-- `docs/prototypes/*.html` — design source for pages not built yet; match their layout and behavior
+- `docs/prototypes/*.html` — design source for pages not built yet; match their layout and behavior. **Each file is 30–125 KB: never read one in full, search for the section you need.**
 
 <!-- END:ceit-connect-guide -->
