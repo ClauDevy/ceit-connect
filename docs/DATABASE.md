@@ -21,10 +21,10 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 - Assignee arrays hold user ids; they are **not** foreign keys. Membership test in policies: `auth.uid() = any(primary_assignees)`.
 
 ### notifications
-Per the architecture doc: `id`, `user_id → users.id`, `type` (`mention` | `assignment` | `status_change` | `unlock` | `backup_request` | `heads_up`), `task_id → tasks.id` (nullable), `read_at` (nullable), `created_at`. Private to each user (even Admins can't read others'); system-generated only; a user may mark their own as read; nobody deletes. *Verify exact columns in migration `20260926053015_notifications_and_activity_log.sql` before coding against it.*
+`id uuid pk default gen_random_uuid()`, `user_id uuid not null → users.id on delete cascade`, `type text not null` (`mention` | `assignment` | `status_change` | `unlock` | `backup_request` | `heads_up`), `task_id uuid → tasks.id on delete cascade` (nullable), `read_at timestamptz` (nullable), `created_at timestamptz not null default now()`. Private to each user (even Admins can't read others'); system-generated only; a user may mark their own as read; nobody deletes.
 
 ### activity_log
-Written automatically by a trigger on every task INSERT/UPDATE/DELETE; nobody writes it by hand and nothing is ever edited or deleted. Admins see all rows; everyone else sees entries only for tasks they would genuinely have access to (narrower than "can see the task exists" — it was tightened twice to stop confidential and backup-flagged tasks leaking). *Verify exact columns in the same migration.*
+`id uuid pk default gen_random_uuid()`, `task_id uuid → tasks.id on delete set null`, `user_id uuid → users.id on delete set null`, `action text not null` (`INSERT` | `UPDATE` | `DELETE`), `changes jsonb`, `created_at timestamptz not null default now()`. Written automatically by a trigger on every task INSERT/UPDATE/DELETE; nobody writes it by hand and nothing is ever edited or deleted. Admins see all rows; everyone else sees entries only for tasks they would genuinely have access to (narrower than "can see the task exists" — it was tightened twice to stop confidential and backup-flagged tasks leaking).
 
 ## Who can do what (RLS summary)
 
@@ -62,7 +62,7 @@ Bucket `avatars`: public read, 2 MB limit, MIME types `image/jpeg`, `image/png`,
 8. `20260927170612_recreate_missing_assignee_guard_trigger.sql`
 9. `20261001135007_add_password_set_column.sql` (includes a backfill from `auth.users.encrypted_password`)
 10. `20261002094633_avatar_storage_policies.sql`
-11. `*_tighten_events_insert_policy.sql` — drops and recreates `events_insert` so it also requires `created_by = auth.uid()` (created on branch `feature/event-engine`; check it exists in the repo)
+11. `20261007061905_tighten_events_insert_policy.sql` — drops and recreates `events_insert` so it also requires `created_by = auth.uid()`
 
 ## Environments
 
