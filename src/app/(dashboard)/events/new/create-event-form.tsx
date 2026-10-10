@@ -52,6 +52,7 @@ export function CreateEventForm() {
 
       if (!user) {
         setError("You're not signed in.");
+        setStatus("idle");
         return;
       }
 
@@ -66,13 +67,13 @@ export function CreateEventForm() {
 
       if (insertError) {
         setError(insertError.message);
+        setStatus("idle");
         return;
       }
 
       router.push("/home");
     } catch {
       setError("Network error, please try again.");
-    } finally {
       setStatus("idle");
     }
   }
