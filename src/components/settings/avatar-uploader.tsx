@@ -142,13 +142,17 @@ export function AvatarUploader({
       <div className="flex items-center gap-4">
         <UserAvatar name={userName} src={preview} size="lg" />
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => fileInput.current?.click()}>
+          <Button
+            variant="outline"
+            disabled={status === "saving"}
+            onClick={() => fileInput.current?.click()}
+          >
             {preview ? "Change photo" : "Choose photo"}
           </Button>
           {preview && (
             <Button
               variant="ghost"
-              disabled={status === "removing"}
+              disabled={status === "saving" || status === "removing"}
               onClick={handleRemove}
               className="text-muted-foreground hover:text-destructive"
             >
