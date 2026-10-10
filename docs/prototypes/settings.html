@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEIT Connect — Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-paper dark:bg-night-bg text-ink dark:text-night-text antialiased">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="hidden md:flex w-60 lg:w-64 shrink-0 flex-col border-r border-slate-300/70 dark:border-white/10 bg-card dark:bg-night-card h-full relative">
+    <button id="sidebar-toggle" class="hidden md:flex absolute -right-3 top-9 w-6 h-6 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 items-center justify-center text-slate-500 dark:text-night-muted hover:text-council transition-colors z-10">
+      <svg id="sidebar-toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="transition: transform .2s ease;"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+
+    <div class="flex-1 min-h-0 overflow-y-auto flex flex-col justify-between px-5 lg:px-6 py-7">
+      <div>
+        <div class="flex items-center gap-2.5 mb-9">
+          <svg width="34" height="34" viewBox="0 0 100 100" class="shrink-0">
+            <ellipse cx="50" cy="52" rx="34" ry="26" fill="#EC6608"/><ellipse cx="50" cy="60" rx="21" ry="16" fill="#FFF8F0"/>
+            <ellipse cx="30" cy="26" rx="9" ry="8" fill="#EC6608"/><ellipse cx="70" cy="26" rx="9" ry="8" fill="#EC6608"/>
+            <circle cx="30" cy="24" r="3.5" fill="#1B140F"/><circle cx="70" cy="24" r="3.5" fill="#1B140F"/>
+            <path d="M36 40 Q42 34 48 40 M52 40 Q58 34 64 40" stroke="#1B140F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+            <circle cx="42" cy="46" r="3" fill="#1B140F"/><circle cx="58" cy="46" r="3" fill="#1B140F"/>
+          </svg>
+          <div class="leading-tight sidebar-label">
+            <p class="font-display font-semibold text-[15px] tracking-tight">CEIT Connect</p>
+            <p class="text-[11px] text-slate-500 dark:text-night-muted -mt-0.5">Student Council</p>
+          </div>
+        </div>
+
+        <nav class="flex flex-col gap-1 pl-5">
+          <a href="index.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+            <span class="sidebar-label">Home</span>
+          </a>
+          <a href="tasks.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg>
+            <span class="sidebar-label">My Tasks</span>
+          </a>
+          <a href="archive.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+            <span class="sidebar-label">Event Archives</span>
+          </a>
+          <a href="activity-log.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+            <span class="sidebar-label">Activity Log</span>
+          </a>
+          <a href="dashboard.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
+            <span class="sidebar-label">Dashboard</span>
+          </a>
+          <a href="settings.html" class="nav-item active flex items-center gap-3 rounded-xl px-3 py-2.5 text-council font-semibold bg-council-wash dark:bg-night-wash">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            <span class="sidebar-label">Settings</span>
+          </a>
+          <a href="user-management.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="sidebar-label">User Management</span>
+          </a>
+</nav>
+      </div>
+
+      <div>
+        <a href="create-event.html" class="new-event-btn w-full flex items-center justify-center gap-2 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm py-3 mb-4 hover:bg-council-dark transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="sidebar-label">New Event</span>
+        </a>
+
+        <button id="theme-toggle" class="w-full flex items-center justify-between rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-2.5 mb-5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <span class="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-night-muted">
+            <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <svg id="theme-icon-moon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+            <span id="theme-label" class="sidebar-label">Light mode</span>
+          </span>
+          <span class="theme-toggle-track sidebar-label relative w-9 h-5 rounded-full shrink-0">
+            <span class="theme-toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"></span>
+          </span>
+        </button>
+
+        <div class="flex items-center gap-2 opacity-40 sidebar-label">
+          <span class="paw block w-4 h-4 bg-council"></span>
+          <span class="paw block w-3.5 h-3.5 bg-council"></span>
+          <span class="paw block w-3 h-3 bg-council"></span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN COLUMN -->
+  <div class="flex-1 flex flex-col min-w-0 h-full overflow-y-auto" id="main-scroll">
+
+    <!-- Mobile topbar -->
+    <div class="md:hidden sticky top-0 z-20 flex items-center justify-between bg-card/95 dark:bg-night-card/95 backdrop-blur border-b border-slate-300/70 dark:border-white/10 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <svg width="26" height="26" viewBox="0 0 100 100" class="shrink-0"><ellipse cx="50" cy="52" rx="34" ry="26" fill="#EC6608"/><ellipse cx="50" cy="60" rx="21" ry="16" fill="#FFF8F0"/><ellipse cx="30" cy="26" rx="9" ry="8" fill="#EC6608"/><ellipse cx="70" cy="26" rx="9" ry="8" fill="#EC6608"/></svg>
+        <p class="font-display font-semibold text-[15px]">CEIT Connect</p>
+      </div>
+      <div id="topbar-avatar-mobile" class="w-8 h-8 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-xs overflow-hidden">JC</div>
+    </div>
+
+    <!-- Desktop topbar -->
+    <div class="hidden md:flex items-center justify-end gap-4 px-8 lg:px-10 pt-6">
+      <button class="relative w-10 h-10 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted hover:text-council transition-colors">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crit border-2 border-paper dark:border-night-bg"></span>
+      </button>
+      <div class="flex items-center gap-2.5">
+        <div id="topbar-avatar" class="w-9 h-9 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-xs shrink-0 overflow-hidden">JC</div>
+        <div class="leading-tight">
+          <p id="topbar-name" class="text-sm font-semibold">Juan Dela Cruz</p>
+          <p class="text-[11px] text-slate-500 dark:text-night-muted">President</p>
+        </div>
+      </div>
+    </div>
+
+    <main class="flex-1 px-4 sm:px-6 md:px-8 lg:px-10 py-6 md:py-8 pb-28 max-w-3xl w-full mx-auto">
+
+      <div class="flex items-start gap-3 mb-7">
+        <div class="min-w-0">
+          <h1 class="font-display font-semibold text-2xl sm:text-[28px] tracking-tight">Settings</h1>
+          <p class="text-sm text-slate-500 dark:text-night-muted mt-1">Your profile, how you get notified, and account security.</p>
+        </div>
+      </div>
+
+      <!-- ============= PROFILE ============= -->
+      <section class="mb-8">
+        <h2 class="font-display font-semibold text-base mb-0.5">Profile</h2>
+        <p class="text-xs text-slate-500 dark:text-night-muted mb-4">How the council sees you on tasks, comments, and the board.</p>
+
+        <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-5 sm:p-6">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5 mb-6 pb-6 border-b border-slate-200/70 dark:border-white/10">
+            <div class="relative shrink-0 group">
+              <div id="avatar-preview" class="w-20 h-20 rounded-full bg-council text-white font-display font-semibold text-2xl flex items-center justify-center overflow-hidden ring-4 ring-council-wash dark:ring-night-wash">JC</div>
+              <button id="avatar-edit-btn" class="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-ink dark:bg-council-dark text-white flex items-center justify-center border-2 border-card dark:border-night-card hover:bg-council-dark transition-colors">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <input id="avatar-file-input" type="file" accept="image/*" class="hidden">
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold">Profile photo</p>
+              <p class="text-xs text-slate-500 dark:text-night-muted mt-0.5 max-w-xs">Square photos crop best. Anything over 2MB gets rejected up front — cropped &amp; compressed images stay under 500KB before they ever touch storage.</p>
+              <div class="flex items-center gap-2 mt-2.5">
+                <button id="avatar-upload-btn" class="text-xs font-semibold rounded-lg border border-slate-300 dark:border-white/15 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Upload photo</button>
+                <button id="avatar-remove-btn" class="hidden text-xs font-semibold rounded-lg text-crit px-3 py-1.5 hover:bg-crit-wash dark:hover:bg-crit-dwash transition-colors">Remove</button>
+              </div>
+              <p id="avatar-meta" class="hidden text-[10.5px] text-ok dark:text-emerald-400 font-medium mt-1.5"></p>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <label class="block">
+              <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Full Name</span>
+              <div class="relative">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+                <input id="fullname-input" type="text" value="Juan Dela Cruz" class="settings-field w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 pl-9 pr-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+              </div>
+            </label>
+            <label class="block">
+              <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 flex items-center gap-1.5">Discord ID <span class="font-normal text-slate-400">(optional)</span></span>
+              <div class="relative">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M7.5 7.2S9 6 12 6s4.5 1.2 4.5 1.2M6 17.5c-1.2-3-1-7 .8-10.3M18 17.5c1.2-3 1-7-.8-10.3M8.5 16.8c2.3 1 4.7 1 7 0"/></svg>
+                <input id="discord-input" type="text" placeholder="e.g. juandc#0142" class="settings-field w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 pl-9 pr-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+              </div>
+              <p class="text-[10.5px] text-slate-500 dark:text-night-muted mt-1.5">Lets urgent task pings reach you directly on the SC Discord.</p>
+            </label>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <span class="text-xs font-semibold text-slate-500 dark:text-night-muted mr-1">Role &amp; committee</span>
+            <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3 6 6.5.9-4.7 4.6 1.1 6.4L12 17l-5.9 3 1.1-6.5-4.7-4.6L9 8Z"/></svg>
+              President
+            </span>
+            <span class="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-night-muted">Executive Board</span>
+            <span class="text-[10.5px] text-slate-400 dark:text-night-muted/60 ml-1">Role changes are made by an Admin in User Management.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============= APPEARANCE ============= -->
+      <section class="mb-8">
+        <h2 class="font-display font-semibold text-base mb-0.5">Appearance</h2>
+        <p class="text-xs text-slate-500 dark:text-night-muted mb-4">Pick how CEIT Connect looks on this device.</p>
+
+        <div class="grid grid-cols-3 gap-3">
+          <label class="appear-card cursor-pointer">
+            <input type="radio" name="appearance" value="light" class="hidden">
+            <div class="appear-card-inner rounded-2xl border-2 border-slate-300 dark:border-white/15 bg-card dark:bg-night-card p-3 relative">
+              <span class="appear-check absolute top-2 right-2 w-5 h-5 rounded-full bg-council text-white items-center justify-center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div class="rounded-lg overflow-hidden border border-slate-200 mb-2">
+                <div class="h-2.5 bg-[#FFF8F0] flex items-center gap-0.5 px-1.5"><span class="w-1 h-1 rounded-full bg-council"></span><span class="w-3 h-1 rounded-full bg-slate-300"></span></div>
+                <div class="h-8 bg-white flex items-center px-1.5 gap-1"><span class="w-3 h-3 rounded bg-council-wash"></span><span class="flex-1 h-1.5 rounded-full bg-slate-200"></span></div>
+              </div>
+              <p class="text-xs font-semibold text-center">Light</p>
+            </div>
+          </label>
+          <label class="appear-card cursor-pointer">
+            <input type="radio" name="appearance" value="dark" class="hidden">
+            <div class="appear-card-inner rounded-2xl border-2 border-slate-300 dark:border-white/15 bg-card dark:bg-night-card p-3 relative">
+              <span class="appear-check absolute top-2 right-2 w-5 h-5 rounded-full bg-council text-white items-center justify-center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div class="rounded-lg overflow-hidden border border-white/10 mb-2">
+                <div class="h-2.5 bg-[#17120E] flex items-center gap-0.5 px-1.5"><span class="w-1 h-1 rounded-full bg-council"></span><span class="w-3 h-1 rounded-full bg-white/20"></span></div>
+                <div class="h-8 bg-[#221B15] flex items-center px-1.5 gap-1"><span class="w-3 h-3 rounded bg-council-wash/20"></span><span class="flex-1 h-1.5 rounded-full bg-white/10"></span></div>
+              </div>
+              <p class="text-xs font-semibold text-center">Dark</p>
+            </div>
+          </label>
+          <label class="appear-card cursor-pointer">
+            <input type="radio" name="appearance" value="system" checked class="hidden">
+            <div class="appear-card-inner rounded-2xl border-2 border-slate-300 dark:border-white/15 bg-card dark:bg-night-card p-3 relative">
+              <span class="appear-check absolute top-2 right-2 w-5 h-5 rounded-full bg-council text-white items-center justify-center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div class="rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 mb-2 flex">
+                <div class="w-1/2"><div class="h-2.5 bg-[#FFF8F0]"></div><div class="h-8 bg-white"></div></div>
+                <div class="w-1/2"><div class="h-2.5 bg-[#17120E]"></div><div class="h-8 bg-[#221B15]"></div></div>
+              </div>
+              <p class="text-xs font-semibold text-center">System</p>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <!-- ============= NOTIFICATIONS ============= -->
+      <section class="mb-8">
+        <h2 class="font-display font-semibold text-base mb-0.5">Notifications</h2>
+        <p class="text-xs text-slate-500 dark:text-night-muted mb-4">CEIT Connect routes alerts through three levels so nothing gets buried — and nothing costs the council money.</p>
+
+        <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 divide-y divide-slate-200/70 dark:divide-white/[0.06] overflow-hidden">
+          <div class="flex items-start gap-3.5 p-4 sm:p-5">
+            <span class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold">In-App Bell</p>
+              <p class="text-xs text-slate-500 dark:text-night-muted mt-0.5">Every update — comments, status changes, unlocks. This is the source of truth and can't be turned off.</p>
+            </div>
+            <span class="shrink-0 text-[10.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-ok-wash dark:bg-ok-dwash text-ok dark:text-emerald-400 mt-1">Always on</span>
+          </div>
+
+          <div class="flex items-start gap-3.5 p-4 sm:p-5">
+            <span class="w-9 h-9 rounded-xl bg-council-wash dark:bg-night-wash flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EC6608" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M7.5 7.2S9 6 12 6s4.5 1.2 4.5 1.2M6 17.5c-1.2-3-1-7 .8-10.3M18 17.5c1.2-3 1-7-.8-10.3M8.5 16.8c2.3 1 4.7 1 7 0"/></svg>
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold">Discord Pings</p>
+              <p class="text-xs text-slate-500 dark:text-night-muted mt-0.5">Urgent, real-time: task unlocks, Request Backup, @mentions, and Heads-Up comments.</p>
+              <p id="discord-toggle-hint" class="hidden text-[10.5px] text-council-dark dark:text-council-light font-medium mt-1">Add a Discord ID above to turn this on.</p>
+            </div>
+            <button id="discord-toggle" class="toggle-track on relative w-11 h-6 rounded-full shrink-0 mt-1"><span class="toggle-thumb absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow"></span></button>
+          </div>
+
+          <div class="flex items-start gap-3.5 p-4 sm:p-5">
+            <span class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold">Email Alerts</p>
+              <p class="text-xs text-slate-500 dark:text-night-muted mt-0.5">Critical only — "24 hours until overdue" warnings, to stay well within the free daily send limit.</p>
+            </div>
+            <button id="email-toggle" class="toggle-track on relative w-11 h-6 rounded-full shrink-0 mt-1"><span class="toggle-thumb absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow"></span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============= SECURITY ============= -->
+      <section class="mb-8">
+        <h2 class="font-display font-semibold text-base mb-0.5">Security</h2>
+        <p class="text-xs text-slate-500 dark:text-night-muted mb-4">Manage your password. New members get their first password via a Magic Link email — no public sign-ups.</p>
+
+        <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-5 sm:p-6">
+          <label class="block mb-4">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Current Password</span>
+            <div class="relative">
+              <input id="current-password-input" type="password" placeholder="••••••••••" class="settings-field w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+              <button type="button" data-toggle-pw="current-password-input" class="pw-eye absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-council transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </label>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <label class="block">
+              <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">New Password</span>
+              <div class="relative">
+                <input id="new-password-input" type="password" placeholder="At least 8 characters" class="settings-field w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                <button type="button" data-toggle-pw="new-password-input" class="pw-eye absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-council transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <div class="flex items-center gap-1 mt-2">
+                <span class="strength-seg h-1 flex-1 rounded-full bg-slate-200 dark:bg-white/10" data-seg="0"></span>
+                <span class="strength-seg h-1 flex-1 rounded-full bg-slate-200 dark:bg-white/10" data-seg="1"></span>
+                <span class="strength-seg h-1 flex-1 rounded-full bg-slate-200 dark:bg-white/10" data-seg="2"></span>
+                <span class="strength-seg h-1 flex-1 rounded-full bg-slate-200 dark:bg-white/10" data-seg="3"></span>
+              </div>
+              <p id="strength-label" class="text-[10.5px] text-slate-400 dark:text-night-muted/60 mt-1">Password strength</p>
+            </label>
+            <label class="block">
+              <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Confirm Password</span>
+              <div class="relative">
+                <input id="confirm-password-input" type="password" placeholder="Re-enter new password" class="settings-field w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                <button type="button" data-toggle-pw="confirm-password-input" class="pw-eye absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-council transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <p id="confirm-hint" class="hidden text-[10.5px] font-medium mt-1"></p>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============= DANGER ZONE ============= -->
+      <section class="mb-4">
+        <h2 class="font-display font-semibold text-base mb-0.5 text-crit dark:text-red-400">Danger Zone</h2>
+        <p class="text-xs text-slate-500 dark:text-night-muted mb-4">Account deactivation is handled by the Council Admin to protect Event Archive integrity — this sends them a request.</p>
+
+        <div class="rounded-2xl bg-crit-wash dark:bg-crit-dwash border border-crit/30 dark:border-red-900/40 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-crit dark:text-red-400">Request account deactivation</p>
+            <p class="text-xs text-crit/80 dark:text-red-300/70 mt-1 max-w-md">Your profile photo is wiped and your account is locked out. Task and event history stays intact in the Archives — this can't be undone by you afterward.</p>
+          </div>
+          <button id="open-deactivate-modal" class="shrink-0 rounded-xl bg-crit text-white font-semibold text-sm px-5 py-2.5 hover:bg-red-700 transition-colors">Request Deactivation</button>
+        </div>
+      </section>
+
+      <div class="flex items-center justify-center gap-2 opacity-30 py-6">
+        <svg width="26" height="22" viewBox="0 0 60 48"><ellipse cx="30" cy="28" rx="24" ry="16" fill="#EC6608"/><ellipse cx="14" cy="14" rx="7" ry="6" fill="#EC6608"/><ellipse cx="46" cy="14" rx="7" ry="6" fill="#EC6608"/></svg>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- FLOATING SAVE BAR -->
+<div id="savebar" class="savebar savebar-hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md">
+  <div class="flex items-center gap-3 rounded-2xl bg-ink dark:bg-night-card text-white dark:text-night-text shadow-2xl px-4 sm:px-5 py-3.5">
+    <span class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EC6608" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+    </span>
+    <p class="text-sm font-medium flex-1 min-w-0">You have unsaved changes</p>
+    <button id="discard-changes-btn" class="text-xs font-semibold px-3 py-2 rounded-lg hover:bg-white/10 transition-colors shrink-0">Discard</button>
+    <button id="save-changes-btn" class="text-xs font-semibold px-4 py-2 rounded-lg bg-council hover:bg-council-dark transition-colors shrink-0">Save Changes</button>
+  </div>
+</div>
+
+<!-- CROP MODAL -->
+<div id="crop-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-50 bg-ink/50 dark:bg-black/70 flex items-center justify-center p-4">
+  <div class="modal-panel w-full max-w-sm bg-card dark:bg-night-card rounded-2xl shadow-2xl overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200/70 dark:border-white/10">
+      <h3 class="font-display font-semibold text-base">Crop your photo</h3>
+      <button id="close-crop-modal" class="w-7 h-7 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="p-5">
+      <div id="crop-frame" class="crop-frame relative w-full aspect-square rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-4 select-none">
+        <img id="crop-image" class="absolute top-1/2 left-1/2 max-w-none pointer-events-none" style="transform: translate(-50%,-50%) scale(1);" alt="">
+        <div class="absolute inset-0 pointer-events-none" style="box-shadow: 0 0 0 999px rgba(27,20,15,0.55); border-radius: 999px;"></div>
+      </div>
+      <div class="flex items-center gap-3 mb-1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="10" cy="10" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="crop-zoom" type="range" min="100" max="250" value="100" class="flex-1">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </div>
+      <p class="text-[11px] text-slate-500 dark:text-night-muted text-center">Drag to reposition · scroll or use the slider to zoom</p>
+    </div>
+    <div id="crop-progress-wrap" class="hidden px-5 pb-2">
+      <div class="h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden"><div id="crop-progress-bar" class="h-full bg-council rounded-full" style="width:0%"></div></div>
+      <p class="text-[11px] text-council-dark dark:text-council-light font-medium mt-1.5 text-center">Compressing to fit under 500KB…</p>
+    </div>
+    <div class="flex items-center gap-2.5 px-5 py-4 border-t border-slate-200/70 dark:border-white/10">
+      <button id="cancel-crop-btn" class="flex-1 rounded-xl border border-slate-300 dark:border-white/15 font-semibold text-sm py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+      <button id="confirm-crop-btn" class="flex-1 rounded-xl bg-council text-white font-semibold text-sm py-2.5 hover:bg-council-dark transition-colors">Save Photo</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEACTIVATE CONFIRM MODAL -->
+<div id="deactivate-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-50 bg-ink/50 dark:bg-black/70 flex items-center justify-center p-4">
+  <div class="modal-panel w-full max-w-sm bg-card dark:bg-night-card rounded-2xl shadow-2xl p-6 text-center">
+    <div class="w-14 h-14 rounded-full bg-crit-wash dark:bg-crit-dwash flex items-center justify-center mx-auto mb-3">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+    </div>
+    <h3 class="font-display font-semibold text-lg mb-1.5">Send deactivation request?</h3>
+    <p class="text-sm text-slate-500 dark:text-night-muted mb-4">Your Admin will review this before your account is locked. Type <span class="font-bold text-ink dark:text-night-text">DEACTIVATE</span> to confirm.</p>
+    <input id="deactivate-confirm-input" type="text" placeholder="Type DEACTIVATE" class="w-full text-center rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 py-2.5 text-sm font-semibold tracking-wide mb-4 focus:outline-none focus:ring-2 focus:ring-crit/40 focus:border-crit">
+    <div class="flex items-center gap-2.5">
+      <button id="cancel-deactivate-btn" class="flex-1 rounded-xl border border-slate-300 dark:border-white/15 font-semibold text-sm py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+      <button id="confirm-deactivate-btn" disabled class="flex-1 rounded-xl bg-crit text-white font-semibold text-sm py-2.5 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-crit">Send Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast toast-hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-ink dark:bg-night-card text-white dark:text-night-text text-sm font-medium px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EC6608" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <span id="toast-text">Saved</span>
+</div>
+
+<script>
+  // ============================= THEME =============================
+  var htmlEl = document.documentElement;
+  function applyTheme(dark) {
+    htmlEl.classList.toggle('dark', dark);
+    document.getElementById('theme-icon-sun').classList.toggle('hidden', dark);
+    document.getElementById('theme-icon-moon').classList.toggle('hidden', !dark);
+    document.getElementById('theme-label').textContent = dark ? 'Dark mode' : 'Light mode';
+  }
+  applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    applyTheme(!htmlEl.classList.contains('dark'));
+    document.querySelector('input[name="appearance"][value="' + (htmlEl.classList.contains('dark') ? 'dark' : 'light') + '"]').checked = true;
+  });
+
+  var sidebar = document.getElementById('sidebar');
+  document.getElementById('sidebar-toggle').addEventListener('click', function () {
+    sidebar.classList.toggle('collapsed');
+    document.getElementById('sidebar-toggle-icon').style.transform = sidebar.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+  });
+
+  document.querySelectorAll('input[name="appearance"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      if (radio.value === 'dark') applyTheme(true);
+      else if (radio.value === 'light') applyTheme(false);
+      else applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      markDirty();
+    });
+  });
+
+  // ============================= TOAST =============================
+  var toastTimer;
+  function showToast(msg) {
+    document.getElementById('toast-text').textContent = msg;
+    var t = document.getElementById('toast');
+    t.classList.remove('toast-hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.add('toast-hidden'); }, 2400);
+  }
+
+  // ============================= UNSAVED CHANGES BAR =============================
+  var isDirty = false;
+  var savebar = document.getElementById('savebar');
+  function markDirty() {
+    if (isDirty) return;
+    isDirty = true;
+    savebar.classList.remove('savebar-hidden');
+  }
+  function clearDirty() {
+    isDirty = false;
+    savebar.classList.add('savebar-hidden');
+  }
+  document.querySelectorAll('.settings-field').forEach(function (el) { el.addEventListener('input', markDirty); });
+  document.getElementById('save-changes-btn').addEventListener('click', function () {
+    var name = document.getElementById('fullname-input').value.trim() || 'Juan Dela Cruz';
+    document.getElementById('topbar-name').textContent = name;
+    updateInitials(name);
+    clearDirty();
+    showToast('Settings saved');
+  });
+  document.getElementById('discard-changes-btn').addEventListener('click', function () {
+    clearDirty();
+    showToast('Changes discarded');
+  });
+
+  function updateInitials(name) {
+    if (avatarDataUrl) return;
+    var parts = name.trim().split(/\s+/);
+    var initials = (parts[0] ? parts[0][0] : '') + (parts.length > 1 ? parts[parts.length - 1][0] : '');
+    initials = initials.toUpperCase() || 'JC';
+    document.getElementById('avatar-preview').textContent = initials;
+    document.getElementById('topbar-avatar').textContent = initials;
+    document.getElementById('topbar-avatar-mobile').textContent = initials;
+  }
+
+  // ============================= NOTIFICATION TOGGLES =============================
+  function bindToggle(id, onChange) {
+    var el = document.getElementById(id);
+    el.addEventListener('click', function () {
+      if (el.classList.contains('disabled')) return;
+      el.classList.toggle('on');
+      markDirty();
+      if (onChange) onChange(el.classList.contains('on'));
+    });
+  }
+  bindToggle('email-toggle');
+  bindToggle('discord-toggle');
+
+  var discordInput = document.getElementById('discord-input');
+  var discordToggle = document.getElementById('discord-toggle');
+  var discordHint = document.getElementById('discord-toggle-hint');
+  function syncDiscordToggleState() {
+    var hasId = discordInput.value.trim().length > 0;
+    if (!hasId) {
+      discordToggle.classList.remove('on');
+      discordToggle.classList.add('disabled');
+      discordHint.classList.remove('hidden');
+    } else {
+      discordToggle.classList.remove('disabled');
+      discordHint.classList.add('hidden');
+    }
+  }
+  discordInput.addEventListener('input', function () { markDirty(); syncDiscordToggleState(); if (discordInput.value.trim()) discordToggle.classList.add('on'); });
+  syncDiscordToggleState();
+
+  // ============================= PASSWORD SHOW/HIDE =============================
+  document.querySelectorAll('.pw-eye').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = document.getElementById(btn.dataset.togglePw);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+  });
+
+  // ============================= PASSWORD STRENGTH =============================
+  var newPwInput = document.getElementById('new-password-input');
+  var confirmPwInput = document.getElementById('confirm-password-input');
+  var segs = document.querySelectorAll('.strength-seg');
+  var strengthLabel = document.getElementById('strength-label');
+  var strengthColors = ['#DC2626', '#D97706', '#EAB308', '#16A34A'];
+  var strengthNames = ['Weak', 'Fair', 'Good', 'Strong'];
+
+  function scorePassword(pw) {
+    var score = 0;
+    if (pw.length >= 8) score++;
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    return pw.length === 0 ? 0 : Math.max(1, score);
+  }
+  newPwInput.addEventListener('input', function () {
+    markDirty();
+    var score = scorePassword(newPwInput.value);
+    segs.forEach(function (seg, i) {
+      seg.style.background = i < score ? strengthColors[score - 1] : '';
+      if (i >= score) seg.classList.add('bg-slate-200', 'dark:bg-white/10');
+    });
+    strengthLabel.textContent = newPwInput.value ? strengthNames[score - 1] + ' password' : 'Password strength';
+    checkConfirmMatch();
+  });
+  function checkConfirmMatch() {
+    var hint = document.getElementById('confirm-hint');
+    if (!confirmPwInput.value) { hint.classList.add('hidden'); return; }
+    hint.classList.remove('hidden');
+    if (confirmPwInput.value === newPwInput.value) {
+      hint.textContent = 'Passwords match';
+      hint.className = 'text-[10.5px] font-medium mt-1 text-ok dark:text-emerald-400';
+    } else {
+      hint.textContent = "Passwords don't match yet";
+      hint.className = 'text-[10.5px] font-medium mt-1 text-crit dark:text-red-400';
+    }
+  }
+  confirmPwInput.addEventListener('input', function () { markDirty(); checkConfirmMatch(); });
+
+  // ============================= AVATAR CROP FLOW =============================
+  var avatarDataUrl = null;
+  var fileInput = document.getElementById('avatar-file-input');
+  document.getElementById('avatar-edit-btn').addEventListener('click', function () { fileInput.click(); });
+  document.getElementById('avatar-upload-btn').addEventListener('click', function () { fileInput.click(); });
+
+  var cropOverlay = document.getElementById('crop-modal-overlay');
+  var cropImage = document.getElementById('crop-image');
+  var cropFrame = document.getElementById('crop-frame');
+  var cropZoom = document.getElementById('crop-zoom');
+  var cropState = { scale: 1, x: 0, y: 0, naturalW: 0, naturalH: 0 };
+  var dragging = false, dragStart = { x: 0, y: 0 }, panStart = { x: 0, y: 0 };
+
+  fileInput.addEventListener('change', function () {
+    var file = fileInput.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('That photo is over 2MB — pick a smaller one');
+      fileInput.value = '';
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      cropImage.src = e.target.result;
+      cropImage.onload = function () {
+        cropState.naturalW = cropImage.naturalWidth;
+        cropState.naturalH = cropImage.naturalHeight;
+        var frameSize = cropFrame.clientWidth;
+        var minDim = Math.min(cropState.naturalW, cropState.naturalH);
+        var baseDisplay = frameSize / minDim;
+        cropImage.style.width = (cropState.naturalW * baseDisplay) + 'px';
+        cropImage.style.height = (cropState.naturalH * baseDisplay) + 'px';
+        cropState.scale = 1; cropState.x = 0; cropState.y = 0;
+        cropZoom.value = 100;
+        applyCropTransform();
+        cropOverlay.classList.remove('hidden-modal');
+        document.getElementById('crop-progress-wrap').classList.add('hidden');
+      };
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  function applyCropTransform() {
+    cropImage.style.transform = 'translate(calc(-50% + ' + cropState.x + 'px), calc(-50% + ' + cropState.y + 'px)) scale(' + cropState.scale + ')';
+  }
+  cropZoom.addEventListener('input', function () {
+    cropState.scale = cropZoom.value / 100;
+    applyCropTransform();
+  });
+  cropFrame.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var next = Math.min(2.5, Math.max(1, cropState.scale - e.deltaY * 0.001));
+    cropState.scale = next;
+    cropZoom.value = Math.round(next * 100);
+    applyCropTransform();
+  }, { passive: false });
+
+  function pointerDown(e) {
+    dragging = true;
+    var p = e.touches ? e.touches[0] : e;
+    dragStart = { x: p.clientX, y: p.clientY };
+    panStart = { x: cropState.x, y: cropState.y };
+  }
+  function pointerMove(e) {
+    if (!dragging) return;
+    var p = e.touches ? e.touches[0] : e;
+    cropState.x = panStart.x + (p.clientX - dragStart.x);
+    cropState.y = panStart.y + (p.clientY - dragStart.y);
+    applyCropTransform();
+  }
+  function pointerUp() { dragging = false; }
+  cropFrame.addEventListener('mousedown', pointerDown);
+  window.addEventListener('mousemove', pointerMove);
+  window.addEventListener('mouseup', pointerUp);
+  cropFrame.addEventListener('touchstart', pointerDown, { passive: true });
+  window.addEventListener('touchmove', pointerMove, { passive: true });
+  window.addEventListener('touchend', pointerUp);
+
+  function closeCropModal() { cropOverlay.classList.add('hidden-modal'); }
+  document.getElementById('close-crop-modal').addEventListener('click', closeCropModal);
+  document.getElementById('cancel-crop-btn').addEventListener('click', closeCropModal);
+
+  document.getElementById('confirm-crop-btn').addEventListener('click', function () {
+    var progressWrap = document.getElementById('crop-progress-wrap');
+    var progressBar = document.getElementById('crop-progress-bar');
+    progressWrap.classList.remove('hidden');
+    progressBar.style.width = '0%';
+    requestAnimationFrame(function () { progressBar.style.width = '100%'; });
+
+    setTimeout(function () {
+      var out = 320;
+      var canvas = document.createElement('canvas');
+      canvas.width = out; canvas.height = out;
+      var ctx = canvas.getContext('2d');
+      var frameSize = cropFrame.clientWidth;
+      var displayScale = out / frameSize;
+      var minDim = Math.min(cropState.naturalW, cropState.naturalH);
+      var baseDisplay = frameSize / minDim;
+      var totalScale = baseDisplay * cropState.scale * displayScale;
+
+      ctx.save();
+      ctx.translate(out / 2 + cropState.x * displayScale, out / 2 + cropState.y * displayScale);
+      ctx.scale(totalScale, totalScale);
+      ctx.drawImage(cropImage, -cropState.naturalW / 2, -cropState.naturalH / 2);
+      ctx.restore();
+
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      var approxKB = Math.round((dataUrl.length * 0.75) / 1024);
+      avatarDataUrl = dataUrl;
+
+      document.getElementById('avatar-preview').innerHTML = '<img src="' + dataUrl + '" class="w-full h-full object-cover" alt="">';
+      document.getElementById('topbar-avatar').innerHTML = '<img src="' + dataUrl + '" class="w-full h-full object-cover" alt="">';
+      document.getElementById('topbar-avatar-mobile').innerHTML = '<img src="' + dataUrl + '" class="w-full h-full object-cover" alt="">';
+      document.getElementById('avatar-remove-btn').classList.remove('hidden');
+      var metaEl = document.getElementById('avatar-meta');
+      metaEl.classList.remove('hidden');
+      metaEl.textContent = 'Cropped 1:1 · compressed to ~' + approxKB + 'KB (limit 500KB)';
+
+      closeCropModal();
+      markDirty();
+      showToast('Photo cropped & compressed to ~' + approxKB + 'KB');
+    }, 700);
+  });
+
+  document.getElementById('avatar-remove-btn').addEventListener('click', function () {
+    avatarDataUrl = null;
+    document.getElementById('avatar-remove-btn').classList.add('hidden');
+    document.getElementById('avatar-meta').classList.add('hidden');
+    updateInitials(document.getElementById('fullname-input').value || 'Juan Dela Cruz');
+    markDirty();
+    showToast('Photo removed');
+  });
+
+  // ============================= DEACTIVATE MODAL =============================
+  var deactOverlay = document.getElementById('deactivate-modal-overlay');
+  document.getElementById('open-deactivate-modal').addEventListener('click', function () {
+    document.getElementById('deactivate-confirm-input').value = '';
+    document.getElementById('confirm-deactivate-btn').disabled = true;
+    deactOverlay.classList.remove('hidden-modal');
+  });
+  document.getElementById('cancel-deactivate-btn').addEventListener('click', function () { deactOverlay.classList.add('hidden-modal'); });
+  document.getElementById('deactivate-confirm-input').addEventListener('input', function () {
+    document.getElementById('confirm-deactivate-btn').disabled = this.value.trim().toUpperCase() !== 'DEACTIVATE';
+  });
+  document.getElementById('confirm-deactivate-btn').addEventListener('click', function () {
+    if (this.disabled) return;
+    deactOverlay.classList.add('hidden-modal');
+    showToast('Deactivation request sent to your Admin');
+  });
+</script>
+
+<nav id="app-mobile-nav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-card dark:bg-night-card border-t border-slate-300/70 dark:border-white/10 flex items-stretch justify-around px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))]">
+  <a href="index.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg><span class="text-[10px] font-medium">Home</span></a>
+  <a href="tasks.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg><span class="text-[10px] font-medium">Tasks</span></a>
+  <a href="dashboard.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg><span class="text-[10px] font-medium">Dashboard</span></a>
+  <a href="settings.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-council"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span class="text-[10px] font-semibold">Settings</span></a>
+  <button id="mobile-more-btn" type="button" class="mobile-link relative flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span class="text-[10px] font-medium">More</span></button>
+</nav>
+
+<div id="mobile-more-overlay" class="md:hidden fixed inset-0 z-40 bg-ink/40 dark:bg-black/60 hidden"></div>
+<div id="mobile-more-sheet" class="md:hidden fixed bottom-0 inset-x-0 z-50 translate-y-full transition-transform duration-200 bg-card dark:bg-night-card rounded-t-2xl p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl">
+  <div class="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-white/15 mx-auto mb-2"></div>
+  <a href="archive.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>Event Archives</a>
+  <a href="activity-log.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Activity Log</a>
+  <a href="user-management.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>User Management</a>
+  <a href="notifications.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notifications</a>
+  <a href="create-event.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-council hover:bg-council-wash dark:hover:bg-night-wash"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New Event</a>
+  <button id="mobile-more-close" type="button" class="w-full mt-1 rounded-xl py-2.5 text-sm font-semibold text-slate-500 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5">Close</button>
+</div>
+
+<script>
+  (function () {
+    var moreBtn = document.getElementById("mobile-more-btn");
+    var overlay = document.getElementById("mobile-more-overlay");
+    var sheet = document.getElementById("mobile-more-sheet");
+    var closeBtn = document.getElementById("mobile-more-close");
+    if (!moreBtn) return;
+    function openSheet() { overlay.classList.remove("hidden"); sheet.classList.remove("translate-y-full"); }
+    function closeSheet() { overlay.classList.add("hidden"); sheet.classList.add("translate-y-full"); }
+    moreBtn.addEventListener("click", openSheet);
+    closeBtn.addEventListener("click", closeSheet);
+    overlay.addEventListener("click", closeSheet);
+  })();
+</script>
+
+</body>
+</html>
