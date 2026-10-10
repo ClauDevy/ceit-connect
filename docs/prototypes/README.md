@@ -6,8 +6,8 @@ These are the original mock-data prototypes. They show the intended **layout and
 
 | Page | File | Notes |
 |---|---|---|
-| Home (event list / timeline) | `index.html` | Likely the Home page — confirm by opening it or reading its `<title>` |
-| Event board (Kanban: phase tabs, three lanes, backlog) | `event.html` | Phase 4 design source; confirm by `<title>` |
+| Home (event list / timeline) | `index.html` | Phase 3 Step 2 |
+| Event board (Kanban: phase tabs, three lanes, backlog) | `event.html` | Phase 4 design source |
 | Create Event (Fundamentals + Tasks tabs, mode picker, live summary) | `create-event.html` | Phase 3 Steps 1, 3, 5 |
 | Edit Event | `edit-event.html` | Phase 3 Step 4 |
 | Event Archives | `archive.html` | Phase 3 Step 6 |
@@ -17,9 +17,10 @@ These are the original mock-data prototypes. They show the intended **layout and
 | Notifications | `notifications.html` | Phase 5 |
 | Settings | `settings.html` | Already built some in the real app |
 | Login | `login.html` | Already built in the real app |
+| User Management | `user-management.html` | Already built in the real app (`/users`) |
 | Shared styles / Tailwind config | `style.css`, `tailwind-config.js` | The pages link to these; `tailwind-config.js` defines the raw palette |
 
-Two extra files, `ceit-connect-home.html` and `ceit-connect-create-event.html`, are self-contained exports of earlier versions of the same designs. **If they ever differ from the plain-named originals above, prefer the originals.**
+**These files are large (30–125 KB each). Never read one in full.** Search for the section you need (a heading, an `id`, or a class name) and read only that part.
 
 Keep `style.css` and `tailwind-config.js` in this folder — opening a page in a browser without them breaks its styling.
 

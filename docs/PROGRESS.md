@@ -35,12 +35,15 @@ Not done: everything else in `docs/PHASE-3-PLAN.md` (Home with real events, Task
 - Phase 3 is built one feature at a time: wire an existing HTML prototype to real Supabase data, test it, then move on.
 - Git flow: one feature branch per task → CodeRabbit → PR → merge → then push the migration to Prod (the owner does all Supabase CLI pushes).
 
-## Verify (not confirmed in the chat history — check before relying on them)
-- [ ] Was the `feature/event-engine` PR merged to `main`?
-- [ ] Was the `tighten_events_insert_policy` migration pushed to **Prod**? (Dev is confirmed.)
-- [ ] Is the UI redesign merged to `main` and deployed on Vercel without build errors? (`npm run build` should pass.)
-- [ ] Leftovers removed: `src/components/layout/sidebar.tsx` (old), `src/components/settings/reset-password-form.tsx` (dead code), unused packages `cn` and `p` in `package.json`.
-- [ ] The service-role key does not appear in any client bundle (Phase 2 gate check).
+## Status checks (answered 2026-10-10)
+- `feature/event-engine` PR merged to `main`: YES
+- `tighten_events_insert_policy` migration pushed to Prod:  YES
+- UI redesign merged and deployed on Vercel, `npm run build` passes: YES 
+- Leftovers (`sidebar.tsx`, `reset-password-form.tsx`, packages `cn` and `p`) removed: YES 
+- Service-role key not in any client bundle: YES 
+
+Next up: Phase 3 Step 2 (see `docs/PHASE-3-PLAN.md`).
+Restyling `/events/new` happens later, when Step 3 touches that page.
 
 ## Open items
 - Tighten `ALLOWED_EMAIL_DOMAINS` on Prod to the university domain only (Vercel env var + redeploy).
