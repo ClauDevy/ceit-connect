@@ -24,9 +24,9 @@ Done:
 - `events` table schema confirmed.
 - **Step 1 — Create Event page** at `/events/new`: Fundamentals tab (name, start/end date, description), live summary with checks, **Save Draft** / **Launch Event** → real insert into `events` (`status` Draft/Active, `created_by` = signed-in user). Launch requires a name and valid dates (`end >= start`); a draft needs a name and start date (`start_date` is NOT NULL). CodeRabbit findings fixed (date order, label/`id` association, try/catch/finally).
 - Migration `*_tighten_events_insert_policy.sql`: `events_insert` now also requires `created_by = auth.uid()`; confirmed live on Dev.
-- Home now shows a Council Orange `+` Create Event action to active Admins and Co-Admins only. `/events/new` has its own server-side active-role guard and redirects Members to `/home`; no event edit route exists yet to guard.
+- Home now shows a Council Orange `+` Create Event action to active Admins and Co-Admins only. This Home action is the only UI entry point to `/events/new`; there is no sidebar or mobile-nav link. `/events/new` has its own server-side active-role guard and redirects Members to `/home`; no event edit route exists yet to guard.
 
-Not done: everything else in `docs/PHASE-3-PLAN.md` (Home with real events, Task Setup, Edit Event, Template Auto-Import, Event Archives, banner upload, Drive preview). The Tasks tab and banner box on `/events/new` are placeholders. There is no nav link to `/events/new` yet.
+Not done: everything else in `docs/PHASE-3-PLAN.md` (Home with real events, Task Setup, Edit Event, Template Auto-Import, Event Archives, banner upload, Drive preview). The Tasks tab and banner box on `/events/new` are placeholders.
 
 ## Decisions log
 - Magic link remains the required first login; password and Google are optional extras unlocked after it.
