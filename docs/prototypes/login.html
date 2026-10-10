@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEIT Connect — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-paper dark:bg-night-bg text-ink dark:text-night-text antialiased font-body min-h-screen flex flex-col">
+
+<!-- ===================== TOP BAR — same on every breakpoint ===================== -->
+<header class="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-card/90 dark:bg-night-card/90 backdrop-blur border-b border-slate-300/60 dark:border-white/10 shrink-0">
+  <div class="flex items-center gap-2">
+    <svg width="26" height="26" viewBox="0 0 100 100" class="shrink-0">
+      <ellipse cx="50" cy="54" rx="33" ry="25" fill="#EC6608"/>
+      <ellipse cx="50" cy="63" rx="19" ry="14" fill="#FFF8F0"/>
+      <path d="M25 32 L17 15 L35 23 Z" fill="#EC6608"/><path d="M75 32 L83 15 L65 23 Z" fill="#EC6608"/>
+      <path d="M25 30 L21 19 L31 24 Z" fill="#1B140F"/><path d="M75 30 L79 19 L69 24 Z" fill="#1B140F"/>
+      <path d="M33 36 L28 25 M41 32 L39 21 M59 32 L61 21 M67 36 L72 25" stroke="#1B140F" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M36 44 Q42 37 48 44 M52 44 Q58 37 64 44" stroke="#1B140F" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+      <circle cx="42" cy="50" r="3" fill="#1B140F"/><circle cx="58" cy="50" r="3" fill="#1B140F"/>
+    </svg>
+    <span class="font-display font-semibold text-sm tracking-tight">CEIT Connect</span>
+  </div>
+  <button id="theme-toggle" class="w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-night-muted hover:text-council transition-colors shrink-0">
+    <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+  </button>
+</header>
+
+<div class="flex-1 flex flex-col md:flex-row">
+
+  <!-- ===================== HERO — full chibi mascot, theme-aware, shown on every breakpoint ===================== -->
+  <div class="hero-panel relative overflow-hidden flex flex-col items-center justify-center text-center px-6 py-8 md:py-10 md:w-[42%] md:shrink-0">
+    <!-- decorative paw prints -->
+    <svg class="absolute top-10 left-8 opacity-20 hidden sm:block" width="38" height="38" viewBox="0 0 100 100"><ellipse cx="50" cy="62" rx="26" ry="20" fill="#fff"/><ellipse cx="26" cy="36" rx="9" ry="11" fill="#fff"/><ellipse cx="74" cy="36" rx="9" ry="11" fill="#fff"/><ellipse cx="38" cy="22" rx="7" ry="9" fill="#fff"/><ellipse cx="62" cy="22" rx="7" ry="9" fill="#fff"/></svg>
+    <svg class="absolute bottom-10 right-10 opacity-15 rotate-12 hidden sm:block" width="28" height="28" viewBox="0 0 100 100"><ellipse cx="50" cy="62" rx="26" ry="20" fill="#fff"/><ellipse cx="26" cy="36" rx="9" ry="11" fill="#fff"/><ellipse cx="74" cy="36" rx="9" ry="11" fill="#fff"/><ellipse cx="38" cy="22" rx="7" ry="9" fill="#fff"/><ellipse cx="62" cy="22" rx="7" ry="9" fill="#fff"/></svg>
+    <svg class="absolute top-1/3 right-6 opacity-10 -rotate-6 hidden md:block" width="22" height="22" viewBox="0 0 100 100"><ellipse cx="50" cy="62" rx="26" ry="20" fill="#fff"/><ellipse cx="26" cy="36" rx="9" ry="11" fill="#fff"/><ellipse cx="74" cy="36" rx="9" ry="11" fill="#fff"/><ellipse cx="38" cy="22" rx="7" ry="9" fill="#fff"/><ellipse cx="62" cy="22" rx="7" ry="9" fill="#fff"/></svg>
+
+    <div class="relative z-10 flex flex-col items-center max-w-sm">
+      <!-- speech bubble -->
+      <div class="relative mb-4 bg-white text-ink rounded-2xl px-4 py-2 shadow-lg animate-float">
+        <p class="font-display font-semibold text-xs sm:text-sm whitespace-nowrap">Hi, Council! Good to see you 👋</p>
+        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45"></div>
+      </div>
+
+      <!-- CHIBI MASCOT: full body, blinking eyes, waving paw, wagging tail -->
+      <div class="relative mb-5 animate-float" style="animation-delay:.4s">
+        <svg width="148" height="168" viewBox="0 0 120 140" class="drop-shadow-xl mx-auto">
+          <!-- tail -->
+          <path class="mascot-tail" d="M90 100 Q114 96 112 74 Q110 58 96 62" stroke="#A8440A" stroke-width="9" fill="none" stroke-linecap="round"/>
+          <!-- back arm (non-waving) -->
+          <ellipse cx="32" cy="98" rx="10" ry="13" fill="#EC6608"/>
+          <!-- feet -->
+          <ellipse cx="46" cy="130" rx="12" ry="9" fill="#EC6608"/>
+          <ellipse cx="74" cy="130" rx="12" ry="9" fill="#EC6608"/>
+          <ellipse cx="46" cy="132" rx="7" ry="4.5" fill="#FFDDBB"/>
+          <ellipse cx="74" cy="132" rx="7" ry="4.5" fill="#FFDDBB"/>
+          <!-- body -->
+          <ellipse cx="60" cy="102" rx="30" ry="28" fill="#EC6608"/>
+          <ellipse cx="60" cy="108" rx="18" ry="16" fill="#FFF8F0"/>
+          <!-- head -->
+          <ellipse cx="60" cy="52" rx="35" ry="32" fill="#EC6608"/>
+          <ellipse cx="60" cy="60" rx="21" ry="17" fill="#FFF8F0"/>
+          <!-- ears -->
+          <path d="M31 30 L21 10 L43 20 Z" fill="#EC6608"/>
+          <path d="M89 30 L99 10 L77 20 Z" fill="#EC6608"/>
+          <path d="M31 28 L25 14 L39 21 Z" fill="#A8440A"/>
+          <path d="M89 28 L95 14 L81 21 Z" fill="#A8440A"/>
+          <!-- stripes -->
+          <path d="M40 40 L34 27 M50 34 L47 21 M70 34 L73 21 M80 40 L86 27" stroke="#A8440A" stroke-width="3" stroke-linecap="round"/>
+          <!-- cheeks blush -->
+          <ellipse cx="38" cy="62" rx="6.5" ry="4.5" fill="#FF9D71" opacity=".55"/>
+          <ellipse cx="82" cy="62" rx="6.5" ry="4.5" fill="#FF9D71" opacity=".55"/>
+          <!-- eyes: open state -->
+          <g class="mascot-eyes-open">
+            <circle cx="47" cy="54" r="7.5" fill="#fff"/><circle cx="48.5" cy="55" r="4.5" fill="#1B140F"/><circle cx="50.5" cy="52.5" r="1.5" fill="#fff"/>
+            <circle cx="73" cy="54" r="7.5" fill="#fff"/><circle cx="74.5" cy="55" r="4.5" fill="#1B140F"/><circle cx="76.5" cy="52.5" r="1.5" fill="#fff"/>
+          </g>
+          <!-- eyes: closed state (blink) -->
+          <g class="mascot-eyes-closed">
+            <path d="M40 54 Q47 60 54 54" stroke="#1B140F" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+            <path d="M66 54 Q73 60 80 54" stroke="#1B140F" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+          </g>
+          <!-- nose + mouth -->
+          <ellipse cx="60" cy="64" rx="3.4" ry="2.6" fill="#1B140F"/>
+          <path d="M60 66 Q60 71 55 72 M60 66 Q60 71 65 72" stroke="#1B140F" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          <!-- whiskers -->
+          <path d="M20 58 L36 60 M20 66 L36 64" stroke="#A8440A" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>
+          <path d="M100 58 L84 60 M100 66 L84 64" stroke="#A8440A" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>
+        </svg>
+        <!-- waving arm (front, separate so it animates independently) -->
+        <svg width="34" height="34" viewBox="0 0 60 60" class="absolute animate-wave" style="right:4px; top:118px; transform-origin: 10% 90%;">
+          <ellipse cx="30" cy="30" rx="16" ry="20" fill="#EC6608"/>
+          <ellipse cx="30" cy="20" rx="9" ry="7" fill="#FFDDBB"/>
+        </svg>
+      </div>
+
+      <h1 class="font-display font-semibold text-xl sm:text-2xl tracking-tight mb-1.5 hero-heading">CEIT Connect</h1>
+      <p class="text-xs sm:text-sm hero-subtext leading-relaxed">One workspace for every committee — tasks, timelines, and confidential council business, all in one place.</p>
+
+      <div class="flex items-center gap-5 sm:gap-6 mt-6 hero-subtext">
+        <div class="text-center">
+          <p class="font-display font-semibold text-base sm:text-lg hero-heading">12</p>
+          <p class="text-[10px] sm:text-[11px] opacity-70">Committees</p>
+        </div>
+        <div class="w-px h-7 hero-divider"></div>
+        <div class="text-center">
+          <p class="font-display font-semibold text-base sm:text-lg hero-heading">4</p>
+          <p class="text-[10px] sm:text-[11px] opacity-70">Active events</p>
+        </div>
+        <div class="w-px h-7 hero-divider"></div>
+        <div class="text-center">
+          <p class="font-display font-semibold text-base sm:text-lg hero-heading">124</p>
+          <p class="text-[10px] sm:text-[11px] opacity-70">Tasks tracked</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== AUTH CARD — always rendered, never hidden ===================== -->
+  <div class="flex-1 flex items-center justify-center px-5 sm:px-8 py-8 sm:py-10">
+    <div class="w-full max-w-sm">
+
+      <!-- ===== STATE 1: Sign in form ===== -->
+      <div id="signin-state">
+        <h1 class="font-display font-semibold text-2xl tracking-tight mb-1.5">Welcome back</h1>
+        <p class="text-sm text-slate-500 dark:text-night-muted mb-6">Sign in to pick up right where your committee left off.</p>
+
+        <!-- Google -->
+        <button id="google-btn" type="button" class="w-full flex items-center justify-center gap-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/10 hover:shadow-md transition-all mb-5">
+          <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.4 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.4 7.1 29.5 5 24 5c-7.6 0-14.1 4.3-17.3 10.7z"/><path fill="#4CAF50" d="M24 44c5.3 0 10.1-2 13.7-5.4l-6.3-5.3C29.5 35 26.9 36 24 36c-5.3 0-9.7-3.1-11.3-7.6l-6.6 5.1C9.8 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.3 5.3C40.9 36.6 44 31.1 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+          Continue with Google
+        </button>
+
+        <div class="flex items-center gap-3 mb-5">
+          <div class="h-px flex-1 bg-slate-200 dark:bg-white/10"></div>
+          <span class="text-[11px] uppercase tracking-wide text-slate-400 dark:text-night-muted/70 font-semibold">or sign in with email</span>
+          <div class="h-px flex-1 bg-slate-200 dark:bg-white/10"></div>
+        </div>
+
+        <form id="signin-form" class="flex flex-col gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Student Council email</label>
+            <div class="relative">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3.5 top-1/2 -translate-y-1/2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              <input id="email-input" type="email" required placeholder="juan.delacruz@ceit.edu.ph" class="field-input w-full rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-semibold text-slate-700 dark:text-night-muted block">Password</label>
+              <button type="button" id="forgot-link" class="text-xs font-semibold text-council hover:text-council-dark transition-colors">Forgot password?</button>
+            </div>
+            <div class="relative">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3.5 top-1/2 -translate-y-1/2"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <input id="password-input" type="password" placeholder="••••••••" class="field-input w-full rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+              <button type="button" id="toggle-password-visibility" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-council transition-colors">
+                <svg id="eye-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="eye-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a13.2 13.2 0 0 1-2.13 2.94M6.5 6.64A13.4 13.4 0 0 0 1 11s4 7 11 7a9.4 9.4 0 0 0 4.33-1.02M14.1 14.1a3 3 0 1 1-4.2-4.2"/><path d="M1 1l22 22"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input id="remember-input" type="checkbox" class="w-4 h-4 rounded border-slate-300 dark:border-white/20 text-council focus:ring-council">
+            Keep me signed in on this device
+          </label>
+
+          <button id="submit-btn" type="submit" class="w-full rounded-xl bg-council text-white font-semibold text-sm py-3 hover:bg-council-dark hover:shadow-lg transition-all flex items-center justify-center gap-2">
+            <span id="submit-btn-label">Sign In</span>
+            <svg id="submit-spinner" class="hidden animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 2a10 10 0 1 0 10 10" opacity="0.9"/></svg>
+          </button>
+        </form>
+
+        <!-- Invited / no password yet -->
+        <button id="open-invite-btn" type="button" class="w-full flex items-center gap-3 rounded-xl border border-dashed border-council/50 bg-council-wash dark:bg-night-wash px-3.5 py-3 mt-5 text-left hover:border-council transition-colors">
+          <span class="w-8 h-8 rounded-lg bg-council text-white flex items-center justify-center shrink-0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7 12 13 2 7"/><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M14 3 12 1 10 3"/></svg>
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-semibold text-council-dark dark:text-council-light">Were you just invited?</span>
+            <span class="block text-xs text-slate-600 dark:text-night-muted">You haven't set a password yet — use your invite email to get in.</span>
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="ml-auto shrink-0 text-council"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <!-- ===== STATE 2: Magic link request (first-time / invited accounts) ===== -->
+      <div id="invite-state" class="hidden">
+        <button id="invite-back-btn" type="button" class="flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-night-muted hover:text-council transition-colors mb-5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back to sign in
+        </button>
+        <div class="w-12 h-12 rounded-xl bg-council-wash dark:bg-night-wash flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EC6608" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7 12 13 2 7"/><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M14 3 12 1 10 3"/></svg>
+        </div>
+        <h1 class="font-display font-semibold text-xl tracking-tight mb-1.5">Set up your account</h1>
+        <p class="text-sm text-slate-500 dark:text-night-muted mb-6">Enter the email your Admin invited — we'll send a one-time link so you can claim your account and set a password.</p>
+        <form id="invite-form" class="flex flex-col gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Invited email</label>
+            <div class="relative">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3.5 top-1/2 -translate-y-1/2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              <input id="invite-email-input" type="email" required placeholder="juan.delacruz@ceit.edu.ph" class="field-input w-full rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+            </div>
+          </div>
+          <button id="invite-submit-btn" type="submit" class="w-full rounded-xl bg-council text-white font-semibold text-sm py-3 hover:bg-council-dark transition-colors flex items-center justify-center gap-2">
+            <span id="invite-submit-label">Send Magic Link</span>
+            <svg id="invite-submit-spinner" class="hidden animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 2a10 10 0 1 0 10 10" opacity="0.9"/></svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- ===== STATE 3: Magic link sent ===== -->
+      <div id="magic-sent-state" class="hidden text-center">
+        <div class="w-16 h-16 rounded-2xl bg-council-wash dark:bg-night-wash flex items-center justify-center mx-auto mb-5">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EC6608" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        </div>
+        <h1 class="font-display font-semibold text-xl tracking-tight mb-1.5">Check your inbox</h1>
+        <p class="text-sm text-slate-500 dark:text-night-muted mb-1">We sent a one-time link to</p>
+        <p class="text-sm font-semibold mb-6" id="magic-email-echo">you@ceit.edu.ph</p>
+
+        <!-- prototype-only: simulate clicking the emailed link -->
+        <button id="simulate-click-link-btn" class="w-full rounded-xl bg-council text-white font-semibold text-sm py-3 hover:bg-council-dark transition-colors mb-3">
+          Prototype: Open the link I was emailed
+        </button>
+        <button id="resend-link-btn" type="button" class="w-full rounded-xl border border-slate-300 dark:border-white/15 text-sm font-semibold py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          Resend link <span id="resend-countdown">(30s)</span>
+        </button>
+
+        <button id="back-to-signin-btn" type="button" class="flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-night-muted hover:text-council transition-colors mt-6 mx-auto">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back to sign in
+        </button>
+      </div>
+
+      <!-- ===== STATE 4: Claim account — set first password ===== -->
+      <div id="set-password-state" class="hidden">
+        <div class="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-4 bg-emerald-500/10 rounded-lg px-3 py-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Link verified — welcome to the council!
+        </div>
+        <h1 class="font-display font-semibold text-xl tracking-tight mb-1.5">Create your password</h1>
+        <p class="text-sm text-slate-500 dark:text-night-muted mb-6">Last step — set a password so you can sign in directly next time.</p>
+        <form id="set-password-form" class="flex flex-col gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">New password</label>
+            <input type="password" required placeholder="At least 8 characters" class="field-input w-full rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Confirm password</label>
+            <input type="password" required placeholder="Re-type your password" class="field-input w-full rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+          </div>
+          <button type="submit" class="w-full rounded-xl bg-council text-white font-semibold text-sm py-3 hover:bg-council-dark transition-colors">Activate My Account</button>
+        </form>
+      </div>
+
+      <!-- ===== STATE 5: Forgot password ===== -->
+      <div id="forgot-state" class="hidden">
+        <button id="forgot-back-btn" type="button" class="flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-night-muted hover:text-council transition-colors mb-5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back to sign in
+        </button>
+        <h1 class="font-display font-semibold text-2xl tracking-tight mb-1.5">Reset your password</h1>
+        <p class="text-sm text-slate-500 dark:text-night-muted mb-6">Enter your council email and we'll send reset instructions.</p>
+        <form id="forgot-form" class="flex flex-col gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Student Council email</label>
+            <div class="relative">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3.5 top-1/2 -translate-y-1/2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              <input type="email" required placeholder="juan.delacruz@ceit.edu.ph" class="field-input w-full rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+            </div>
+          </div>
+          <button type="submit" class="w-full rounded-xl bg-council text-white font-semibold text-sm py-3 hover:bg-council-dark transition-colors">Send Reset Link</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast toast-hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-ink dark:bg-night-card text-white dark:text-night-text text-sm font-medium px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EC6608" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <span id="toast-text">Saved</span>
+</div>
+
+<script>
+  // ================= Theme toggle =================
+  var htmlEl = document.documentElement;
+  var sunIcon = document.getElementById('theme-icon-sun'), moonIcon = document.getElementById('theme-icon-moon');
+  function setTheme(dark) {
+    htmlEl.classList.toggle('dark', dark);
+    sunIcon.classList.toggle('hidden', dark);
+    moonIcon.classList.toggle('hidden', !dark);
+  }
+  setTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.getElementById('theme-toggle').addEventListener('click', function () { setTheme(!htmlEl.classList.contains('dark')); });
+
+  // ================= Toast =================
+  var toastTimer;
+  function showToast(msg) {
+    document.getElementById('toast-text').textContent = msg;
+    var t = document.getElementById('toast');
+    t.classList.remove('toast-hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.add('toast-hidden'); }, 2600);
+  }
+
+  // ================= State switching =================
+  var states = ['signin-state', 'invite-state', 'magic-sent-state', 'set-password-state', 'forgot-state'].map(function (id) { return document.getElementById(id); });
+  function showState(el) {
+    states.forEach(function (s) { s.classList.add('hidden'); });
+    el.classList.remove('hidden');
+  }
+  var signinState = document.getElementById('signin-state');
+  var inviteState = document.getElementById('invite-state');
+  var magicSentState = document.getElementById('magic-sent-state');
+  var setPasswordState = document.getElementById('set-password-state');
+  var forgotState = document.getElementById('forgot-state');
+
+  document.getElementById('open-invite-btn').addEventListener('click', function () { showState(inviteState); });
+  document.getElementById('invite-back-btn').addEventListener('click', function () { showState(signinState); });
+
+  // ================= Password visibility =================
+  var pwInput = document.getElementById('password-input');
+  var eyeOpen = document.getElementById('eye-open'), eyeClosed = document.getElementById('eye-closed');
+  document.getElementById('toggle-password-visibility').addEventListener('click', function () {
+    var showing = pwInput.type === 'text';
+    pwInput.type = showing ? 'password' : 'text';
+    eyeOpen.classList.toggle('hidden', !showing);
+    eyeClosed.classList.toggle('hidden', showing);
+  });
+
+  // ================= Sign in submit (password) =================
+  var submitBtn = document.getElementById('submit-btn');
+  var submitLabel = document.getElementById('submit-btn-label');
+  var submitSpinner = document.getElementById('submit-spinner');
+  document.getElementById('signin-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('email-input').value.trim();
+    if (!email) { showToast('Enter your council email first'); return; }
+    submitBtn.disabled = true;
+    submitLabel.textContent = 'Signing in…';
+    submitSpinner.classList.remove('hidden');
+    setTimeout(function () {
+      showToast('Prototype — this would sign you in now');
+      window.location.href = 'index.html';
+    }, 900);
+  });
+
+  // ================= Invite / magic link submit =================
+  var inviteSubmitBtn = document.getElementById('invite-submit-btn');
+  var inviteSubmitLabel = document.getElementById('invite-submit-label');
+  var inviteSubmitSpinner = document.getElementById('invite-submit-spinner');
+  document.getElementById('invite-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('invite-email-input').value.trim();
+    if (!email) { showToast('Enter the email your Admin invited'); return; }
+    inviteSubmitBtn.disabled = true;
+    inviteSubmitLabel.textContent = 'Sending…';
+    inviteSubmitSpinner.classList.remove('hidden');
+    setTimeout(function () {
+      inviteSubmitBtn.disabled = false;
+      inviteSubmitSpinner.classList.add('hidden');
+      inviteSubmitLabel.textContent = 'Send Magic Link';
+      document.getElementById('magic-email-echo').textContent = email;
+      showState(magicSentState);
+      startResendCooldown();
+    }, 900);
+  });
+
+  // ================= Magic link: resend cooldown + simulate click =================
+  var resendBtn = document.getElementById('resend-link-btn');
+  var resendCountdownEl = document.getElementById('resend-countdown');
+  function startResendCooldown() {
+    var t = 30;
+    resendBtn.disabled = true;
+    resendCountdownEl.textContent = '(' + t + 's)';
+    var interval = setInterval(function () {
+      t--;
+      if (t <= 0) {
+        clearInterval(interval);
+        resendBtn.disabled = false;
+        resendCountdownEl.textContent = '';
+      } else {
+        resendCountdownEl.textContent = '(' + t + 's)';
+      }
+    }, 1000);
+  }
+  resendBtn.addEventListener('click', function () {
+    if (resendBtn.disabled) return;
+    showToast('Link resent to ' + document.getElementById('magic-email-echo').textContent);
+    startResendCooldown();
+  });
+  document.getElementById('simulate-click-link-btn').addEventListener('click', function () {
+    showState(setPasswordState);
+  });
+  document.getElementById('back-to-signin-btn').addEventListener('click', function () { showState(signinState); });
+
+  // ================= Set password (claim account) =================
+  document.getElementById('set-password-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    showToast('Account activated — welcome!');
+    setTimeout(function () { window.location.href = 'index.html'; }, 700);
+  });
+
+  // ================= Forgot password =================
+  document.getElementById('forgot-link').addEventListener('click', function () { showState(forgotState); });
+  document.getElementById('forgot-back-btn').addEventListener('click', function () { showState(signinState); });
+  document.getElementById('forgot-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    showToast('Reset instructions sent — check your inbox');
+    showState(signinState);
+  });
+
+  // ================= Google button (prototype only) =================
+  document.getElementById('google-btn').addEventListener('click', function () {
+    showToast('Prototype — this would open Google sign-in');
+  });
+</script>
+</body>
+</html>

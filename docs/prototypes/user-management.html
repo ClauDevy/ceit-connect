@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEIT Connect — User Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-paper dark:bg-night-bg text-ink dark:text-night-text antialiased">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="hidden md:flex w-60 lg:w-64 shrink-0 flex-col justify-between border-r border-slate-300/70 dark:border-white/10 bg-card dark:bg-night-card px-5 lg:px-6 py-7 h-full overflow-y-auto">
+    <button id="sidebar-toggle" class="hidden md:flex absolute -right-3 top-9 w-6 h-6 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 items-center justify-center text-slate-500 dark:text-night-muted hover:text-council transition-colors z-10">
+      <svg id="sidebar-toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s ease;"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+
+    <div>
+      <div class="flex items-center gap-2.5 mb-9">
+        <svg width="34" height="34" viewBox="0 0 100 100" class="shrink-0">
+          <ellipse cx="50" cy="52" rx="34" ry="26" fill="#EC6608"/><ellipse cx="50" cy="60" rx="21" ry="16" fill="#FFF8F0"/>
+          <ellipse cx="30" cy="26" rx="9" ry="8" fill="#EC6608"/><ellipse cx="70" cy="26" rx="9" ry="8" fill="#EC6608"/>
+          <circle cx="30" cy="24" r="3.5" fill="#1B140F"/><circle cx="70" cy="24" r="3.5" fill="#1B140F"/>
+          <path d="M36 40 Q42 34 48 40 M52 40 Q58 34 64 40" stroke="#1B140F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+          <circle cx="42" cy="46" r="3" fill="#1B140F"/><circle cx="58" cy="46" r="3" fill="#1B140F"/>
+        </svg>
+        <div class="leading-tight sidebar-label">
+          <p class="font-display font-semibold text-[15px] tracking-tight">CEIT Connect</p>
+          <p class="text-[11px] text-slate-500 dark:text-night-muted -mt-0.5">Student Council</p>
+        </div>
+      </div>
+
+      <nav class="flex flex-col gap-1 pl-5">
+        <a href="index.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+          <span class="sidebar-label">Home</span>
+        </a>
+        <a href="tasks.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg>
+          <span class="sidebar-label">My Tasks</span>
+        </a>
+        <a href="archive.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+          <span class="sidebar-label">Event Archives</span>
+        </a>
+        <a href="activity-log.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          <span class="sidebar-label">Activity Log</span>
+        </a>
+        <a href="dashboard.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
+          <span class="sidebar-label">Dashboard</span>
+        </a>
+        <a href="settings.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          <span class="sidebar-label">Settings</span>
+        </a>
+        <a href="user-management.html" class="nav-item active flex items-center gap-3 rounded-xl px-3 py-2.5 text-council font-semibold bg-council-wash dark:bg-night-wash">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="sidebar-label">User Management</span>
+        </a>
+</nav>
+    </div>
+
+    <div>
+      <a href="create-event.html" class="w-full flex items-center justify-center gap-2 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm py-3 mb-4 hover:bg-council-dark transition-colors">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="sidebar-label">New Event</span>
+      </a>
+
+      <button id="theme-toggle" class="w-full flex items-center justify-between rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-2.5 mb-5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+        <span class="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-night-muted">
+          <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg id="theme-icon-moon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+          <span id="theme-label" class="sidebar-label">Light mode</span>
+        </span>
+        <span class="theme-toggle-track sidebar-label relative w-9 h-5 rounded-full shrink-0">
+          <span class="theme-toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"></span>
+        </span>
+      </button>
+
+      <div class="flex items-center gap-2 opacity-40 sidebar-label">
+        <span class="paw block w-4 h-4 bg-council"></span><span class="paw block w-3.5 h-3.5 bg-council"></span><span class="paw block w-3 h-3 bg-council"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN COLUMN -->
+  <div class="flex-1 flex flex-col min-w-0 h-full overflow-y-auto">
+
+    <!-- Mobile topbar -->
+    <div class="md:hidden sticky top-0 z-20 flex items-center justify-between bg-card/95 dark:bg-night-card/95 backdrop-blur border-b border-slate-300/70 dark:border-white/10 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <svg width="26" height="26" viewBox="0 0 100 100" class="shrink-0"><ellipse cx="50" cy="52" rx="34" ry="26" fill="#EC6608"/><ellipse cx="50" cy="60" rx="21" ry="16" fill="#FFF8F0"/><ellipse cx="30" cy="26" rx="9" ry="8" fill="#EC6608"/><ellipse cx="70" cy="26" rx="9" ry="8" fill="#EC6608"/></svg>
+        <p class="font-display font-semibold text-[15px]">User Management</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle-mobile" class="relative w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted">
+          <svg class="theme-icon-sun-m" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="theme-icon-moon-m hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+        <a href="notifications.html" class="relative w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-council border border-card dark:border-night-card"></span></a>
+        <a href="settings.html" class="w-8 h-8 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-xs">JC</a>
+      </div>
+    </div>
+
+    <!-- Desktop topbar -->
+    <div class="hidden md:flex items-center justify-end gap-3 px-6 md:px-10 pt-6">
+      <button id="notif-btn" class="relative w-9 h-9 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-night-muted hover:text-council transition-colors">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 3 1 4.5 2 6H4c1-1.5 2-3 2-6Z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>
+        <span class="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-rose-500 border border-card dark:border-night-card"></span>
+      </button>
+      <div class="flex items-center gap-2.5 pl-1">
+        <div class="w-9 h-9 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-sm shrink-0">JC</div>
+        <div class="leading-tight hidden lg:block">
+          <p class="text-sm font-semibold">Juan Dela Cruz</p>
+          <p class="text-[11px] text-slate-500 dark:text-night-muted -mt-0.5">President</p>
+        </div>
+      </div>
+    </div>
+
+    <main class="flex-1 px-4 sm:px-6 md:px-10 py-6 md:py-6 pb-28 md:pb-16 max-w-7xl w-full">
+
+      <!-- ======================= VIEW: DIRECTORY ======================= -->
+      <div id="view-directory" class="view-panel active">
+
+        <div class="flex items-start justify-between gap-4 mb-1 flex-wrap">
+          <div>
+            <h1 class="font-display font-semibold text-2xl sm:text-3xl tracking-tight">User Management</h1>
+            <p class="text-sm text-slate-500 dark:text-night-muted mt-1 max-w-xl">Manage institutional access and permission levels across all 12 committees.</p>
+          </div>
+          <button id="open-invite-btn" class="flex items-center gap-1.5 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm px-4 py-2.5 hover:bg-council-dark transition-colors shrink-0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19c.6-3.2 3.3-5.5 6.5-5.5s5.9 2.3 6.5 5.5"/><path d="M18 8v4M16 10h4"/></svg>
+            <span class="hidden sm:inline">Invite New User</span><span class="sm:hidden">Invite</span>
+          </button>
+        </div>
+
+        <!-- STAT CARDS -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 mb-6">
+          <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
+            <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Total Users</p>
+            <p id="stat-total" class="font-display font-semibold text-2xl mt-1">0</p>
+          </div>
+          <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
+            <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Online Now</p>
+            <p id="stat-online" class="font-display font-semibold text-2xl mt-1 text-emerald-500">0</p>
+          </div>
+          <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
+            <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Pending Invites</p>
+            <p id="stat-pending" class="font-display font-semibold text-2xl mt-1 text-amber-500">0</p>
+          </div>
+          <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
+            <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Deactivated</p>
+            <p id="stat-deactivated" class="font-display font-semibold text-2xl mt-1 text-rose-500">0</p>
+          </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="flex items-center gap-2.5 flex-wrap mb-3">
+          <div class="relative flex-1 min-w-[160px]">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="search-input" type="text" placeholder="Search name or email…" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+          </div>
+          <button id="filter-toggle-btn" class="relative flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card px-4 py-2.5 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
+            Filter
+            <span id="filter-count-badge" class="hidden ml-0.5 w-4.5 h-4.5 rounded-full bg-council text-white text-[10px] font-bold items-center justify-center">0</span>
+          </button>
+        </div>
+
+        <!-- FILTER PANEL -->
+        <div id="filter-panel" class="filter-panel mb-3">
+          <div>
+            <div class="rounded-2xl border border-council/30 bg-council-wash dark:bg-night-wash p-4 sm:p-5 mb-3">
+              <div class="flex items-center justify-between mb-4">
+                <p class="font-display font-semibold text-sm flex items-center gap-2 text-council-dark dark:text-council-light">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
+                  Filter Users
+                </p>
+                <button id="filter-close-btn" class="text-council-dark/60 dark:text-council-light/60 hover:text-council-dark dark:hover:text-council-light transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              <div class="mb-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-council-dark/80 dark:text-council-light/80 mb-2.5">Role</p>
+                <div id="role-chip-row" class="flex flex-wrap gap-2"></div>
+              </div>
+              <div class="mb-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-council-dark/80 dark:text-council-light/80 mb-2.5">Status</p>
+                <div id="status-chip-row" class="flex flex-wrap gap-2"></div>
+              </div>
+              <div class="mb-4">
+                <label class="text-[11px] font-semibold uppercase tracking-wide text-council-dark/80 dark:text-council-light/80 mb-2 flex items-center gap-1.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>
+                  Committee
+                </label>
+                <select id="committee-filter" class="select-styled w-full sm:w-64 rounded-lg border border-council/30 bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40">
+                  <option value="">All committees</option>
+                </select>
+              </div>
+
+              <div class="flex items-center justify-between gap-3 pt-3 border-t border-council/20 flex-wrap">
+                <p id="filter-preview-text" class="text-[11px] text-council-dark/80 dark:text-council-light/80">Showing all users</p>
+                <div class="flex items-center gap-2 ml-auto">
+                  <button id="reset-filters-btn" class="text-xs font-semibold text-council-dark/70 dark:text-council-light/70 hover:text-council-dark dark:hover:text-council-light transition-colors px-3 py-2">Reset</button>
+                  <button id="apply-filters-btn" class="rounded-lg bg-council text-white text-xs font-semibold px-4 py-2 hover:bg-council-dark transition-colors">Apply Filters</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- USER LIST -->
+        <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 overflow-hidden">
+
+          <!-- Desktop table -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-sm min-w-[760px]">
+              <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wide text-slate-400 dark:text-night-muted/70 border-b border-slate-300/60 dark:border-white/10">
+                  <th class="px-5 py-3 font-semibold">User</th>
+                  <th class="px-4 py-3 font-semibold">Committee</th>
+                  <th class="px-4 py-3 font-semibold">Role</th>
+                  <th class="px-4 py-3 font-semibold">Status</th>
+                  <th class="px-4 py-3 font-semibold">Last Activity</th>
+                  <th class="px-4 py-3 font-semibold w-10"></th>
+                </tr>
+              </thead>
+              <tbody id="user-tbody" class="divide-y divide-slate-300/50 dark:divide-white/5"></tbody>
+            </table>
+          </div>
+
+          <!-- Mobile cards -->
+          <div id="user-cards-mobile" class="md:hidden divide-y divide-slate-300/50 dark:divide-white/5"></div>
+
+          <!-- EMPTY STATE -->
+          <div id="empty-state" class="hidden flex-col items-center text-center py-14 px-6">
+            <svg width="120" height="104" viewBox="0 0 120 104" class="mb-3">
+              <ellipse cx="60" cy="82" rx="14" ry="4" fill="#1B140F" opacity="0.08"/>
+              <rect x="34" y="62" width="10" height="18" rx="5" fill="#A8440A"/><rect x="76" y="62" width="10" height="18" rx="5" fill="#A8440A"/>
+              <ellipse cx="60" cy="60" rx="30" ry="22" fill="#EC6608"/><ellipse cx="60" cy="68" rx="18" ry="13" fill="#FFF8F0"/>
+              <ellipse cx="20" cy="24" rx="9" ry="8" fill="#EC6608"/><ellipse cx="100" cy="24" rx="9" ry="8" fill="#EC6608"/>
+              <path d="M40 40 Q46 32 52 40" stroke="#1B140F" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <circle cx="48" cy="46" r="1.6" fill="#1B140F"/>
+              <path d="M64 42 Q70 36 76 40 M84 50 q6 -2 8 4" stroke="#1B140F" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <circle cx="90" cy="52" r="9" fill="none" stroke="#1B140F" stroke-width="3"/><path d="M96 58 L102 64" stroke="#1B140F" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <p class="font-display font-semibold text-base">No users match</p>
+            <p class="text-xs text-slate-500 dark:text-night-muted mt-1 max-w-xs">Try a different search term or clear a filter.</p>
+            <button id="empty-reset-btn" class="mt-4 text-xs font-semibold text-council hover:text-council-dark transition-colors">Reset all filters</button>
+          </div>
+
+          <!-- PAGINATION -->
+          <div id="pagination-bar" class="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-5 py-3.5 border-t border-slate-300/60 dark:border-white/10">
+            <p id="pagination-summary" class="text-xs text-slate-500 dark:text-night-muted">Showing 1 to 5</p>
+            <div id="pagination-controls" class="flex items-center gap-1.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================= VIEW: INVITE USER ======================= -->
+      <div id="view-invite" class="view-panel">
+        <div class="flex items-center gap-1.5 text-sm text-slate-500 dark:text-night-muted mb-3">
+          <button id="invite-back-btn" class="hover:text-council transition-colors">User Management</button>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          <span class="text-ink dark:text-night-text font-medium">Add New User</span>
+        </div>
+
+        <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
+          <h1 class="font-display font-semibold text-2xl sm:text-3xl tracking-tight">Invite New User</h1>
+        </div>
+
+        <!-- BOUNCER TIGER BAND -->
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-council-wash to-transparent dark:from-night-wash dark:to-transparent border border-council/20 px-5 py-4 mb-6 flex items-center gap-4">
+          <svg width="56" height="72" viewBox="0 0 100 130" class="shrink-0">
+            <ellipse cx="50" cy="122" rx="26" ry="5" fill="#1B140F" opacity="0.06"/>
+            <rect x="16" y="90" width="68" height="34" rx="15" fill="#EC6608"/>
+            <rect x="32" y="100" width="36" height="15" rx="4" fill="#FFF8F0"/>
+            <path d="M40 108 l4 4 8-8" stroke="#EC6608" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <ellipse cx="50" cy="52" rx="34" ry="26" fill="#EC6608"/><ellipse cx="50" cy="60" rx="21" ry="16" fill="#FFF8F0"/>
+            <ellipse cx="30" cy="26" rx="9" ry="8" fill="#EC6608"/><ellipse cx="70" cy="26" rx="9" ry="8" fill="#EC6608"/>
+            <circle cx="30" cy="24" r="3.5" fill="#1B140F"/><circle cx="70" cy="24" r="3.5" fill="#1B140F"/>
+            <path d="M36 40 Q42 34 48 40 M52 40 Q58 34 64 40" stroke="#1B140F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+            <circle cx="42" cy="46" r="3" fill="#1B140F"/><circle cx="58" cy="46" r="3" fill="#1B140F"/>
+          </svg>
+          <div>
+            <p class="font-display font-semibold text-base">No public sign-ups — you're the bouncer</p>
+            <p class="text-xs text-slate-600 dark:text-night-muted mt-0.5">Only people you invite can ever join CEIT Connect. Set their name, role, and committee below — they'll get a secure link to set their own password.</p>
+          </div>
+        </div>
+
+        <div class="max-w-3xl">
+          <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-5 sm:p-6 mb-5">
+            <div class="flex items-center gap-2.5 mb-4">
+              <span class="w-8 h-8 rounded-lg bg-council-wash dark:bg-night-wash text-council flex items-center justify-center shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+              </span>
+              <h2 class="font-display font-semibold text-lg">Identity Details</h2>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div class="field-wrap" id="field-name">
+                <label class="text-xs font-semibold text-slate-600 dark:text-night-muted block mb-1.5">Full Name</label>
+                <input id="invite-name" type="text" placeholder="e.g. Juan Dela Cruz" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-paper dark:bg-night-bg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                <p class="field-error text-[11px] text-red-500 mt-1">Full name is required.</p>
+              </div>
+              <div class="field-wrap" id="field-email">
+                <label class="text-xs font-semibold text-slate-600 dark:text-night-muted block mb-1.5">University Email Address</label>
+                <input id="invite-email" type="text" placeholder="e.g. huan.delacruz@cvsu.edu.ph" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-paper dark:bg-night-bg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                <p class="field-error text-[11px] text-red-500 mt-1">Must be a valid @cvsu.edu.ph address.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-5 sm:p-6 mb-5">
+            <div class="flex items-center gap-2.5 mb-4">
+              <span class="w-8 h-8 rounded-lg bg-council-wash dark:bg-night-wash text-council flex items-center justify-center shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              </span>
+              <h2 class="font-display font-semibold text-lg">Access &amp; Placement</h2>
+            </div>
+
+            <div class="grid lg:grid-cols-[1fr_18rem] gap-5">
+              <div class="field-wrap" id="field-role">
+                <p class="text-xs font-semibold text-slate-600 dark:text-night-muted mb-2">Initial Role Selection</p>
+                <div id="invite-role-cards" class="flex flex-col gap-2.5"></div>
+                <p class="field-error text-[11px] text-red-500 mt-1.5">Choose a role for this user.</p>
+              </div>
+              <div>
+                <div class="field-wrap mb-4" id="field-committee">
+                  <label class="text-xs font-semibold text-slate-600 dark:text-night-muted block mb-1.5">Committee</label>
+                  <select id="invite-committee" class="select-styled w-full rounded-lg border border-slate-300 dark:border-white/15 bg-paper dark:bg-night-bg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40">
+                    <option value="">Select organizational committee</option>
+                  </select>
+                  <p class="field-error text-[11px] text-red-500 mt-1.5">Pick a committee to place this user in.</p>
+                </div>
+
+                <div class="flex items-start gap-2.5 rounded-xl bg-council-wash dark:bg-night-wash p-3.5">
+                  <span class="paw block w-4 h-4 bg-council-dark dark:bg-council-light shrink-0 mt-0.5"></span>
+                  <div>
+                    <p class="text-[11px] font-bold text-council-dark dark:text-council-light">AUTOMATED ONBOARDING</p>
+                    <p class="text-[11px] text-slate-600 dark:text-night-muted mt-0.5 leading-snug">Invited users get a secure Magic Link to verify their identity and set a permanent password. It expires in 48 hours.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2.5">
+            <button id="invite-cancel-btn" class="rounded-xl border border-slate-300 dark:border-white/15 text-sm font-semibold px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+            <button id="invite-submit-btn" class="flex items-center gap-1.5 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm px-5 py-2.5 hover:bg-council-dark transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
+              Invite User
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+
+
+<!-- ROLE MODAL -->
+<div id="role-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
+  <div class="modal-panel bg-card dark:bg-night-card rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-300/60 dark:border-white/10">
+      <p class="font-display font-semibold text-base">Change User Role</p>
+      <button data-close-role class="text-slate-400 hover:text-council transition-colors"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="p-5 max-h-[75vh] overflow-y-auto">
+      <div class="flex items-center gap-3 rounded-xl bg-slate-100 dark:bg-white/5 p-3 mb-5">
+        <span id="role-modal-avatar" class="w-10 h-10 rounded-full bg-council-wash text-council-dark font-display font-semibold flex items-center justify-center text-sm shrink-0">JC</span>
+        <div class="leading-tight">
+          <p class="text-[10px] uppercase tracking-wide font-bold text-slate-400 dark:text-night-muted/70">Selected User</p>
+          <p id="role-modal-name" class="text-sm font-semibold">Juan Cruz</p>
+          <p id="role-modal-email" class="text-[11px] text-slate-500 dark:text-night-muted">juan.cruz@cvsu.edu.ph</p>
+        </div>
+      </div>
+
+      <label class="text-xs font-semibold text-slate-600 dark:text-night-muted block mb-1.5">Select New Committee</label>
+      <select id="role-modal-committee" class="select-styled w-full rounded-lg border border-slate-300 dark:border-white/15 bg-paper dark:bg-night-bg px-3.5 py-2.5 text-sm mb-5 focus:outline-none focus:ring-2 focus:ring-council/40"></select>
+
+      <p class="text-xs font-semibold text-slate-600 dark:text-night-muted mb-2">Select New Role</p>
+      <div id="role-modal-cards" class="flex flex-col gap-2.5"></div>
+    </div>
+    <div class="flex items-center justify-end gap-2.5 px-5 py-4 border-t border-slate-300/60 dark:border-white/10">
+      <button data-close-role class="rounded-xl border border-slate-300 dark:border-white/15 text-sm font-semibold px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+      <button id="role-modal-update-btn" class="rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm px-4 py-2.5 hover:bg-council-dark transition-colors disabled:opacity-40" disabled>Update Role</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEACTIVATE MODAL -->
+<div id="deactivate-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
+  <div class="modal-panel bg-card dark:bg-night-card rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+    <div class="p-5">
+      <div class="w-11 h-11 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center mb-3">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 15v1.5"/></svg>
+      </div>
+      <p class="font-display font-semibold text-base">Deactivate <span id="deactivate-user-name">this user's</span> roster?</p>
+      <ul class="text-xs text-slate-500 dark:text-night-muted mt-2.5 space-y-1.5 list-disc pl-4">
+        <li>Their profile picture is permanently cleared to free up storage.</li>
+        <li>They're locked out of CEIT Connect immediately.</li>
+        <li>Past tasks &amp; comments stay intact in Event Archives — nothing is deleted.</li>
+      </ul>
+    </div>
+    <div class="flex items-center justify-end gap-2.5 px-5 py-4 border-t border-slate-300/60 dark:border-white/10">
+      <button data-close-deactivate class="rounded-xl border border-slate-300 dark:border-white/15 text-sm font-semibold px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+      <button id="deactivate-confirm-btn" class="rounded-xl bg-rose-600 text-white font-semibold text-sm px-4 py-2.5 hover:bg-rose-700 transition-colors">Deactivate</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARED ROW ACTION MENU (positioned via JS, so it's never clipped by a scrolling table/card list) -->
+<div id="shared-row-menu" class="row-menu menu-hidden fixed z-50 w-48 rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 shadow-2xl py-1.5 text-left"></div>
+
+<!-- TOAST -->
+<div id="toast" class="toast toast-hidden fixed bottom-20 md:bottom-5 right-5 left-5 sm:left-auto z-50 flex items-center gap-2.5 rounded-xl bg-ink dark:bg-night-card border border-white/10 text-white px-4 py-3 shadow-xl text-sm">
+  <svg id="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-emerald-400"><path d="M20 6 9 17l-5-5"/></svg>
+  <span id="toast-text">Saved</span>
+</div>
+
+<script>
+  // ================= Theme toggle =================
+  var htmlEl = document.documentElement;
+  var sunIcon = document.getElementById('theme-icon-sun'), moonIcon = document.getElementById('theme-icon-moon'), themeLabel = document.getElementById('theme-label');
+  var sunM = document.querySelector('.theme-icon-sun-m'), moonM = document.querySelector('.theme-icon-moon-m');
+  function setTheme(dark) {
+    htmlEl.classList.toggle('dark', dark);
+    sunIcon.classList.toggle('hidden', dark); moonIcon.classList.toggle('hidden', !dark);
+    sunM.classList.toggle('hidden', dark); moonM.classList.toggle('hidden', !dark);
+    themeLabel.textContent = dark ? 'Dark mode' : 'Light mode';
+  }
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(prefersDark);
+  document.getElementById('theme-toggle').addEventListener('click', function () { setTheme(!htmlEl.classList.contains('dark')); });
+  document.getElementById('theme-toggle-mobile').addEventListener('click', function () { setTheme(!htmlEl.classList.contains('dark')); });
+
+  // ================= Sidebar collapse =================
+  var sidebar = document.getElementById('sidebar'), sidebarToggle = document.getElementById('sidebar-toggle'), sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+  sidebarToggle.addEventListener('click', function () {
+    sidebar.classList.toggle('collapsed');
+    sidebarToggleIcon.style.transform = sidebar.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+  });
+  document.getElementById('bottom-nav-more').addEventListener('click', function (e) {
+    e.preventDefault();
+    showToast('Event Archives & Settings are one tap away from Home → Menu');
+  });
+
+  // ================= Toast =================
+  var toast = document.getElementById('toast'), toastText = document.getElementById('toast-text'), toastIcon = document.getElementById('toast-icon');
+  var toastTimer;
+  function showToast(msg, tone) {
+    tone = tone || 'success';
+    toastText.textContent = msg;
+    toastIcon.innerHTML = tone === 'error' ? '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>' : '<path d="M20 6 9 17l-5-5"/>';
+    toastIcon.classList.toggle('text-emerald-400', tone !== 'error');
+    toastIcon.classList.toggle('text-red-400', tone === 'error');
+    toast.classList.remove('toast-hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.add('toast-hidden'); }, 3400);
+  }
+
+  // ================= View switching =================
+  var viewDirectory = document.getElementById('view-directory'), viewInvite = document.getElementById('view-invite');
+  function showView(view) {
+    [viewDirectory, viewInvite].forEach(function (v) { v.classList.remove('active'); });
+    view.classList.add('active');
+    window.scrollTo({ top: 0 });
+    document.querySelector('main').scrollTo && document.querySelector('main').scrollTo(0, 0);
+  }
+  document.getElementById('open-invite-btn').addEventListener('click', function () { resetInviteForm(); showView(viewInvite); });
+  document.getElementById('invite-back-btn').addEventListener('click', function () { showView(viewDirectory); });
+  document.getElementById('invite-cancel-btn').addEventListener('click', function () { showView(viewDirectory); });
+
+  // ================= Data =================
+  var COMMITTEES = ['President','CIA','COEXA','COMRECS','COFBUM','CARA','COPI','COPR','COBAP','COSEA','COSCA','COSRAW'];
+  var ROLES = [
+    { key:'Admin', desc:'Full administrative control over system configurations, event management, and log tracking.', icon:'<path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6Z"/><path d="m9 12 2 2 4-4"/>' },
+    { key:'Co-Admin', desc:'Authorized to create new events and monitor assigned committee members and operations.', icon:'<path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.6 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8Z"/>' },
+    { key:'Member', desc:'View events, tasks, and historical archives with permissions to execute assigned tasks and comment.', icon:'<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-7 8-7s8 3 8 7"/>' }
+  ];
+  var ROLE_TONE = {
+    'Admin': 'bg-ink text-white dark:bg-council-dark',
+    'Co-Admin': 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
+    'Member': 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-night-muted'
+  };
+
+  var users = [
+    { id:1, name:'Juan Cruz', email:'juan.cruz@cvsu.edu.ph', committee:'President', role:'Admin', status:'active', last:'2m ago' },
+    { id:2, name:'Lore Ipsum', email:'lorem.ipsum@cvsu.edu.ph', committee:'COFBUM', role:'Member', status:'offline', last:'7m ago' },
+    { id:3, name:'Aya Santos', email:'aya.santos@cvsu.edu.ph', committee:'CARA', role:'Co-Admin', status:'active', last:'12m ago' },
+    { id:4, name:'Prince Bautista', email:'prince.bautista@cvsu.edu.ph', committee:'COEXA', role:'Co-Admin', status:'offline', last:'1h ago' },
+    { id:5, name:'John Benedict', email:'john.benedict@cvsu.edu.ph', committee:'COMRECS', role:'Member', status:'active', last:'Just now' },
+    { id:6, name:'Mika Reyes', email:'mika.reyes@cvsu.edu.ph', committee:'President', role:'Admin', status:'offline', last:'3h ago' },
+    { id:7, name:'Diego Flores', email:'diego.flores@cvsu.edu.ph', committee:'COBAP', role:'Member', status:'pending', last:'Invited 2d ago' },
+    { id:8, name:'Carmela Ong', email:'carmela.ong@cvsu.edu.ph', committee:'COSCA', role:'Member', status:'offline', last:'1d ago' },
+    { id:9, name:'Rafael Domingo', email:'rafael.domingo@cvsu.edu.ph', committee:'COPI', role:'Co-Admin', status:'active', last:'26m ago' },
+    { id:10, name:'Bea Villanueva', email:'bea.villanueva@cvsu.edu.ph', committee:'COSEA', role:'Member', status:'pending', last:'Invited 5h ago' },
+    { id:11, name:'Miggy Torres', email:'miggy.torres@cvsu.edu.ph', committee:'COPR', role:'Member', status:'deactivated', last:'Deactivated 6d ago' },
+    { id:12, name:'Nadine Cruz', email:'nadine.cruz@cvsu.edu.ph', committee:'COSRAW', role:'Member', status:'offline', last:'2d ago' },
+    { id:13, name:'Leo Ramirez', email:'leo.ramirez@cvsu.edu.ph', committee:'CARA', role:'Member', status:'active', last:'4m ago' }
+  ];
+  var nextId = 100;
+
+  var state = { search:'', roles:new Set(), statuses:new Set(), committee:'', page:1 };
+  var PAGE_SIZE = 5;
+  var openMenuId = null;
+
+  // ---- populate committee selects ----
+  [document.getElementById('committee-filter'), document.getElementById('invite-committee'), document.getElementById('role-modal-committee')].forEach(function (sel, idx) {
+    COMMITTEES.forEach(function (c) {
+      var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
+    });
+  });
+
+  function initials(name) { return name.split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase(); }
+
+  function avatar(user, size) {
+    size = size || 'w-9 h-9 text-xs';
+    if (user.status === 'deactivated') {
+      return '<span class="' + size + ' rounded-full bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-night-muted/60 font-display font-semibold flex items-center justify-center shrink-0" title="Photo wiped on deactivation">' + initials(user.name) + '</span>';
+    }
+    return '<span class="' + size + ' rounded-full bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light font-display font-semibold flex items-center justify-center shrink-0">' + initials(user.name) + '</span>';
+  }
+
+  function roleBadge(role) {
+    return '<span class="badge-pill ' + ROLE_TONE[role] + '"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">' + ROLES.find(function (r) { return r.key === role; }).icon + '</svg>' + role.toUpperCase() + '</span>';
+  }
+  function committeeBadge(c) {
+    return '<span class="inline-flex items-center rounded-full border border-slate-300 dark:border-white/15 text-slate-600 dark:text-night-muted text-[10.5px] font-semibold px-2.5 py-1">' + c + '</span>';
+  }
+  function statusTag(status, withLabel) {
+    var map = {
+      active:      { dot:'bg-emerald-500 live-dot', text:'text-emerald-600 dark:text-emerald-400', label:'Active' },
+      offline:     { dot:'bg-slate-400', text:'text-slate-500 dark:text-night-muted', label:'Offline' },
+      pending:     { dot:'bg-amber-500 live-dot', text:'text-amber-600 dark:text-amber-400', label:'Pending Invite' },
+      deactivated: { dot:'bg-rose-500', text:'text-rose-500', label:'Deactivated' }
+    };
+    var m = map[status];
+    return '<span class="inline-flex items-center gap-1.5 ' + m.text + '"><span class="w-2 h-2 rounded-full ' + m.dot + '"></span>' + (withLabel === false ? '' : '<span class="text-[12px] font-medium">' + m.label + '</span>') + '</span>';
+  }
+
+  function buildRoleCardsHTML(name, selected) {
+    return ROLES.map(function (r) {
+      var checked = r.key === selected ? 'checked' : '';
+      return (
+        '<label class="role-card cursor-pointer">' +
+          '<input type="radio" name="' + name + '" value="' + r.key + '" class="sr-only" ' + checked + '>' +
+          '<div class="role-card-inner relative rounded-xl border-2 border-slate-300 dark:border-white/15 p-3.5 flex items-start gap-3">' +
+            '<span class="role-check absolute -top-2 -right-2 w-5 h-5 rounded-full bg-council text-white items-center justify-center shrink-0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>' +
+            '<div class="w-8 h-8 rounded-lg bg-council-wash dark:bg-night-wash text-council flex items-center justify-center shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + r.icon + '</svg></div>' +
+            '<div><p class="font-semibold text-sm">' + r.key + '</p><p class="text-xs text-slate-500 dark:text-night-muted mt-0.5">' + r.desc + '</p></div>' +
+          '</div>' +
+        '</label>'
+      );
+    }).join('');
+  }
+
+  // ---- filter chips ----
+  var roleChipRow = document.getElementById('role-chip-row');
+  ROLES.forEach(function (r) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'chip inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full border px-3 py-1.5 transition-colors';
+    b.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">' + r.icon + '</svg>' + r.key;
+    b.addEventListener('click', function () {
+      if (state.roles.has(r.key)) state.roles.delete(r.key); else state.roles.add(r.key);
+      b.classList.toggle('active'); updateFilterPreview();
+    });
+    roleChipRow.appendChild(b);
+  });
+  var statusChipRow = document.getElementById('status-chip-row');
+  [['active','Active'],['offline','Offline'],['pending','Pending'],['deactivated','Deactivated']].forEach(function (pair) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'chip text-[11px] font-semibold rounded-full border px-3 py-1.5 transition-colors';
+    b.textContent = pair[1];
+    b.addEventListener('click', function () {
+      if (state.statuses.has(pair[0])) state.statuses.delete(pair[0]); else state.statuses.add(pair[0]);
+      b.classList.toggle('active'); updateFilterPreview();
+    });
+    statusChipRow.appendChild(b);
+  });
+
+  function getPendingFiltered() {
+    var pRoles = new Set(); document.querySelectorAll('#role-chip-row .chip.active').forEach(function (c, i) { pRoles.add(ROLES[i].key); });
+    var pStatuses = state.statuses; // committed live via toggles above already
+    var pCommittee = document.getElementById('committee-filter').value;
+    return users.filter(function (u) {
+      if (pRoles.size && !pRoles.has(u.role)) return false;
+      if (pStatuses.size && !pStatuses.has(u.status)) return false;
+      if (pCommittee && u.committee !== pCommittee) return false;
+      return true;
+    });
+  }
+  function updateFilterPreview() {
+    var n = getPendingFiltered().length;
+    document.getElementById('filter-preview-text').textContent = n === users.length ? 'Showing all users' : n + ' user' + (n === 1 ? '' : 's') + ' will match';
+  }
+  document.getElementById('committee-filter').addEventListener('change', updateFilterPreview);
+
+  function getFiltered() {
+    return users.filter(function (u) {
+      if (state.roles.size && !state.roles.has(u.role)) return false;
+      if (state.statuses.size && !state.statuses.has(u.status)) return false;
+      if (state.committee && u.committee !== state.committee) return false;
+      if (state.search) {
+        var q = state.search.toLowerCase();
+        if ((u.name + ' ' + u.email).toLowerCase().indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function updateStats() {
+    document.getElementById('stat-total').textContent = users.length;
+    document.getElementById('stat-online').textContent = users.filter(function (u) { return u.status === 'active'; }).length;
+    document.getElementById('stat-pending').textContent = users.filter(function (u) { return u.status === 'pending'; }).length;
+    document.getElementById('stat-deactivated').textContent = users.filter(function (u) { return u.status === 'deactivated'; }).length;
+  }
+
+  function rowMenuHTML(u) {
+    var items = [];
+    items.push({ act:'copy', label:'Copy Email', icon:'<rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>' });
+    items.push({ act:'role', label:'Change Role', icon:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>' });
+    if (u.status === 'pending') items.push({ act:'resend', label:'Resend Invite', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>' });
+    if (u.status === 'active' || u.status === 'offline') items.push({ act:'deactivate', label:'Deactivate Roster', icon:'<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>', danger:true });
+    if (u.status === 'deactivated') items.push({ act:'reactivate', label:'Reactivate Account', icon:'<path d="M3 12a9 9 0 1 0 2.6-6.35M3 4v5h5"/>', ok:true });
+    return items.map(function (it) {
+      var cls = it.danger ? 'text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10' : it.ok ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10' : 'text-slate-600 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5';
+      return '<button data-act="' + it.act + '" data-uid="' + u.id + '" class="row-menu-item w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium ' + cls + ' transition-colors">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">' + it.icon + '</svg>' + it.label + '</button>';
+    }).join('');
+  }
+
+  function render() {
+    var filtered = getFiltered();
+    var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (state.page > totalPages) state.page = totalPages;
+    var start = (state.page - 1) * PAGE_SIZE;
+    var pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+    var tbody = document.getElementById('user-tbody');
+    var cardsWrap = document.getElementById('user-cards-mobile');
+    var emptyState = document.getElementById('empty-state');
+    var paginationBar = document.getElementById('pagination-bar');
+
+    if (!filtered.length) {
+      tbody.innerHTML = ''; cardsWrap.innerHTML = '';
+      emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
+      paginationBar.classList.add('hidden');
+    } else {
+      emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
+      paginationBar.classList.remove('hidden');
+
+      tbody.innerHTML = pageItems.map(function (u) {
+        return (
+          '<tr class="user-row fade-in">' +
+            '<td class="px-5 py-3.5"><div class="flex items-center gap-2.5">' + avatar(u) +
+              '<div class="leading-tight"><p class="text-[13px] font-semibold">' + u.name + '</p><p class="text-[11px] text-slate-400 dark:text-night-muted/70">' + u.email + '</p></div>' +
+            '</div></td>' +
+            '<td class="px-4 py-3.5">' + committeeBadge(u.committee) + '</td>' +
+            '<td class="px-4 py-3.5">' + roleBadge(u.role) + '</td>' +
+            '<td class="px-4 py-3.5">' + statusTag(u.status) + '</td>' +
+            '<td class="px-4 py-3.5 text-[12.5px] text-slate-500 dark:text-night-muted whitespace-nowrap">' + u.last + '</td>' +
+            '<td class="px-4 py-3.5 text-right">' +
+              '<button class="row-menu-btn w-8 h-8 rounded-lg border border-transparent hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-night-muted/70 hover:text-council transition-colors inline-flex items-center justify-center" title="More actions" data-uid="' + u.id + '">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="18" r="1.4"/></svg>' +
+              '</button>' +
+            '</td>' +
+          '</tr>'
+        );
+      }).join('');
+
+      cardsWrap.innerHTML = pageItems.map(function (u) {
+        return (
+          '<div class="p-4 relative">' +
+            '<div class="flex items-start justify-between gap-2 mb-2.5">' +
+              '<div class="flex items-center gap-2.5">' + avatar(u) +
+                '<div class="leading-tight"><p class="text-[13px] font-semibold">' + u.name + '</p><p class="text-[11px] text-slate-400 dark:text-night-muted/70">' + u.email + '</p></div>' +
+              '</div>' +
+              '<button class="row-menu-btn w-8 h-8 rounded-lg border border-transparent hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-night-muted/70 shrink-0 inline-flex items-center justify-center" title="More actions" data-uid="' + u.id + '">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="18" r="1.4"/></svg>' +
+              '</button>' +
+            '</div>' +
+            '<div class="flex items-center gap-2 mb-2 flex-wrap">' + roleBadge(u.role) + committeeBadge(u.committee) + '</div>' +
+            '<div class="flex items-center justify-between">' + statusTag(u.status) + '<span class="text-[11px] text-slate-400 dark:text-night-muted/70">' + u.last + '</span></div>' +
+          '</div>'
+        );
+      }).join('');
+
+      document.getElementById('pagination-summary').textContent = 'Showing ' + (start + 1) + ' to ' + Math.min(start + PAGE_SIZE, filtered.length) + ' of ' + filtered.length + ' users';
+      var controls = document.getElementById('pagination-controls');
+      var html = '<button class="page-btn w-8 h-8 rounded-lg border border-slate-300 dark:border-white/15 flex items-center justify-center text-slate-500 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" data-page="prev" ' + (state.page === 1 ? 'disabled' : '') + '>‹</button>';
+      for (var p = 1; p <= totalPages; p++) html += '<button class="page-btn w-8 h-8 rounded-lg border border-slate-300 dark:border-white/15 flex items-center justify-center text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/5 transition-colors' + (p === state.page ? ' active' : '') + '" data-page="' + p + '">' + p + '</button>';
+      html += '<button class="page-btn w-8 h-8 rounded-lg border border-slate-300 dark:border-white/15 flex items-center justify-center text-slate-500 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" data-page="next" ' + (state.page === totalPages ? 'disabled' : '') + '>›</button>';
+      controls.innerHTML = html;
+    }
+
+    updateStats();
+    bindEvents();
+  }
+
+  var sharedMenu = document.getElementById('shared-row-menu');
+
+  function closeAllMenus() {
+    sharedMenu.classList.add('menu-hidden');
+    openMenuId = null;
+  }
+  function openMenuFor(btn, user) {
+    sharedMenu.innerHTML = rowMenuHTML(user);
+    sharedMenu.classList.remove('menu-hidden');
+    openMenuId = user.id;
+    // position against the button, flipping above if it would run off the bottom of the viewport
+    var r = btn.getBoundingClientRect();
+    var menuW = 192, menuH = sharedMenu.offsetHeight || 160;
+    var left = Math.min(r.right - menuW, window.innerWidth - menuW - 12);
+    left = Math.max(left, 12);
+    var top = r.bottom + 6;
+    if (top + menuH > window.innerHeight - 12) top = r.top - menuH - 6;
+    sharedMenu.style.left = left + 'px';
+    sharedMenu.style.top = top + 'px';
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.row-menu-btn') && !e.target.closest('#shared-row-menu')) closeAllMenus();
+  });
+  window.addEventListener('scroll', closeAllMenus, true);
+  window.addEventListener('resize', closeAllMenus);
+
+  sharedMenu.addEventListener('click', function (e) {
+    var btn = e.target.closest('.row-menu-item');
+    if (!btn) return;
+    e.stopPropagation();
+    var uid = parseInt(btn.dataset.uid, 10);
+    var act = btn.dataset.act;
+    var user = users.find(function (u) { return u.id === uid; });
+    closeAllMenus();
+    if (act === 'copy') { if (navigator.clipboard) navigator.clipboard.writeText(user.email).catch(function () {}); showToast('Email copied'); }
+    else if (act === 'role') openRoleModal(user);
+    else if (act === 'resend') showToast('Invite resent to ' + user.email);
+    else if (act === 'deactivate') openDeactivateModal(user);
+    else if (act === 'reactivate') { user.status = 'offline'; user.last = 'Reactivated just now'; render(); showToast(user.name + ' reactivated — they can sign in again.'); }
+  });
+
+  function bindEvents() {
+    document.querySelectorAll('.row-menu-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var uid = parseInt(btn.dataset.uid, 10);
+        var user = users.find(function (u) { return u.id === uid; });
+        var willOpen = sharedMenu.classList.contains('menu-hidden') || openMenuId !== uid;
+        closeAllMenus();
+        if (willOpen) openMenuFor(btn, user);
+      });
+    });
+    document.querySelectorAll('.page-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.dataset.page, filtered = getFiltered(), totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+        if (val === 'prev') state.page = Math.max(1, state.page - 1);
+        else if (val === 'next') state.page = Math.min(totalPages, state.page + 1);
+        else state.page = parseInt(val, 10);
+        render();
+      });
+    });
+  }
+
+  // ================= Toolbar =================
+  var searchInput = document.getElementById('search-input');
+  searchInput.addEventListener('input', function () { state.search = this.value.trim(); state.page = 1; render(); });
+
+  var filterPanel = document.getElementById('filter-panel'), filterToggleBtn = document.getElementById('filter-toggle-btn');
+  function toggleFilterPanel() { filterPanel.classList.toggle('open'); }
+  filterToggleBtn.addEventListener('click', toggleFilterPanel);
+  document.getElementById('filter-close-btn').addEventListener('click', toggleFilterPanel);
+
+  function updateFilterBadge() {
+    var count = state.roles.size + state.statuses.size + (state.committee ? 1 : 0);
+    var badgeEl = document.getElementById('filter-count-badge');
+    badgeEl.textContent = count; badgeEl.classList.toggle('hidden', count === 0); badgeEl.classList.toggle('flex', count > 0);
+  }
+  document.getElementById('apply-filters-btn').addEventListener('click', function () {
+    state.committee = document.getElementById('committee-filter').value;
+    state.page = 1;
+    updateFilterBadge(); render();
+    showToast('Filters applied');
+  });
+  function resetFilters() {
+    state.roles.clear(); state.statuses.clear(); state.committee = ''; state.search = ''; state.page = 1;
+    searchInput.value = ''; document.getElementById('committee-filter').value = '';
+    document.querySelectorAll('#role-chip-row .chip, #status-chip-row .chip').forEach(function (c) { c.classList.remove('active'); });
+    updateFilterBadge(); updateFilterPreview(); render();
+  }
+  document.getElementById('reset-filters-btn').addEventListener('click', function () { resetFilters(); showToast('Filters reset'); });
+  document.getElementById('empty-reset-btn').addEventListener('click', function () { resetFilters(); showToast('Filters reset'); });
+
+  // ================= Role modal =================
+  var roleModalOverlay = document.getElementById('role-modal-overlay');
+  var roleModalUserId = null;
+  function openRoleModal(user) {
+    roleModalUserId = user.id;
+    document.getElementById('role-modal-avatar').textContent = initials(user.name);
+    document.getElementById('role-modal-name').textContent = user.name;
+    document.getElementById('role-modal-email').textContent = user.email;
+    document.getElementById('role-modal-committee').value = user.committee;
+    document.getElementById('role-modal-cards').innerHTML = buildRoleCardsHTML('modal-role', user.role);
+    document.getElementById('role-modal-update-btn').disabled = true;
+    bindRoleModalChangeWatchers(user);
+    roleModalOverlay.classList.remove('hidden-modal');
+  }
+  function bindRoleModalChangeWatchers(user) {
+    function check() {
+      var newRole = document.querySelector('input[name="modal-role"]:checked').value;
+      var newCommittee = document.getElementById('role-modal-committee').value;
+      document.getElementById('role-modal-update-btn').disabled = (newRole === user.role && newCommittee === user.committee);
+    }
+    document.querySelectorAll('input[name="modal-role"]').forEach(function (r) { r.addEventListener('change', check); });
+    document.getElementById('role-modal-committee').addEventListener('change', check);
+  }
+  document.querySelectorAll('[data-close-role]').forEach(function (b) { b.addEventListener('click', function () { roleModalOverlay.classList.add('hidden-modal'); }); });
+  roleModalOverlay.addEventListener('click', function (e) { if (e.target === roleModalOverlay) roleModalOverlay.classList.add('hidden-modal'); });
+  document.getElementById('role-modal-update-btn').addEventListener('click', function () {
+    if (this.disabled) return;
+    var user = users.find(function (u) { return u.id === roleModalUserId; });
+    user.role = document.querySelector('input[name="modal-role"]:checked').value;
+    user.committee = document.getElementById('role-modal-committee').value;
+    roleModalOverlay.classList.add('hidden-modal');
+    render();
+    showToast('Role updated for ' + user.name);
+  });
+
+  // ================= Deactivate modal =================
+  var deactivateModalOverlay = document.getElementById('deactivate-modal-overlay');
+  var deactivateUserId = null;
+  function openDeactivateModal(user) {
+    deactivateUserId = user.id;
+    document.getElementById('deactivate-user-name').textContent = user.name + "'s";
+    deactivateModalOverlay.classList.remove('hidden-modal');
+  }
+  document.querySelectorAll('[data-close-deactivate]').forEach(function (b) { b.addEventListener('click', function () { deactivateModalOverlay.classList.add('hidden-modal'); }); });
+  deactivateModalOverlay.addEventListener('click', function (e) { if (e.target === deactivateModalOverlay) deactivateModalOverlay.classList.add('hidden-modal'); });
+  document.getElementById('deactivate-confirm-btn').addEventListener('click', function () {
+    var user = users.find(function (u) { return u.id === deactivateUserId; });
+    user.status = 'deactivated'; user.last = 'Deactivated just now';
+    deactivateModalOverlay.classList.add('hidden-modal');
+    render();
+    showToast(user.name + "'s roster deactivated — profile picture cleared to free up storage.");
+  });
+
+  // ================= Invite form =================
+  document.getElementById('invite-role-cards').innerHTML = buildRoleCardsHTML('invite-role', '');
+  function resetInviteForm() {
+    document.getElementById('invite-name').value = '';
+    document.getElementById('invite-email').value = '';
+    document.getElementById('invite-committee').value = '';
+    document.querySelectorAll('input[name="invite-role"]').forEach(function (r) { r.checked = false; });
+    ['field-name','field-email','field-role','field-committee'].forEach(function (id) { document.getElementById(id).classList.remove('field-invalid'); });
+  }
+  var EMAIL_RE = /^[a-zA-Z0-9._%+-]+@cvsu\.edu\.ph$/i;
+  document.getElementById('invite-submit-btn').addEventListener('click', function () {
+    var name = document.getElementById('invite-name').value.trim();
+    var email = document.getElementById('invite-email').value.trim();
+    var committee = document.getElementById('invite-committee').value;
+    var roleEl = document.querySelector('input[name="invite-role"]:checked');
+    var role = roleEl ? roleEl.value : '';
+
+    var valid = true;
+    function setInvalid(id, bad) { document.getElementById(id).classList.toggle('field-invalid', bad); if (bad) valid = false; }
+    setInvalid('field-name', !name);
+    setInvalid('field-email', !EMAIL_RE.test(email));
+    setInvalid('field-role', !role);
+    setInvalid('field-committee', !committee);
+
+    if (!valid) { showToast('Please fix the highlighted fields', 'error'); return; }
+
+    users.unshift({ id: nextId++, name: name, email: email, committee: committee, role: role, status: 'pending', last: 'Invited just now' });
+    state.page = 1;
+    render();
+    showToast('Invite sent to ' + email + ' — link expires in 48 hours');
+    showView(viewDirectory);
+  });
+
+  render();
+</script>
+<nav id="app-mobile-nav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-card dark:bg-night-card border-t border-slate-300/70 dark:border-white/10 flex items-stretch justify-around px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))]">
+  <a href="index.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg><span class="text-[10px] font-medium">Home</span></a>
+  <a href="tasks.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg><span class="text-[10px] font-medium">Tasks</span></a>
+  <a href="dashboard.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg><span class="text-[10px] font-medium">Dashboard</span></a>
+  <a href="settings.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span class="text-[10px] font-medium">Settings</span></a>
+  <button id="mobile-more-btn" type="button" class="mobile-link relative flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-council"><span class="absolute top-1 w-1.5 h-1.5 rounded-full bg-council"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span class="text-[10px] font-semibold">More</span></button>
+</nav>
+
+<div id="mobile-more-overlay" class="md:hidden fixed inset-0 z-40 bg-ink/40 dark:bg-black/60 hidden"></div>
+<div id="mobile-more-sheet" class="md:hidden fixed bottom-0 inset-x-0 z-50 translate-y-full transition-transform duration-200 bg-card dark:bg-night-card rounded-t-2xl p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl">
+  <div class="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-white/15 mx-auto mb-2"></div>
+  <a href="archive.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>Event Archives</a>
+  <a href="activity-log.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Activity Log</a>
+  <a href="user-management.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>User Management</a>
+  <a href="notifications.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notifications</a>
+  <a href="create-event.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-council hover:bg-council-wash dark:hover:bg-night-wash"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New Event</a>
+  <button id="mobile-more-close" type="button" class="w-full mt-1 rounded-xl py-2.5 text-sm font-semibold text-slate-500 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5">Close</button>
+</div>
+
+<script>
+  (function () {
+    var moreBtn = document.getElementById("mobile-more-btn");
+    var overlay = document.getElementById("mobile-more-overlay");
+    var sheet = document.getElementById("mobile-more-sheet");
+    var closeBtn = document.getElementById("mobile-more-close");
+    if (!moreBtn) return;
+    function openSheet() { overlay.classList.remove("hidden"); sheet.classList.remove("translate-y-full"); }
+    function closeSheet() { overlay.classList.add("hidden"); sheet.classList.add("translate-y-full"); }
+    moreBtn.addEventListener("click", openSheet);
+    closeBtn.addEventListener("click", closeSheet);
+    overlay.addEventListener("click", closeSheet);
+  })();
+</script>
+
+</body>
+</html>

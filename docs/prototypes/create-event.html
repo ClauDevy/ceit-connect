@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEIT Connect — Create Event</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-paper dark:bg-night-bg text-ink dark:text-night-text antialiased">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="hidden md:flex w-60 lg:w-64 shrink-0 flex-col justify-between border-r border-slate-300/70 dark:border-white/10 bg-card dark:bg-night-card px-5 lg:px-6 py-7 h-full overflow-y-auto">
+    <button id="sidebar-toggle" class="hidden md:flex absolute -right-3 top-9 w-6 h-6 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 items-center justify-center text-slate-500 dark:text-night-muted hover:text-council transition-colors z-10">
+      <svg id="sidebar-toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="transition: transform .2s ease;"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+
+    <div>
+      <div class="flex items-center gap-2.5 mb-9">
+        <svg width="34" height="34" viewBox="0 0 100 100" class="shrink-0">
+          <ellipse cx="50" cy="54" rx="33" ry="25" fill="#EC6608"/>
+          <ellipse cx="50" cy="63" rx="19" ry="14" fill="#FFF8F0"/>
+          <path d="M25 32 L17 15 L35 23 Z" fill="#EC6608"/>
+          <path d="M75 32 L83 15 L65 23 Z" fill="#EC6608"/>
+          <path d="M25 30 L21 19 L31 24 Z" fill="#1B140F"/>
+          <path d="M75 30 L79 19 L69 24 Z" fill="#1B140F"/>
+          <path d="M33 36 L28 25 M41 32 L39 21 M59 32 L61 21 M67 36 L72 25" stroke="#1B140F" stroke-width="2.6" stroke-linecap="round"/>
+          <path d="M36 44 Q42 37 48 44 M52 44 Q58 37 64 44" stroke="#1B140F" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+          <circle cx="42" cy="50" r="3" fill="#1B140F"/>
+          <circle cx="58" cy="50" r="3" fill="#1B140F"/>
+        </svg>
+        <div class="leading-tight sidebar-label">
+          <p class="font-display font-semibold text-[15px] tracking-tight">CEIT Connect</p>
+          <p class="text-[11px] text-slate-500 dark:text-night-muted -mt-0.5">Student Council</p>
+        </div>
+      </div>
+
+      <nav class="flex flex-col gap-1 pl-5">
+        <a href="index.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+          <span class="sidebar-label">Home</span>
+        </a>
+        <a href="tasks.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg>
+          <span class="sidebar-label">My Tasks</span>
+        </a>
+        <a href="archive.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+          <span class="sidebar-label">Event Archives</span>
+        </a>
+        <a href="activity-log.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          <span class="sidebar-label">Activity Log</span>
+        </a>
+        <a href="dashboard.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
+          <span class="sidebar-label">Dashboard</span>
+        </a>
+        <a href="settings.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          <span class="sidebar-label">Settings</span>
+        </a>
+        <a href="user-management.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="sidebar-label">User Management</span>
+        </a>
+</nav>
+    </div>
+
+    <div>
+      <a href="create-event.html" class="w-full flex items-center justify-center gap-2 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm py-3 mb-4 hover:bg-council-dark transition-colors">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="sidebar-label">New Event</span>
+      </a>
+
+      <button id="theme-toggle" class="w-full flex items-center justify-between rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-2.5 mb-5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+        <span class="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-night-muted">
+          <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg id="theme-icon-moon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+          <span id="theme-label" class="sidebar-label">Light mode</span>
+        </span>
+        <span class="theme-toggle-track sidebar-label relative w-9 h-5 rounded-full shrink-0">
+          <span class="theme-toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"></span>
+        </span>
+      </button>
+
+      <div class="flex items-center gap-2 opacity-40 sidebar-label">
+        <span class="paw block w-4 h-4 bg-council"></span>
+        <span class="paw block w-3.5 h-3.5 bg-council"></span>
+        <span class="paw block w-3 h-3 bg-council"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN COLUMN -->
+  <div class="flex-1 flex flex-col min-w-0 h-full overflow-y-auto overflow-x-hidden">
+
+    <!-- Mobile topbar -->
+    <div class="md:hidden sticky top-0 z-20 flex items-center justify-between bg-card/95 dark:bg-night-card/95 backdrop-blur border-b border-slate-300/70 dark:border-white/10 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <svg width="26" height="26" viewBox="0 0 100 100" class="shrink-0">
+          <ellipse cx="50" cy="54" rx="33" ry="25" fill="#EC6608"/>
+          <ellipse cx="50" cy="63" rx="19" ry="14" fill="#FFF8F0"/>
+          <path d="M25 32 L17 15 L35 23 Z" fill="#EC6608"/>
+          <path d="M75 32 L83 15 L65 23 Z" fill="#EC6608"/>
+          <path d="M25 30 L21 19 L31 24 Z" fill="#1B140F"/>
+          <path d="M75 30 L79 19 L69 24 Z" fill="#1B140F"/>
+          <path d="M38 40 L34 30 M62 40 L66 30" stroke="#1B140F" stroke-width="2.6" stroke-linecap="round"/>
+        </svg>
+        <p class="font-display font-semibold text-[15px]">CEIT Connect</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle-mobile" class="relative w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted">
+          <svg class="theme-icon-sun-m" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="theme-icon-moon-m hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+        <a href="notifications.html" class="relative w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-council border border-card dark:border-night-card"></span></a>
+        <a href="settings.html" class="w-8 h-8 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-xs">JC</a>
+      </div>
+    </div>
+
+    <main class="flex-1 px-4 sm:px-6 md:px-10 py-6 md:py-8 pb-16 max-w-6xl w-full">
+
+      <div class="flex items-center gap-1.5 text-sm text-slate-500 dark:text-night-muted mb-3">
+        <a href="index.html" class="hover:text-council transition-colors">Home</a>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        <span class="text-ink dark:text-night-text font-medium">Create Event</span>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
+        <h1 class="font-display font-semibold text-2xl sm:text-3xl tracking-tight">Create Event</h1>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-night-muted text-[11px] font-semibold px-2.5 py-1">Autosaves as Draft</span>
+      </div>
+
+      <!-- WELCOME BAND -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-council-wash to-transparent dark:from-night-wash dark:to-transparent border border-council/20 px-5 py-4 mb-6 flex items-center gap-4">
+        <svg width="58" height="50" viewBox="0 0 120 104" class="shrink-0">
+          <ellipse cx="60" cy="82" rx="14" ry="4" fill="#1B140F" opacity="0.08"/>
+          <path d="M42 58 Q20 52 22 30" fill="none" stroke="#EC6608" stroke-width="9" stroke-linecap="round"/>
+          <rect x="34" y="62" width="10" height="18" rx="5" fill="#A8440A"/><rect x="76" y="62" width="10" height="18" rx="5" fill="#A8440A"/>
+          <ellipse cx="60" cy="60" rx="30" ry="22" fill="#EC6608"/>
+          <ellipse cx="60" cy="68" rx="18" ry="13" fill="#FFF8F0"/>
+          <path d="M40 68 q-9 6 -6 16" fill="none" stroke="#EC6608" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="34" cy="86" r="6" fill="#FFF8F0"/>
+          <path d="M40 40 Q46 32 52 40 M68 40 Q74 32 80 40" stroke="#1B140F" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M27 32 L14 12 L38 20 Z" fill="#EC6608"/><path d="M93 32 L106 12 L82 20 Z" fill="#EC6608"/>
+          <circle cx="48" cy="46" r="3.2" fill="#1B140F"/><circle cx="72" cy="46" r="3.2" fill="#1B140F"/>
+        </svg>
+        <div>
+          <p class="font-display font-semibold text-base">Let's put your next event together</p>
+          <p class="text-xs text-slate-600 dark:text-night-muted mt-0.5">Fill in the details, break the work into phases, and launch when it's ready. Your progress autosaves as a Draft along the way.</p>
+        </div>
+      </div>
+
+      <!-- MODE PICKER -->
+      <div id="mode-picker" class="grid sm:grid-cols-2 gap-3 mb-7">
+        <label class="mode-card cursor-pointer">
+          <input type="radio" name="mode" value="scratch" class="sr-only" checked>
+          <div class="mode-card-inner relative rounded-2xl border-2 border-slate-300 dark:border-white/15 p-4 flex items-start gap-3">
+            <span class="mode-check absolute -top-2 -right-2 w-5 h-5 rounded-full bg-council text-white items-center justify-center shrink-0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <div class="w-9 h-9 rounded-xl bg-council-wash dark:bg-night-wash text-council flex items-center justify-center shrink-0">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-sm">Start from Scratch</p>
+              <p class="text-xs text-slate-500 dark:text-night-muted mt-0.5">Build the event and its tasks from a blank slate.</p>
+            </div>
+          </div>
+        </label>
+        <label class="mode-card cursor-pointer">
+          <input type="radio" name="mode" value="archive" id="mode-archive-radio" class="sr-only">
+          <div class="mode-card-inner relative rounded-2xl border-2 border-slate-300 dark:border-white/15 p-4 flex items-start gap-3">
+            <span class="mode-check absolute -top-2 -right-2 w-5 h-5 rounded-full bg-council text-white items-center justify-center shrink-0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <div class="w-9 h-9 rounded-xl bg-council-wash dark:bg-night-wash text-council flex items-center justify-center shrink-0">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-sm">📄 Start from Archive Template</p>
+              <p class="text-xs text-slate-500 dark:text-night-muted mt-0.5">Copy a past event's task list — deadlines shift automatically to your new dates.</p>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div id="archive-picker" class="hidden mb-7 rounded-2xl border border-council/30 bg-council-wash dark:bg-night-wash p-4">
+        <p class="text-xs font-semibold text-council-dark dark:text-council-light mb-2.5">Choose a past event to copy tasks from</p>
+        <p id="archive-need-date-note" class="hidden text-xs text-red-600 dark:text-red-400 mb-2.5">Set your new Start Date in Event Details first — templates need it to shift deadlines correctly.</p>
+        <div class="relative mb-2.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A8440A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="archive-search-input" type="text" placeholder="Search past events by name…" class="w-full rounded-lg border border-council/30 bg-card dark:bg-night-card pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+        </div>
+        <div id="archive-template-list" class="flex flex-col gap-1.5 max-h-64 overflow-y-auto rounded-xl bg-card/60 dark:bg-night-card/60 p-1.5"></div>
+        <p class="text-[11px] text-council-dark/80 dark:text-council-light/80 mt-2.5">Note: this is placeholder data — Event Archives isn't built yet in this prototype, so these three stand in for what could be years of real past events, which is why this list is searchable rather than a fixed grid.</p>
+      </div>
+
+      <div class="grid lg:grid-cols-[1fr_19rem] gap-6">
+
+        <!-- MAIN -->
+        <div class="min-w-0">
+          <!-- Tabs -->
+          <div class="flex items-center gap-6 border-b border-slate-300/60 dark:border-white/10 mb-6">
+            <button class="tab-btn active flex items-center gap-2 pb-3 text-sm font-semibold text-slate-500 dark:text-night-muted" data-tab="details">
+              <span class="check-dot w-4 h-4 rounded-full border-2 border-slate-300 dark:border-white/20 flex items-center justify-center shrink-0"><svg class="check-icon w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              Event Details
+            </button>
+            <button class="tab-btn flex items-center gap-2 pb-3 text-sm font-semibold text-slate-500 dark:text-night-muted" data-tab="tasks">
+              <span class="check-dot w-4 h-4 rounded-full border-2 border-slate-300 dark:border-white/20 flex items-center justify-center shrink-0"><svg class="check-icon w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              Task Setup
+            </button>
+          </div>
+
+          <!-- DETAILS TAB -->
+          <div class="tab-panel active" data-panel="details">
+            <div class="relative overflow-hidden rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-5 sm:p-6">
+              <svg class="absolute -right-4 -bottom-6 opacity-[0.04] dark:opacity-[0.06] pointer-events-none" width="150" height="150" viewBox="0 0 100 100"><ellipse cx="50" cy="62" rx="26" ry="22"/><circle cx="24" cy="34" r="11"/><circle cx="50" cy="24" r="12"/><circle cx="76" cy="34" r="11"/></svg>
+              <div class="flex items-center gap-2.5 mb-1">
+                <span class="w-8 h-8 rounded-lg bg-council-wash dark:bg-night-wash text-council flex items-center justify-center shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                </span>
+                <h2 class="font-display font-semibold text-lg">Event Fundamentals</h2>
+              </div>
+              <p class="text-sm text-slate-500 dark:text-night-muted mb-5 ml-[42px]">Provide the core administrative details for your upcoming initiative.</p>
+
+              <label class="block mb-4">
+                <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Event Banner</span>
+                <div id="banner-drop" class="group relative aspect-[16/9] sm:aspect-[21/9] rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 bg-gradient-to-br from-slate-100 to-slate-100/40 dark:from-white/5 dark:to-transparent overflow-hidden flex flex-col items-center justify-center text-center cursor-pointer hover:border-council transition-colors">
+                  <img id="banner-preview" class="hidden absolute inset-0 w-full h-full object-cover" alt="">
+                  <div id="banner-placeholder" class="flex flex-col items-center gap-1.5 px-4">
+                    <span class="w-9 h-9 rounded-full bg-white dark:bg-white/10 shadow-sm flex items-center justify-center mb-0.5 group-hover:scale-105 transition-transform">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EC6608" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                    </span>
+                    <span class="text-xs font-semibold">Click to upload a banner</span>
+                    <span class="text-[11px] text-slate-500 dark:text-night-muted">16:9 · auto-compressed to &lt;1.5MB</span>
+                  </div>
+                </div>
+                <input id="banner-input" type="file" accept="image/*" class="hidden">
+              </label>
+
+              <label class="block mb-4">
+                <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Official Event Name</span>
+                <div class="relative">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+                  <input id="event-name-input" type="text" placeholder="e.g. Freshmen Orientation" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 pl-9 pr-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                </div>
+              </label>
+
+              <div class="grid grid-cols-2 gap-3 mb-4">
+                <label class="block">
+                  <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Commencement Date</span>
+                  <div class="relative">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <input id="event-start-input" type="date" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                  </div>
+                </label>
+                <label class="block">
+                  <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Conclusion Date</span>
+                  <div class="relative">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <input id="event-end-input" type="date" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                  </div>
+                </label>
+              </div>
+
+              <label class="block">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-xs font-semibold text-slate-700 dark:text-night-muted">Event Description</span>
+                  <span id="desc-counter" class="text-[10.5px] text-slate-400 dark:text-night-muted/60">0/300</span>
+                </div>
+                <textarea id="event-desc-input" rows="4" maxlength="300" placeholder="What is this event, and why does it matter?" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council"></textarea>
+              </label>
+            </div>
+
+            <button id="to-tasks-btn" class="mt-4 flex items-center gap-2 text-sm font-semibold text-council hover:text-council-dark transition-colors">
+              Continue to Task Setup
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+
+          <!-- TASKS TAB -->
+          <div class="tab-panel" data-panel="tasks">
+            <div class="flex items-center justify-between mb-4">
+              <p class="text-sm text-slate-500 dark:text-night-muted">Click a phase header to collapse it. Click any task to open it.</p>
+            </div>
+            <div id="phases-container" class="flex flex-col gap-5"></div>
+            <button id="add-phase-btn" class="w-full mt-5 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/15 text-slate-600 dark:text-night-muted font-semibold text-sm py-3.5 hover:border-council hover:text-council transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add New Phase
+            </button>
+          </div>
+        </div>
+
+        <!-- LAUNCH SUMMARY (replaces a separate static "Review" step — always live) -->
+        <div class="lg:sticky lg:top-8 self-start">
+          <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 overflow-hidden">
+            <div id="summary-banner" class="relative aspect-[16/9] bg-gradient-to-br from-council-wash to-slate-100 dark:from-night-wash dark:to-white/5 flex items-center justify-center overflow-hidden">
+              <img id="summary-banner-img" class="hidden w-full h-full object-cover" alt="">
+              <div id="summary-banner-placeholder" class="flex flex-col items-center gap-1">
+                <svg width="34" height="26" viewBox="0 0 120 90" opacity="0.55"><ellipse cx="60" cy="55" rx="46" ry="28" fill="#EC6608"/><path d="M22 20 L14 6 L32 12 Z" fill="#EC6608"/><path d="M98 20 L106 6 L88 12 Z" fill="#EC6608"/></svg>
+                <span class="text-[10.5px] text-council-dark/70 dark:text-council-light/70 font-medium">No banner yet</span>
+              </div>
+            </div>
+            <div class="p-5">
+              <p id="summary-name" class="font-display font-semibold text-base leading-snug">Untitled Event</p>
+              <p id="summary-dates" class="text-xs text-slate-500 dark:text-night-muted mt-1">Dates not set</p>
+
+              <div class="mt-4 pt-4 border-t border-slate-300/60 dark:border-white/10 flex items-center justify-between text-sm">
+                <span class="text-slate-500 dark:text-night-muted">Phases</span>
+                <span id="summary-phase-count" class="font-semibold">0</span>
+              </div>
+              <div class="flex items-center justify-between text-sm mt-1.5">
+                <span class="text-slate-500 dark:text-night-muted">Total Tasks</span>
+                <span id="summary-task-count" class="font-semibold">0</span>
+              </div>
+
+              <div class="mt-4 pt-4 border-t border-slate-300/60 dark:border-white/10 flex flex-col gap-2">
+                <div class="check-item flex items-center gap-2 text-xs" id="check-name">
+                  <span class="check-dot w-4 h-4 rounded-full border-2 border-slate-300 dark:border-white/20 flex items-center justify-center shrink-0"><svg class="check-icon w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span class="text-slate-600 dark:text-night-muted">Event name set</span>
+                </div>
+                <div class="check-item flex items-center gap-2 text-xs" id="check-dates">
+                  <span class="check-dot w-4 h-4 rounded-full border-2 border-slate-300 dark:border-white/20 flex items-center justify-center shrink-0"><svg class="check-icon w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span class="text-slate-600 dark:text-night-muted">Start &amp; end dates set</span>
+                </div>
+                <div class="check-item flex items-center gap-2 text-xs" id="check-tasks">
+                  <span class="check-dot w-4 h-4 rounded-full border-2 border-slate-300 dark:border-white/20 flex items-center justify-center shrink-0"><svg class="check-icon w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span class="text-slate-600 dark:text-night-muted">At least one task added</span>
+                </div>
+              </div>
+
+              <div id="ready-tiger" class="hidden items-center gap-2 mt-4 rounded-xl bg-council-wash dark:bg-night-wash px-3 py-2.5">
+                <svg width="26" height="22" viewBox="0 0 60 48" class="shrink-0">
+                  <ellipse cx="30" cy="28" rx="24" ry="16" fill="#EC6608"/>
+                  <path d="M20 20 L10 6 L26 12 Z" fill="#EC6608"/><path d="M40 20 L50 6 L34 12 Z" fill="#EC6608"/>
+                  <path d="M8 20 q6 6 12 0 M40 20 q6 6 12 0" stroke="#1B140F" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                  <circle cx="22" cy="24" r="2.6" fill="#1B140F"/><circle cx="38" cy="24" r="2.6" fill="#1B140F"/>
+                  <path d="M24 33 q6 4 12 0" stroke="#1B140F" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+                </svg>
+                <p class="text-xs text-council-dark dark:text-council-light font-medium">Looking good — ready to launch!</p>
+              </div>
+
+              <button id="save-draft-btn" class="w-full mt-4 rounded-xl border border-slate-300 dark:border-white/15 font-semibold text-sm py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Save Draft</button>
+              <button id="launch-event-btn" class="w-full mt-2.5 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm py-2.5 hover:bg-council-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                Launch Event
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 1 21h22L12 2Zm0 6 6.5 11h-13L12 8Z" fill="currentColor" stroke="none"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- TASK MODAL -->
+<div id="task-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-50 bg-ink/40 dark:bg-black/60 flex justify-end">
+  <div class="task-sheet-panel w-full sm:max-w-3xl h-full bg-card dark:bg-night-card shadow-2xl overflow-y-auto flex flex-col">
+
+    <div class="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-300/60 dark:border-white/10 sticky top-0 bg-card dark:bg-night-card z-10 shrink-0">
+      <h3 id="task-modal-title" class="font-display font-semibold text-lg">Add Task</h3>
+      <button data-close-task class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="flex-1 grid lg:grid-cols-[1fr_300px]">
+      <div class="p-5 sm:p-6 flex flex-col gap-4 lg:border-r border-slate-300/60 dark:border-white/10">
+        <label class="block">
+          <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Task Name</span>
+          <input id="task-name-input" type="text" placeholder="e.g. Coordinate Sound System" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+        </label>
+
+        <label class="block">
+          <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Description <span class="font-normal text-slate-500 dark:text-night-muted">(optional)</span></span>
+          <textarea id="task-description-input" rows="2" placeholder="What needs to happen for this task to be done?" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council"></textarea>
+        </label>
+
+        <div>
+          <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Task Type</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="type-deliverable-btn" data-type="deliverable" class="task-type-btn flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+              Deliverable
+            </button>
+            <button type="button" id="type-liveop-btn" data-type="live-op" class="task-type-btn flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+              Live Operation
+            </button>
+          </div>
+          <p class="text-[10.5px] text-slate-500 dark:text-night-muted mt-1.5">Deliverables can be finished any time before the due date. Live Operations happen at a fixed Call Time — assignees can't start early.</p>
+        </div>
+
+        <div id="liveops-banner" class="hidden items-start gap-2.5 rounded-xl bg-council-wash dark:bg-night-wash border border-council/30 px-3.5 py-3">
+          <svg width="26" height="22" viewBox="0 0 60 48" class="shrink-0 mt-0.5">
+            <ellipse cx="30" cy="30" rx="24" ry="16" fill="#EC6608"/>
+            <path d="M20 21 L10 7 L26 13 Z" fill="#EC6608"/><path d="M40 21 L50 7 L34 13 Z" fill="#EC6608"/>
+            <path d="M8 10 q6 -8 12 -2 M52 10 q-6 -8 -12 -2" stroke="#1B140F" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+            <circle cx="22" cy="24" r="3" fill="#1B140F"/><circle cx="38" cy="24" r="3" fill="#1B140F"/>
+            <circle cx="30" cy="36" r="1.6" fill="#1B140F"/><rect x="28.7" y="30" width="2.6" height="5" rx="1.3" fill="#1B140F"/>
+          </svg>
+          <p class="text-xs text-council-dark dark:text-council-light font-medium">This is a live duty — don't start before Call Time, and be physically ready at that moment.</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <label class="block">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Status</span>
+            <select id="task-status-input" class="select-styled w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+              <option value="todo" selected>To Do</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Priority</span>
+            <select id="task-priority-input" class="select-styled w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Committee</span>
+            <select id="task-committee-input" class="select-styled w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council"></select>
+          </label>
+        </div>
+        <p id="priority-note" class="text-[10.5px] text-slate-500 dark:text-night-muted -mt-2">Critical priority is set automatically once overdue — it can't be chosen manually.</p>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label id="dependency-field" class="block">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Depends On</span>
+            <select id="task-dependency-input" class="select-styled w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+              <option value="">None</option>
+            </select>
+          </label>
+          <label id="due-date-field" class="block">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Due Date</span>
+            <input id="task-due-input" type="date" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+          </label>
+        </div>
+
+        <div id="liveop-time-fields" class="hidden rounded-xl bg-council-wash dark:bg-night-wash border border-council/25 p-3.5">
+          <span class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">Quick pick</span>
+          <div class="flex flex-wrap gap-1.5 mb-3">
+            <button type="button" class="call-date-preset text-[11px] font-semibold px-2.5 py-1.5 rounded-full bg-card dark:bg-night-card border border-council/40 hover:border-council transition-colors" data-offset="-1">Day before (setup)</button>
+            <button type="button" class="call-date-preset text-[11px] font-semibold px-2.5 py-1.5 rounded-full bg-card dark:bg-night-card border border-council/40 hover:border-council transition-colors" data-offset="0">Event Day 1</button>
+            <button type="button" class="call-date-preset text-[11px] font-semibold px-2.5 py-1.5 rounded-full bg-card dark:bg-night-card border border-council/40 hover:border-council transition-colors" data-offset="1">Event Day 2</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <label class="block">
+              <span class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">Date</span>
+              <input id="task-calldate-input" type="date" class="w-full rounded-lg border border-council bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none">
+            </label>
+            <label class="block">
+              <span class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">Call Time</span>
+              <input id="task-calltime-input" type="time" class="w-full rounded-lg border border-council bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none">
+            </label>
+          </div>
+          <label class="block mt-2.5">
+            <span class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">End Time <span class="font-normal">(optional — for a duty that runs a window)</span></span>
+            <input id="task-endtime-input" type="time" class="w-full rounded-lg border border-council bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none">
+          </label>
+        </div>
+
+        <label class="block">
+          <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Your Work</span>
+          <div class="relative">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
+            <input id="task-drive-input" type="url" placeholder="Paste a Google Drive share link" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 pl-9 pr-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-night-muted mt-1.5">Files are never uploaded directly — this keeps storage free.</p>
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="flex items-center justify-between rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-3 cursor-pointer">
+            <span class="flex items-center gap-2 text-sm font-medium">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              Confidential
+            </span>
+            <span class="relative inline-flex items-center shrink-0">
+              <input id="task-confidential-input" type="checkbox" class="peer sr-only">
+              <span class="w-9 h-5 rounded-full bg-slate-300 dark:bg-white/15 peer-checked:bg-council transition-colors"></span>
+              <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4"></span>
+            </span>
+          </label>
+          <label class="flex items-center justify-between rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-3 cursor-pointer">
+            <span class="flex items-center gap-2 text-sm font-medium">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+              Request Backup
+            </span>
+            <span class="relative inline-flex items-center shrink-0">
+              <input id="task-backup-input" type="checkbox" class="peer sr-only">
+              <span class="w-9 h-5 rounded-full bg-slate-300 dark:bg-white/15 peer-checked:bg-council transition-colors"></span>
+              <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4"></span>
+            </span>
+          </label>
+        </div>
+        <p class="text-[10.5px] text-slate-500 dark:text-night-muted -mt-2">Request Backup posts a "Help Wanted" badge so members from other committees can volunteer — this is how cross-committee tasks get extra hands, instead of a task belonging to more than one committee.</p>
+
+        <div id="confidential-access-panel" class="confidential-panel">
+          <div>
+            <div class="confidential-banner rounded-xl p-3.5">
+              <div class="flex items-start gap-2.5">
+                <span class="confidential-lock-badge w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold text-council-dark dark:text-council-light">Masked from everyone else</p>
+                  <p class="text-[11px] text-slate-600 dark:text-night-muted mt-0.5">Only the people below can open this task. Everyone else in the committee sees it in the list as <span class="font-semibold">"Confidential Task"</span> with no details.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Who can access this task</span>
+              <div id="access-chip-list" class="flex flex-wrap gap-1.5 mb-2"></div>
+
+              <div class="relative">
+                <div class="relative">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="access-add-input" type="text" placeholder="Add someone by name…" autocomplete="off" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+                </div>
+                <div id="access-add-dropdown" class="access-picker-dropdown dd-hidden absolute left-0 right-0 mt-1.5 z-20 rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card shadow-lg max-h-40 overflow-y-auto p-1"></div>
+              </div>
+              <p class="text-[10.5px] text-slate-500 dark:text-night-muted mt-1.5">Assignees are always included automatically. Add anyone else — an adviser, the event lead — who should be able to open this task.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-5 sm:p-6 flex flex-col gap-5 bg-slate-50/60 dark:bg-white/[0.02]">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted">Assignees</span>
+          </div>
+          <div class="relative mb-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="assignee-search-input" type="text" placeholder="Search members…" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+          </div>
+          <div id="task-assignees-list" class="flex flex-col gap-1 max-h-40 overflow-y-auto rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 p-2"></div>
+          <p class="text-[10.5px] text-slate-500 dark:text-night-muted mt-1.5">Tasks are unassigned by default and sit in the Backlog until someone claims or is given them.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2.5 px-5 sm:px-6 py-4 border-t border-slate-300/60 dark:border-white/10 sticky bottom-0 bg-card dark:bg-night-card shrink-0">
+      <button id="task-delete-btn" class="hidden rounded-xl border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 font-semibold text-sm px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">Delete</button>
+      <span class="flex-1"></span>
+      <button data-close-task class="rounded-xl border border-slate-300 dark:border-white/15 font-semibold text-sm px-5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+      <button id="task-save-btn" class="rounded-xl bg-council text-white font-semibold text-sm px-5 py-2.5 hover:bg-council-dark transition-colors">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE TASK CONFIRM -->
+<div id="delete-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-[60] bg-ink/40 dark:bg-black/60 flex items-center justify-center p-4">
+  <div class="modal-panel w-full max-w-sm bg-card dark:bg-night-card rounded-2xl shadow-2xl p-6 text-center">
+    <h3 class="font-display font-semibold text-lg mb-1.5">Delete this task?</h3>
+    <p class="text-sm text-slate-500 dark:text-night-muted mb-5">This can't be undone.</p>
+    <div class="flex items-center gap-2.5">
+      <button data-close-delete class="flex-1 rounded-xl border border-slate-300 dark:border-white/15 font-semibold text-sm py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+      <button id="delete-confirm-btn" class="flex-1 rounded-xl bg-red-600 text-white font-semibold text-sm py-2.5 hover:bg-red-700 transition-colors">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE MODAL -->
+<div id="phase-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-50 bg-ink/40 dark:bg-black/60 flex items-center justify-center p-4">
+  <div class="modal-panel w-full max-w-sm bg-card dark:bg-night-card rounded-2xl shadow-2xl">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-300/60 dark:border-white/10">
+      <h3 class="font-display font-semibold text-lg">Add New Phase</h3>
+      <button data-close-phase class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="p-5">
+      <label class="block">
+        <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Phase Name</span>
+        <input id="phase-name-input" type="text" placeholder="e.g. Post-Event Wrap-up" class="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-paper dark:bg-white/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
+      </label>
+    </div>
+    <div class="flex items-center gap-2.5 px-5 py-4 border-t border-slate-300/60 dark:border-white/10">
+      <button data-close-phase class="flex-1 rounded-xl border border-slate-300 dark:border-white/15 font-semibold text-sm py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+      <button id="phase-save-btn" class="flex-1 rounded-xl bg-council text-white font-semibold text-sm py-2.5 hover:bg-council-dark transition-colors">Add Phase</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast toast-hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-ink dark:bg-night-card text-white dark:text-night-text border border-white/10 rounded-xl px-4 py-2.5 text-sm font-medium shadow-2xl flex items-center gap-2 max-w-[90vw] text-center">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <span id="toast-text">Saved</span>
+</div>
+
+<script>
+  // ---------- Shared chrome ----------
+  var htmlEl = document.documentElement;
+  var themeLabel = document.getElementById('theme-label');
+  var sunIcon = document.getElementById('theme-icon-sun');
+  var moonIcon = document.getElementById('theme-icon-moon');
+  var sunIconsM = document.querySelectorAll('.theme-icon-sun-m');
+  var moonIconsM = document.querySelectorAll('.theme-icon-moon-m');
+  function setTheme(dark) {
+    htmlEl.classList.toggle('dark', dark);
+    if (themeLabel) themeLabel.textContent = dark ? 'Dark mode' : 'Light mode';
+    if (sunIcon && moonIcon) { sunIcon.classList.toggle('hidden', dark); moonIcon.classList.toggle('hidden', !dark); }
+    sunIconsM.forEach(function (el) { el.classList.toggle('hidden', dark); });
+    moonIconsM.forEach(function (el) { el.classList.toggle('hidden', !dark); });
+  }
+  function toggleTheme() { setTheme(!htmlEl.classList.contains('dark')); }
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(prefersDark);
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  document.getElementById('theme-toggle-mobile').addEventListener('click', toggleTheme);
+
+  var sidebar = document.getElementById('sidebar');
+  var sidebarToggle = document.getElementById('sidebar-toggle');
+  var sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+  sidebarToggle.addEventListener('click', function () {
+    sidebar.classList.toggle('collapsed');
+    var collapsed = sidebar.classList.contains('collapsed');
+    sidebarToggleIcon.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+  });
+
+  var toastEl = document.getElementById('toast');
+  var toastText = document.getElementById('toast-text');
+  var toastTimer;
+  function showToast(msg) {
+    toastText.textContent = msg;
+    toastEl.classList.remove('toast-hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.add('toast-hidden'); }, 2600);
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { switchTab(btn.dataset.tab); });
+  });
+  document.getElementById('to-tasks-btn').addEventListener('click', function () { switchTab('tasks'); });
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.dataset.panel === name); });
+  }
+
+  // ---------- Mode picker / Archive template ----------
+  var ARCHIVE_TEMPLATES = [
+    { name: 'Freshmen Orientation 2025', start: '2025-04-10', tasks: [
+      { name: 'Budget Finalization', committee: 'COFBUM', priority: 'high', offsetDays: 2, phase: 'Planning Phase' },
+      { name: 'Venue Booking', committee: 'COFBUM', priority: 'low', offsetDays: 4, phase: 'Planning Phase' },
+      { name: 'Welcome Program Hosting', committee: 'CIA', priority: 'medium', liveOp: true, offsetDays: 5, callHour: 9, phase: 'Implementation Phase' },
+    ]},
+    { name: 'Tech Summit 2025', start: '2025-08-01', tasks: [
+      { name: 'Speaker Confirmation', committee: 'COMRECS', priority: 'high', offsetDays: 3, phase: 'Planning Phase' },
+      { name: 'Registration Desk Duty', committee: 'COMRECS', priority: 'medium', liveOp: true, offsetDays: 0, callHour: 8, phase: 'Event Day' },
+    ]},
+    { name: 'Foundation Day 2025', start: '2025-09-20', tasks: [
+      { name: 'Program Flow Draft', committee: 'CARA', priority: 'medium', offsetDays: 1, phase: 'Planning Phase' },
+    ]},
+  ];
+
+  document.getElementById('mode-archive-radio').addEventListener('change', function () {
+    document.getElementById('archive-picker').classList.toggle('hidden', !this.checked);
+    if (this.checked) { document.getElementById('archive-search-input').focus(); renderArchiveList(''); }
+  });
+  document.querySelectorAll('input[name="mode"]').forEach(function (r) {
+    r.addEventListener('change', function () { if (r.value === 'scratch') document.getElementById('archive-picker').classList.add('hidden'); });
+  });
+
+  var archiveListEl = document.getElementById('archive-template-list');
+
+  function renderArchiveList(query) {
+    var q = (query || '').trim().toLowerCase();
+    var matches = ARCHIVE_TEMPLATES.filter(function (t) { return t.name.toLowerCase().indexOf(q) !== -1; });
+
+    if (!matches.length) {
+      archiveListEl.innerHTML = '<p class="text-xs text-slate-500 dark:text-night-muted text-center py-4">No past events match "' + query + '".</p>';
+      return;
+    }
+
+    archiveListEl.innerHTML = matches.map(function (t) {
+      var i = ARCHIVE_TEMPLATES.indexOf(t);
+      var year = t.start.slice(0, 4);
+      return '<button class="use-template-btn w-full flex items-center gap-3 text-left rounded-xl bg-card dark:bg-night-card p-2.5 hover:ring-2 hover:ring-council/40 transition-shadow" data-index="' + i + '">' +
+        '<span class="w-9 h-9 rounded-lg bg-council-wash dark:bg-night-wash text-council flex items-center justify-center shrink-0 font-display font-semibold text-xs">' + year + '</span>' +
+        '<span class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">' + t.name + '</p><p class="text-[11px] text-slate-500 dark:text-night-muted">' + t.tasks.length + ' tasks</p></span>' +
+        '<span class="text-[11px] font-semibold text-council shrink-0">Use →</span>' +
+      '</button>';
+    }).join('');
+
+    archiveListEl.querySelectorAll('.use-template-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var newStart = document.getElementById('event-start-input').value;
+        if (!newStart) {
+          document.getElementById('archive-need-date-note').classList.remove('hidden');
+          document.getElementById('event-start-input').focus();
+          return;
+        }
+        document.getElementById('archive-need-date-note').classList.add('hidden');
+        applyTemplate(ARCHIVE_TEMPLATES[Number(btn.dataset.index)], newStart);
+      });
+    });
+  }
+
+  document.getElementById('archive-search-input').addEventListener('input', function () { renderArchiveList(this.value); });
+  renderArchiveList('');
+
+  function applyTemplate(template, newStartISO) {
+    // Relative Scheduling Logic: New Deadline = New Event Start + (Old Deadline - Old Event Start)
+    var newStart = new Date(newStartISO + 'T00:00:00');
+    var byPhase = {};
+    template.tasks.forEach(function (t) {
+      if (!byPhase[t.phase]) byPhase[t.phase] = [];
+      byPhase[t.phase].push(t);
+    });
+    phases = [];
+    phaseSeq = 0;
+    Object.keys(byPhase).forEach(function (phaseName) {
+      phaseSeq++;
+      var newPhase = { id: 'phase-' + phaseSeq, number: String(phaseSeq).padStart(2, '0'), name: phaseName, tasks: [] };
+      byPhase[phaseName].forEach(function (t) {
+        var newDate = new Date(newStart.getTime());
+        newDate.setDate(newDate.getDate() + t.offsetDays);
+        var taskData = { name: t.name, committee: t.committee, priority: t.priority, assignees: [], status: 'todo' };
+        if (t.liveOp) {
+          taskData.taskType = 'live-op';
+          taskData.callDate = newDate.toISOString().slice(0, 10);
+          taskData.callTime = String(t.callHour || 9).padStart(2, '0') + ':00';
+        } else {
+          taskData.taskType = 'deliverable';
+          taskData.due = newDate.toISOString().slice(0, 10);
+        }
+        newPhase.tasks.push(mkTask(taskData));
+      });
+      phases.push(newPhase);
+    });
+    renderPhases();
+    updateSummary();
+    switchTab('tasks');
+    showToast('Copied ' + template.tasks.length + ' tasks — deadlines shifted to your new dates, assignees cleared');
+  }
+
+  // ---------- Data ----------
+  var COMMITTEES = ['President','CIA','COEXA','COMRECS','COFBUM','CARA','COPI','COPR','COBAP','COSEA','COSCA','COSRAW'];
+  var MEMBERS = [
+    { name: 'Prince Tan', initials: 'PT', committee: 'COFBUM', active: 4 },
+    { name: 'Andrea Santos', initials: 'AS', committee: 'COFBUM', active: 2 },
+    { name: 'John Benedict', initials: 'JB', committee: 'CIA', active: 1 },
+    { name: 'Kim Lee', initials: 'KL', committee: 'CIA', active: 3 },
+    { name: 'Maria Reyes', initials: 'MR', committee: 'COMRECS', active: 5 },
+    { name: 'Carlo Dizon', initials: 'CD', committee: 'COPR', active: 0 },
+  ];
+  var priorityStyle = {
+    low: 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-night-muted',
+    medium: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400',
+    high: 'bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light',
+  };
+  var statusStyle = {
+    'todo': { dot: 'bg-slate-400', label: 'To Do' },
+    'in-progress': { dot: 'bg-sky-500', label: 'In Progress' },
+    'completed': { dot: 'bg-emerald-500', label: 'Completed' },
+  };
+
+  var taskSeq = 0;
+  var allTasks = {};
+  var phases = [];
+  var phaseSeq = 0;
+
+  function committeeOptionsHTML(selected) {
+    return COMMITTEES.map(function (c) { return '<option value="' + c + '"' + (c === selected ? ' selected' : '') + '>' + c + '</option>'; }).join('');
+  }
+  function dependencyOptionsHTML(selected, excludeId) {
+    var opts = '<option value="">None</option>';
+    Object.keys(allTasks).forEach(function (id) {
+      if (id === excludeId) return;
+      opts += '<option value="' + id + '"' + (id === selected ? ' selected' : '') + '>' + allTasks[id].name + '</option>';
+    });
+    return opts;
+  }
+  function initialsAvatar(m, extraClass) {
+    return '<div class="w-6 h-6 rounded-full bg-slate-300 dark:bg-white/15 border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-night-text ' + (extraClass || '') + '" title="' + m.name + '">' + m.initials + '</div>';
+  }
+  var ACCESS_COLORS = ['#EC6608', '#A8440A', '#0EA5A0', '#6366F1', '#DB2777', '#65A30D', '#0284C7'];
+  function accessColor(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return ACCESS_COLORS[h % ACCESS_COLORS.length];
+  }
+  function initialsOf(name) {
+    return name.split(' ').map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase();
+  }
+  function formatDate(iso) {
+    if (!iso) return null;
+    var d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+  function formatDateTime(dateVal, timeVal) {
+    if (!dateVal && !timeVal) return null;
+    var d = formatDate(dateVal);
+    var t = null;
+    if (timeVal) {
+      var parts = timeVal.split(':');
+      var h = parseInt(parts[0], 10);
+      var ampm = h >= 12 ? 'PM' : 'AM';
+      var h12 = h % 12; if (h12 === 0) h12 = 12;
+      t = h12 + ':' + parts[1] + ' ' + ampm;
+    }
+    if (d && t) return d + ', ' + t;
+    return d || t;
+  }
+
+  function mkTask(t) {
+    taskSeq++;
+    var id = 't' + taskSeq;
+    var full = {
+      id: id, name: t.name, description: t.description || '', status: t.status || 'todo',
+      taskType: t.taskType || 'deliverable', priority: t.priority || 'medium', committee: t.committee || COMMITTEES[0], assignees: t.assignees || [],
+      dependsOn: t.dependsOn || '', confidential: !!t.confidential, requestBackup: !!t.requestBackup,
+      due: t.due || '', callDate: t.callDate || '', callTime: t.callTime || '', endTime: t.endTime || '', drive: t.drive || '',
+      accessList: t.accessList || [],
+    };
+    allTasks[id] = { name: full.name, phaseId: null };
+    return full;
+  }
+
+  function taskRowHTML(task) {
+    var pClass = priorityStyle[task.priority] || priorityStyle.low;
+    var sInfo = statusStyle[task.status] || statusStyle.todo;
+    var depHTML = task.dependsOn && allTasks[task.dependsOn]
+      ? '<span class="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-night-muted text-[10.5px] font-semibold px-2 py-1"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>' + allTasks[task.dependsOn].name + '</span>'
+      : '<span class="inline-flex items-center rounded-md border border-slate-300 dark:border-white/15 text-slate-500 dark:text-night-muted text-[10.5px] font-semibold px-2 py-1">None</span>';
+    var nameText = task.confidential
+      ? '<span class="italic text-slate-500 dark:text-night-muted"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="inline -mt-0.5 mr-1"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>Confidential Task</span>'
+      : task.name;
+    var backupBadge = task.requestBackup ? '<span class="inline-flex items-center gap-1 rounded-md bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[9.5px] font-bold px-1.5 py-0.5 ml-1.5 align-middle">🚨 Help Wanted</span>' : '';
+    var nameHTML = '<div>' + nameText + backupBadge + '</div>';
+    var callLabel = formatDateTime(task.callDate, task.callTime);
+    var whenHTML = task.taskType === 'live-op'
+      ? (callLabel ? '<span class="inline-flex items-center gap-1 rounded-md bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[10.5px] font-bold px-2 py-1"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>' + callLabel + '</span>' : '<span class="inline-flex items-center rounded-md border border-council/40 text-council-dark dark:text-council-light text-[10.5px] font-bold px-2 py-1">No call time</span>')
+      : (task.due ? '<span class="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-night-muted text-[10.5px] font-semibold px-2 py-1"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>' + formatDate(task.due) + '</span>' : '<span class="inline-flex items-center rounded-md border border-slate-300 dark:border-white/15 text-slate-500 dark:text-night-muted text-[10.5px] font-semibold px-2 py-1">No due date</span>');
+    var avatars = task.assignees.length
+      ? '<div class="flex -space-x-1.5">' + task.assignees.slice(0, 3).map(function (n) { return initialsAvatar(MEMBERS.find(function (m) { return m.name === n; }) || { initials: '?', name: n }); }).join('') + (task.assignees.length > 3 ? '<div class="w-6 h-6 rounded-full bg-ink dark:bg-council-dark border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-white">+' + (task.assignees.length - 3) + '</div>' : '') + '</div>'
+      : '<span class="text-xs text-slate-400 dark:text-night-muted/60">Unassigned</span>';
+    return (
+      '<tr class="task-row cursor-pointer border-b border-slate-200/70 dark:border-white/5 last:border-0" data-task-id="' + task.id + '">' +
+        '<td class="py-3 pr-3 text-sm font-semibold max-w-[220px]">' + nameHTML + '</td>' +
+        '<td class="py-3 pr-3"><span class="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-slate-600 dark:text-night-muted"><span class="w-1.5 h-1.5 rounded-full ' + sInfo.dot + '"></span>' + sInfo.label + '</span></td>' +
+        '<td class="py-3 pr-3"><span class="inline-flex items-center rounded-md ' + pClass + ' text-[10.5px] font-bold px-2 py-1 tracking-wide uppercase">' + task.priority + '</span></td>' +
+        '<td class="py-3 pr-3">' + whenHTML + '</td>' +
+        '<td class="py-3 pr-3">' + depHTML + '</td>' +
+        '<td class="py-3 pr-3"><span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-night-muted text-[10.5px] font-bold px-2 py-1">' + task.committee + '</span></td>' +
+        '<td class="py-3 pl-1">' + avatars + '</td>' +
+      '</tr>'
+    );
+  }
+
+  var TINY_SLEEPING_TIGER_SVG = (
+    '<svg width="64" height="48" viewBox="0 0 120 90">' +
+      '<ellipse cx="60" cy="55" rx="46" ry="28" fill="#FFDDBB"/>' +
+      '<path d="M22 20 L14 6 L32 12 Z" fill="#FFDDBB"/><path d="M98 20 L106 6 L88 12 Z" fill="#FFDDBB"/>' +
+      '<path d="M40 50 q8 6 16 0 M64 50 q8 6 16 0" stroke="#1B140F" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+      '<path d="M52 62 q8 5 16 0" stroke="#1B140F" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+    '</svg>'
+  );
+  function phaseEmptyStateHTML() {
+    return '<div class="flex flex-col items-center text-center py-6">' + TINY_SLEEPING_TIGER_SVG + '<p class="text-xs text-slate-500 dark:text-night-muted mt-2">No tasks yet.</p></div>';
+  }
+  function phasesEmptyOverallHTML() {
+    return '<div class="flex flex-col items-center text-center py-10 rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/15">' +
+      '<svg width="80" height="60" viewBox="0 0 120 90">' +
+        '<ellipse cx="60" cy="55" rx="46" ry="28" fill="#FFDDBB"/>' +
+        '<path d="M22 20 L14 6 L32 12 Z" fill="#FFDDBB"/><path d="M98 20 L106 6 L88 12 Z" fill="#FFDDBB"/>' +
+        '<path d="M40 50 q8 6 16 0 M64 50 q8 6 16 0" stroke="#1B140F" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+        '<path d="M52 62 q8 5 16 0" stroke="#1B140F" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+      '</svg>' +
+      '<p class="text-sm font-semibold mt-2">No phases yet</p>' +
+      '<p class="text-xs text-slate-500 dark:text-night-muted mt-0.5">Add a phase below, or copy one from an archive template.</p>' +
+    '</div>';
+  }
+
+  function phaseCardHTML(phase) {
+    return (
+      '<div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 overflow-hidden phase-card" data-phase-id="' + phase.id + '">' +
+        '<div class="phase-header-row w-full flex items-center justify-between px-5 py-4 bg-slate-100/70 dark:bg-white/5 text-left">' +
+          '<span class="flex items-center gap-3 min-w-0">' +
+            '<span class="w-7 h-7 rounded-lg bg-ink dark:bg-council-dark text-white font-display font-semibold text-xs flex items-center justify-center shrink-0">' + phase.number + '</span>' +
+            '<span class="phase-name font-display font-semibold text-base outline-none rounded-md px-1.5 -mx-1.5 py-0.5 hover:bg-white/70 dark:hover:bg-white/10 focus:bg-white dark:focus:bg-white/10 focus:ring-2 focus:ring-council/40 truncate" contenteditable="true" spellcheck="false" title="Click to rename">' + phase.name + '</span>' +
+            '<span class="text-xs text-slate-500 dark:text-night-muted phase-count shrink-0">' + phase.tasks.length + ' tasks</span>' +
+          '</span>' +
+          '<svg class="chevron text-slate-400 shrink-0 ml-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' +
+        '</div>' +
+        '<div class="phase-body"><div>' +
+          '<div class="px-5 pt-3 pb-4 overflow-x-auto">' +
+            (phase.tasks.length > 0 ?
+              '<table class="w-full min-w-[760px]"><thead><tr class="text-left text-[10.5px] uppercase tracking-wide text-slate-500 dark:text-night-muted border-b border-slate-200/70 dark:border-white/10">' +
+                '<th class="pb-2 pr-3 font-semibold">Task Name</th><th class="pb-2 pr-3 font-semibold">Status</th><th class="pb-2 pr-3 font-semibold">Priority</th><th class="pb-2 pr-3 font-semibold">When</th><th class="pb-2 pr-3 font-semibold">Dependency</th><th class="pb-2 pr-3 font-semibold">Committee</th><th class="pb-2 font-semibold">Assignees</th>' +
+              '</tr></thead><tbody class="phase-tbody">' + phase.tasks.map(taskRowHTML).join('') + '</tbody></table>'
+              : phaseEmptyStateHTML()) +
+          '</div>' +
+          '<div class="px-5 pb-4">' +
+            '<button class="add-task-btn w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 text-slate-500 dark:text-night-muted font-semibold text-xs py-2.5 hover:border-council hover:text-council transition-colors">' +
+              '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add new task' +
+            '</button>' +
+          '</div>' +
+        '</div></div>' +
+      '</div>'
+    );
+  }
+
+  function renderPhases() {
+    var container = document.getElementById('phases-container');
+    container.innerHTML = phases.length ? phases.map(phaseCardHTML).join('') : phasesEmptyOverallHTML();
+    attachPhaseHandlers();
+    updateSummary();
+  }
+
+  function attachPhaseHandlers() {
+    document.querySelectorAll('.phase-header-row').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('.phase-name')) return;
+        var card = row.closest('.phase-card');
+        card.querySelector('.phase-body').classList.toggle('collapsed');
+        card.classList.toggle('collapsed-phase');
+      });
+    });
+    document.querySelectorAll('.phase-name').forEach(function (nameEl) {
+      var original = nameEl.textContent;
+      nameEl.addEventListener('click', function (e) { e.stopPropagation(); });
+      nameEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+        if (e.key === 'Escape') { nameEl.textContent = original; nameEl.blur(); }
+      });
+      nameEl.addEventListener('blur', function () {
+        var phaseId = nameEl.closest('.phase-card').dataset.phaseId;
+        var phase = phases.find(function (p) { return p.id === phaseId; });
+        var newName = nameEl.textContent.trim();
+        if (!newName) { nameEl.textContent = phase.name; return; }
+        if (newName !== phase.name) phase.name = newName;
+        nameEl.textContent = newName;
+      });
+    });
+    document.querySelectorAll('.add-task-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { openTaskModal(btn.closest('.phase-card').dataset.phaseId, null); });
+    });
+    document.querySelectorAll('.task-row').forEach(function (row) {
+      row.addEventListener('click', function () { openTaskModal(row.closest('.phase-card').dataset.phaseId, row.dataset.taskId); });
+    });
+  }
+
+  document.getElementById('add-phase-btn').addEventListener('click', function () {
+    document.getElementById('phase-name-input').value = '';
+    document.getElementById('phase-modal-overlay').classList.remove('hidden-modal');
+  });
+  document.querySelectorAll('[data-close-phase]').forEach(function (b) { b.addEventListener('click', function () { document.getElementById('phase-modal-overlay').classList.add('hidden-modal'); }); });
+  document.getElementById('phase-modal-overlay').addEventListener('click', function (e) { if (e.target === this) this.classList.add('hidden-modal'); });
+  document.getElementById('phase-save-btn').addEventListener('click', function () {
+    var name = document.getElementById('phase-name-input').value.trim();
+    if (!name) { document.getElementById('phase-name-input').focus(); return; }
+    phaseSeq++;
+    phases.push({ id: 'phase-' + phaseSeq, number: String(phaseSeq).padStart(2, '0'), name: name, tasks: [] });
+    renderPhases();
+    document.getElementById('phase-modal-overlay').classList.add('hidden-modal');
+    switchTab('tasks');
+  });
+
+  // ---------- Task modal ----------
+  var taskModalOverlay = document.getElementById('task-modal-overlay');
+  var currentPhaseId = null, currentTaskId = null;
+  var currentSelectedAssignees = [];
+  var currentAccessList = [];
+
+  // ---------- Confidential access list ----------
+  function renderAccessChips() {
+    var wrap = document.getElementById('access-chip-list');
+    var html = '';
+    currentSelectedAssignees.forEach(function (name) {
+      html += '<span class="access-chip access-chip-enter inline-flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-1 text-xs font-medium">' +
+        '<span class="access-avatar" style="background:' + accessColor(name) + '">' + initialsOf(name) + '</span>' +
+        name + '<span class="access-owner-badge ml-0.5">ASSIGNEE</span></span>';
+    });
+    currentAccessList.forEach(function (name) {
+      html += '<span class="access-chip access-chip-enter inline-flex items-center gap-1.5 rounded-full pl-1 pr-1.5 py-1 text-xs font-medium">' +
+        '<span class="access-avatar" style="background:' + accessColor(name) + '">' + initialsOf(name) + '</span>' +
+        name +
+        '<button type="button" class="access-chip-remove access-chip-remove-btn" data-name="' + name + '" title="Remove access">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+        '</button></span>';
+    });
+    if (!currentSelectedAssignees.length && !currentAccessList.length) {
+      html = '<p class="text-xs text-slate-500 dark:text-night-muted">Nobody added yet — pick assignees above, or add someone below.</p>';
+    }
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('.access-chip-remove-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        currentAccessList = currentAccessList.filter(function (n) { return n !== btn.dataset.name; });
+        renderAccessChips();
+      });
+    });
+  }
+
+  function renderAccessDropdown(filterText) {
+    var dd = document.getElementById('access-add-dropdown');
+    var q = (filterText || '').trim().toLowerCase();
+    var taken = currentSelectedAssignees.concat(currentAccessList);
+    var pool = MEMBERS.filter(function (m) { return m.name.toLowerCase().indexOf(q) !== -1; });
+    if (!pool.length) { dd.innerHTML = '<p class="text-xs text-slate-500 dark:text-night-muted text-center py-2.5">No members match.</p>'; return; }
+    dd.innerHTML = pool.map(function (m) {
+      var already = taken.indexOf(m.name) !== -1;
+      return '<button type="button" data-name="' + m.name + '" class="access-picker-row w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-sm' + (already ? ' already-added' : '') + '" ' + (already ? 'disabled' : '') + '>' +
+        '<span class="flex items-center gap-2"><span class="access-avatar" style="background:' + accessColor(m.name) + '">' + m.initials + '</span>' + m.name + '</span>' +
+        '<span class="text-[10.5px] text-slate-500 dark:text-night-muted">' + (already ? 'Added' : m.committee) + '</span>' +
+      '</button>';
+    }).join('');
+    dd.querySelectorAll('.access-picker-row:not(.already-added)').forEach(function (row) {
+      row.addEventListener('click', function () {
+        currentAccessList.push(row.dataset.name);
+        document.getElementById('access-add-input').value = '';
+        renderAccessChips();
+        closeAccessDropdown();
+      });
+    });
+  }
+  function openAccessDropdown() {
+    document.getElementById('access-add-dropdown').classList.remove('dd-hidden');
+    renderAccessDropdown(document.getElementById('access-add-input').value);
+  }
+  function closeAccessDropdown() {
+    document.getElementById('access-add-dropdown').classList.add('dd-hidden');
+  }
+  document.getElementById('access-add-input').addEventListener('focus', openAccessDropdown);
+  document.getElementById('access-add-input').addEventListener('input', function () { openAccessDropdown(); });
+  document.addEventListener('click', function (e) {
+    var picker = document.getElementById('access-add-input').closest('.relative').parentElement;
+    if (picker && !picker.contains(e.target)) closeAccessDropdown();
+  });
+
+  function updateConfidentialPanel() {
+    var on = document.getElementById('task-confidential-input').checked;
+    document.getElementById('confidential-access-panel').classList.toggle('open', on);
+    if (on) renderAccessChips();
+  }
+  document.getElementById('task-confidential-input').addEventListener('change', updateConfidentialPanel);
+
+  function setTaskType(type) {
+    var isLiveOp = type === 'live-op';
+    document.getElementById('type-deliverable-btn').classList.toggle('active', !isLiveOp);
+    document.getElementById('type-liveop-btn').classList.toggle('active', isLiveOp);
+    document.getElementById('type-deliverable-btn').dataset.selected = !isLiveOp;
+    document.getElementById('type-liveop-btn').dataset.selected = isLiveOp;
+    document.getElementById('liveops-banner').classList.toggle('hidden', !isLiveOp);
+    document.getElementById('liveops-banner').classList.toggle('flex', isLiveOp);
+    document.getElementById('due-date-field').classList.toggle('hidden', isLiveOp);
+    document.getElementById('dependency-field').classList.toggle('col-span-2', isLiveOp);
+    document.getElementById('liveop-time-fields').classList.toggle('hidden', !isLiveOp);
+    document.getElementById('priority-note').textContent = isLiveOp
+      ? 'Critical priority is set automatically if this duty is missed without being marked complete.'
+      : 'Critical priority is set automatically once overdue — it can\'t be chosen manually.';
+  }
+  document.getElementById('type-deliverable-btn').addEventListener('click', function () { setTaskType('deliverable'); });
+  document.getElementById('type-liveop-btn').addEventListener('click', function () { setTaskType('live-op'); });
+
+  // Quick pick: fills the call date relative to whatever Start Date is currently set in Event Details.
+  document.querySelectorAll('.call-date-preset').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var base = document.getElementById('event-start-input').value;
+      if (!base) { document.getElementById('event-start-input').focus(); return; }
+      var d = new Date(base + 'T00:00:00');
+      d.setDate(d.getDate() + parseInt(btn.dataset.offset, 10));
+      document.getElementById('task-calldate-input').value = d.toISOString().slice(0, 10);
+    });
+  });
+
+  function openTaskModal(phaseId, taskId) {
+    currentPhaseId = phaseId;
+    currentTaskId = taskId;
+    var committeeSelect = document.getElementById('task-committee-input');
+    var depSelect = document.getElementById('task-dependency-input');
+    var task = taskId ? phases.find(function (p) { return p.id === phaseId; }).tasks.find(function (t) { return t.id === taskId; }) : null;
+
+    document.getElementById('task-modal-title').textContent = task ? 'Edit Task' : 'Add Task';
+    document.getElementById('task-name-input').value = task ? task.name : '';
+    document.getElementById('task-description-input').value = task ? task.description : '';
+    document.getElementById('task-status-input').value = task ? task.status : 'todo';
+    document.getElementById('task-priority-input').value = task ? task.priority : 'medium';
+    committeeSelect.innerHTML = committeeOptionsHTML(task ? task.committee : COMMITTEES[0]);
+    depSelect.innerHTML = dependencyOptionsHTML(task ? task.dependsOn : '', taskId);
+    document.getElementById('task-due-input').value = task ? task.due : '';
+    document.getElementById('task-calldate-input').value = task ? task.callDate : '';
+    document.getElementById('task-calltime-input').value = task ? task.callTime : '';
+    document.getElementById('task-endtime-input').value = task ? task.endTime : '';
+    document.getElementById('task-drive-input').value = task ? (task.drive || '') : '';
+    document.getElementById('task-confidential-input').checked = task ? task.confidential : false;
+    document.getElementById('task-backup-input').checked = task ? task.requestBackup : false;
+    setTaskType(task ? task.taskType : 'deliverable');
+    document.getElementById('task-delete-btn').classList.toggle('hidden', !task);
+
+    currentSelectedAssignees = task ? task.assignees.slice() : [];
+    document.getElementById('assignee-search-input').value = '';
+    renderAssigneeList('');
+    committeeSelect.onchange = function () { renderAssigneeList(document.getElementById('assignee-search-input').value); };
+
+    currentAccessList = task ? (task.accessList || []).slice() : [];
+    document.getElementById('access-add-input').value = '';
+    closeAccessDropdown();
+    updateConfidentialPanel();
+
+    taskModalOverlay.classList.remove('hidden-modal');
+  }
+
+  function renderAssigneeList(filterText) {
+    var listEl = document.getElementById('task-assignees-list');
+    var committee = document.getElementById('task-committee-input').value;
+    var q = (filterText || '').trim().toLowerCase();
+    var pool = MEMBERS.filter(function (m) { return m.name.toLowerCase().indexOf(q) !== -1; });
+    var inCommittee = pool.filter(function (m) { return m.committee === committee; });
+    var outside = pool.filter(function (m) { return m.committee !== committee; });
+    function rowHTML(m) {
+      var checked = currentSelectedAssignees.indexOf(m.name) !== -1 ? 'checked' : '';
+      return '<label class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer text-sm">' +
+        '<span class="flex items-center gap-2"><input type="checkbox" value="' + m.name + '" class="assignee-checkbox accent-orange-600" ' + checked + '>' + m.name + '</span>' +
+        '<span class="text-[10.5px] text-slate-500 dark:text-night-muted">' + m.committee + ' · ' + m.active + ' active</span>' +
+      '</label>';
+    }
+    var html = '';
+    if (inCommittee.length) html += '<p class="text-[9.5px] uppercase tracking-wide font-bold text-slate-400 dark:text-night-muted/70 px-2 pt-1">In ' + committee + '</p>' + inCommittee.map(rowHTML).join('');
+    if (outside.length) html += '<p class="text-[9.5px] uppercase tracking-wide font-bold text-slate-400 dark:text-night-muted/70 px-2 pt-2">Other Committees</p>' + outside.map(rowHTML).join('');
+    if (!inCommittee.length && !outside.length) html = '<p class="text-xs text-slate-500 dark:text-night-muted text-center py-3">No members match.</p>';
+    listEl.innerHTML = html;
+    Array.prototype.forEach.call(listEl.querySelectorAll('.assignee-checkbox'), function (cb) {
+      cb.addEventListener('change', function () {
+        if (cb.checked) { if (currentSelectedAssignees.indexOf(cb.value) === -1) currentSelectedAssignees.push(cb.value); }
+        else { currentSelectedAssignees = currentSelectedAssignees.filter(function (n) { return n !== cb.value; }); }
+        if (document.getElementById('task-confidential-input').checked) renderAccessChips();
+      });
+    });
+  }
+  document.getElementById('assignee-search-input').addEventListener('input', function () { renderAssigneeList(this.value); });
+
+  function closeTaskModal() { taskModalOverlay.classList.add('hidden-modal'); }
+  document.querySelectorAll('[data-close-task]').forEach(function (b) { b.addEventListener('click', closeTaskModal); });
+  taskModalOverlay.addEventListener('click', function (e) { if (e.target === taskModalOverlay) closeTaskModal(); });
+
+  document.getElementById('task-save-btn').addEventListener('click', function () {
+    var name = document.getElementById('task-name-input').value.trim();
+    if (!name) { document.getElementById('task-name-input').focus(); return; }
+    var description = document.getElementById('task-description-input').value.trim();
+    var status = document.getElementById('task-status-input').value;
+    var taskType = document.getElementById('type-liveop-btn').dataset.selected === 'true' ? 'live-op' : 'deliverable';
+    var priority = document.getElementById('task-priority-input').value;
+    var committee = document.getElementById('task-committee-input').value;
+    var dependsOn = document.getElementById('task-dependency-input').value;
+    var due = document.getElementById('task-due-input').value;
+    var callDate = document.getElementById('task-calldate-input').value;
+    var callTime = document.getElementById('task-calltime-input').value;
+    var endTime = document.getElementById('task-endtime-input').value;
+    var drive = document.getElementById('task-drive-input').value.trim();
+    var confidential = document.getElementById('task-confidential-input').checked;
+    var requestBackup = document.getElementById('task-backup-input').checked;
+    var assignees = currentSelectedAssignees.slice();
+    var phase = phases.find(function (p) { return p.id === currentPhaseId; });
+
+    if (currentTaskId) {
+      var task = phase.tasks.find(function (t) { return t.id === currentTaskId; });
+      task.name = name; task.description = description; task.status = status; task.taskType = taskType; task.priority = priority; task.committee = committee;
+      task.dependsOn = dependsOn; task.due = due; task.callDate = callDate; task.callTime = callTime; task.endTime = endTime; task.drive = drive; task.confidential = confidential;
+      task.requestBackup = requestBackup; task.assignees = assignees;
+      allTasks[currentTaskId].name = name;
+      showToast('Task updated');
+    } else {
+      var newTask = mkTask({ name: name, description: description, status: status, taskType: taskType, priority: priority, committee: committee, assignees: assignees, dependsOn: dependsOn, due: due, callDate: callDate, callTime: callTime, endTime: endTime, confidential: confidential, requestBackup: requestBackup, drive: drive });
+      phase.tasks.push(newTask);
+      showToast('Task added');
+    }
+    renderPhases();
+    closeTaskModal();
+  });
+
+  var deleteOverlay = document.getElementById('delete-modal-overlay');
+  document.getElementById('task-delete-btn').addEventListener('click', function () { deleteOverlay.classList.remove('hidden-modal'); });
+  document.querySelectorAll('[data-close-delete]').forEach(function (b) { b.addEventListener('click', function () { deleteOverlay.classList.add('hidden-modal'); }); });
+  deleteOverlay.addEventListener('click', function (e) { if (e.target === deleteOverlay) deleteOverlay.classList.add('hidden-modal'); });
+  document.getElementById('delete-confirm-btn').addEventListener('click', function () {
+    var phase = phases.find(function (p) { return p.id === currentPhaseId; });
+    phase.tasks = phase.tasks.filter(function (t) { return t.id !== currentTaskId; });
+    delete allTasks[currentTaskId];
+    renderPhases();
+    deleteOverlay.classList.add('hidden-modal');
+    closeTaskModal();
+    showToast('Task deleted');
+  });
+
+  // ---------- Event Details tab ----------
+  var eventNameInput = document.getElementById('event-name-input');
+  var eventStartInput = document.getElementById('event-start-input');
+  var eventEndInput = document.getElementById('event-end-input');
+  [eventNameInput, eventStartInput, eventEndInput].forEach(function (el) { el.addEventListener('input', updateSummary); });
+
+  var eventDescInput = document.getElementById('event-desc-input');
+  var descCounter = document.getElementById('desc-counter');
+  eventDescInput.addEventListener('input', function () {
+    descCounter.textContent = eventDescInput.value.length + '/300';
+  });
+
+  var bannerDrop = document.getElementById('banner-drop');
+  var bannerInput = document.getElementById('banner-input');
+  var bannerPreview = document.getElementById('banner-preview');
+  var bannerPlaceholder = document.getElementById('banner-placeholder');
+  bannerDrop.addEventListener('click', function () { bannerInput.click(); });
+  bannerInput.addEventListener('change', function () {
+    var file = bannerInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      bannerPreview.src = e.target.result;
+      bannerPreview.classList.remove('hidden');
+      bannerPlaceholder.classList.add('hidden');
+      var summaryImg = document.getElementById('summary-banner-img');
+      summaryImg.src = e.target.result;
+      summaryImg.classList.remove('hidden');
+      document.getElementById('summary-banner-placeholder').classList.add('hidden');
+      showToast('Banner cropped 16:9 & compressed');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---------- Live summary ----------
+  function setCheck(id, done) {
+    document.getElementById(id).classList.toggle('done', done);
+  }
+  function updateSummary() {
+    var name = eventNameInput.value.trim();
+    var start = eventStartInput.value, end = eventEndInput.value;
+    document.getElementById('summary-name').textContent = name || 'Untitled Event';
+    document.getElementById('summary-dates').textContent = (start && end) ? (formatDate(start) + ' – ' + formatDate(end) + ', ' + start.slice(0, 4)) : 'Dates not set';
+
+    var totalTasks = phases.reduce(function (sum, p) { return sum + p.tasks.length; }, 0);
+    document.getElementById('summary-phase-count').textContent = phases.length;
+    document.getElementById('summary-task-count').textContent = totalTasks;
+
+    var hasName = !!name, hasDates = !!(start && end), hasTasks = totalTasks > 0;
+    setCheck('check-name', hasName);
+    setCheck('check-dates', hasDates);
+    setCheck('check-tasks', hasTasks);
+
+    var ready = hasName && hasDates && hasTasks;
+    var launchBtn = document.getElementById('launch-event-btn');
+    launchBtn.disabled = !ready;
+    document.getElementById('ready-tiger').classList.toggle('hidden', !ready);
+    document.getElementById('ready-tiger').classList.toggle('flex', ready);
+  }
+
+  document.getElementById('save-draft-btn').addEventListener('click', function () { showToast('Saved as Draft'); });
+  document.getElementById('launch-event-btn').addEventListener('click', function () {
+    if (this.disabled) return;
+    showToast('Event launched — now visible to all committees');
+  });
+
+  renderPhases();
+  updateSummary();
+</script>
+
+<nav id="app-mobile-nav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-card dark:bg-night-card border-t border-slate-300/70 dark:border-white/10 flex items-stretch justify-around px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))]">
+  <a href="index.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg><span class="text-[10px] font-medium">Home</span></a>
+  <a href="tasks.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg><span class="text-[10px] font-medium">Tasks</span></a>
+  <a href="dashboard.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg><span class="text-[10px] font-medium">Dashboard</span></a>
+  <a href="settings.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span class="text-[10px] font-medium">Settings</span></a>
+  <button id="mobile-more-btn" type="button" class="mobile-link relative flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-council"><span class="absolute top-1 w-1.5 h-1.5 rounded-full bg-council"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span class="text-[10px] font-semibold">More</span></button>
+</nav>
+
+<div id="mobile-more-overlay" class="md:hidden fixed inset-0 z-40 bg-ink/40 dark:bg-black/60 hidden"></div>
+<div id="mobile-more-sheet" class="md:hidden fixed bottom-0 inset-x-0 z-50 translate-y-full transition-transform duration-200 bg-card dark:bg-night-card rounded-t-2xl p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl">
+  <div class="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-white/15 mx-auto mb-2"></div>
+  <a href="archive.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>Event Archives</a>
+  <a href="activity-log.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Activity Log</a>
+  <a href="user-management.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>User Management</a>
+  <a href="notifications.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notifications</a>
+  <a href="create-event.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-council hover:bg-council-wash dark:hover:bg-night-wash"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New Event</a>
+  <button id="mobile-more-close" type="button" class="w-full mt-1 rounded-xl py-2.5 text-sm font-semibold text-slate-500 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5">Close</button>
+</div>
+
+<script>
+  (function () {
+    var moreBtn = document.getElementById("mobile-more-btn");
+    var overlay = document.getElementById("mobile-more-overlay");
+    var sheet = document.getElementById("mobile-more-sheet");
+    var closeBtn = document.getElementById("mobile-more-close");
+    if (!moreBtn) return;
+    function openSheet() { overlay.classList.remove("hidden"); sheet.classList.remove("translate-y-full"); }
+    function closeSheet() { overlay.classList.add("hidden"); sheet.classList.add("translate-y-full"); }
+    moreBtn.addEventListener("click", openSheet);
+    closeBtn.addEventListener("click", closeSheet);
+    overlay.addEventListener("click", closeSheet);
+  })();
+</script>
+
+</body>
+</html>
