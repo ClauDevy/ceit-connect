@@ -1,19 +1,12 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
-import { requireUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { getActiveProfileForRoles } from "@/lib/auth";
 
 // Intentionally empty: this page's content hasn't been built yet.
 export default async function ActivityLogPage() {
-  const supabase = await createClient();
-  const user = await requireUser();
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const profile = await getActiveProfileForRoles(["Admin"]);
 
-  if (profile?.role !== "Admin") {
+  if (!profile) {
     redirect("/home");
   }
 

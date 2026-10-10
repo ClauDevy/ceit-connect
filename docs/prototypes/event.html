@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEIT Connect — Freshmen Orientation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-paper dark:bg-night-bg text-ink dark:text-night-text antialiased">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="hidden md:flex w-60 lg:w-64 shrink-0 flex-col border-r border-slate-300/70 dark:border-white/10 bg-card dark:bg-night-card h-full relative">
+  <button id="sidebar-toggle" class="hidden md:flex absolute -right-3 top-9 w-6 h-6 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 items-center justify-center text-slate-500 dark:text-night-muted hover:text-council transition-colors z-10">
+    <svg id="sidebar-toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="transition: transform .2s ease;"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+
+  <div class="flex-1 min-h-0 overflow-y-auto flex flex-col justify-between px-5 lg:px-6 py-7">
+    <div>
+      <div class="flex items-center gap-2.5 mb-9">
+        <svg width="34" height="34" viewBox="0 0 100 100" class="shrink-0">
+          <ellipse cx="50" cy="54" rx="33" ry="25" fill="#EC6608"/>
+          <ellipse cx="50" cy="63" rx="19" ry="14" fill="#FFF8F0"/>
+          <path d="M25 32 L17 15 L35 23 Z" fill="#EC6608"/>
+          <path d="M75 32 L83 15 L65 23 Z" fill="#EC6608"/>
+          <path d="M25 30 L21 19 L31 24 Z" fill="#1B140F"/>
+          <path d="M75 30 L79 19 L69 24 Z" fill="#1B140F"/>
+          <path d="M33 36 L28 25 M41 32 L39 21 M59 32 L61 21 M67 36 L72 25" stroke="#1B140F" stroke-width="2.6" stroke-linecap="round"/>
+          <path d="M36 44 Q42 37 48 44 M52 44 Q58 37 64 44" stroke="#1B140F" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+          <circle cx="42" cy="50" r="3" fill="#1B140F"/>
+          <circle cx="58" cy="50" r="3" fill="#1B140F"/>
+        </svg>
+        <div class="leading-tight sidebar-label">
+          <p class="font-display font-semibold text-[15px] tracking-tight">CEIT Connect</p>
+          <p class="text-[11px] text-slate-500 dark:text-night-muted -mt-0.5">Student Council</p>
+        </div>
+      </div>
+
+      <nav class="flex flex-col gap-1 pl-5">
+        <a href="index.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+          <span class="sidebar-label">Home</span>
+        </a>
+        <a href="tasks.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg>
+          <span class="sidebar-label">My Tasks</span>
+        </a>
+        <a href="archive.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+          <span class="sidebar-label">Event Archives</span>
+        </a>
+        <a href="activity-log.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          <span class="sidebar-label">Activity Log</span>
+        </a>
+        <a href="dashboard.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
+          <span class="sidebar-label">Dashboard</span>
+        </a>
+        <a href="settings.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          <span class="sidebar-label">Settings</span>
+        </a>
+        <a href="user-management.html" class="nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-slate-700 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="sidebar-label">User Management</span>
+        </a>
+</nav>
+    </div>
+
+    <div>
+      <a href="create-event.html" class="w-full flex items-center justify-center gap-2 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm py-3 mb-4 hover:bg-council-dark transition-colors">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="sidebar-label">New Event</span>
+      </a>
+
+      <button id="theme-toggle" class="w-full flex items-center justify-between rounded-xl border border-slate-300 dark:border-white/15 px-3.5 py-2.5 mb-5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+        <span class="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-night-muted">
+          <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg id="theme-icon-moon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+          <span id="theme-label" class="sidebar-label">Light mode</span>
+        </span>
+        <span class="theme-toggle-track sidebar-label relative w-9 h-5 rounded-full shrink-0">
+          <span class="theme-toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"></span>
+        </span>
+      </button>
+
+      <div class="flex items-center gap-2 opacity-40 sidebar-label">
+        <span class="paw block w-4 h-4 bg-council"></span>
+        <span class="paw block w-3.5 h-3.5 bg-council"></span>
+        <span class="paw block w-3 h-3 bg-council"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN COLUMN -->
+  <div class="flex-1 flex flex-col min-w-0 h-full overflow-y-auto overflow-x-hidden">
+
+    <!-- Mobile topbar: this is a drill-down page, so show a back affordance + event context instead of the generic logo -->
+    <div class="md:hidden sticky top-0 z-20 flex items-center justify-between bg-card/95 dark:bg-night-card/95 backdrop-blur border-b border-slate-300/70 dark:border-white/10 px-3 py-3 gap-2">
+      <a href="#" class="flex items-center gap-1.5 min-w-0 -ml-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-slate-500 dark:text-night-muted"><path d="M15 18l-6-6 6-6"/></svg>
+        <span class="font-display font-semibold text-[15px] truncate">Freshmen Orientation</span>
+      </a>
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle-mobile" class="relative w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted">
+          <svg class="theme-icon-sun-m" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="theme-icon-moon-m hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+        <button class="relative w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-slate-700 dark:text-night-muted" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+          <span class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-council text-white text-[9px] font-bold flex items-center justify-center border-2 border-card dark:border-night-card">3</span>
+        </button>
+        <a href="notifications.html" class="relative w-9 h-9 rounded-full bg-paper dark:bg-night-bg border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-council border border-card dark:border-night-card"></span></a>
+        <a href="settings.html" class="w-8 h-8 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-xs">JC</a>
+      </div>
+    </div>
+
+    <main class="flex-1 px-4 sm:px-6 md:px-10 py-6 md:py-8 pb-16 max-w-6xl w-full">
+
+      <!-- Breadcrumb (desktop-first; mobile has its own back header above) -->
+      <div class="hidden md:flex items-center gap-1.5 text-sm text-slate-500 dark:text-night-muted mb-4">
+        <a href="index.html" class="hover:text-council transition-colors">Home</a>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        <span class="text-ink dark:text-night-text font-medium">Freshmen Orientation</span>
+      </div>
+
+      <!-- Event hero banner -->
+      <div id="event-header-row" class="relative overflow-hidden rounded-3xl border border-slate-300/60 dark:border-white/10 mb-8">
+        <!-- Banner: pure visual, no text ever sits on top of it — safe even if the uploaded image has its own wording baked in -->
+        <div class="relative h-28 sm:h-36 bg-gradient-to-br from-council to-council-dark overflow-hidden">
+          <svg class="absolute -right-8 -bottom-12 w-52 h-52 sm:w-64 sm:h-64 opacity-[0.14] pointer-events-none" viewBox="0 0 240 200" fill="none">
+            <ellipse cx="112" cy="130" rx="58" ry="42" fill="white"/>
+            <circle cx="114" cy="76" r="42" fill="white"/>
+            <path d="M70 50 L58 20 L86 34 Z" fill="white"/>
+            <path d="M158 50 L170 20 L142 34 Z" fill="white"/>
+            <rect x="66" y="158" width="15" height="26" rx="7" fill="white"/>
+            <rect x="140" y="158" width="15" height="26" rx="7" fill="white"/>
+          </svg>
+        </div>
+
+        <!-- Content: always on a solid surface, so it's legible regardless of what the banner image looks like -->
+        <div class="relative bg-card dark:bg-night-card px-5 sm:px-8 py-5 sm:py-6">
+          <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2.5 flex-wrap mb-2">
+                <h1 class="font-display font-semibold text-2xl sm:text-3xl tracking-tight">Freshmen Orientation</h1>
+                <span id="event-status-badge" class="inline-flex items-center rounded-full border border-council text-council-dark dark:text-council-light text-[11px] font-semibold px-2.5 py-1">Planning</span>
+              </div>
+              <p class="flex items-center gap-1.5 text-sm text-slate-500 dark:text-night-muted">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                April 15 – April 20, 2026
+              </p>
+              <p class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted mt-2.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+                1 of 9 tasks completed
+              </p>
+            </div>
+
+            <div class="flex items-center gap-4 shrink-0">
+              <div class="relative w-16 h-16 shrink-0">
+                <svg viewBox="0 0 64 64" class="w-16 h-16 -rotate-90">
+                  <circle cx="32" cy="32" r="27" fill="none" class="stroke-slate-100 dark:stroke-white/10" stroke-width="6"/>
+                  <circle cx="32" cy="32" r="27" fill="none" stroke="#EC6608" stroke-width="6" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="130.6"/>
+                </svg>
+                <span class="absolute inset-0 flex items-center justify-center text-sm font-bold">23%</span>
+              </div>
+
+              <div class="relative shrink-0">
+                <button id="event-menu-btn" class="w-9 h-9 rounded-full border border-slate-300 dark:border-white/15 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" title="Event actions">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+                </button>
+                <div id="event-menu" class="hidden absolute right-0 mt-2 w-64 rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 shadow-2xl py-1.5 text-sm z-50 overflow-hidden text-ink dark:text-night-text">
+                  <div id="event-menu-actions">
+                    <button class="w-full text-left px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-2.5">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                      Edit Event Details
+                    </button>
+                    <button id="event-conclude-btn" class="w-full text-left px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-2.5">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
+                      Conclude Event Early
+                    </button>
+                    <div class="h-px bg-slate-200 dark:bg-white/10 my-1"></div>
+                    <button id="event-cancel-btn" class="w-full text-left px-3.5 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2.5">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+                      Cancel Event
+                    </button>
+                  </div>
+                  <div id="event-menu-confirm" class="hidden px-3.5 py-3">
+                    <p id="event-menu-confirm-text" class="text-xs text-slate-500 dark:text-night-muted mb-2.5"></p>
+                    <div class="flex gap-2">
+                    <button id="event-menu-confirm-cancel" class="flex-1 rounded-lg border border-slate-300 dark:border-white/15 text-xs font-semibold py-1.5 hover:bg-slate-100 dark:hover:bg-white/5">Go back</button>
+                    <button id="event-menu-confirm-yes" class="flex-1 rounded-lg text-white text-xs font-semibold py-1.5"></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Toolbar: phase tabs + actions -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <!-- One tab strip for every screen size: scrolls horizontally within itself when phases don't fit,
+             instead of a separate mobile dropdown. Keeps all phase names glanceable and swipeable. -->
+        <div id="phase-tabs" class="flex items-center gap-x-6 overflow-x-auto no-scrollbar -mx-1 px-1">
+          <button data-phase="1" class="phase-tab active font-display font-semibold text-sm sm:text-base whitespace-nowrap shrink-0 pb-3">
+            Phase 1: Pre-Approval <span class="ml-1 text-xs font-body font-normal text-slate-500 dark:text-night-muted">4 tasks</span>
+          </button>
+          <button data-phase="2" class="phase-tab font-display font-semibold text-sm sm:text-base text-slate-500 dark:text-night-muted whitespace-nowrap shrink-0 pb-3">
+            Phase 2: Marketing &amp; Media <span class="ml-1 text-xs font-body font-normal">2 tasks</span>
+          </button>
+          <button data-phase="3" class="phase-tab font-display font-semibold text-sm sm:text-base text-slate-500 dark:text-night-muted whitespace-nowrap shrink-0 pb-3">
+            Phase 3: Logistics &amp; Procurement <span class="ml-1 text-xs font-body font-normal">3 tasks</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button id="open-backlog" class="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-white/15 text-sm font-semibold px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8M22 8H2l2-4h16l2 4Z"/></svg>
+            Backlog <span class="text-council-dark dark:text-council-light">(3)</span>
+          </button>
+          <button id="open-add-task" class="flex items-center gap-1.5 rounded-lg bg-council text-white text-sm font-semibold px-3.5 py-2 hover:bg-council-dark transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add Task
+          </button>
+        </div>
+      </div>
+
+      <!-- Priority filter -->
+      <div class="relative mb-6 flex justify-start">
+        <button id="priority-filter-trigger" class="flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card px-3.5 py-2 text-sm font-semibold hover:border-council transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          Priority
+          <span id="priority-filter-count" class="hidden items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-council text-white text-[10px] font-bold">0</span>
+          <svg id="priority-filter-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5 transition-transform"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+
+        <div id="priority-filter-overlay" class="hidden fixed inset-0 bg-ink/40 dark:bg-black/60 z-40"></div>
+
+        <div id="priority-filter-panel" class="hidden fixed md:absolute inset-x-0 bottom-0 md:inset-auto md:top-full md:left-0 md:mt-2 z-50 md:w-72 bg-card dark:bg-night-card rounded-t-3xl md:rounded-2xl border border-slate-300/60 dark:border-white/10 shadow-2xl p-4">
+          <div class="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-white/20 mx-auto mb-4 md:hidden"></div>
+          <div class="flex items-center justify-between mb-3">
+            <p class="font-display font-semibold text-sm">Filter by priority</p>
+            <button id="priority-filter-clear" class="text-xs font-semibold text-council-dark dark:text-council-light hover:underline">Clear</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <button data-priority="low" class="priority-tile flex items-center gap-2 rounded-xl border border-slate-300 dark:border-white/15 px-3 py-2.5 text-left transition-colors">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <span class="text-sm font-semibold flex-1">Low</span>
+              <svg class="tile-check hidden shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </button>
+            <button data-priority="medium" class="priority-tile flex items-center gap-2 rounded-xl border border-sky-300 dark:border-sky-800 px-3 py-2.5 text-left transition-colors">
+              <span class="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+              <span class="text-sm font-semibold flex-1">Medium</span>
+              <svg class="tile-check hidden shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </button>
+            <button data-priority="high" class="priority-tile flex items-center gap-2 rounded-xl border border-council px-3 py-2.5 text-left transition-colors">
+              <span class="w-2.5 h-2.5 rounded-full bg-council shrink-0"></span>
+              <span class="text-sm font-semibold flex-1">High</span>
+              <svg class="tile-check hidden shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </button>
+            <button data-priority="critical" class="priority-tile flex items-center gap-2 rounded-xl border border-red-300 dark:border-red-800 px-3 py-2.5 text-left transition-colors">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
+              <span class="text-sm font-semibold flex-1">Critical</span>
+              <svg class="tile-check hidden shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </button>
+          </div>
+          <button id="priority-filter-done" class="w-full mt-4 rounded-xl bg-ink dark:bg-council-dark text-white text-sm font-semibold py-2.5 md:hidden">Done</button>
+        </div>
+      </div>
+
+      <!-- Skeleton shown briefly during phase switches (Shadcn-Skeleton equivalent, plain CSS) -->
+      <div id="phase-skeleton" class="hidden grid md:grid-cols-3 gap-5">
+        <div class="flex flex-col gap-3">
+          <div class="h-3 w-20 rounded bg-slate-200 dark:bg-white/10 animate-pulse mb-1"></div>
+          <div class="h-24 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse"></div>
+          <div class="h-24 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse"></div>
+        </div>
+        <div class="flex flex-col gap-3">
+          <div class="h-3 w-24 rounded bg-slate-200 dark:bg-white/10 animate-pulse mb-1"></div>
+          <div class="h-24 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse"></div>
+        </div>
+        <div class="flex flex-col gap-3">
+          <div class="h-3 w-20 rounded bg-slate-200 dark:bg-white/10 animate-pulse mb-1"></div>
+          <div class="h-24 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse"></div>
+        </div>
+      </div>
+
+      <!-- PHASE 1 -->
+      <div id="phase-panel-1" class="phase-panel is-visible">
+        <div class="grid md:grid-cols-3 gap-5">
+
+          <!-- TO DO -->
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+              <h3 class="font-semibold text-sm tracking-wide">TO DO</h3>
+              <span class="text-xs text-slate-500 dark:text-night-muted column-count">2</span>
+            </div>
+            <div id="list-p1-todo" class="flex flex-col gap-3 card-list">
+
+              <div class="task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 cursor-grab">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center rounded-md bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[10px] font-bold px-2 py-1 tracking-wide">HIGH</span>
+                  <button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                  <button class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-white/20 md:hidden shrink-0"></button>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-3">Secure Dean's Signature</p>
+                <div class="flex items-center justify-between">
+                  <div class="w-6 h-6 rounded-full bg-council-light dark:bg-council-dark border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-council-dark dark:text-white">PR</div>
+                  <span class="text-xs font-medium text-slate-500 dark:text-night-muted">Due Oct 01</span>
+                </div>
+              </div>
+
+              <div class="task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 cursor-grab">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 text-[10px] font-bold px-2 py-1 tracking-wide">MEDIUM</span>
+                  <button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                  <button class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-white/20 md:hidden shrink-0"></button>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-3">Draft Opening Program Script</p>
+                <div class="flex items-center justify-between">
+                  <div class="w-6 h-6 rounded-full bg-slate-300 dark:bg-white/15 border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-night-text">AS</div>
+                  <span class="text-xs font-medium text-slate-500 dark:text-night-muted">Due Oct 01</span>
+                </div>
+              </div>
+
+            </div>
+            <div class="column-placeholder hidden flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks match this filter</span>
+            </div>
+          </div>
+
+          <!-- IN PROGRESS -->
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5">
+              <span class="w-2 h-2 rounded-full bg-council"></span>
+              <h3 class="font-semibold text-sm tracking-wide">IN PROGRESS</h3>
+              <span class="text-xs text-slate-500 dark:text-night-muted column-count">1</span>
+            </div>
+            <div id="list-p1-inprogress" class="flex flex-col gap-3 card-list">
+
+              <div class="task-card is-locked rounded-xl bg-card dark:bg-night-card border border-red-200 dark:border-red-900/40 p-4 opacity-90">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="critical-pulse inline-flex items-center rounded-md bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[10px] font-bold px-2 py-1 tracking-wide">CRITICAL</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-slate-400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-1 text-slate-500 dark:text-night-muted">Venue Reservation Approval</p>
+                <p class="text-[11px] font-medium text-red-500 dark:text-red-400 mb-3">Blocked by: Secure Dean's Signature</p>
+                <div class="flex items-center justify-between">
+                  <div class="w-6 h-6 rounded-full bg-slate-300 dark:bg-white/15 border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-night-text">JB</div>
+                  <span class="text-xs font-semibold text-red-500 dark:text-red-400">Blocked</span>
+                </div>
+              </div>
+
+            </div>
+            <div class="column-placeholder hidden flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks match this filter</span>
+            </div>
+          </div>
+
+          <!-- COMPLETED -->
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <h3 class="font-semibold text-sm tracking-wide">COMPLETED</h3>
+              <span class="text-xs text-slate-500 dark:text-night-muted column-count">1</span>
+            </div>
+            <div id="list-p1-completed" class="flex flex-col gap-3 card-list">
+
+              <div class="task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 opacity-70">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 text-[10px] font-bold px-2 py-1 tracking-wide">MEDIUM</span>
+                  <div class="flex items-center gap-1.5">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    <button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                  </div>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-3 line-through decoration-slate-400">Book Auditorium — Facilities Office</p>
+                <div class="flex items-center justify-between">
+                  <div class="flex -space-x-1.5">
+                    <div class="w-6 h-6 rounded-full bg-council-light dark:bg-council-dark border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-council-dark dark:text-white">MR</div>
+                    <div class="w-6 h-6 rounded-full bg-slate-300 dark:bg-white/15 border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-night-text">KL</div>
+                  </div>
+                  <span class="text-xs font-medium text-slate-500 dark:text-night-muted">Completed</span>
+                </div>
+              </div>
+
+            </div>
+            <div class="column-placeholder hidden flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks match this filter</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PHASE 2 -->
+      <div id="phase-panel-2" class="phase-panel">
+        <div class="grid md:grid-cols-3 gap-5">
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5"><span class="w-2 h-2 rounded-full bg-slate-400"></span><h3 class="font-semibold text-sm tracking-wide">TO DO</h3><span class="text-xs text-slate-500 dark:text-night-muted column-count">1</span></div>
+            <div id="list-p2-todo" class="flex flex-col gap-3 card-list">
+              <div class="task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 cursor-grab">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-night-muted text-[10px] font-bold px-2 py-1 tracking-wide">LOW</span>
+                  <button class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-white/20 md:hidden shrink-0"></button>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-3">Design Event Poster &amp; Banner</p>
+                <div class="flex items-center justify-between">
+                  <div class="w-6 h-6 rounded-full bg-slate-300 dark:bg-white/15 border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-night-text">CS</div>
+                  <span class="text-xs font-medium text-slate-500 dark:text-night-muted">Due Oct 03</span>
+                </div>
+              </div>
+            </div>
+            <div class="column-placeholder hidden flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks match this filter</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5"><span class="w-2 h-2 rounded-full bg-council"></span><h3 class="font-semibold text-sm tracking-wide">IN PROGRESS</h3><span class="text-xs text-slate-500 dark:text-night-muted column-count">1</span></div>
+            <div id="list-p2-inprogress" class="flex flex-col gap-3 card-list">
+              <div class="task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 cursor-grab">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center rounded-md bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[10px] font-bold px-2 py-1 tracking-wide">HIGH</span>
+                  <button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-2">Post Announcement — Facebook &amp; Discord</p>
+                <div class="flex items-center gap-1.5 rounded-lg bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[11px] font-semibold px-2.5 py-1.5 w-fit mb-3">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2Zm0 6 6.5 11h-13L12 8Z"/></svg>
+                  Help Wanted
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="w-6 h-6 rounded-full bg-council-light dark:bg-council-dark border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-council-dark dark:text-white">PR</div>
+                  <span class="text-xs font-medium text-slate-500 dark:text-night-muted">Due Oct 05</span>
+                </div>
+              </div>
+            </div>
+            <div class="column-placeholder hidden flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks match this filter</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><h3 class="font-semibold text-sm tracking-wide">COMPLETED</h3><span class="text-xs text-slate-500 dark:text-night-muted column-count">0</span></div>
+            <div id="list-p2-completed" class="flex flex-col gap-3 card-list"></div>
+            <div class="column-placeholder flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks yet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PHASE 3 -->
+      <div id="phase-panel-3" class="phase-panel">
+        <div class="grid md:grid-cols-3 gap-5">
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5"><span class="w-2 h-2 rounded-full bg-slate-400"></span><h3 class="font-semibold text-sm tracking-wide">TO DO</h3><span class="text-xs text-slate-500 dark:text-night-muted column-count">2</span></div>
+            <div id="list-p3-todo" class="flex flex-col gap-3 card-list">
+              <div class="task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 cursor-grab" data-call-time="13:00" data-call-date="2026-04-17">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 text-[10px] font-bold px-2 py-1 tracking-wide">MEDIUM</span>
+                  <button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                  <button class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-white/20 md:hidden shrink-0"></button>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-3">Volunteer Orientation Briefing</p>
+                <p class="text-[11px] text-council-dark dark:text-council-light font-medium -mt-2 mb-2.5">Do not start until Apr 17, 1:00 PM</p>
+                <div class="flex items-center justify-between">
+                  <div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 border-2 border-dashed border-slate-300 dark:border-white/20 flex items-center justify-center text-slate-400"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                  <span class="inline-flex items-center gap-1 rounded-full bg-council text-white text-[11px] font-bold pl-2 pr-2.5 py-1">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                    Apr 17, 1:00 PM
+                  </span>
+                </div>
+              </div>
+
+              <div class="task-card rounded-xl bg-slate-100/60 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/15 p-4">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center gap-1 rounded-md bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-night-muted text-[10px] font-bold px-2 py-1 tracking-wide">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>
+                    CONFIDENTIAL
+                  </span>
+                  <button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-3 text-slate-500 dark:text-night-muted">🔒 Confidential Task</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400 dark:text-night-muted/70">Restricted access</span>
+                  <span class="text-xs font-medium text-slate-500 dark:text-night-muted">Due Oct 08</span>
+                </div>
+              </div>
+            </div>
+            <div class="column-placeholder hidden flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks match this filter</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5"><span class="w-2 h-2 rounded-full bg-council"></span><h3 class="font-semibold text-sm tracking-wide">IN PROGRESS</h3><span class="text-xs text-slate-500 dark:text-night-muted column-count">1</span></div>
+            <div id="list-p3-inprogress" class="flex flex-col gap-3 card-list">
+              <div class="task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 cursor-grab">
+                <div class="flex items-start justify-between mb-2.5">
+                  <span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-night-muted text-[10px] font-bold px-2 py-1 tracking-wide">LOW</span>
+                  <button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                </div>
+                <p class="font-semibold text-sm leading-snug mb-1">Print Attendance Sheets</p>
+                <div class="flex items-center gap-1 text-[11px] text-slate-500 dark:text-night-muted mb-3">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  3 comments
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="w-6 h-6 rounded-full bg-slate-300 dark:bg-white/15 border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-night-text">KL</div>
+                  <span class="text-xs font-medium text-slate-500 dark:text-night-muted">Due Oct 06</span>
+                </div>
+              </div>
+            </div>
+            <div class="column-placeholder hidden flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks match this filter</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-3.5 px-0.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><h3 class="font-semibold text-sm tracking-wide">COMPLETED</h3><span class="text-xs text-slate-500 dark:text-night-muted column-count">0</span></div>
+            <div id="list-p3-completed" class="flex flex-col gap-3 card-list"></div>
+            <div class="column-placeholder flex flex-col items-center gap-1.5 text-xs text-slate-500 dark:text-night-muted rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center mt-1">
+              <!-- Lottie tiger mount point — swap this span for a lottie-react player when wired up -->
+              <span class="w-6 h-6 rounded-full bg-council/10 flex items-center justify-center shrink-0"><svg width="13" height="13" viewBox="0 0 100 100" fill="currentColor" class="text-council"><ellipse cx="50" cy="62" rx="24" ry="20"/><circle cx="26" cy="36" r="10"/><circle cx="50" cy="26" r="11"/><circle cx="74" cy="36" r="10"/></svg></span>
+              <span class="column-placeholder-text">No tasks yet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Shared task actions menu (positioned dynamically near whichever card's ⋮ was clicked) -->
+<div id="task-menu" class="hidden fixed z-50 w-56 rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 shadow-2xl py-1.5 text-sm overflow-hidden">
+  <div id="task-menu-actions">
+    <button data-action="view" class="task-menu-item w-full text-left px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-2.5">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      View Details
+    </button>
+    <button data-action="edit" class="task-menu-item w-full text-left px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-2.5">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      Edit Task
+    </button>
+    <button id="task-menu-backup" class="task-menu-item w-full text-left px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-2.5">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      <span id="task-menu-backup-label">Request Backup</span>
+    </button>
+    <button id="task-menu-confidential" class="task-menu-item w-full text-left px-3.5 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-2.5">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <span id="task-menu-confidential-label">Mark Confidential</span>
+    </button>
+    <div class="h-px bg-slate-200 dark:bg-white/10 my-1"></div>
+    <button id="task-menu-delete-btn" class="task-menu-item w-full text-left px-3.5 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2.5">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0-1 14a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 6"/></svg>
+      Delete Task
+    </button>
+  </div>
+  <div id="task-menu-confirm" class="hidden px-3.5 py-3">
+    <p class="text-xs text-slate-500 dark:text-night-muted mb-2.5">Delete this task? This can't be undone in this prototype.</p>
+    <div class="flex gap-2">
+      <button id="task-menu-cancel" class="flex-1 rounded-lg border border-slate-300 dark:border-white/15 text-xs font-semibold py-1.5 hover:bg-slate-100 dark:hover:bg-white/5">Cancel</button>
+      <button id="task-menu-confirm-delete" class="flex-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Task modal -->
+<div id="task-form-overlay" class="hidden fixed inset-0 bg-ink/40 dark:bg-black/60 z-40"></div>
+<div id="task-form-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+  <div class="w-full sm:max-w-md bg-card dark:bg-night-card rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-slate-300/60 dark:border-white/10 sticky top-0 bg-card dark:bg-night-card">
+      <svg width="30" height="30" viewBox="0 0 100 100" class="shrink-0">
+        <ellipse cx="50" cy="54" rx="33" ry="25" fill="#EC6608"/>
+        <ellipse cx="50" cy="63" rx="19" ry="14" fill="#FFF8F0"/>
+        <path d="M25 32 L17 15 L35 23 Z" fill="#EC6608"/>
+        <path d="M75 32 L83 15 L65 23 Z" fill="#EC6608"/>
+        <path d="M25 30 L21 19 L31 24 Z" fill="#1B140F"/>
+        <path d="M75 30 L79 19 L69 24 Z" fill="#1B140F"/>
+        <path d="M36 44 Q42 37 48 44 M52 44 Q58 37 64 44" stroke="#1B140F" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <h3 id="task-form-title" class="font-display font-semibold text-lg flex-1">Add Task</h3>
+      <button id="task-form-close" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="px-5 py-5 flex flex-col gap-4">
+      <div>
+        <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Task title</label>
+        <input id="task-form-title-input" type="text" placeholder="e.g. Coordinate Sound System" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-transparent px-3 py-2.5 text-sm focus:outline-none focus:border-council" />
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Priority</label>
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" data-priority="low" class="task-form-priority-btn flex flex-col items-center gap-1 rounded-lg border border-slate-300 dark:border-white/15 text-[11px] font-semibold py-2.5 text-slate-600 dark:text-night-muted transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+            Low
+          </button>
+          <button type="button" data-priority="medium" class="task-form-priority-btn flex flex-col items-center gap-1 rounded-lg border border-sky-300 dark:border-sky-800 text-[11px] font-semibold py-2.5 text-sky-600 dark:text-sky-400 transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14M5 15h14"/></svg>
+            Medium
+          </button>
+          <button type="button" data-priority="high" class="task-form-priority-btn flex flex-col items-center gap-1 rounded-lg border border-council text-[11px] font-semibold py-2.5 text-council-dark dark:text-council-light transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+            High
+          </button>
+          <button type="button" data-priority="critical" class="task-form-priority-btn flex flex-col items-center gap-1 rounded-lg border border-red-300 dark:border-red-800 text-[11px] font-semibold py-2.5 text-red-600 dark:text-red-400 transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-1-.5-2-1-2.5.5 2-1 3-1 3 .5-3-2-4-2-6-1 1-2 2-2 4-1-1-1-3 0-5.5Z"/></svg>
+            Critical
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Phase</label>
+          <select id="task-form-phase" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none focus:border-council">
+            <option value="1">Phase 1: Pre-Approval</option>
+            <option value="2">Phase 2: Marketing &amp; Media</option>
+            <option value="3">Phase 3: Logistics &amp; Procurement</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Status</label>
+          <select id="task-form-status" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none focus:border-council">
+            <option value="todo">To Do</option>
+            <option value="inprogress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Assignee</label>
+          <select id="task-form-assignee" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none focus:border-council">
+            <option value="unassigned">Unassigned</option>
+            <option value="PR">Prince R.</option>
+            <option value="JB">John Benedict</option>
+            <option value="AS">Aira Santos</option>
+            <option value="MR">Marco Reyes</option>
+            <option value="KL">Kaye Lim</option>
+            <option value="CS">Carlo Silva</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Due date</label>
+          <input id="task-form-due" type="date" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none focus:border-council" />
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Task Type</label>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <button type="button" id="task-type-deliverable-btn" class="task-type-btn-event flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+            Deliverable
+          </button>
+          <button type="button" id="task-type-liveop-btn" class="task-type-btn-event flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            Live Operation
+          </button>
+        </div>
+        <input id="task-form-is-live" type="checkbox" class="hidden" />
+        <div id="task-form-call-time-wrap" class="hidden mt-1 rounded-2xl bg-council-wash dark:bg-night-wash border border-council/25 p-3.5">
+          <div class="flex items-start gap-2 mb-3">
+            <svg width="28" height="28" viewBox="0 0 100 100" class="shrink-0 -mt-0.5">
+              <ellipse cx="50" cy="54" rx="33" ry="25" fill="#EC6608"/>
+              <ellipse cx="50" cy="63" rx="19" ry="14" fill="#FFF8F0"/>
+              <path d="M25 32 L17 15 L35 23 Z" fill="#EC6608"/>
+              <path d="M75 32 L83 15 L65 23 Z" fill="#EC6608"/>
+              <path d="M25 30 L21 19 L31 24 Z" fill="#1B140F"/>
+              <path d="M75 30 L79 19 L69 24 Z" fill="#1B140F"/>
+              <circle cx="42" cy="50" r="3" fill="#1B140F"/>
+              <circle cx="58" cy="50" r="3" fill="#1B140F"/>
+            </svg>
+            <p class="text-xs text-council-dark dark:text-council-light font-medium pt-1">Pick any date — before the event for setup/prep, or during it for day-of ops. Works the same whether this event runs 3 days or 3 weeks.</p>
+          </div>
+
+          <label class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">Quick pick</label>
+          <div class="flex flex-wrap gap-1.5 mb-3">
+            <button type="button" class="call-date-preset text-[11px] font-semibold px-2.5 py-1.5 rounded-full bg-card dark:bg-night-card border border-council/40 hover:border-council transition-colors" data-offset="-3">3 days before (setup)</button>
+            <button type="button" class="call-date-preset text-[11px] font-semibold px-2.5 py-1.5 rounded-full bg-card dark:bg-night-card border border-council/40 hover:border-council transition-colors" data-offset="-1">Day before (setup)</button>
+            <button type="button" class="call-date-preset text-[11px] font-semibold px-2.5 py-1.5 rounded-full bg-card dark:bg-night-card border border-council/40 hover:border-council transition-colors" data-offset="0">Event Day 1</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">Date</label>
+              <input id="task-form-call-date" type="date" class="w-full rounded-lg border border-council bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">Call Time</label>
+              <input id="task-form-call-time" type="time" class="w-full rounded-lg border border-council bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none" />
+            </div>
+          </div>
+          <div class="mt-2.5">
+            <label class="text-xs font-semibold text-council-dark dark:text-council-light mb-1.5 block">End Time <span class="font-normal">(optional — for a duty that runs a window, like desk duty)</span></label>
+            <input id="task-form-end-time" type="time" class="w-full rounded-lg border border-council bg-card dark:bg-night-card px-3 py-2.5 text-sm focus:outline-none" />
+          </div>
+          <p id="task-form-call-date-caption" class="text-[11px] font-medium mt-2"></p>
+        </div>
+      </div>
+
+      <label class="flex items-center gap-2.5 text-sm font-medium cursor-pointer">
+        <input id="task-form-confidential" type="checkbox" class="w-4 h-4 rounded border-slate-300 dark:border-white/20 text-council focus:ring-council" />
+        Mark as confidential
+      </label>
+
+      <div id="confidential-access-panel" class="confidential-panel">
+        <div>
+          <div class="confidential-banner rounded-xl p-3.5 mt-1">
+            <div class="flex items-start gap-2.5">
+              <span class="confidential-lock-badge w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              </span>
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-council-dark dark:text-council-light">Masked from everyone else</p>
+                <p class="text-[11px] text-slate-600 dark:text-night-muted mt-0.5">Only the people below can open this task. Everyone else sees <span class="font-semibold">"Confidential Task"</span> on the board.</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <span class="text-xs font-semibold text-slate-700 dark:text-night-muted mb-1.5 block">Who can access this task</span>
+            <div id="access-chip-list" class="flex flex-wrap gap-1.5 mb-2"></div>
+            <div class="relative">
+              <div class="relative">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input id="access-add-input" type="text" placeholder="Add someone by name…" autocomplete="off" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council" />
+              </div>
+              <div id="access-add-dropdown" class="access-picker-dropdown dd-hidden absolute left-0 right-0 mt-1.5 z-20 rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-night-card shadow-lg max-h-40 overflow-y-auto p-1"></div>
+            </div>
+            <p class="text-[10.5px] text-slate-500 dark:text-night-muted mt-1.5">The assignee above is always included. Add anyone else who should be able to open this task.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2.5 px-5 py-4 border-t border-slate-300/60 dark:border-white/10 sticky bottom-0 bg-card dark:bg-night-card">
+      <button id="task-form-cancel" class="flex-1 rounded-lg border border-slate-300 dark:border-white/15 text-sm font-semibold py-2.5 hover:bg-slate-100 dark:hover:bg-white/5">Cancel</button>
+      <button id="task-form-submit" class="flex-1 rounded-lg bg-council hover:bg-council-dark text-white text-sm font-semibold py-2.5">Create Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Details modal (View Details) -->
+<div id="task-view-overlay" class="hidden fixed inset-0 bg-ink/40 dark:bg-black/60 z-40"></div>
+<div id="task-view-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+  <div class="w-full sm:max-w-lg bg-card dark:bg-night-card rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-300/60 dark:border-white/10 sticky top-0 bg-card dark:bg-night-card">
+      <div class="min-w-0">
+        <span id="task-view-priority" class="inline-flex items-center rounded-md text-[10px] font-bold px-2 py-1 tracking-wide mb-2"></span>
+        <h3 id="task-view-title" class="font-display font-semibold text-lg leading-snug"></h3>
+      </div>
+      <button id="task-view-close" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="px-5 py-5 flex flex-col gap-4">
+      <div id="task-view-call-time-banner" class="hidden rounded-xl bg-council-wash dark:bg-night-wash border border-council/30 px-4 py-3 flex items-start gap-2.5">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="text-council-dark dark:text-council-light shrink-0 mt-0.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        <div>
+          <p id="task-view-call-time-text" class="text-sm font-semibold text-council-dark dark:text-council-light"></p>
+          <p class="text-xs text-council-dark/80 dark:text-council-light/80 mt-0.5">Do not start until Call Time — this is a day-of operation.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p class="text-xs text-slate-500 dark:text-night-muted mb-1">Assignee</p>
+          <p id="task-view-assignee" class="font-medium"></p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 dark:text-night-muted mb-1">Due</p>
+          <p id="task-view-due" class="font-medium"></p>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-1.5 block">Your Work — Google Drive link</label>
+        <div class="flex gap-2">
+          <input id="task-view-gdrive-input" type="text" placeholder="Paste a Google Drive share link" class="flex-1 rounded-lg border border-slate-300 dark:border-white/15 bg-transparent px-3 py-2.5 text-sm focus:outline-none focus:border-council" />
+          <button id="task-view-gdrive-load" class="rounded-lg bg-council hover:bg-council-dark text-white text-sm font-semibold px-3.5 shrink-0">Preview</button>
+        </div>
+        <p id="task-view-gdrive-error" class="hidden text-xs text-red-500 mt-1.5">That doesn't look like a Google Drive file link — check the URL and try again.</p>
+        <div id="task-view-gdrive-frame-wrap" class="hidden mt-3 rounded-xl overflow-hidden border border-slate-300/60 dark:border-white/10" style="aspect-ratio: 16/10;">
+          <iframe id="task-view-gdrive-frame" class="w-full h-full" src="" allow="autoplay"></iframe>
+        </div>
+        <p class="text-[11px] text-slate-400 dark:text-night-muted/70 mt-1.5">No file upload needed — this keeps everything on Google Drive and off our storage limits.</p>
+      </div>
+
+      <div>
+        <p class="text-xs font-semibold text-slate-500 dark:text-night-muted mb-2">Comments</p>
+        <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-white/15 p-4 text-center">
+          <p class="text-xs text-slate-500 dark:text-night-muted">Comment thread isn't wired up in this prototype yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backlog drawer -->
+<div id="drawer-overlay" class="drawer-overlay closed fixed inset-0 bg-ink/40 dark:bg-black/60 z-40"></div>
+<aside id="backlog-drawer" class="drawer closed fixed top-0 right-0 h-full w-full max-w-sm bg-card dark:bg-night-card z-50 shadow-2xl flex flex-col">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-slate-300/60 dark:border-white/10">
+    <div>
+      <h3 class="font-display font-semibold text-lg">Task Backlog</h3>
+      <p class="text-xs text-slate-500 dark:text-night-muted">Unassigned — claim to add yourself</p>
+    </div>
+    <button id="close-backlog" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+    <div class="rounded-xl border border-slate-300/60 dark:border-white/10 p-4">
+      <span class="inline-flex items-center rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 text-[10px] font-bold px-2 py-1 tracking-wide mb-2.5">MEDIUM</span>
+      <p class="font-semibold text-sm mb-1">Prepare Welcome Kits</p>
+      <p class="text-xs text-slate-500 dark:text-night-muted mb-3">COFBUM · Phase 3</p>
+      <button class="w-full rounded-lg bg-council text-white text-sm font-semibold py-2 hover:bg-council-dark transition-colors">Claim Task</button>
+    </div>
+    <div class="rounded-xl border border-slate-300/60 dark:border-white/10 p-4">
+      <span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-night-muted text-[10px] font-bold px-2 py-1 tracking-wide mb-2.5">LOW</span>
+      <p class="font-semibold text-sm mb-1">Set Up Registration Table</p>
+      <p class="text-xs text-slate-500 dark:text-night-muted mb-3">CIA · Phase 3</p>
+      <button class="w-full rounded-lg bg-council text-white text-sm font-semibold py-2 hover:bg-council-dark transition-colors">Claim Task</button>
+    </div>
+    <div class="rounded-xl border border-slate-300/60 dark:border-white/10 p-4">
+      <span class="inline-flex items-center rounded-md bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[10px] font-bold px-2 py-1 tracking-wide mb-2.5">HIGH</span>
+      <p class="font-semibold text-sm mb-1">Coordinate Sound System</p>
+      <p class="text-xs text-slate-500 dark:text-night-muted mb-3">COMRECS · Phase 3</p>
+      <button class="w-full rounded-lg bg-council text-white text-sm font-semibold py-2 hover:bg-council-dark transition-colors">Claim Task</button>
+    </div>
+  </div>
+  </div>
+</aside>
+
+<script>
+  // Phase tab switching
+  function switchPhase(phase) {
+    var target = document.getElementById('phase-panel-' + phase);
+    var skeleton = document.getElementById('phase-skeleton');
+
+    document.querySelectorAll('.phase-panel').forEach(function (panel) {
+      panel.classList.remove('is-visible');
+    });
+    skeleton.classList.remove('hidden');
+
+    window.clearTimeout(switchPhase._t);
+    switchPhase._t = window.setTimeout(function () {
+      skeleton.classList.add('hidden');
+      if (target) target.classList.add('is-visible');
+    }, 350);
+
+    document.querySelectorAll('.phase-tab').forEach(function (tab) {
+      var active = tab.dataset.phase === phase;
+      tab.classList.toggle('active', active);
+      tab.classList.toggle('text-slate-500', !active);
+      tab.classList.toggle('dark:text-night-muted', !active);
+      if (active) tab.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    });
+  }
+  document.querySelectorAll('.phase-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () { switchPhase(tab.dataset.phase); });
+  });
+
+  // Priority filter — trigger opens a panel (dropdown on desktop, bottom sheet on mobile)
+  var selectedPriorities = new Set();
+  var priorityTiers = ['low', 'medium', 'high', 'critical'];
+  var priorityTint = {
+    low: ['bg-slate-100', 'dark:bg-white/10'],
+    medium: ['bg-sky-50', 'dark:bg-sky-950/40'],
+    high: ['bg-council-wash', 'dark:bg-night-wash'],
+    critical: ['bg-red-50', 'dark:bg-red-950/40']
+  };
+
+  function cardPriority(card) {
+    var badge = card.querySelector('span');
+    if (!badge) return null;
+    var text = badge.textContent.trim().toLowerCase();
+    return priorityTiers.indexOf(text) !== -1 ? text : null;
+  }
+
+  function refreshColumnCounts() {
+    document.querySelectorAll('.card-list').forEach(function (list) {
+      var visibleCount = list.querySelectorAll('.task-card:not(.hidden)').length;
+      var totalCount = list.querySelectorAll('.task-card').length;
+      var placeholder = list.nextElementSibling;
+      if (placeholder && placeholder.classList.contains('column-placeholder')) {
+        var textEl = placeholder.querySelector('.column-placeholder-text') || placeholder;
+        if (totalCount === 0) {
+          textEl.textContent = 'No tasks yet';
+          placeholder.classList.remove('hidden');
+        } else if (visibleCount === 0) {
+          textEl.textContent = 'No tasks match this filter';
+          placeholder.classList.remove('hidden');
+        } else {
+          placeholder.classList.add('hidden');
+        }
+      }
+      var header = list.parentElement.querySelector('.column-count');
+      if (header) header.textContent = visibleCount;
+    });
+  }
+
+  function applyFilter() {
+    document.querySelectorAll('.task-card').forEach(function (card) {
+      var p = cardPriority(card);
+      var show = selectedPriorities.size === 0 || p === null || selectedPriorities.has(p);
+      card.classList.toggle('hidden', !show);
+    });
+    refreshColumnCounts();
+  }
+
+  function updatePriorityUI() {
+    document.querySelectorAll('.priority-tile').forEach(function (tile) {
+      var p = tile.dataset.priority;
+      var active = selectedPriorities.has(p);
+      tile.classList.toggle('ring-2', active);
+      tile.classList.toggle('ring-offset-1', active);
+      tile.classList.toggle('ring-council', active);
+      var check = tile.querySelector('.tile-check');
+      if (check) check.classList.toggle('hidden', !active);
+      (priorityTint[p] || []).forEach(function (cls) { tile.classList.toggle(cls, active); });
+    });
+    var countEl = document.getElementById('priority-filter-count');
+    countEl.textContent = selectedPriorities.size;
+    countEl.classList.toggle('hidden', selectedPriorities.size === 0);
+    countEl.classList.toggle('flex', selectedPriorities.size > 0);
+    document.getElementById('priority-filter-trigger').classList.toggle('border-council', selectedPriorities.size > 0);
+  }
+
+  document.querySelectorAll('.priority-tile').forEach(function (tile) {
+    tile.addEventListener('click', function () {
+      var p = tile.dataset.priority;
+      if (selectedPriorities.has(p)) selectedPriorities.delete(p); else selectedPriorities.add(p);
+      updatePriorityUI();
+      applyFilter();
+    });
+  });
+
+  var priorityTrigger = document.getElementById('priority-filter-trigger');
+  var priorityPanel = document.getElementById('priority-filter-panel');
+  var priorityOverlay = document.getElementById('priority-filter-overlay');
+  var priorityChevron = document.getElementById('priority-filter-chevron');
+
+  function isMobileWidth() { return window.matchMedia('(max-width: 767px)').matches; }
+  function openPriorityPanel() {
+    priorityPanel.classList.remove('hidden');
+    priorityChevron.style.transform = 'rotate(180deg)';
+    if (isMobileWidth()) priorityOverlay.classList.remove('hidden');
+  }
+  function closePriorityPanel() {
+    priorityPanel.classList.add('hidden');
+    priorityOverlay.classList.add('hidden');
+    priorityChevron.style.transform = 'rotate(0deg)';
+  }
+  priorityTrigger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (priorityPanel.classList.contains('hidden')) openPriorityPanel(); else closePriorityPanel();
+  });
+  priorityOverlay.addEventListener('click', closePriorityPanel);
+  document.getElementById('priority-filter-done').addEventListener('click', closePriorityPanel);
+  document.getElementById('priority-filter-clear').addEventListener('click', function () {
+    selectedPriorities.clear();
+    updatePriorityUI();
+    applyFilter();
+  });
+  document.addEventListener('click', function (e) {
+    if (!priorityPanel.contains(e.target) && !priorityTrigger.contains(e.target)) closePriorityPanel();
+  });
+
+  // Task ⋮ menu — view/edit are placeholders (no modal built yet), backup/confidential toggle
+  // real card state, delete actually removes the card and recomputes column counts.
+  var taskMenu = document.getElementById('task-menu');
+  var taskMenuActions = document.getElementById('task-menu-actions');
+  var taskMenuConfirm = document.getElementById('task-menu-confirm');
+  var currentTaskCard = null;
+
+  function openTaskMenu(btn) {
+    currentTaskCard = btn.closest('.task-card');
+    taskMenuActions.classList.remove('hidden');
+    taskMenuConfirm.classList.add('hidden');
+
+    var hasBackup = currentTaskCard.querySelector('.help-wanted-badge') !== null;
+    document.getElementById('task-menu-backup-label').textContent = hasBackup ? 'Cancel Backup Request' : 'Request Backup';
+    var isConfidential = currentTaskCard.classList.contains('is-confidential');
+    document.getElementById('task-menu-confidential-label').textContent = isConfidential ? 'Remove Confidential' : 'Mark Confidential';
+
+    var rect = btn.getBoundingClientRect();
+    taskMenu.classList.remove('hidden');
+    var menuHeight = taskMenu.offsetHeight;
+    var top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight - 12) top = Math.max(12, rect.top - menuHeight - 6);
+    taskMenu.style.top = top + 'px';
+    var left = Math.min(rect.right - 224, window.innerWidth - 232);
+    taskMenu.style.left = Math.max(8, left) + 'px';
+  }
+  function closeTaskMenu() { taskMenu.classList.add('hidden'); currentTaskCard = null; }
+
+  // Delegated so it also works on task cards created later by Add/Edit Task
+  document.addEventListener('click', function (e) {
+    var menuBtn = e.target.closest('.task-menu-btn');
+    if (menuBtn) {
+      e.stopPropagation();
+      var sameCard = currentTaskCard === menuBtn.closest('.task-card');
+      if (!taskMenu.classList.contains('hidden') && sameCard) { closeTaskMenu(); return; }
+      openTaskMenu(menuBtn);
+      return;
+    }
+    if (!taskMenu.contains(e.target)) closeTaskMenu();
+  });
+
+  document.getElementById('task-menu-actions').querySelector('[data-action="view"]').addEventListener('click', function () {
+    var card = currentTaskCard;
+    closeTaskMenu();
+    if (card) openTaskView(card);
+  });
+  document.getElementById('task-menu-actions').querySelector('[data-action="edit"]').addEventListener('click', function () {
+    var card = currentTaskCard;
+    closeTaskMenu();
+    if (card) openTaskForm('edit', card);
+  });
+
+  document.getElementById('task-menu-backup').addEventListener('click', function () {
+    if (!currentTaskCard) return;
+    var existing = currentTaskCard.querySelector('.help-wanted-badge');
+    if (existing) {
+      existing.remove();
+    } else {
+      var badge = document.createElement('div');
+      badge.className = 'help-wanted-badge mt-1 mb-3 flex items-center gap-1.5 rounded-lg bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[11px] font-semibold px-3 py-1.5 w-fit';
+      badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2Zm0 6 6.5 11h-13L12 8Z"/></svg> Help Wanted';
+      var title = currentTaskCard.querySelector('p.font-semibold');
+      title.insertAdjacentElement('afterend', badge);
+    }
+    closeTaskMenu();
+  });
+
+  document.getElementById('task-menu-confidential').addEventListener('click', function () {
+    if (!currentTaskCard) return;
+    var title = currentTaskCard.querySelector('p.font-semibold');
+    if (currentTaskCard.classList.contains('is-confidential')) {
+      currentTaskCard.classList.remove('is-confidential');
+      title.textContent = currentTaskCard.dataset.originalTitle || title.textContent;
+      title.classList.remove('text-slate-500', 'dark:text-night-muted');
+    } else {
+      currentTaskCard.dataset.originalTitle = title.textContent;
+      currentTaskCard.classList.add('is-confidential');
+      title.textContent = '🔒 Confidential Task';
+      title.classList.add('text-slate-500', 'dark:text-night-muted');
+    }
+    closeTaskMenu();
+  });
+
+  document.getElementById('task-menu-delete-btn').addEventListener('click', function () {
+    taskMenuActions.classList.add('hidden');
+    taskMenuConfirm.classList.remove('hidden');
+  });
+  document.getElementById('task-menu-cancel').addEventListener('click', function () {
+    taskMenuActions.classList.remove('hidden');
+    taskMenuConfirm.classList.add('hidden');
+  });
+  document.getElementById('task-menu-confirm-delete').addEventListener('click', function () {
+    if (currentTaskCard) {
+      var card = currentTaskCard;
+      closeTaskMenu();
+      card.remove();
+      refreshColumnCounts();
+    }
+  });
+
+  // Event-level actions: Conclude Early / Cancel Event
+  var eventMenuBtn = document.getElementById('event-menu-btn');
+  var eventMenu = document.getElementById('event-menu');
+  var eventMenuActions = document.getElementById('event-menu-actions');
+  var eventMenuConfirm = document.getElementById('event-menu-confirm');
+  var eventMenuConfirmText = document.getElementById('event-menu-confirm-text');
+  var eventMenuConfirmYes = document.getElementById('event-menu-confirm-yes');
+  var pendingEventAction = null;
+
+  eventMenuBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    eventMenu.classList.toggle('hidden');
+    eventMenuActions.classList.remove('hidden');
+    eventMenuConfirm.classList.add('hidden');
+  });
+  document.addEventListener('click', function (e) {
+    if (!eventMenu.contains(e.target) && !eventMenuBtn.contains(e.target)) eventMenu.classList.add('hidden');
+  });
+
+  function askEventConfirm(action) {
+    pendingEventAction = action;
+    eventMenuActions.classList.add('hidden');
+    eventMenuConfirm.classList.remove('hidden');
+    if (action === 'conclude') {
+      eventMenuConfirmText.textContent = 'Conclude this event early? It moves to Event Archives as a read-only record.';
+      eventMenuConfirmYes.textContent = 'Conclude Event';
+      eventMenuConfirmYes.className = 'flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5';
+    } else {
+      eventMenuConfirmText.textContent = 'Cancel this event? This marks it cancelled and moves it to Event Archives as read-only.';
+      eventMenuConfirmYes.textContent = 'Cancel Event';
+      eventMenuConfirmYes.className = 'flex-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5';
+    }
+  }
+  document.getElementById('event-conclude-btn').addEventListener('click', function () { askEventConfirm('conclude'); });
+  document.getElementById('event-cancel-btn').addEventListener('click', function () { askEventConfirm('cancel'); });
+  document.getElementById('event-menu-confirm-cancel').addEventListener('click', function () {
+    eventMenuActions.classList.remove('hidden');
+    eventMenuConfirm.classList.add('hidden');
+  });
+
+  function showEventBanner(kind, text) {
+    var existing = document.getElementById('event-status-banner');
+    if (existing) existing.remove();
+    var colors = {
+      emerald: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400',
+      red: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400'
+    };
+    var banner = document.createElement('div');
+    banner.id = 'event-status-banner';
+    banner.className = 'rounded-xl border ' + colors[kind] + ' text-sm font-medium px-4 py-3 mb-6 flex items-center gap-2';
+    banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span>' + text + '</span>';
+    var header = document.getElementById('event-header-row');
+    header.insertAdjacentElement('afterend', banner);
+  }
+
+  eventMenuConfirmYes.addEventListener('click', function () {
+    var badge = document.getElementById('event-status-badge');
+    if (pendingEventAction === 'conclude') {
+      badge.textContent = 'Concluded';
+      badge.className = 'inline-flex items-center rounded-full border border-emerald-500 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold px-2.5 py-1';
+      showEventBanner('emerald', 'This event was concluded early and is now read-only in Event Archives.');
+    } else {
+      badge.textContent = 'Cancelled';
+      badge.className = 'inline-flex items-center rounded-full border border-red-400 text-red-600 dark:text-red-400 text-[11px] font-semibold px-2.5 py-1';
+      showEventBanner('red', 'This event was cancelled and is now read-only in Event Archives.');
+    }
+    eventMenu.classList.add('hidden');
+  });
+
+  // Add / Edit Task modal
+  var taskFormOverlay = document.getElementById('task-form-overlay');
+  var taskFormModal = document.getElementById('task-form-modal');
+  var taskFormTitleEl = document.getElementById('task-form-title');
+  var taskFormTitleInput = document.getElementById('task-form-title-input');
+  var taskFormPhase = document.getElementById('task-form-phase');
+  var taskFormStatus = document.getElementById('task-form-status');
+  var taskFormAssignee = document.getElementById('task-form-assignee');
+  var taskFormDue = document.getElementById('task-form-due');
+  var taskFormConfidential = document.getElementById('task-form-confidential');
+  var taskFormIsLive = document.getElementById('task-form-is-live');
+  var taskFormCallTimeWrap = document.getElementById('task-form-call-time-wrap');
+  var taskFormCallTime = document.getElementById('task-form-call-time');
+  var taskFormEndTime = document.getElementById('task-form-end-time');
+  var taskFormCallDate = document.getElementById('task-form-call-date');
+  var taskFormCallDateCaption = document.getElementById('task-form-call-date-caption');
+  var taskTypeDeliverableBtn = document.getElementById('task-type-deliverable-btn');
+  var taskTypeLiveopBtn = document.getElementById('task-type-liveop-btn');
+
+  function setTaskIsLive(isLive) {
+    taskFormIsLive.checked = isLive;
+    taskTypeDeliverableBtn.classList.toggle('active', !isLive);
+    taskTypeLiveopBtn.classList.toggle('active', isLive);
+    taskFormCallTimeWrap.classList.toggle('hidden', !isLive);
+  }
+  taskTypeDeliverableBtn.addEventListener('click', function () { setTaskIsLive(false); });
+  taskTypeLiveopBtn.addEventListener('click', function () { setTaskIsLive(true); });
+
+  // Event window — used to bound the picker and label days relative to it.
+  // A week of lead time is allowed before Day 1 for setup/prep tasks.
+  var EVENT_START = '2026-04-15';
+  var EVENT_END = '2026-04-20';
+  var EVENT_MIN_PICK = '2026-04-08';
+  taskFormCallDate.min = EVENT_MIN_PICK;
+  taskFormCallDate.max = EVENT_END;
+
+  function updateCallDateCaption() {
+    var val = taskFormCallDate.value;
+    if (!val) { taskFormCallDateCaption.textContent = ''; return; }
+    var start = new Date(EVENT_START + 'T00:00:00');
+    var end = new Date(EVENT_END + 'T00:00:00');
+    var picked = new Date(val + 'T00:00:00');
+    var diffDays = Math.round((picked - start) / 86400000);
+
+    if (picked < start) {
+      var before = Math.abs(diffDays);
+      taskFormCallDateCaption.textContent = before + ' day' + (before === 1 ? '' : 's') + ' before the event starts — pre-event setup';
+      taskFormCallDateCaption.className = 'text-[11px] font-medium mt-2 text-slate-500 dark:text-night-muted';
+    } else if (picked > end) {
+      taskFormCallDateCaption.textContent = 'This date is after the event ends — double-check it';
+      taskFormCallDateCaption.className = 'text-[11px] font-medium mt-2 text-red-500';
+    } else {
+      taskFormCallDateCaption.textContent = 'Event Day ' + (diffDays + 1) + ' of the event';
+      taskFormCallDateCaption.className = 'text-[11px] font-medium mt-2 text-council-dark dark:text-council-light';
+    }
+  }
+  taskFormCallDate.addEventListener('change', updateCallDateCaption);
+
+  document.querySelectorAll('.call-date-preset').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var offset = parseInt(btn.dataset.offset, 10);
+      var d = new Date(EVENT_START + 'T00:00:00');
+      d.setDate(d.getDate() + offset);
+      var iso = d.toISOString().slice(0, 10);
+      taskFormCallDate.value = iso;
+      updateCallDateCaption();
+    });
+  });
+
+  var taskFormSubmit = document.getElementById('task-form-submit');
+  var selectedFormPriority = 'medium';
+  var editingCard = null;
+
+  var priorityBadgeClasses = {
+    low: 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-night-muted',
+    medium: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400',
+    high: 'bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light',
+    critical: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400'
+  };
+  var priorityFormBaseClasses = {
+    low: ['border-slate-300', 'dark:border-white/15', 'text-slate-600', 'dark:text-night-muted'],
+    medium: ['border-sky-300', 'dark:border-sky-800', 'text-sky-600', 'dark:text-sky-400'],
+    high: ['border-council', 'text-council-dark', 'dark:text-council-light'],
+    critical: ['border-red-300', 'dark:border-red-800', 'text-red-600', 'dark:text-red-400']
+  };
+  var priorityFormActiveClasses = {
+    low: ['bg-slate-500', 'text-white', 'border-slate-500'],
+    medium: ['bg-sky-500', 'text-white', 'border-sky-500'],
+    high: ['bg-council', 'text-white', 'border-council'],
+    critical: ['bg-red-500', 'text-white', 'border-red-500']
+  };
+  var assigneeNames = { PR: 'Prince R.', JB: 'John Benedict', AS: 'Aira Santos', MR: 'Marco Reyes', KL: 'Kaye Lim', CS: 'Carlo Silva' };
+  var ACCESS_COLORS = ['#EC6608', '#A8440A', '#0EA5A0', '#6366F1', '#DB2777', '#65A30D', '#0284C7'];
+  function accessColor(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return ACCESS_COLORS[h % ACCESS_COLORS.length];
+  }
+  function initialsOf(name) {
+    return name.split(' ').map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase();
+  }
+  var currentAccessList = [];
+  function currentFormAssigneeName() {
+    var val = taskFormAssignee.value;
+    return assigneeNames.hasOwnProperty(val) ? assigneeNames[val] : null;
+  }
+  function renderAccessChips() {
+    var wrap = document.getElementById('access-chip-list');
+    var html = '';
+    var owner = currentFormAssigneeName();
+    if (owner) {
+      html += '<span class="access-chip access-chip-enter inline-flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-1 text-xs font-medium">' +
+        '<span class="access-avatar" style="background:' + accessColor(owner) + '">' + initialsOf(owner) + '</span>' + owner +
+        '<span class="access-owner-badge ml-0.5">ASSIGNEE</span></span>';
+    }
+    currentAccessList.forEach(function (name) {
+      html += '<span class="access-chip access-chip-enter inline-flex items-center gap-1.5 rounded-full pl-1 pr-1.5 py-1 text-xs font-medium">' +
+        '<span class="access-avatar" style="background:' + accessColor(name) + '">' + initialsOf(name) + '</span>' + name +
+        '<button type="button" class="access-chip-remove access-chip-remove-btn" data-name="' + name + '" title="Remove access">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+        '</button></span>';
+    });
+    if (!owner && !currentAccessList.length) {
+      html = '<p class="text-xs text-slate-500 dark:text-night-muted">Pick an assignee above, or add someone below.</p>';
+    }
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('.access-chip-remove-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        currentAccessList = currentAccessList.filter(function (n) { return n !== btn.dataset.name; });
+        renderAccessChips();
+      });
+    });
+  }
+  function renderAccessDropdown(filterText) {
+    var dd = document.getElementById('access-add-dropdown');
+    var q = (filterText || '').trim().toLowerCase();
+    var owner = currentFormAssigneeName();
+    var taken = (owner ? [owner] : []).concat(currentAccessList);
+    var pool = Object.keys(assigneeNames).map(function (k) { return assigneeNames[k]; }).filter(function (n) { return n.toLowerCase().indexOf(q) !== -1; });
+    if (!pool.length) { dd.innerHTML = '<p class="text-xs text-slate-500 dark:text-night-muted text-center py-2.5">No members match.</p>'; return; }
+    dd.innerHTML = pool.map(function (name) {
+      var already = taken.indexOf(name) !== -1;
+      return '<button type="button" data-name="' + name + '" class="access-picker-row w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-sm' + (already ? ' already-added' : '') + '" ' + (already ? 'disabled' : '') + '>' +
+        '<span class="access-avatar" style="background:' + accessColor(name) + '">' + initialsOf(name) + '</span>' + name + (already ? ' <span class="text-[10.5px] text-slate-500 dark:text-night-muted ml-auto">Added</span>' : '') +
+      '</button>';
+    }).join('');
+    dd.querySelectorAll('.access-picker-row:not(.already-added)').forEach(function (row) {
+      row.addEventListener('click', function () {
+        currentAccessList.push(row.dataset.name);
+        document.getElementById('access-add-input').value = '';
+        renderAccessChips();
+        closeAccessDropdown();
+      });
+    });
+  }
+  function openAccessDropdown() {
+    document.getElementById('access-add-dropdown').classList.remove('dd-hidden');
+    renderAccessDropdown(document.getElementById('access-add-input').value);
+  }
+  function closeAccessDropdown() {
+    document.getElementById('access-add-dropdown').classList.add('dd-hidden');
+  }
+  document.getElementById('access-add-input').addEventListener('focus', openAccessDropdown);
+  document.getElementById('access-add-input').addEventListener('input', function () { openAccessDropdown(); });
+  document.addEventListener('click', function (e) {
+    var picker = document.getElementById('access-add-input').closest('.relative').parentElement;
+    if (picker && !picker.contains(e.target)) closeAccessDropdown();
+  });
+  taskFormAssignee.addEventListener('change', function () { if (taskFormConfidential.checked) renderAccessChips(); });
+  taskFormConfidential.addEventListener('change', function () {
+    document.getElementById('confidential-access-panel').classList.toggle('open', taskFormConfidential.checked);
+    if (taskFormConfidential.checked) renderAccessChips();
+  });
+
+  function setFormPriority(p) {
+    selectedFormPriority = p;
+    document.querySelectorAll('.task-form-priority-btn').forEach(function (btn) {
+      var tier = btn.dataset.priority;
+      var isActive = tier === p;
+      // Clear both sets first so an old outline color can never linger under the fill
+      priorityFormBaseClasses[tier].forEach(function (cls) { btn.classList.remove(cls); });
+      priorityFormActiveClasses[tier].forEach(function (cls) { btn.classList.remove(cls); });
+      var toApply = isActive ? priorityFormActiveClasses[tier] : priorityFormBaseClasses[tier];
+      toApply.forEach(function (cls) { btn.classList.add(cls); });
+    });
+  }
+  document.querySelectorAll('.task-form-priority-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { setFormPriority(btn.dataset.priority); });
+  });
+
+  function formatDueDate(value, status) {
+    if (status === 'completed') return 'Completed';
+    if (!value) return 'No due date';
+    var d = new Date(value + 'T00:00:00');
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var day = d.getDate();
+    return 'Due ' + months[d.getMonth()] + ' ' + (day < 10 ? '0' + day : day);
+  }
+
+  function formatCallTime(value) {
+    if (!value) return '';
+    var parts = value.split(':');
+    var h = parseInt(parts[0], 10);
+    var m = parts[1];
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var h12 = h % 12;
+    if (h12 === 0) h12 = 12;
+    return h12 + ':' + m + ' ' + ampm;
+  }
+
+  function formatCallDate(value) {
+    if (!value) return '';
+    var d = new Date(value + 'T00:00:00');
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate();
+  }
+
+  function formatCallDateTime(dateValue, timeValue) {
+    var d = formatCallDate(dateValue);
+    var t = formatCallTime(timeValue);
+    if (d && t) return d + ', ' + t;
+    return d || t || '';
+  }
+
+  function buildCardEl(data) {
+    var div = document.createElement('div');
+    div.className = 'task-card rounded-xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4 cursor-grab' + (data.status === 'completed' ? ' opacity-70' : '');
+    if (data.callTime) {
+      div.dataset.callTime = data.callTime;
+      div.dataset.callDate = data.callDate || '';
+      div.dataset.endTime = data.endTime || '';
+    }
+
+    var pulseClass = data.priority === 'critical' ? ' critical-pulse' : '';
+    var avatarHTML = data.assignee === 'unassigned'
+      ? '<div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/10 border-2 border-dashed border-slate-300 dark:border-white/20 flex items-center justify-center text-slate-400"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>'
+      : '<div class="w-6 h-6 rounded-full bg-slate-300 dark:bg-white/15 border-2 border-card dark:border-night-card flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-night-text">' + data.assignee + '</div>';
+
+    var footerHTML;
+    if (data.status === 'completed') {
+      footerHTML = '<span class="text-xs font-medium text-slate-500 dark:text-night-muted">Completed</span>';
+    } else if (data.callTime) {
+      footerHTML = '<span class="inline-flex items-center gap-1 rounded-full bg-council text-white text-[11px] font-bold pl-2 pr-2.5 py-1">' +
+        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>' +
+        formatCallDateTime(data.callDate, data.callTime) + '</span>';
+    } else {
+      footerHTML = '<span class="text-xs font-medium text-slate-500 dark:text-night-muted">' + data.dueDateLabel + '</span>';
+    }
+
+    div.innerHTML =
+      '<div class="flex items-start justify-between mb-2.5">' +
+        '<span class="inline-flex items-center rounded-md ' + priorityBadgeClasses[data.priority] + pulseClass + ' text-[10px] font-bold px-2 py-1 tracking-wide">' + data.priority.toUpperCase() + '</span>' +
+        '<button class="task-menu-btn text-slate-400 hover:text-ink dark:hover:text-night-text hidden md:block"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>' +
+        '<button class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-white/20 md:hidden shrink-0"></button>' +
+      '</div>' +
+      '<p class="font-semibold text-sm leading-snug mb-3' + (data.status === 'completed' ? ' line-through decoration-slate-400' : '') + '">' + data.title + '</p>' +
+      (data.callTime ? '<p class="text-[11px] text-council-dark dark:text-council-light font-medium -mt-2 mb-2.5">Do not start until ' + formatCallDateTime(data.callDate, data.callTime) + (data.endTime ? ' – ' + formatCallTime(data.endTime) : '') + '</p>' : '') +
+      '<div class="flex items-center justify-between">' + avatarHTML + footerHTML + '</div>';
+
+    if (data.confidential) {
+      div.classList.add('is-confidential');
+      div.dataset.originalTitle = data.title;
+      var titleEl = div.querySelector('p.font-semibold');
+      titleEl.textContent = '🔒 Confidential Task';
+      titleEl.classList.add('text-slate-500', 'dark:text-night-muted');
+    }
+    return div;
+  }
+
+  // Task Details modal ("View Details") — includes the Google Drive preview intercept
+  var taskViewOverlay = document.getElementById('task-view-overlay');
+  var taskViewModal = document.getElementById('task-view-modal');
+
+  function openTaskView(card) {
+    var titleEl = card.querySelector('p.font-semibold');
+    var title = card.dataset.originalTitle || titleEl.textContent.trim();
+    document.getElementById('task-view-title').textContent = title;
+
+    var p = cardPriority(card) || 'medium';
+    var badge = document.getElementById('task-view-priority');
+    badge.className = 'inline-flex items-center rounded-md text-[10px] font-bold px-2 py-1 tracking-wide mb-2 ' + priorityBadgeClasses[p];
+    badge.textContent = p.toUpperCase();
+
+    var avatarEl = card.querySelector('.flex.items-center.justify-between > div:first-child');
+    var initials = avatarEl ? avatarEl.textContent.trim() : '';
+    document.getElementById('task-view-assignee').textContent = assigneeNames[initials] || 'Unassigned';
+
+    var callBanner = document.getElementById('task-view-call-time-banner');
+    var callTime = card.dataset.callTime;
+    var callDate = card.dataset.callDate;
+    var endTime = card.dataset.endTime;
+    if (callTime) {
+      callBanner.classList.remove('hidden');
+      var rangeSuffix = endTime ? ' – ' + formatCallTime(endTime) : '';
+      document.getElementById('task-view-call-time-text').textContent = formatCallDateTime(callDate, callTime) + rangeSuffix + ' Call Time';
+      document.getElementById('task-view-due').textContent = formatCallDateTime(callDate, callTime) + rangeSuffix + ' (Call Time — day of event only)';
+    } else {
+      callBanner.classList.add('hidden');
+      var footerRows = card.querySelectorAll('.flex.items-center.justify-between');
+      var footerRow = footerRows[footerRows.length - 1];
+      var footerSpan = footerRow ? footerRow.querySelector('span') : null;
+      document.getElementById('task-view-due').textContent = footerSpan ? footerSpan.textContent.trim() : '—';
+    }
+
+    document.getElementById('task-view-gdrive-input').value = '';
+    document.getElementById('task-view-gdrive-error').classList.add('hidden');
+    document.getElementById('task-view-gdrive-frame-wrap').classList.add('hidden');
+    document.getElementById('task-view-gdrive-frame').src = '';
+
+    taskViewOverlay.classList.remove('hidden');
+    taskViewModal.classList.remove('hidden');
+  }
+
+  function closeTaskView() {
+    taskViewOverlay.classList.add('hidden');
+    taskViewModal.classList.add('hidden');
+    document.getElementById('task-view-gdrive-frame').src = '';
+  }
+
+  document.getElementById('task-view-close').addEventListener('click', closeTaskView);
+  taskViewOverlay.addEventListener('click', closeTaskView);
+
+  // GDrive link intercept: pull the file id out of a standard share link and
+  // rebuild it pointed at /preview, per the doc's zero-cost storage approach.
+  document.getElementById('task-view-gdrive-load').addEventListener('click', function () {
+    var val = document.getElementById('task-view-gdrive-input').value.trim();
+    var errorEl = document.getElementById('task-view-gdrive-error');
+    var frameWrap = document.getElementById('task-view-gdrive-frame-wrap');
+    var frame = document.getElementById('task-view-gdrive-frame');
+
+    var match = val.match(/drive\.google\.com\/file\/d\/([^\/?]+)/);
+    if (!match) {
+      errorEl.classList.remove('hidden');
+      frameWrap.classList.add('hidden');
+      frame.src = '';
+      return;
+    }
+    errorEl.classList.add('hidden');
+    frame.src = 'https://drive.google.com/file/d/' + match[1] + '/preview';
+    frameWrap.classList.remove('hidden');
+  });
+
+  function openTaskForm(mode, card) {
+    editingCard = mode === 'edit' ? card : null;
+    taskFormTitleEl.textContent = mode === 'edit' ? 'Edit Task' : 'Add Task';
+    taskFormSubmit.textContent = mode === 'edit' ? 'Save Changes' : 'Create Task';
+
+    if (mode === 'edit' && card) {
+      var titleEl = card.querySelector('p.font-semibold');
+      taskFormTitleInput.value = card.dataset.originalTitle || titleEl.textContent.trim();
+      setFormPriority(cardPriority(card) || 'medium');
+
+      var listEl = card.closest('.card-list');
+      if (listEl) {
+        var m = listEl.id.match(/list-p(\d)-(todo|inprogress|completed)/);
+        if (m) { taskFormPhase.value = m[1]; taskFormStatus.value = m[2]; }
+      }
+
+      var avatarEl = card.querySelector('.flex.items-center.justify-between > div:first-child');
+      var initials = avatarEl ? avatarEl.textContent.trim() : '';
+      taskFormAssignee.value = assigneeNames.hasOwnProperty(initials) ? initials : 'unassigned';
+
+      taskFormDue.value = '';
+      taskFormConfidential.checked = card.classList.contains('is-confidential');
+      currentAccessList = card.dataset.accessList ? JSON.parse(card.dataset.accessList) : [];
+      document.getElementById('access-add-input').value = '';
+      closeAccessDropdown();
+      document.getElementById('confidential-access-panel').classList.toggle('open', taskFormConfidential.checked);
+      if (taskFormConfidential.checked) renderAccessChips();
+      setTaskIsLive(!!card.dataset.callTime);
+      taskFormCallTime.value = card.dataset.callTime || '';
+      taskFormEndTime.value = card.dataset.endTime || '';
+      taskFormCallDate.value = card.dataset.callDate || EVENT_START;
+      updateCallDateCaption();
+    } else {
+      taskFormTitleInput.value = '';
+      setFormPriority('medium');
+      var activeTab = document.querySelector('.phase-tab.active');
+      taskFormPhase.value = activeTab ? activeTab.dataset.phase : '1';
+      taskFormStatus.value = 'todo';
+      taskFormAssignee.value = 'unassigned';
+      taskFormDue.value = '';
+      taskFormConfidential.checked = false;
+      currentAccessList = [];
+      document.getElementById('access-add-input').value = '';
+      closeAccessDropdown();
+      document.getElementById('confidential-access-panel').classList.remove('open');
+      setTaskIsLive(false);
+      taskFormCallTime.value = '';
+      taskFormEndTime.value = '';
+      taskFormCallDate.value = EVENT_START;
+      updateCallDateCaption();
+    }
+
+    taskFormOverlay.classList.remove('hidden');
+    taskFormModal.classList.remove('hidden');
+    taskFormTitleInput.focus();
+  }
+
+  function closeTaskForm() {
+    taskFormOverlay.classList.add('hidden');
+    taskFormModal.classList.add('hidden');
+    editingCard = null;
+  }
+
+  document.getElementById('open-add-task').addEventListener('click', function () { openTaskForm('create', null); });
+  document.getElementById('task-form-close').addEventListener('click', closeTaskForm);
+  document.getElementById('task-form-cancel').addEventListener('click', closeTaskForm);
+  taskFormOverlay.addEventListener('click', closeTaskForm);
+
+  taskFormSubmit.addEventListener('click', function () {
+    var title = taskFormTitleInput.value.trim();
+    if (!title) { taskFormTitleInput.focus(); return; }
+
+    var status = taskFormStatus.value;
+    var data = {
+      title: title,
+      priority: selectedFormPriority,
+      status: status,
+      assignee: taskFormAssignee.value,
+      dueDateLabel: formatDueDate(taskFormDue.value, status),
+      confidential: taskFormConfidential.checked,
+      callTime: taskFormIsLive.checked ? taskFormCallTime.value : '',
+      callDate: taskFormIsLive.checked ? taskFormCallDate.value : '',
+      endTime: taskFormIsLive.checked ? taskFormEndTime.value : ''
+    };
+
+    var targetList = document.getElementById('list-p' + taskFormPhase.value + '-' + status);
+    if (!targetList) { closeTaskForm(); return; }
+
+    var hadBackupBadge = editingCard && editingCard.querySelector('.help-wanted-badge') !== null;
+    var newCard = buildCardEl(data);
+    if (data.confidential) newCard.dataset.accessList = JSON.stringify(currentAccessList);
+    else delete newCard.dataset.accessList;
+    if (hadBackupBadge) {
+      var badge = document.createElement('div');
+      badge.className = 'help-wanted-badge mt-1 mb-3 flex items-center gap-1.5 rounded-lg bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[11px] font-semibold px-3 py-1.5 w-fit';
+      badge.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2Zm0 6 6.5 11h-13L12 8Z"/></svg> Help Wanted';
+      newCard.querySelector('p.font-semibold').insertAdjacentElement('afterend', badge);
+    }
+
+    if (editingCard) editingCard.replaceWith(newCard);
+    else targetList.appendChild(newCard);
+
+    refreshColumnCounts();
+    applyFilter();
+    closeTaskForm();
+  });
+
+  // Backlog drawer
+  var overlay = document.getElementById('drawer-overlay');
+  var drawer = document.getElementById('backlog-drawer');
+  function openDrawer() { overlay.classList.remove('closed'); drawer.classList.remove('closed'); }
+  function closeDrawer() { overlay.classList.add('closed'); drawer.classList.add('closed'); }
+  document.getElementById('open-backlog').addEventListener('click', openDrawer);
+  document.getElementById('close-backlog').addEventListener('click', closeDrawer);
+  overlay.addEventListener('click', closeDrawer);
+
+  // Theme toggle (in-memory only, defaults to system preference)
+  var htmlEl = document.documentElement;
+  var themeLabel = document.getElementById('theme-label');
+  var sunIcon = document.getElementById('theme-icon-sun');
+  var moonIcon = document.getElementById('theme-icon-moon');
+  var sunIconsM = document.querySelectorAll('.theme-icon-sun-m');
+  var moonIconsM = document.querySelectorAll('.theme-icon-moon-m');
+
+  function setTheme(dark) {
+    htmlEl.classList.toggle('dark', dark);
+    if (themeLabel) themeLabel.textContent = dark ? 'Dark mode' : 'Light mode';
+    if (sunIcon && moonIcon) { sunIcon.classList.toggle('hidden', dark); moonIcon.classList.toggle('hidden', !dark); }
+    sunIconsM.forEach(function (el) { el.classList.toggle('hidden', dark); });
+    moonIconsM.forEach(function (el) { el.classList.toggle('hidden', !dark); });
+  }
+  function toggleTheme() { setTheme(!htmlEl.classList.contains('dark')); }
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(prefersDark);
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  document.getElementById('theme-toggle-mobile').addEventListener('click', toggleTheme);
+
+  // Sidebar collapse/expand
+  var sidebar = document.getElementById('sidebar');
+  var sidebarToggle = document.getElementById('sidebar-toggle');
+  var sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+  if (sidebar && sidebarToggle) {
+    sidebarToggle.addEventListener('click', function () {
+      sidebar.classList.toggle('collapsed');
+      var collapsed = sidebar.classList.contains('collapsed');
+      sidebarToggleIcon.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+      sidebarToggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    });
+  }
+
+  // Initialize column counts / placeholders on load
+  refreshColumnCounts();
+</script>
+
+<nav id="app-mobile-nav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-card dark:bg-night-card border-t border-slate-300/70 dark:border-white/10 flex items-stretch justify-around px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))]">
+  <a href="index.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg><span class="text-[10px] font-medium">Home</span></a>
+  <a href="tasks.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 3v4M15 3v4M4 10h16"/></svg><span class="text-[10px] font-medium">Tasks</span></a>
+  <a href="dashboard.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg><span class="text-[10px] font-medium">Dashboard</span></a>
+  <a href="settings.html" class="mobile-link flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-slate-500 dark:text-night-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span class="text-[10px] font-medium">Settings</span></a>
+  <button id="mobile-more-btn" type="button" class="mobile-link relative flex flex-col items-center justify-center gap-1 flex-1 py-1.5 text-council"><span class="absolute top-1 w-1.5 h-1.5 rounded-full bg-council"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span class="text-[10px] font-semibold">More</span></button>
+</nav>
+
+<div id="mobile-more-overlay" class="md:hidden fixed inset-0 z-40 bg-ink/40 dark:bg-black/60 hidden"></div>
+<div id="mobile-more-sheet" class="md:hidden fixed bottom-0 inset-x-0 z-50 translate-y-full transition-transform duration-200 bg-card dark:bg-night-card rounded-t-2xl p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl">
+  <div class="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-white/15 mx-auto mb-2"></div>
+  <a href="archive.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>Event Archives</a>
+  <a href="activity-log.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Activity Log</a>
+  <a href="user-management.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>User Management</a>
+  <a href="notifications.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notifications</a>
+  <a href="create-event.html" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-council hover:bg-council-wash dark:hover:bg-night-wash"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New Event</a>
+  <button id="mobile-more-close" type="button" class="w-full mt-1 rounded-xl py-2.5 text-sm font-semibold text-slate-500 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5">Close</button>
+</div>
+
+<script>
+  (function () {
+    var moreBtn = document.getElementById("mobile-more-btn");
+    var overlay = document.getElementById("mobile-more-overlay");
+    var sheet = document.getElementById("mobile-more-sheet");
+    var closeBtn = document.getElementById("mobile-more-close");
+    if (!moreBtn) return;
+    function openSheet() { overlay.classList.remove("hidden"); sheet.classList.remove("translate-y-full"); }
+    function closeSheet() { overlay.classList.add("hidden"); sheet.classList.add("translate-y-full"); }
+    moreBtn.addEventListener("click", openSheet);
+    closeBtn.addEventListener("click", closeSheet);
+    overlay.addEventListener("click", closeSheet);
+  })();
+</script>
+
+</body>
+</html>
