@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { InlineAlert } from "@/components/ui/inline-alert"
 import { createClient } from "@/lib/supabase/client"
 
 function GoogleMark() {
@@ -15,20 +17,44 @@ function GoogleMark() {
 }
 
 export function GoogleButton() {
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState("")
+
   async function handleClick() {
-    const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
+    setPending(true)
+    setError("")
+
+    try {
+      const supabase = createClient()
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      })
+
+      if (oauthError) {
+        setError(oauthError.message)
+        setPending(false)
+      }
+    } catch {
+      setError("Unable to continue with Google. Please try again.")
+      setPending(false)
+    }
   }
 
   return (
     <div className="grid gap-2">
-      <Button type="button" variant="outline" size="lg" className="w-full" onClick={handleClick}>
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="w-full"
+        disabled={pending}
+        onClick={handleClick}
+      >
         <GoogleMark />
-        Continue with Google
+        {pending ? "Connecting…" : "Continue with Google"}
       </Button>
+      {error && <InlineAlert>{error}</InlineAlert>}
       <p className="text-center text-xs text-muted-foreground">
         Works after your first sign-in and setting a password.
       </p>
