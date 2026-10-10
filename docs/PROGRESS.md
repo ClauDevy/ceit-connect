@@ -1,6 +1,6 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-10-10. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-10-11. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 ## Phase 0 — Scaffold (done)
 Next.js App Router + TypeScript + Tailwind; Vercel auto-deploys from `main`; Supabase Dev and Prod projects (same org, Singapore region); shadcn theme in the Council Orange / Slate palette (OKLCH variables in `globals.css`); Supabase client helpers (browser + server + service-role); `proxy.ts` (Next 16's renamed middleware) that only refreshes the session; `/sandbox` mock-data page.
@@ -24,8 +24,9 @@ Done:
 - `events` table schema confirmed.
 - **Step 1 — Create Event page** at `/events/new`: Fundamentals tab (name, start/end date, description), live summary with checks, **Save Draft** / **Launch Event** → real insert into `events` (`status` Draft/Active, `created_by` = signed-in user). Launch requires a name and valid dates (`end >= start`); a draft needs a name and start date (`start_date` is NOT NULL). CodeRabbit findings fixed (date order, label/`id` association, try/catch/finally).
 - Migration `*_tighten_events_insert_policy.sql`: `events_insert` now also requires `created_by = auth.uid()`; confirmed live on Dev.
+- Home now shows a Council Orange `+` Create Event action to active Admins and Co-Admins only. This Home action is the only UI entry point to `/events/new`; there is no sidebar or mobile-nav link. `/events/new` has its own server-side active-role guard and redirects Members to `/home`; no event edit route exists yet to guard.
 
-Not done: everything else in `docs/PHASE-3-PLAN.md` (Home with real events, Task Setup, Edit Event, Template Auto-Import, Event Archives, banner upload, Drive preview). The Tasks tab and banner box on `/events/new` are placeholders. There is no nav link to `/events/new` yet.
+Not done: everything else in `docs/PHASE-3-PLAN.md` (Home with real events, Task Setup, Edit Event, Template Auto-Import, Event Archives, banner upload, Drive preview). The Tasks tab and banner box on `/events/new` are placeholders.
 
 ## Decisions log
 - Magic link remains the required first login; password and Google are optional extras unlocked after it.
