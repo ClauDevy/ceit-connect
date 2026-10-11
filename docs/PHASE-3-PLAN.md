@@ -9,11 +9,11 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 
 ## Step 2 — Home shows real events
 - Replace Home's placeholder with a real list/timeline of events (prototype: `docs/prototypes/index.html` — large file, read only the event list section).
-- Draft events render with a **dashed border + grey "Draft" badge** and are visible **only to their creator** (already enforced by `events_select`; verify, don't re-implement in the UI).
+- Draft events render with a **dashed border + grey "Draft" badge** and are visible to **all active Admins and Co-Admins**; Members never see them (enforced by `events_select`; verify, don't re-implement in the UI).
 - "+ New Event" button, visible to Admin and Co-Admin only, linking to `/events/new`; add the route to navigation if appropriate.
 - After saving on `/events/new`, redirect to Home so the new event is visible.
 - Empty state uses the tiger mascot when there are no events.
-- **Test:** create one Draft and one Active event → both show for the creator; sign in as a different user → the Draft is invisible (list **and** direct URL); a Member has no "+ New Event" button.
+- **Test:** create one Draft and one Active event → both show for the creator and a different active Admin/Co-Admin; sign in as a Member → the Draft is invisible (list **and** direct URL); a Member has no "+ New Event" button.
 
 ## Step 3 — Task Setup (the Tasks tab on Create Event)
 - Add phases and tasks (title, committee, type Deliverable/LiveOperation, due date, priority default Medium, description). Assignees are optional — unassigned tasks land in the Backlog.
@@ -23,9 +23,9 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 - **Test:** launch an event with 3 tasks → 3 rows with the right `event_id` / `committee_id`; as a Co-Admin, try to create a task for another committee → rejected.
 
 ## Step 4 — Edit Event
-- Load an existing event (and its tasks) into the same form; only the creator or an Admin may edit (`events_update`).
+- Load an existing event (and its tasks) into the same form; any active Admin or Co-Admin may edit any Draft or Active event (`events_update`). A Co-Admin may launch any Draft by changing it to Active, but nobody may change an Active event back to Draft. Only an Admin may archive an event, and an Archived event cannot be updated or un-archived.
 - Prototype: `docs/prototypes/edit-event.html` (large file, read only the parts you need).
-- **Test:** edit name/dates → saved; a non-creator Co-Admin cannot edit someone else's event.
+- **Test:** edit name/dates as a non-creator Co-Admin → saved; launch another creator's Draft as a Co-Admin → saved; attempting to change Active back to Draft as a Co-Admin is rejected; attempting to archive as a Co-Admin is rejected; attempting to edit or un-archive an Archived event is rejected.
 
 ## Step 5 — Template Auto-Import
 - "Start from Archive Template" lists Archived events; a Supabase SQL function duplicates the chosen event's tasks into the new event.
@@ -35,7 +35,7 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 
 ## Step 6 — Event Archives (read-only)
 - `/archives` lists Archived events; an Admin action sets `status = 'Archived'`.
-- Archived events are frozen: **enforce read-only in the database** (policy or trigger blocking updates to the event and its tasks), not only by hiding buttons. Historical comments and Drive links stay readable.
+- Archived events are frozen and cannot be un-archived: the event row is already blocked by `events_update`; Step 6 must **finish enforcing read-only in the database** for its tasks and related writes, not only by hiding buttons. Historical comments and Drive links stay readable.
 - **Test:** archive an event → dragging/editing/commenting is blocked even via a direct API call.
 
 ## Step 7 — Banner upload
@@ -48,4 +48,4 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 - **Test:** a valid share link renders an inline preview; plain text falls back to a link, never a broken iframe.
 
 ## Phase 3 gate (from the architecture doc)
-Auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link previews and plain text falls back; a non-owner cannot see a Draft event even via direct URL.
+Auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link previews and plain text falls back; active Admins and Co-Admins can see and edit any Draft, while a Member cannot see a Draft even via direct URL; a Co-Admin can launch any Draft but cannot change Active back to Draft or archive one; an Archived event cannot be updated or un-archived.

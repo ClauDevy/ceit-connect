@@ -71,7 +71,10 @@ export function CreateEventForm() {
         return;
       }
 
-      router.push("/home");
+      // Replace the completed form in browser history, then load the fresh
+      // server-rendered Home list so the newly saved event appears immediately.
+      router.replace("/home");
+      router.refresh();
     } catch {
       setError("Network error, please try again.");
       setStatus("idle");
