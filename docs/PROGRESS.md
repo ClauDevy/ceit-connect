@@ -37,8 +37,12 @@ Done:
 - Migration `20261011180000_enforce_draft_task_visibility.sql` is prepared (not yet pushed): Members cannot read or update tasks in Draft events, `get_task()` enforces the same rule despite being security-definer, and the activity-log policy blocks Draft task snapshots from Members.
 - Migration `20261011180100_create_event_with_tasks.sql` is prepared (not yet pushed): a restricted security-definer RPC lists only safe active-user fields for privileged task creators, while the invoker-security creation RPC atomically creates the event plus up to 200 tasks, derives `created_by`, rejects missing or wrongly typed required task fields, saves Live Operation times, limits text fields, and validates that assignees exist and are active regardless of committee. It rejects Archived input and Active events with zero tasks.
 - Migration `20261011200000_require_tasks_when_launching_events.sql` is prepared (not yet pushed): the existing event update trigger now rejects Draft-to-Active transitions with zero tasks. Its restricted security-definer function checks all tasks for the event, so a Co-Admin may launch an event whose only tasks belong to another committee while both existing invariants remain intact.
+- **Step 4 — Edit Event** is implemented at `/events/[eventId]/edit`: active Admins and Co-Admins can open Draft/Active events from Home, edit event details, and add/update/delete only the task rows RLS allows them to manage. Task titles/descriptions are loaded through `get_task()`; Co-Admins see an explicit own-committee note and never receive other committees' task rows. Archived events, Members, inactive users, and invalid event IDs are redirected away from the edit page.
+- Migration `20261011210000_edit_event_with_tasks.sql` is applied to Dev: `events.updated_at` is the exact optimistic-concurrency token; every successful edit advances it, including task-only saves. The `SECURITY INVOKER` RPC locks and version-checks the event, applies explicit additions/updates/deletions before any Draft-to-Active transition, checks every update/delete row count, preserves omitted tasks and protected task fields, enforces Co-Admin committee scope, and reads the real stored status before allowing deletion of a `To Do` task.
+- CodeRabbit follow-up fixes are implemented: Live Operation timestamps now serialize and reload through one shared `Asia/Manila` (`UTC+08:00`, no DST) definition instead of depending on the browser timezone. Existing assignee IDs missing from the active-only picker render as removable `Inactive member` chips without looking up inactive profiles or loosening `users` RLS.
+- Migration `20261011220000_allow_existing_inactive_task_assignees.sql` is prepared (not yet pushed): it replaces `edit_event_with_tasks` with the exact same signature, invoker security, lifecycle rules, grants, and revokes. Task additions still require active assignees; task updates may retain an inactive assignee only when that id is already stored on the task, while every newly added assignee must be active and every id must still exist.
 
-Not done: everything after Step 3 in `docs/PHASE-3-PLAN.md` (Edit Event, Template Auto-Import, Event Archives, banner upload, Drive preview). The banner box on `/events/new` remains a placeholder.
+Not done: everything after Step 4 in `docs/PHASE-3-PLAN.md` (Template Auto-Import, Event Archives, banner upload, Drive preview). The banner box on the event form remains a placeholder.
 
 ## Decisions log
 
@@ -48,6 +52,7 @@ Not done: everything after Step 3 in `docs/PHASE-3-PLAN.md` (Edit Event, Templat
 - Dev allows `gmail.com` invites for testing; Prod is meant to end up university-domain-only.
 - Phase 3 is built one feature at a time: wire an existing HTML prototype to real Supabase data, test it, then move on.
 - Event access deliberately differs from the original spec: Drafts are shared among active Admins/Co-Admins, and any of them may edit or launch a Draft; Members never see Drafts, Active events cannot return to Draft, only Admins may archive/delete, and Archived events cannot be un-archived.
+- Event task timestamps use `Asia/Manila` (`UTC+08:00`, no daylight saving) for both form serialization and edit-page display, so browser timezone settings cannot shift saved call/end times.
 - Launching requires at least one task; saving a Draft with zero tasks is allowed. Phases are stored on task rows, so empty phases are intentionally not persisted.
 - Git flow: one feature branch per task → CodeRabbit → PR → merge → then push the migration to Prod (the owner does all Supabase CLI pushes).
 
@@ -59,7 +64,7 @@ Not done: everything after Step 3 in `docs/PHASE-3-PLAN.md` (Edit Event, Templat
 - Leftovers (`sidebar.tsx`, `reset-password-form.tsx`, packages `cn` and `p`) removed: YES
 - Service-role key not in any client bundle: YES
 
-Next up after the Step 3 migrations are reviewed and applied: Phase 3 Step 4 (see `docs/PHASE-3-PLAN.md`).
+Next up after the Step 3 and Step 4 migrations are reviewed and applied: Phase 3 Step 5 (see `docs/PHASE-3-PLAN.md`).
 
 ## Open items
 
