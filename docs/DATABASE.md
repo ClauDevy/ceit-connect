@@ -32,18 +32,21 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 |---|---|---|---|---|
 | committees | any logged-in user | Admin | Admin | Admin |
 | users | own row; Co-Admin sees own committee; Admin sees all | Admin (invite flow, service role) | Co-Admin: own committee's members but **cannot promote anyone to Admin**; Admin: anyone | nobody (deactivate) |
-| events | Active/Archived for everyone; **Drafts only to their creator** | Admin or Co-Admin, **and `created_by = auth.uid()`** | creator or Admin | Admin |
+| events | Active/Archived for everyone; Drafts for active Admins and Co-Admins (including the creator while still active in either role); Members never see Drafts | active Admin or Co-Admin, **and `created_by = auth.uid()`** | any active Admin or Co-Admin may edit Draft/Active; only Admin may archive; Active cannot return to Draft; Archived cannot be updated or un-archived | active Admin |
 | tasks | Admin all; Co-Admin own committee; anyone if `request_backup`; assignees their own | Admin; Co-Admin within own committee | Admin / owning Co-Admin freely; a plain assignee may change **status only** (guard trigger) | Admin or owning Co-Admin |
 | notifications | own only | system only | mark own as read | nobody |
 | activity_log | see above | trigger only | nobody | nobody |
 
 Policy names for events: `events_select`, `events_insert`, `events_update`, `events_delete`.
 
+`events_select` exposes Drafts to any active Admin or Co-Admin; `my_role()` returns `null` for inactive profiles, so Members and deactivated privileged users cannot see them. `events_update` permits any active Admin or Co-Admin to edit any Draft or Active event. A Co-Admin may launch any Draft by changing it to Active, but only an Admin may set the status to Archived. An Active event cannot return to Draft. Archived rows fail the update policy's `using` clause, so they cannot be updated or un-archived. A `before update` trigger rejects every attempted change to `created_by` and every Active-to-Draft transition.
+
 ## Functions and triggers
 
 - `my_role()` and `my_committee_id()` — `SECURITY DEFINER` helpers that read the caller's role/committee without re-triggering `users` RLS. They exist to avoid the **infinite-recursion** bug (a `users` policy that queries `users`). Reuse them in new policies instead of subquerying `users`.
 - `get_task(p_task_id uuid)` — `SECURITY DEFINER`, returns the real row or a masked "Confidential Task" row (see `ARCHITECTURE.md` §6). All `SECURITY DEFINER` functions must `set search_path = public`.
 - Activity-log trigger on `tasks`; an **assignee-guard trigger** limiting plain assignees to status changes (it was once written but never attached to the table — always confirm a trigger is actually attached after creating it).
+- `guard_event_updates` trigger on `events` — rejects updates where `new.created_by is distinct from old.created_by` and status changes from Active back to Draft; its function uses invoker security and a fixed empty `search_path`.
 - Known, accepted limitation: the raw `tasks` row is not masked at the database level; confidentiality depends on the app always using `get_task()`.
 
 ## Storage
@@ -63,6 +66,7 @@ Bucket `avatars`: public read, 2 MB limit, MIME types `image/jpeg`, `image/png`,
 9. `20261001135007_add_password_set_column.sql` (includes a backfill from `auth.users.encrypted_password`)
 10. `20261002094633_avatar_storage_policies.sql`
 11. `20261007061905_tighten_events_insert_policy.sql` — drops and recreates `events_insert` so it also requires `created_by = auth.uid()`
+12. `20261011114905_update_event_visibility_and_edit_permissions.sql` — lets active Admins/Co-Admins see and edit all Draft/Active events, reserves archiving for Admins, blocks Active-to-Draft reversals, freezes Archived event rows, and makes `created_by` immutable
 
 ## Environments
 

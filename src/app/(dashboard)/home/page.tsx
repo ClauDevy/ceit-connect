@@ -186,7 +186,7 @@ export default async function HomePage() {
                     Drafts
                   </h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Only visible to you until launched
+                    Draft — visible to Admins and Co-Admins
                   </p>
                 </div>
                 <span className="text-sm text-muted-foreground">
