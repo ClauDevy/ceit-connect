@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type EditableEvent = {
   id: string;
@@ -31,8 +32,8 @@ type EditableTaskMetadata = {
   primary_assignees: string[];
 };
 
-const taipeiDateTime = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Taipei",
+const appDateTime = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE.iana,
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
@@ -45,7 +46,7 @@ function splitTimestamp(value: string | null) {
   if (!value) return { date: "", time: "" };
 
   const parts = new Map(
-    taipeiDateTime
+    appDateTime
       .formatToParts(new Date(value))
       .map((part) => [part.type, part.value]),
   );

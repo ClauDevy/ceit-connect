@@ -13,6 +13,7 @@ import {
   Search,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PageHeader } from "@/components/shared/page-header";
@@ -39,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
 
 type AssigneeOption = {
@@ -132,7 +134,9 @@ function makeId() {
 
 function toTimestamp(date: string, time: string) {
   if (!date || !time) return null;
-  return new Date(`${date}T${time}:00`).toISOString();
+  return new Date(
+    `${date}T${time}:00${APP_TIME_ZONE.utcOffset}`,
+  ).toISOString();
 }
 
 function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
@@ -318,6 +322,16 @@ export function EventForm({
         (assignee) => assignee.committee_id === taskEditor.draft.committeeId,
       )
     : false;
+
+  const activeAssigneeIds = useMemo(
+    () => new Set(assignees.map((assignee) => assignee.id)),
+    [assignees],
+  );
+  const inactiveAssigneeIds = taskEditor
+    ? taskEditor.draft.assigneeIds.filter(
+        (assigneeId) => !activeAssigneeIds.has(assigneeId),
+      )
+    : [];
 
   function addPhase() {
     const phaseName = newPhaseName.trim();
@@ -1213,6 +1227,40 @@ export function EventForm({
                 <legend className="px-1 text-sm font-semibold">
                   Assignees
                 </legend>
+                {inactiveAssigneeIds.length > 0 && (
+                  <div className="grid gap-2 rounded-xl border bg-muted/40 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Previously assigned members who are now inactive can stay
+                      assigned or be removed.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {inactiveAssigneeIds.map((assigneeId) => (
+                        <span
+                          key={assigneeId}
+                          className="inline-flex items-center gap-1 rounded-full border bg-card py-1 pr-1 pl-2.5 text-xs font-medium"
+                        >
+                          Inactive member
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label="Remove inactive member"
+                            onClick={() =>
+                              updateTaskDraft({
+                                assigneeIds:
+                                  taskEditor.draft.assigneeIds.filter(
+                                    (id) => id !== assigneeId,
+                                  ),
+                              })
+                            }
+                          >
+                            <X />
+                          </Button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="relative">
                   <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input

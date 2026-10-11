@@ -106,6 +106,344 @@ $$;
 rollback;
 ```
 
+## Inactive-assignee A. Updating a title while an existing assignment remains succeeds
+
+```sql
+begin;
+
+update public.users
+set is_active = false
+where id = '33333333-3333-3333-3333-333333333333';
+
+insert into public.events (id, name, start_date, status, created_by)
+values (
+  'a7000000-0000-4000-8000-000000000007',
+  'Existing inactive assignee test',
+  '2026-10-20',
+  'Draft',
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.tasks (
+  id, event_id, committee_id, title, phase, primary_assignees
+)
+values (
+  'b7000000-0000-4000-8000-000000000071',
+  'a7000000-0000-4000-8000-000000000007',
+  (select id from public.committees order by name limit 1),
+  'Original title',
+  'Setup',
+  array['33333333-3333-3333-3333-333333333333'::uuid]
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '11111111-1111-1111-1111-111111111111')::text,
+  true
+);
+
+select public.edit_event_with_tasks(
+  p_event_id => 'a7000000-0000-4000-8000-000000000007',
+  p_expected_updated_at => (
+    select updated_at from public.events
+    where id = 'a7000000-0000-4000-8000-000000000007'
+  ),
+  p_name => 'Existing inactive assignee test',
+  p_description => null,
+  p_start_date => '2026-10-20',
+  p_end_date => null,
+  p_status => 'Draft',
+  p_tasks_to_add => '[]'::jsonb,
+  p_tasks_to_update => jsonb_build_array(jsonb_build_object(
+    'id', 'b7000000-0000-4000-8000-000000000071',
+    'title', 'Updated title',
+    'description', null,
+    'phase', 'Setup',
+    'committee_id', (select id::text from public.committees order by name limit 1),
+    'task_type', 'Deliverable',
+    'due_date', null,
+    'call_time', null,
+    'end_time', null,
+    'priority', 'Medium',
+    'assignee_ids', jsonb_build_array('33333333-3333-3333-3333-333333333333')
+  )),
+  p_task_ids_to_delete => '{}'::uuid[]
+);
+
+reset role;
+
+do $$
+begin
+  if not exists (
+    select 1 from public.tasks
+    where id = 'b7000000-0000-4000-8000-000000000071'
+      and title = 'Updated title'
+      and primary_assignees = array['33333333-3333-3333-3333-333333333333'::uuid]
+  ) then
+    raise exception 'The title update or retained inactive assignment failed.';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
+## Inactive-assignee B. Adding a new inactive assignee is rejected atomically
+
+```sql
+begin;
+
+update public.users
+set is_active = false
+where id = '33333333-3333-3333-3333-333333333333';
+
+insert into public.events (id, name, start_date, status, created_by)
+values (
+  'a7100000-0000-4000-8000-000000000008',
+  'New inactive assignee test',
+  '2026-10-20',
+  'Draft',
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.tasks (id, event_id, committee_id, title, phase)
+values (
+  'b7100000-0000-4000-8000-000000000081',
+  'a7100000-0000-4000-8000-000000000008',
+  (select id from public.committees order by name limit 1),
+  'No assignees yet',
+  'Setup'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '11111111-1111-1111-1111-111111111111')::text,
+  true
+);
+
+do $$
+begin
+  begin
+    perform public.edit_event_with_tasks(
+      p_event_id => 'a7100000-0000-4000-8000-000000000008',
+      p_expected_updated_at => (
+        select updated_at from public.events
+        where id = 'a7100000-0000-4000-8000-000000000008'
+      ),
+      p_name => 'Rejected inactive addition',
+      p_description => null,
+      p_start_date => '2026-10-20',
+      p_end_date => null,
+      p_status => 'Draft',
+      p_tasks_to_add => '[]'::jsonb,
+      p_tasks_to_update => jsonb_build_array(jsonb_build_object(
+        'id', 'b7100000-0000-4000-8000-000000000081',
+        'title', 'Must roll back',
+        'description', null,
+        'phase', 'Setup',
+        'committee_id', (select id::text from public.committees order by name limit 1),
+        'task_type', 'Deliverable',
+        'due_date', null,
+        'call_time', null,
+        'end_time', null,
+        'priority', 'Medium',
+        'assignee_ids', jsonb_build_array('33333333-3333-3333-3333-333333333333')
+      )),
+      p_task_ids_to_delete => '{}'::uuid[]
+    );
+    raise exception 'Expected new inactive-assignee rejection but the call succeeded.';
+  exception when others then
+    if position('newly added assignees must be active' in sqlerrm) = 0 then
+      raise exception 'Unexpected error: %', sqlerrm;
+    end if;
+  end;
+end;
+$$;
+
+reset role;
+
+do $$
+begin
+  if not exists (
+    select 1 from public.tasks
+    where id = 'b7100000-0000-4000-8000-000000000081'
+      and title = 'No assignees yet'
+      and primary_assignees = '{}'::uuid[]
+  ) then
+    raise exception 'The rejected save changed the task.';
+  end if;
+  if (select name from public.events where id = 'a7100000-0000-4000-8000-000000000008') <> 'New inactive assignee test' then
+    raise exception 'The rejected save changed the event.';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
+## Inactive-assignee C. Removing an existing inactive assignee succeeds
+
+```sql
+begin;
+
+update public.users
+set is_active = false
+where id = '33333333-3333-3333-3333-333333333333';
+
+insert into public.events (id, name, start_date, status, created_by)
+values (
+  'a7200000-0000-4000-8000-000000000009',
+  'Remove inactive assignee test',
+  '2026-10-20',
+  'Draft',
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.tasks (
+  id, event_id, committee_id, title, phase, primary_assignees
+)
+values (
+  'b7200000-0000-4000-8000-000000000091',
+  'a7200000-0000-4000-8000-000000000009',
+  (select id from public.committees order by name limit 1),
+  'Remove inactive assignment',
+  'Setup',
+  array['33333333-3333-3333-3333-333333333333'::uuid]
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '11111111-1111-1111-1111-111111111111')::text,
+  true
+);
+
+select public.edit_event_with_tasks(
+  p_event_id => 'a7200000-0000-4000-8000-000000000009',
+  p_expected_updated_at => (
+    select updated_at from public.events
+    where id = 'a7200000-0000-4000-8000-000000000009'
+  ),
+  p_name => 'Remove inactive assignee test',
+  p_description => null,
+  p_start_date => '2026-10-20',
+  p_end_date => null,
+  p_status => 'Draft',
+  p_tasks_to_add => '[]'::jsonb,
+  p_tasks_to_update => jsonb_build_array(jsonb_build_object(
+    'id', 'b7200000-0000-4000-8000-000000000091',
+    'title', 'Remove inactive assignment',
+    'description', null,
+    'phase', 'Setup',
+    'committee_id', (select id::text from public.committees order by name limit 1),
+    'task_type', 'Deliverable',
+    'due_date', null,
+    'call_time', null,
+    'end_time', null,
+    'priority', 'Medium',
+    'assignee_ids', jsonb_build_array()
+  )),
+  p_task_ids_to_delete => '{}'::uuid[]
+);
+
+reset role;
+
+do $$
+begin
+  if (select primary_assignees from public.tasks where id = 'b7200000-0000-4000-8000-000000000091') <> '{}'::uuid[] then
+    raise exception 'The inactive assignee was not removed.';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
+## Inactive-assignee D. A Co-Admin may retain one on an own-committee task
+
+```sql
+begin;
+
+update public.users
+set is_active = false
+where id = '33333333-3333-3333-3333-333333333333';
+
+insert into public.events (id, name, start_date, status, created_by)
+values (
+  'a7300000-0000-4000-8000-000000000010',
+  'Co-Admin inactive assignee test',
+  '2026-10-20',
+  'Draft',
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.tasks (
+  id, event_id, committee_id, title, phase, primary_assignees
+)
+values (
+  'b7300000-0000-4000-8000-000000000101',
+  'a7300000-0000-4000-8000-000000000010',
+  (select committee_id from public.users where id = '22222222-2222-2222-2222-222222222222'),
+  'Co-Admin original title',
+  'Setup',
+  array['33333333-3333-3333-3333-333333333333'::uuid]
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '22222222-2222-2222-2222-222222222222')::text,
+  true
+);
+
+select public.edit_event_with_tasks(
+  p_event_id => 'a7300000-0000-4000-8000-000000000010',
+  p_expected_updated_at => (
+    select updated_at from public.events
+    where id = 'a7300000-0000-4000-8000-000000000010'
+  ),
+  p_name => 'Co-Admin inactive assignee test',
+  p_description => null,
+  p_start_date => '2026-10-20',
+  p_end_date => null,
+  p_status => 'Draft',
+  p_tasks_to_add => '[]'::jsonb,
+  p_tasks_to_update => jsonb_build_array(jsonb_build_object(
+    'id', 'b7300000-0000-4000-8000-000000000101',
+    'title', 'Co-Admin updated title',
+    'description', null,
+    'phase', 'Setup',
+    'committee_id', public.my_committee_id()::text,
+    'task_type', 'Deliverable',
+    'due_date', null,
+    'call_time', null,
+    'end_time', null,
+    'priority', 'Medium',
+    'assignee_ids', jsonb_build_array('33333333-3333-3333-3333-333333333333')
+  )),
+  p_task_ids_to_delete => '{}'::uuid[]
+);
+
+reset role;
+
+do $$
+begin
+  if not exists (
+    select 1 from public.tasks
+    where id = 'b7300000-0000-4000-8000-000000000101'
+      and title = 'Co-Admin updated title'
+      and primary_assignees = array['33333333-3333-3333-3333-333333333333'::uuid]
+  ) then
+    raise exception 'The Co-Admin update or retained inactive assignment failed.';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
 ## 2. Co-Admin cross-committee update and delete are rejected atomically
 
 ```sql
