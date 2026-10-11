@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -17,7 +18,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -49,9 +50,12 @@ type AssigneeOption = {
 
 type TaskType = "Deliverable" | "LiveOperation";
 type Priority = "Low" | "Medium" | "High" | "Critical";
+type TaskStatus = "To Do" | "In Progress" | "Completed";
 
 type TaskDraft = {
   id: string;
+  persisted: boolean;
+  status: TaskStatus;
   title: string;
   description: string;
   committeeId: string;
@@ -74,14 +78,42 @@ type PhaseDraft = {
 type TaskEditor = {
   phaseId: string;
   taskId: string | null;
-  draft: Omit<TaskDraft, "id">;
+  draft: Omit<TaskDraft, "id" | "persisted" | "status">;
 };
 
-type CreateEventFormProps = {
+export type InitialEventTask = {
+  id: string;
+  title: string;
+  description: string;
+  phase: string;
+  committeeId: string;
+  taskType: TaskType;
+  dueDate: string;
+  callDate: string;
+  callTime: string;
+  endTime: string;
+  priority: Priority;
+  assigneeIds: string[];
+  status: TaskStatus;
+};
+
+export type InitialEvent = {
+  id: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: "Draft" | "Active";
+  updatedAt: string;
+  tasks: InitialEventTask[];
+};
+
+type EventFormProps = {
   role: Extract<Role, "Admin" | "Co-Admin">;
   committees: Committee[];
   taskCommittees: Committee[];
   assignees: AssigneeOption[];
+  initialEvent?: InitialEvent;
 };
 
 const priorities: Priority[] = ["Low", "Medium", "High", "Critical"];
@@ -103,19 +135,78 @@ function toTimestamp(date: string, time: string) {
   return new Date(`${date}T${time}:00`).toISOString();
 }
 
-export function CreateEventForm({
+function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
+  const phases = new Map<string, TaskDraft[]>();
+
+  for (const task of tasks) {
+    const phaseName = task.phase;
+    const phaseTasks = phases.get(phaseName) ?? [];
+    phaseTasks.push({
+      id: task.id,
+      persisted: true,
+      status: task.status,
+      title: task.title,
+      description: task.description,
+      committeeId: task.committeeId,
+      taskType: task.taskType,
+      dueDate: task.dueDate,
+      callDate: task.callDate,
+      callTime: task.callTime,
+      endTime: task.endTime,
+      priority: task.priority,
+      assigneeIds: task.assigneeIds,
+    });
+    phases.set(phaseName, phaseTasks);
+  }
+
+  return Array.from(phases, ([name, phaseTasks], index) => ({
+    id: `persisted-phase-${index}`,
+    name,
+    collapsed: false,
+    tasks: phaseTasks,
+  }));
+}
+
+function toTaskPayload(phaseName: string, task: TaskDraft) {
+  return {
+    title: task.title,
+    description: task.description || null,
+    phase: phaseName.trim(),
+    committee_id: task.committeeId,
+    task_type: task.taskType,
+    due_date: task.dueDate || null,
+    call_time:
+      task.taskType === "LiveOperation"
+        ? toTimestamp(task.callDate, task.callTime)
+        : null,
+    end_time:
+      task.taskType === "LiveOperation"
+        ? toTimestamp(task.callDate, task.endTime)
+        : null,
+    priority: task.priority,
+    assignee_ids: task.assigneeIds,
+  };
+}
+
+export function EventForm({
   role,
   committees,
   taskCommittees,
   assignees,
-}: CreateEventFormProps) {
+  initialEvent,
+}: EventFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"fundamentals" | "tasks">("fundamentals");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [phases, setPhases] = useState<PhaseDraft[]>([]);
+  const [name, setName] = useState(initialEvent?.name ?? "");
+  const [description, setDescription] = useState(
+    initialEvent?.description ?? "",
+  );
+  const [startDate, setStartDate] = useState(initialEvent?.startDate ?? "");
+  const [endDate, setEndDate] = useState(initialEvent?.endDate ?? "");
+  const [phases, setPhases] = useState<PhaseDraft[]>(() =>
+    initialEvent ? makeInitialPhases(initialEvent.tasks) : [],
+  );
+  const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
   const [newPhaseName, setNewPhaseName] = useState("");
   const [taskEditor, setTaskEditor] = useState<TaskEditor | null>(null);
   const [taskEditorError, setTaskEditorError] = useState("");
@@ -133,7 +224,42 @@ export function CreateEventForm({
     (phase) => phase.tasks.length === 0 || phase.name.trim().length > 0,
   );
   const readyToLaunch =
-    nameSet && datesSet && !datesOutOfOrder && taskCount > 0 && phasesValid;
+    nameSet &&
+    datesSet &&
+    !datesOutOfOrder &&
+    (initialEvent ? true : taskCount > 0) &&
+    phasesValid;
+
+  const initialTaskPayloads = useMemo(
+    () =>
+      new Map(
+        (initialEvent?.tasks ?? []).map((task) => [
+          task.id,
+          JSON.stringify(
+            toTaskPayload(task.phase, {
+              ...task,
+              persisted: true,
+            }),
+          ),
+        ]),
+      ),
+    [initialEvent],
+  );
+
+  const datesChanged = Boolean(
+    initialEvent &&
+      (startDate !== initialEvent.startDate || endDate !== initialEvent.endDate),
+  );
+  const tasksOutsideDateRange = datesChanged
+    ? phases.flatMap((phase) =>
+        phase.tasks.filter(
+          (task) =>
+            task.dueDate &&
+            startDate &&
+            (task.dueDate < startDate || Boolean(endDate && task.dueDate > endDate)),
+        ),
+      )
+    : [];
 
   const committeeItems = taskCommittees.map((committee) => ({
     value: committee.id,
@@ -257,10 +383,24 @@ export function CreateEventForm({
   }
 
   function openEditTask(phaseId: string, task: TaskDraft) {
-    const { id: taskId, ...draft } = task;
     setTaskEditorError("");
     setAssigneeSearch("");
-    setTaskEditor({ phaseId, taskId, draft });
+    setTaskEditor({
+      phaseId,
+      taskId: task.id,
+      draft: {
+        title: task.title,
+        description: task.description,
+        committeeId: task.committeeId,
+        taskType: task.taskType,
+        dueDate: task.dueDate,
+        callDate: task.callDate,
+        callTime: task.callTime,
+        endTime: task.endTime,
+        priority: task.priority,
+        assigneeIds: task.assigneeIds,
+      },
+    });
   }
 
   function updateTaskDraft(updates: Partial<TaskEditor["draft"]>) {
@@ -305,8 +445,15 @@ export function CreateEventForm({
       return;
     }
 
+    const existingTask = taskEditor.taskId
+      ? phases
+          .find((phase) => phase.id === taskEditor.phaseId)
+          ?.tasks.find((task) => task.id === taskEditor.taskId)
+      : null;
     const savedTask: TaskDraft = {
       id: taskEditor.taskId ?? makeId(),
+      persisted: existingTask?.persisted ?? false,
+      status: existingTask?.status ?? "To Do",
       ...taskEditor.draft,
       title,
       description: taskEditor.draft.description.trim(),
@@ -331,6 +478,23 @@ export function CreateEventForm({
   }
 
   function removeTask(phaseId: string, taskId: string) {
+    const task = phases
+      .find((phase) => phase.id === phaseId)
+      ?.tasks.find((item) => item.id === taskId);
+
+    if (!task) return;
+    if (task.status !== "To Do") {
+      setError(
+        `“${task.title}” cannot be deleted because its status is ${task.status}.`,
+      );
+      return;
+    }
+
+    if (task.persisted) {
+      setDeletedTaskIds((current) =>
+        current.includes(task.id) ? current : [...current, task.id],
+      );
+    }
     setPhases((current) =>
       current.map((phase) =>
         phase.id === phaseId
@@ -341,6 +505,20 @@ export function CreateEventForm({
           : phase,
       ),
     );
+    setError("");
+  }
+
+  function requestRemovePhase(phase: PhaseDraft) {
+    const progressedTask = phase.tasks.find((task) => task.status !== "To Do");
+    if (progressedTask) {
+      setError(
+        `This phase cannot be removed because “${progressedTask.title}” is ${progressedTask.status}.`,
+      );
+      setTab("tasks");
+      return;
+    }
+
+    setPhaseToRemove(phase);
   }
 
   async function handleSave(launch: boolean) {
@@ -364,7 +542,7 @@ export function CreateEventForm({
       setTab("fundamentals");
       return;
     }
-    if (launch && taskCount === 0) {
+    if (launch && !initialEvent && taskCount === 0) {
       setError("Add at least one task before launching.");
       setTab("tasks");
       return;
@@ -380,38 +558,48 @@ export function CreateEventForm({
 
     const tasks = phases.flatMap((phase) =>
       phase.tasks.map((task) => ({
-        title: task.title,
-        description: task.description || null,
-        phase: phase.name.trim(),
-        committee_id: task.committeeId,
-        task_type: task.taskType,
-        due_date: task.dueDate || null,
-        call_time:
-          task.taskType === "LiveOperation"
-            ? toTimestamp(task.callDate, task.callTime)
-            : null,
-        end_time:
-          task.taskType === "LiveOperation"
-            ? toTimestamp(task.callDate, task.endTime)
-            : null,
-        priority: task.priority,
-        assignee_ids: task.assigneeIds,
+        task,
+        payload: toTaskPayload(phase.name, task),
       })),
     );
 
     try {
       const supabase = createClient();
-      const { error: saveError } = await supabase.rpc(
-        "create_event_with_tasks",
-        {
-          p_name: name.trim(),
-          p_description: description.trim() || null,
-          p_start_date: startDate,
-          p_end_date: endDate || null,
-          p_status: launch ? "Active" : "Draft",
-          p_tasks: tasks,
-        },
-      );
+      const targetStatus = launch
+        ? "Active"
+        : (initialEvent?.status ?? "Draft");
+      const saveResult = initialEvent
+        ? await supabase.rpc("edit_event_with_tasks", {
+            p_event_id: initialEvent.id,
+            // Keep the exact server string. Converting through Date can lose
+            // precision and break the optimistic-concurrency comparison.
+            p_expected_updated_at: initialEvent.updatedAt,
+            p_name: name.trim(),
+            p_description: description.trim() || null,
+            p_start_date: startDate,
+            p_end_date: endDate || null,
+            p_status: targetStatus,
+            p_tasks_to_add: tasks
+              .filter(({ task }) => !task.persisted)
+              .map(({ payload }) => payload),
+            p_tasks_to_update: tasks
+              .filter(
+                ({ task, payload }) =>
+                  task.persisted &&
+                  initialTaskPayloads.get(task.id) !== JSON.stringify(payload),
+              )
+              .map(({ task, payload }) => ({ id: task.id, ...payload })),
+            p_task_ids_to_delete: deletedTaskIds,
+          })
+        : await supabase.rpc("create_event_with_tasks", {
+            p_name: name.trim(),
+            p_description: description.trim() || null,
+            p_start_date: startDate,
+            p_end_date: endDate || null,
+            p_status: targetStatus,
+            p_tasks: tasks.map(({ payload }) => payload),
+          });
+      const saveError = saveResult.error;
 
       if (saveError) {
         setError(saveError.message);
@@ -430,9 +618,29 @@ export function CreateEventForm({
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
-        title="Create Event"
-        description="Set the event details and prepare its initial task backlog."
+        title={initialEvent ? "Edit Event" : "Create Event"}
+        description={
+          initialEvent
+            ? "Update the event details and the tasks you are allowed to manage."
+            : "Set the event details and prepare its initial task backlog."
+        }
+        actions={
+          initialEvent ? (
+            <Link href="/home" className={buttonVariants({ variant: "outline" })}>
+              Cancel
+            </Link>
+          ) : null
+        }
       />
+
+      {initialEvent && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Current status:</span>
+          <Badge variant={initialEvent.status === "Draft" ? "neutral" : "outline"}>
+            {initialEvent.status}
+          </Badge>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
@@ -513,6 +721,24 @@ export function CreateEventForm({
                   </FormField>
                 </div>
 
+                {tasksOutsideDateRange.length > 0 && (
+                  <InlineAlert variant="info">
+                    <div className="grid gap-1">
+                      <p>
+                        These task due dates fall outside the new event range.
+                        Saving will leave them unchanged:
+                      </p>
+                      <ul className="list-disc pl-5">
+                        {tasksOutsideDateRange.map((task) => (
+                          <li key={task.id}>
+                            {task.title} — {task.dueDate}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </InlineAlert>
+                )}
+
                 <FormField
                   label="Description"
                   action={
@@ -553,8 +779,7 @@ export function CreateEventForm({
 
                 {role === "Co-Admin" && (
                   <p className="text-sm text-muted-foreground">
-                    As a Co-Admin, you can create and assign tasks only within
-                    your own committee.
+                    You can only see and edit your committee&apos;s tasks.
                   </p>
                 )}
 
@@ -606,7 +831,7 @@ export function CreateEventForm({
                             variant="destructive"
                             size="icon-sm"
                             aria-label={`Remove ${phase.name}`}
-                            onClick={() => setPhaseToRemove(phase)}
+                            onClick={() => requestRemovePhase(phase)}
                           >
                             <Trash2 />
                           </Button>
@@ -637,6 +862,11 @@ export function CreateEventForm({
                                           : "Deliverable"}
                                       </span>
                                       <span>{task.priority}</span>
+                                      {task.persisted && (
+                                        <Badge variant="neutral">
+                                          {task.status}
+                                        </Badge>
+                                      )}
                                       {task.dueDate && (
                                         <span className="inline-flex items-center gap-1">
                                           <CalendarDays className="size-3" />
@@ -668,6 +898,12 @@ export function CreateEventForm({
                                       variant="destructive"
                                       size="icon-sm"
                                       aria-label={`Remove ${task.title}`}
+                                      title={
+                                        task.status === "To Do"
+                                          ? `Remove ${task.title}`
+                                          : `${task.status} tasks cannot be deleted`
+                                      }
+                                      disabled={task.status !== "To Do"}
                                       onClick={() =>
                                         removeTask(phase.id, task.id)
                                       }
@@ -749,8 +985,8 @@ export function CreateEventForm({
               <SummaryCheck done={datesSet && !datesOutOfOrder}>
                 Valid start and end dates
               </SummaryCheck>
-              <SummaryCheck done={taskCount > 0}>
-                At least one task added
+              <SummaryCheck done={initialEvent ? true : taskCount > 0}>
+                {initialEvent ? "Existing event loaded" : "At least one task added"}
               </SummaryCheck>
             </div>
 
@@ -763,19 +999,26 @@ export function CreateEventForm({
               disabled={status === "saving"}
               onClick={() => handleSave(false)}
             >
-              {status === "saving" ? "Saving…" : "Save Draft"}
+              {status === "saving"
+                ? "Saving…"
+                : initialEvent
+                  ? "Save Changes"
+                  : "Save Draft"}
             </Button>
-            <Button
-              type="button"
-              size="lg"
-              disabled={status === "saving" || !readyToLaunch}
-              onClick={() => handleSave(true)}
-            >
-              {status === "saving" ? "Saving…" : "Launch Event"}
-            </Button>
+            {(!initialEvent || initialEvent.status === "Draft") && (
+              <Button
+                type="button"
+                size="lg"
+                disabled={status === "saving" || !readyToLaunch}
+                onClick={() => handleSave(true)}
+              >
+                {status === "saving" ? "Saving…" : "Launch Event"}
+              </Button>
+            )}
             <p className="text-xs text-muted-foreground">
-              Launch requires valid dates and at least one task. Drafts may be
-              saved without tasks.
+              {initialEvent
+                ? "Every successful save advances the event version so concurrent edits cannot overwrite each other."
+                : "Launch requires valid dates and at least one task. Drafts may be saved without tasks."}
             </p>
           </CardContent>
         </Card>
@@ -1066,13 +1309,20 @@ export function CreateEventForm({
         title="Remove this phase?"
         description={
           phaseToRemove?.tasks.length
-            ? `This also removes ${phaseToRemove.tasks.length} unsaved task${phaseToRemove.tasks.length === 1 ? "" : "s"} from the form.`
+            ? `This also removes ${phaseToRemove.tasks.length} task${phaseToRemove.tasks.length === 1 ? "" : "s"}. Persisted To Do tasks will be deleted when you save.`
             : "This removes the empty phase from the form."
         }
         confirmLabel="Remove phase"
         destructive
         onConfirm={() => {
           if (phaseToRemove) {
+            const persistedIds = phaseToRemove.tasks
+              .filter((task) => task.persisted)
+              .map((task) => task.id);
+            setDeletedTaskIds((current) => [
+              ...current,
+              ...persistedIds.filter((id) => !current.includes(id)),
+            ]);
             setPhases((current) =>
               current.filter((phase) => phase.id !== phaseToRemove.id),
             );

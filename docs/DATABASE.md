@@ -18,7 +18,7 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 
 ### events
 
-`id uuid pk default gen_random_uuid()`, `name text not null`, `description text`, `banner_url text`, `start_date date not null`, `end_date date`, `status text not null default 'Draft'` (`Draft` | `Active` | `Archived`), `created_by uuid not null → users.id`, `created_at timestamptz default now()`.
+`id uuid pk default gen_random_uuid()`, `name text not null`, `description text`, `banner_url text`, `start_date date not null`, `end_date date`, `status text not null default 'Draft'` (`Draft` | `Active` | `Archived`), `created_by uuid not null → users.id`, `created_at timestamptz default now()`, `updated_at timestamptz not null default clock_timestamp()`.
 
 ### tasks
 
@@ -57,8 +57,10 @@ Task Draft visibility is enforced separately from event visibility. `tasks_selec
 - `get_task(p_task_id uuid)` — `SECURITY DEFINER`, returns the real row or a masked "Confidential Task" row (see `ARCHITECTURE.md` §6). Its existing confidentiality/masking logic is unchanged; a Draft-only guard now returns no row unless the caller is an active Admin or the active Co-Admin of the task's committee. All `SECURITY DEFINER` functions must `set search_path = public`.
 - `list_active_task_assignees()` — `SECURITY DEFINER`, fixed `search_path`, and executable only by `authenticated`. It returns `id`, `full_name`, `committee_id`, and `avatar_url` for active users only, and returns no rows unless the caller is an active Admin or Co-Admin. It exists so the collaborative assignee picker can cross committee boundaries without loosening `users` RLS or exposing email, role, or Discord data.
 - `create_event_with_tasks(...)` — `SECURITY INVOKER`; atomically inserts one Draft/Active event and up to 200 initial tasks while RLS remains active. It derives `created_by` from `auth.uid()`, rejects an Active event with zero tasks, caps text lengths, validates required JSON keys/types plus enums/dates/times, and requires every assignee to exist and be active. Assignees may belong to any committee, are written to `primary_assignees`, and an empty array leaves the task in the Backlog. Live Operations may save `call_time` and optional `end_time` using the existing task columns.
+- `edit_event_with_tasks(...)` — `SECURITY INVOKER`; atomically edits a Draft/Active event using an exact expected `updated_at` value plus explicit task-add, task-update, and task-delete lists. It locks the event, rejects stale saves, validates the same event/task fields and active assignees as creation, preserves task status and confidentiality fields, and checks every requested task update/delete affected exactly one RLS-authorized row. Co-Admins are additionally restricted to their own committee inside the function. Task mutations happen before a Draft-to-Active event update so the launch trigger sees newly added tasks. Only real database `To Do` tasks may be deleted; omitted tasks are untouched.
 - Activity-log trigger on `tasks`; an **assignee-guard trigger** limiting plain assignees to status changes (it was once written but never attached to the table — always confirm a trigger is actually attached after creating it).
 - `guard_event_updates` trigger on `events` — rejects updates where `new.created_by is distinct from old.created_by`, status changes from Active back to Draft, and Draft-to-Active transitions when the event has no tasks. Its `SECURITY DEFINER` function has a fixed empty `search_path`, so its single `tasks` existence check sees every task for the event instead of being narrowed by the caller's task RLS.
+- `events_set_updated_at` trigger on `events` — assigns a monotonic value based on `clock_timestamp()` before every event update. The edit RPC always updates the event row, including task-only saves, so every successful edit advances the concurrency token.
 - Known, accepted limitation: the raw `tasks` row is not masked at the database level; confidentiality depends on the app always using `get_task()`.
 
 ## Storage
@@ -82,6 +84,7 @@ Bucket `avatars`: public read, 2 MB limit, MIME types `image/jpeg`, `image/png`,
 13. `20261011180000_enforce_draft_task_visibility.sql` — prevents Members from reading or updating Draft tasks, applies the same rule inside `get_task()`, and prevents Draft task snapshots from leaking through `activity_log`
 14. `20261011180100_create_event_with_tasks.sql` — adds the restricted active-assignee listing function plus the invoker-security atomic event-and-task creation function and its input/assignee limits
 15. `20261011200000_require_tasks_when_launching_events.sql` — replaces the event update guard so Draft events cannot be launched without a task; the all-committee task existence check runs as a restricted security-definer function
+16. `20261011210000_edit_event_with_tasks.sql` — adds `events.updated_at`, its update trigger, and the invoker-security atomic edit RPC with optimistic concurrency, explicit RLS-checked task mutation lists, protected progressed tasks, and task-before-launch ordering
 
 ## Environments
 
