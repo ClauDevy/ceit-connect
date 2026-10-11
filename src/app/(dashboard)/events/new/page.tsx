@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { CreateEventForm } from "@/app/(dashboard)/events/new/create-event-form";
+import { EventForm } from "@/components/events/event-form";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { PageHeader } from "@/components/shared/page-header";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
@@ -55,7 +55,7 @@ export default async function CreateEventPage() {
   );
 
   return (
-    <CreateEventForm
+    <EventForm
       role={currentProfile.role}
       committees={committees}
       taskCommittees={taskCommittees}

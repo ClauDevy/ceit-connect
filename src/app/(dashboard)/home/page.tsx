@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, FileText, Plus } from "lucide-react";
+import { CalendarDays, FileText, Pencil, Plus } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,13 @@ function formatDateRange(event: HomeEvent) {
   return `${formatDate(event.start_date)} – ${formatDate(event.end_date)}`;
 }
 
-function ActiveEventCard({ event }: { event: HomeEvent }) {
+function ActiveEventCard({
+  event,
+  canEdit,
+}: {
+  event: HomeEvent;
+  canEdit: boolean;
+}) {
   return (
     <Card className="overflow-hidden">
       <div className="relative flex h-20 items-center justify-end overflow-hidden bg-gradient-to-br from-primary/15 via-muted to-accent/30 px-6 sm:h-24">
@@ -64,12 +70,27 @@ function ActiveEventCard({ event }: { event: HomeEvent }) {
             {event.description}
           </p>
         ) : null}
+        {canEdit && (
+          <Link
+            href={`/events/${event.id}/edit`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <Pencil aria-hidden />
+            Edit
+          </Link>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function DraftEventCard({ event }: { event: HomeEvent }) {
+function DraftEventCard({
+  event,
+  canEdit,
+}: {
+  event: HomeEvent;
+  canEdit: boolean;
+}) {
   return (
     <Card className="border-2 border-dashed bg-card/70">
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -87,7 +108,18 @@ function DraftEventCard({ event }: { event: HomeEvent }) {
             </p>
           </div>
         </div>
-        <Badge variant="neutral">Draft</Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant="neutral">Draft</Badge>
+          {canEdit && (
+            <Link
+              href={`/events/${event.id}/edit`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Pencil aria-hidden />
+              Edit
+            </Link>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -169,7 +201,11 @@ export default async function HomePage() {
               </div>
               <div className="grid gap-5 md:grid-cols-2">
                 {activeEvents.map((event) => (
-                  <ActiveEventCard key={event.id} event={event} />
+                  <ActiveEventCard
+                    key={event.id}
+                    event={event}
+                    canEdit={Boolean(leadershipProfile)}
+                  />
                 ))}
               </div>
             </section>
@@ -195,7 +231,11 @@ export default async function HomePage() {
               </div>
               <div className="grid gap-4">
                 {draftEvents.map((event) => (
-                  <DraftEventCard key={event.id} event={event} />
+                  <DraftEventCard
+                    key={event.id}
+                    event={event}
+                    canEdit={Boolean(leadershipProfile)}
+                  />
                 ))}
               </div>
             </section>
