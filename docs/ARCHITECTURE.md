@@ -51,7 +51,7 @@ Hiding a nav icon is UX polish, not security. Every UI role check must have a ma
 ## 5. Events, drafts, templates
 
 - 3-part creation flow: Event Fundamentals → Task Setup (by phase) → Review. "Save as Draft" is available throughout.
-- **Draft events** are visible only to their creator until "Launch Event" (RLS-enforced).
+- **Draft events** are visible to their creator and every other active Admin or Co-Admin; Members never see Drafts, including by direct URL (RLS-enforced). Any active Admin or Co-Admin may edit any Draft or Active event, and a Co-Admin may launch any Draft by changing it to Active. An Active event cannot return to Draft. Only an Admin may archive or delete an event. Archived events cannot be updated or un-archived.
 - **Template Auto-Import:** "Start from Archive Template" duplicates a past event's tasks via a Supabase SQL function. Relative scheduling: `new_task_deadline = new_event_start + (old_task_deadline − old_event_start)`. Assignees are wiped; tasks land in the Backlog.
 
 ## 6. Task engine
@@ -89,7 +89,7 @@ Supabase free tier has no automated backups. A designated Technical Lead exports
 | 4 | Task engine, Kanban, dependencies, confidentiality UI | Not started |
 | 5 | Notifications, dashboard wiring, ops handover | Not started |
 
-**Phase 3 gate checks:** auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link renders an inline preview and plain text falls back to a link; a non-owner cannot see a Draft event even via direct URL.
+**Phase 3 gate checks:** auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link renders an inline preview and plain text falls back to a link; active Admins and Co-Admins can see and edit any Draft, while a Member cannot see a Draft even via direct URL; a Co-Admin can launch any Draft but cannot change Active back to Draft or archive one; an Archived event cannot be updated or un-archived.
 **Phase 4 gate checks:** blocked task unlocks when its dependency completes; a non-assigned Member sees only "Confidential Task" on the board and in the modal; drag-and-drop works on desktop and tap-checkbox on a real phone.
 **Phase 5 gate checks:** a burst of 40+ mentions throttles gracefully; a Co-Admin lands on their own committee with no Level 1 access, a Member has no dashboard link and the URL is blocked server-side; the unread count survives a refresh after an offline notification.
 
@@ -102,3 +102,4 @@ Supabase free tier has no automated backups. A designated Technical Lead exports
 - **Invites are limited to approved email domains** via the `ALLOWED_EMAIL_DOMAINS` env var (Dev also allows `gmail.com` for testing; Prod will be tightened to the university domain).
 - **Deactivate and Reactivate** are both supported (original described only deactivation).
 - **`discord_id` settings field is deferred** until Discord webhooks are actually scheduled.
+- **Event access:** Drafts are visible to all active Admins and Co-Admins, not only their creator. Any active Admin or Co-Admin may edit or launch any Draft or Active event; Active events cannot return to Draft; only Admins may archive or delete events; `created_by` is immutable; and Archived events cannot be updated or un-archived.
