@@ -415,6 +415,7 @@ export function CreateEventForm({
 
       if (saveError) {
         setError(saveError.message);
+        setStatus("idle");
         return;
       }
 
@@ -422,7 +423,6 @@ export function CreateEventForm({
       router.refresh();
     } catch {
       setError("Network error, please try again.");
-    } finally {
       setStatus("idle");
     }
   }
