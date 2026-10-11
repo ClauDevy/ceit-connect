@@ -25,7 +25,8 @@ Done:
 - **Step 1 — Create Event page** at `/events/new`: Fundamentals tab (name, start/end date, description), live summary with checks, **Save Draft** / **Launch Event** → real insert into `events` (`status` Draft/Active, `created_by` = signed-in user). Launch requires a name and valid dates (`end >= start`); a draft needs a name and start date (`start_date` is NOT NULL). CodeRabbit findings fixed (date order, label/`id` association, try/catch/finally).
 - Migration `*_tighten_events_insert_policy.sql`: `events_insert` now also requires `created_by = auth.uid()`; confirmed live on Dev.
 - Home now shows a Council Orange `+` Create Event action to active Admins and Co-Admins only. This Home action is the only UI entry point to `/events/new`; there is no sidebar or mobile-nav link. `/events/new` has its own server-side active-role guard and redirects Members to `/home`; no event edit route exists yet to guard.
-- **Step 2 — Home shows real events**: signed-in users see RLS-scoped Active events and only their own Drafts, sorted by soonest start date. Active cards have clear status and date ranges; Drafts use a dashed border and neutral badge; the no-events state uses the tiger mascot; Home has a matching loading skeleton. Saving an event returns to a freshly rendered Home list.
+- **Step 2 — Home shows real events**: signed-in users see RLS-scoped Active events; all active Admins and Co-Admins see Drafts, while Members never do. Events are sorted by soonest start date. Active cards have clear status and date ranges; Drafts use a dashed border and neutral badge with accurate visibility text; the no-events state uses the tiger mascot; Home has a matching loading skeleton. Saving an event returns to a freshly rendered Home list.
+- Migration `20261011114905_update_event_visibility_and_edit_permissions.sql` is prepared (not yet pushed to Dev or Prod): active Admins/Co-Admins can see and edit any Draft/Active event, Co-Admins can launch any Draft, nobody can change Active back to Draft, only Admins can archive, Archived event rows cannot be updated or un-archived, and `created_by` is immutable.
 
 Not done: everything else in `docs/PHASE-3-PLAN.md` (Task Setup, Edit Event, Template Auto-Import, Event Archives, banner upload, Drive preview). The Tasks tab and banner box on `/events/new` are placeholders.
 
@@ -35,6 +36,7 @@ Not done: everything else in `docs/PHASE-3-PLAN.md` (Task Setup, Edit Event, Tem
 - Invites/user management are Admin-only; users are deactivated, never deleted.
 - Dev allows `gmail.com` invites for testing; Prod is meant to end up university-domain-only.
 - Phase 3 is built one feature at a time: wire an existing HTML prototype to real Supabase data, test it, then move on.
+- Event access deliberately differs from the original spec: Drafts are shared among active Admins/Co-Admins, and any of them may edit or launch a Draft; Members never see Drafts, Active events cannot return to Draft, only Admins may archive/delete, and Archived events cannot be un-archived.
 - Git flow: one feature branch per task → CodeRabbit → PR → merge → then push the migration to Prod (the owner does all Supabase CLI pushes).
 
 ## Status checks (answered 2026-10-10)
