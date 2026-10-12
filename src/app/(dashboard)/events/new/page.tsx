@@ -14,21 +14,31 @@ export default async function CreateEventPage() {
   }
 
   const supabase = await createClient();
-  const [currentProfileResult, committeesResult, assigneesResult] =
-    await Promise.all([
-      supabase
-        .from("users")
-        .select("role, committee_id")
-        .eq("id", user.id)
-        .single(),
-      supabase.from("committees").select("id, name").order("name"),
-      supabase.rpc("list_active_task_assignees"),
-    ]);
+  const [
+    currentProfileResult,
+    committeesResult,
+    assigneesResult,
+    archivedEventsResult,
+  ] = await Promise.all([
+    supabase
+      .from("users")
+      .select("role, committee_id")
+      .eq("id", user.id)
+      .single(),
+    supabase.from("committees").select("id, name").order("name"),
+    supabase.rpc("list_active_task_assignees"),
+    supabase
+      .from("events")
+      .select("id, name, start_date")
+      .eq("status", "Archived")
+      .order("start_date", { ascending: false }),
+  ]);
 
   const loadError =
     currentProfileResult.error ??
     committeesResult.error ??
-    assigneesResult.error;
+    assigneesResult.error ??
+    archivedEventsResult.error;
 
   if (loadError || !currentProfileResult.data) {
     console.error("Failed to load Create Event task options:", loadError);
@@ -60,6 +70,11 @@ export default async function CreateEventPage() {
       committees={committees}
       taskCommittees={taskCommittees}
       assignees={assigneesResult.data ?? []}
+      archivedTemplates={(archivedEventsResult.data ?? []).map((event) => ({
+        id: event.id,
+        name: event.name,
+        startDate: event.start_date,
+      }))}
     />
   );
 }
