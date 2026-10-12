@@ -32,7 +32,7 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 - Prototype: `docs/prototypes/edit-event.html` (large file, read only the parts you need).
 - **Test:** edit name/dates as a non-creator Co-Admin → saved; launch another creator's Draft as a Co-Admin → saved; attempting to change Active back to Draft as a Co-Admin is rejected; attempting to archive as a Co-Admin is rejected; attempting to edit or un-archive an Archived event is rejected.
 
-## Step 5 — Template Auto-Import
+## Step 5 — Template Auto-Import ✅ done in code; migration pending owner rollout
 
 - "Start from Archive Template" lists Archived events; a Supabase SQL function duplicates the chosen event's tasks into the new event.
 - Relative scheduling: `new_task_deadline = new_event_start + (old_task_deadline − old_event_start)`.
