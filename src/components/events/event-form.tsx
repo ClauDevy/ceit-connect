@@ -142,6 +142,7 @@ type TemplateImportSummary = {
   importedStartDate: string;
   importedTaskCount: number;
   skippedConfidentialCount: number;
+  skippedUnsupportedScheduleCount: number;
   applied: boolean;
 };
 
@@ -153,6 +154,11 @@ type PendingTemplateImport = {
 type ImportedTaskDraft = {
   phaseName: string;
   task: TaskDraft;
+};
+
+type ParsedImportedTasks = {
+  tasks: ImportedTaskDraft[];
+  skippedUnsupportedScheduleCount: number;
 };
 
 const priorities: Priority[] = ["Low", "Medium", "High", "Critical"];
@@ -204,10 +210,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseImportedTasks(value: unknown): ImportedTaskDraft[] | null {
+function parseImportedTasks(value: unknown): ParsedImportedTasks | null {
   if (!Array.isArray(value)) return null;
 
   const parsedTasks: ImportedTaskDraft[] = [];
+  let skippedUnsupportedScheduleCount = 0;
   for (const item of value) {
     if (!isRecord(item)) return null;
 
@@ -247,6 +254,15 @@ function parseImportedTasks(value: unknown): ImportedTaskDraft[] | null {
     const end = splitTimestamp(endTime);
     if (!due || !call || !end) return null;
 
+    if (
+      taskType === "LiveOperation" &&
+      endTime !== null &&
+      (callTime === null || end.date !== call.date)
+    ) {
+      skippedUnsupportedScheduleCount += 1;
+      continue;
+    }
+
     parsedTasks.push({
       phaseName: phase?.trim() || "Unphased",
       task: {
@@ -267,7 +283,7 @@ function parseImportedTasks(value: unknown): ImportedTaskDraft[] | null {
     });
   }
 
-  return parsedTasks;
+  return { tasks: parsedTasks, skippedUnsupportedScheduleCount };
 }
 
 function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
@@ -530,11 +546,17 @@ export function EventForm({
         return;
       }
 
-      const importedTasks = parseImportedTasks(data.tasks);
-      if (!importedTasks || importedTasks.length !== data.imported_task_count) {
+      const parsedImport = parseImportedTasks(data.tasks);
+      if (
+        !parsedImport ||
+        parsedImport.tasks.length +
+          parsedImport.skippedUnsupportedScheduleCount !==
+          data.imported_task_count
+      ) {
         setTemplateError("The archive template returned invalid task data.");
         return;
       }
+      const importedTasks = parsedImport.tasks;
 
       const summary: TemplateImportSummary = {
         template: {
@@ -543,8 +565,10 @@ export function EventForm({
           startDate: data.template_start_date,
         },
         importedStartDate: startDate,
-        importedTaskCount: data.imported_task_count,
+        importedTaskCount: importedTasks.length,
         skippedConfidentialCount: data.skipped_confidential_count,
+        skippedUnsupportedScheduleCount:
+          parsedImport.skippedUnsupportedScheduleCount,
         applied: importedTasks.length > 0,
       };
 
@@ -1070,6 +1094,16 @@ export function EventForm({
                         ? " was"
                         : "s were"}{" "}
                       not imported.
+                    </p>
+                  )}
+                  {templateSummary.skippedUnsupportedScheduleCount > 0 && (
+                    <p className="font-medium">
+                      {templateSummary.skippedUnsupportedScheduleCount} task
+                      {templateSummary.skippedUnsupportedScheduleCount === 1
+                        ? " was"
+                        : "s were"}{" "}
+                      not imported because the Live Operation schedule spans
+                      more than one day or has an end time without a call time.
                     </p>
                   )}
                   {importedStartDateChanged && (
