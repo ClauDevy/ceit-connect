@@ -4,12 +4,16 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Archive,
   CalendarDays,
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  FileText,
+  LoaderCircle,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   Users,
@@ -48,6 +52,12 @@ type AssigneeOption = {
   full_name: string;
   committee_id: string | null;
   avatar_url: string | null;
+};
+
+export type ArchivedEventTemplate = {
+  id: string;
+  name: string;
+  startDate: string;
 };
 
 type TaskType = "Deliverable" | "LiveOperation";
@@ -115,7 +125,34 @@ type EventFormProps = {
   committees: Committee[];
   taskCommittees: Committee[];
   assignees: AssigneeOption[];
+  archivedTemplates?: ArchivedEventTemplate[];
   initialEvent?: InitialEvent;
+};
+
+type TemplateImportResult = {
+  template_name: string;
+  template_start_date: string;
+  tasks: unknown;
+  imported_task_count: number;
+  skipped_confidential_count: number;
+};
+
+type TemplateImportSummary = {
+  template: ArchivedEventTemplate;
+  importedStartDate: string;
+  importedTaskCount: number;
+  skippedConfidentialCount: number;
+  applied: boolean;
+};
+
+type PendingTemplateImport = {
+  template: ArchivedEventTemplate;
+  reason: "replace" | "reimport";
+};
+
+type ImportedTaskDraft = {
+  phaseName: string;
+  task: TaskDraft;
 };
 
 const priorities: Priority[] = ["Low", "Medium", "High", "Critical"];
@@ -128,15 +165,109 @@ const taskTypes: { value: TaskType; label: string }[] = [
   { value: "LiveOperation", label: "Live Operation" },
 ];
 
+const appDateTime = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE.iana,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
 function makeId() {
   return crypto.randomUUID();
 }
 
 function toTimestamp(date: string, time: string) {
   if (!date || !time) return null;
-  return new Date(
-    `${date}T${time}:00${APP_TIME_ZONE.utcOffset}`,
-  ).toISOString();
+  return new Date(`${date}T${time}:00${APP_TIME_ZONE.utcOffset}`).toISOString();
+}
+
+function splitTimestamp(value: string | null) {
+  if (!value) return { date: "", time: "" };
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const parts = new Map(
+    appDateTime.formatToParts(parsed).map((part) => [part.type, part.value]),
+  );
+
+  return {
+    date: `${parts.get("year")}-${parts.get("month")}-${parts.get("day")}`,
+    time: `${parts.get("hour")}:${parts.get("minute")}`,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseImportedTasks(value: unknown): ImportedTaskDraft[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const parsedTasks: ImportedTaskDraft[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) return null;
+
+    const {
+      title,
+      description,
+      phase,
+      committee_id: committeeId,
+      task_type: taskType,
+      priority,
+      due_date: dueDate,
+      call_time: callTime,
+      end_time: endTime,
+      status,
+      assignee_ids: assigneeIds,
+    } = item;
+
+    if (
+      typeof title !== "string" ||
+      !(description === null || typeof description === "string") ||
+      !(phase === null || typeof phase === "string") ||
+      typeof committeeId !== "string" ||
+      !(taskType === "Deliverable" || taskType === "LiveOperation") ||
+      !priorities.includes(priority as Priority) ||
+      !(dueDate === null || typeof dueDate === "string") ||
+      !(callTime === null || typeof callTime === "string") ||
+      !(endTime === null || typeof endTime === "string") ||
+      status !== "To Do" ||
+      !Array.isArray(assigneeIds) ||
+      assigneeIds.length !== 0
+    ) {
+      return null;
+    }
+
+    const due = splitTimestamp(dueDate);
+    const call = splitTimestamp(callTime);
+    const end = splitTimestamp(endTime);
+    if (!due || !call || !end) return null;
+
+    parsedTasks.push({
+      phaseName: phase?.trim() || "Unphased",
+      task: {
+        id: makeId(),
+        persisted: false,
+        status: "To Do",
+        title,
+        description: description ?? "",
+        committeeId,
+        taskType,
+        dueDate: due.date,
+        callDate: call.date,
+        callTime: call.time,
+        endTime: end.time,
+        priority: priority as Priority,
+        assigneeIds: [],
+      },
+    });
+  }
+
+  return parsedTasks;
 }
 
 function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
@@ -197,6 +328,7 @@ export function EventForm({
   committees,
   taskCommittees,
   assignees,
+  archivedTemplates = [],
   initialEvent,
 }: EventFormProps) {
   const router = useRouter();
@@ -218,6 +350,18 @@ export function EventForm({
   const [phaseToRemove, setPhaseToRemove] = useState<PhaseDraft | null>(null);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState("");
+  const [templateMode, setTemplateMode] = useState<"scratch" | "archive">(
+    "scratch",
+  );
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateStatus, setTemplateStatus] = useState<"idle" | "loading">(
+    "idle",
+  );
+  const [templateError, setTemplateError] = useState("");
+  const [templateSummary, setTemplateSummary] =
+    useState<TemplateImportSummary | null>(null);
+  const [pendingTemplateImport, setPendingTemplateImport] =
+    useState<PendingTemplateImport | null>(null);
 
   const taskCount = phases.reduce((sum, phase) => sum + phase.tasks.length, 0);
   const nameSet = name.trim().length > 0;
@@ -252,7 +396,7 @@ export function EventForm({
 
   const datesChanged = Boolean(
     initialEvent &&
-      (startDate !== initialEvent.startDate || endDate !== initialEvent.endDate),
+    (startDate !== initialEvent.startDate || endDate !== initialEvent.endDate),
   );
   const tasksOutsideDateRange = datesChanged
     ? phases.flatMap((phase) =>
@@ -260,10 +404,23 @@ export function EventForm({
           (task) =>
             task.dueDate &&
             startDate &&
-            (task.dueDate < startDate || Boolean(endDate && task.dueDate > endDate)),
+            (task.dueDate < startDate ||
+              Boolean(endDate && task.dueDate > endDate)),
         ),
       )
     : [];
+
+  const filteredArchivedTemplates = useMemo(() => {
+    const query = templateSearch.trim().toLocaleLowerCase();
+    if (!query) return archivedTemplates;
+    return archivedTemplates.filter((template) =>
+      template.name.toLocaleLowerCase().includes(query),
+    );
+  }, [archivedTemplates, templateSearch]);
+
+  const importedStartDateChanged = Boolean(
+    templateSummary?.applied && startDate !== templateSummary.importedStartDate,
+  );
 
   const committeeItems = taskCommittees.map((committee) => ({
     value: committee.id,
@@ -332,6 +489,116 @@ export function EventForm({
         (assigneeId) => !activeAssigneeIds.has(assigneeId),
       )
     : [];
+
+  async function importTemplate(template: ArchivedEventTemplate) {
+    if (!startDate) {
+      setTemplateError(
+        "Set the new event start date before importing a template.",
+      );
+      setTab("fundamentals");
+      return;
+    }
+
+    setTemplateStatus("loading");
+    setTemplateError("");
+
+    try {
+      const supabase = createClient();
+      const result = await supabase
+        .rpc("get_archived_event_template", {
+          p_template_event_id: template.id,
+          p_new_start_date: startDate,
+        })
+        .single<TemplateImportResult>();
+
+      if (result.error) {
+        setTemplateError(result.error.message);
+        return;
+      }
+
+      const data = result.data;
+      if (
+        !data ||
+        typeof data.template_name !== "string" ||
+        typeof data.template_start_date !== "string" ||
+        !Number.isInteger(data.imported_task_count) ||
+        data.imported_task_count < 0 ||
+        !Number.isInteger(data.skipped_confidential_count) ||
+        data.skipped_confidential_count < 0
+      ) {
+        setTemplateError("The archive template returned an invalid response.");
+        return;
+      }
+
+      const importedTasks = parseImportedTasks(data.tasks);
+      if (!importedTasks || importedTasks.length !== data.imported_task_count) {
+        setTemplateError("The archive template returned invalid task data.");
+        return;
+      }
+
+      const summary: TemplateImportSummary = {
+        template: {
+          ...template,
+          name: data.template_name,
+          startDate: data.template_start_date,
+        },
+        importedStartDate: startDate,
+        importedTaskCount: data.imported_task_count,
+        skippedConfidentialCount: data.skipped_confidential_count,
+        applied: importedTasks.length > 0,
+      };
+
+      if (importedTasks.length === 0) {
+        setTemplateSummary(summary);
+        return;
+      }
+
+      const tasksByPhase = new Map<string, TaskDraft[]>();
+      for (const importedTask of importedTasks) {
+        const phaseTasks = tasksByPhase.get(importedTask.phaseName) ?? [];
+        phaseTasks.push(importedTask.task);
+        tasksByPhase.set(importedTask.phaseName, phaseTasks);
+      }
+
+      setPhases(
+        Array.from(tasksByPhase, ([phaseName, phaseTasks]) => ({
+          id: makeId(),
+          name: phaseName,
+          collapsed: false,
+          tasks: phaseTasks,
+        })),
+      );
+      setDeletedTaskIds([]);
+      setTaskEditor(null);
+      setTemplateSummary(summary);
+      setError("");
+      setTab("tasks");
+    } catch {
+      setTemplateError("Network error, please try importing again.");
+    } finally {
+      setTemplateStatus("idle");
+    }
+  }
+
+  function requestTemplateImport(
+    template: ArchivedEventTemplate,
+    reason: PendingTemplateImport["reason"] = "replace",
+  ) {
+    if (!startDate) {
+      setTemplateError(
+        "Set the new event start date before importing a template.",
+      );
+      setTab("fundamentals");
+      return;
+    }
+
+    if (reason === "reimport" || taskCount > 0) {
+      setPendingTemplateImport({ template, reason });
+      return;
+    }
+
+    void importTemplate(template);
+  }
 
   function addPhase() {
     const phaseName = newPhaseName.trim();
@@ -640,7 +907,10 @@ export function EventForm({
         }
         actions={
           initialEvent ? (
-            <Link href="/home" className={buttonVariants({ variant: "outline" })}>
+            <Link
+              href="/home"
+              className={buttonVariants({ variant: "outline" })}
+            >
               Cancel
             </Link>
           ) : null
@@ -650,10 +920,188 @@ export function EventForm({
       {initialEvent && (
         <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
           <span>Current status:</span>
-          <Badge variant={initialEvent.status === "Draft" ? "neutral" : "outline"}>
+          <Badge
+            variant={initialEvent.status === "Draft" ? "neutral" : "outline"}
+          >
             {initialEvent.status}
           </Badge>
         </div>
+      )}
+
+      {!initialEvent && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Choose a starting point</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Build a fresh task list or copy the structure of an Archived
+              event.
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                aria-pressed={templateMode === "scratch"}
+                onClick={() => setTemplateMode("scratch")}
+                className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors ${
+                  templateMode === "scratch"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <FileText className="mt-0.5 size-5 shrink-0 text-primary" />
+                <span>
+                  <span className="block font-semibold">
+                    Start from Scratch
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Create phases and tasks from a blank slate.
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={templateMode === "archive"}
+                onClick={() => setTemplateMode("archive")}
+                className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors ${
+                  templateMode === "archive"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <Archive className="mt-0.5 size-5 shrink-0 text-primary" />
+                <span>
+                  <span className="block font-semibold">
+                    Start from Archive Template
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Copy past tasks and shift their dates automatically.
+                  </span>
+                </span>
+              </button>
+            </div>
+
+            {templateMode === "archive" && (
+              <div className="grid gap-3 rounded-2xl border bg-muted/30 p-4">
+                <div>
+                  <p className="text-sm font-semibold">
+                    Choose an Archived event
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Assignees are cleared, every copied task starts as To Do,
+                    and confidential tasks are skipped.
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    aria-label="Search Archived events"
+                    value={templateSearch}
+                    onChange={(event) => setTemplateSearch(event.target.value)}
+                    placeholder="Search past events…"
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="grid max-h-64 gap-2 overflow-y-auto">
+                  {filteredArchivedTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="flex items-center gap-3 rounded-xl border bg-card p-3"
+                    >
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-semibold text-muted-foreground">
+                        {template.startDate.slice(0, 4)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">
+                          {template.name}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          Started {template.startDate}
+                        </span>
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={templateStatus === "loading"}
+                        onClick={() => requestTemplateImport(template)}
+                      >
+                        {templateStatus === "loading" ? (
+                          <LoaderCircle className="animate-spin" />
+                        ) : (
+                          "Use"
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+
+                  {archivedTemplates.length === 0 && (
+                    <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
+                      No Archived events are available yet.
+                    </p>
+                  )}
+                  {archivedTemplates.length > 0 &&
+                    filteredArchivedTemplates.length === 0 && (
+                      <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
+                        No Archived events match your search.
+                      </p>
+                    )}
+                </div>
+
+                {templateError && <InlineAlert>{templateError}</InlineAlert>}
+              </div>
+            )}
+
+            {templateSummary && (
+              <InlineAlert variant="info">
+                <div className="grid gap-2">
+                  <p>
+                    {templateSummary.applied
+                      ? `Imported ${templateSummary.importedTaskCount} task${templateSummary.importedTaskCount === 1 ? "" : "s"} from “${templateSummary.template.name}” into the Backlog as To Do.`
+                      : `“${templateSummary.template.name}” has no importable tasks. Your current task setup was left unchanged.`}
+                  </p>
+                  {templateSummary.skippedConfidentialCount > 0 && (
+                    <p className="font-medium">
+                      {templateSummary.skippedConfidentialCount} confidential
+                      task
+                      {templateSummary.skippedConfidentialCount === 1
+                        ? " was"
+                        : "s were"}{" "}
+                      not imported.
+                    </p>
+                  )}
+                  {importedStartDateChanged && (
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p>
+                        These dates were shifted for a{" "}
+                        {templateSummary.importedStartDate}
+                        start. Re-import to use the new {startDate || "blank"}
+                        start date.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={templateStatus === "loading"}
+                        onClick={() =>
+                          requestTemplateImport(
+                            templateSummary.template,
+                            "reimport",
+                          )
+                        }
+                      >
+                        <RotateCcw />
+                        Re-import with new start date
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </InlineAlert>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -1000,7 +1448,9 @@ export function EventForm({
                 Valid start and end dates
               </SummaryCheck>
               <SummaryCheck done={initialEvent ? true : taskCount > 0}>
-                {initialEvent ? "Existing event loaded" : "At least one task added"}
+                {initialEvent
+                  ? "Existing event loaded"
+                  : "At least one task added"}
               </SummaryCheck>
             </div>
 
@@ -1348,6 +1798,33 @@ export function EventForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={pendingTemplateImport !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTemplateImport(null);
+        }}
+        title={
+          pendingTemplateImport?.reason === "reimport"
+            ? "Re-import this template?"
+            : "Replace the current task setup?"
+        }
+        description={
+          pendingTemplateImport?.reason === "reimport"
+            ? "This replaces the current phases and tasks with a fresh copy shifted from the template to the new start date. Any task edits made after the previous import will be lost."
+            : "Importing this template replaces every phase and task currently in the form. Event details are not changed."
+        }
+        confirmLabel={
+          pendingTemplateImport?.reason === "reimport"
+            ? "Re-import tasks"
+            : "Replace and import"
+        }
+        onConfirm={() => {
+          const pending = pendingTemplateImport;
+          setPendingTemplateImport(null);
+          if (pending) void importTemplate(pending.template);
+        }}
+      />
 
       <ConfirmDialog
         open={phaseToRemove !== null}
