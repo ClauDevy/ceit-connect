@@ -52,7 +52,7 @@ function ActiveEventCard({
   event: HomeEvent;
   canEdit: boolean;
   canArchive: boolean;
-  incompleteTaskCount: number;
+  incompleteTaskCount: number | undefined;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -85,7 +85,7 @@ function ActiveEventCard({
               Edit
             </Link>
           )}
-          {canArchive ? (
+          {canArchive && incompleteTaskCount !== undefined ? (
             <ArchiveEventButton
               eventId={event.id}
               eventName={event.name}
@@ -171,21 +171,26 @@ export default async function HomePage() {
   let incompleteTasksError = null;
 
   if (leadershipProfile?.role === "Admin" && activeEvents.length > 0) {
-    const result = await supabase
-      .from("tasks")
-      .select("event_id")
-      .in(
-        "event_id",
-        activeEvents.map((event) => event.id),
-      )
-      .neq("status", "Completed");
+    const countResults = await Promise.all(
+      activeEvents.map(async (event) => {
+        const { count, error: countError } = await supabase
+          .from("tasks")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", event.id)
+          .neq("status", "Completed");
 
-    incompleteTasksError = result.error;
-    for (const task of result.data ?? []) {
-      incompleteTaskCounts.set(
-        task.event_id,
-        (incompleteTaskCounts.get(task.event_id) ?? 0) + 1,
-      );
+        return { eventId: event.id, count, error: countError };
+      }),
+    );
+
+    for (const result of countResults) {
+      if (result.error || result.count === null) {
+        incompleteTasksError ??=
+          result.error ?? new Error("Incomplete task count was not returned.");
+        continue;
+      }
+
+      incompleteTaskCounts.set(result.eventId, result.count);
     }
   }
 
@@ -245,7 +250,7 @@ export default async function HomePage() {
                     event={event}
                     canEdit={Boolean(leadershipProfile)}
                     canArchive={leadershipProfile?.role === "Admin"}
-                    incompleteTaskCount={incompleteTaskCounts.get(event.id) ?? 0}
+                    incompleteTaskCount={incompleteTaskCounts.get(event.id)}
                   />
                 ))}
               </div>

@@ -1,6 +1,13 @@
 # Phase 3 Step 6 — Archived task visibility tests
 
-Run the two new migrations first through the owner's normal Dev rollout process.
+Run these migrations first through the owner's normal Dev rollout process, in
+this order:
+
+1. `20261012150000_freeze_archived_events.sql` — supplies the Archived-task
+   write guard exercised by test 4.
+2. `20261012160000_expand_archived_task_visibility.sql`
+3. `20261012160100_list_archived_event_assignees.sql`
+
 Do not run these tests against Prod. They expect the documented Dev users:
 
 - Admin: `11111111-1111-1111-1111-111111111111`
