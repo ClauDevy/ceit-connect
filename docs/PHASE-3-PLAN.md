@@ -39,10 +39,11 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 - Assignees are wiped; tasks route to the Backlog.
 - **Test:** import into a future event → dates shift correctly, backlog populated, no assignees.
 
-## Step 6 — Event Archives (read-only)
+## Step 6 — Event Archives (read-only) ✅ done in code; migration pending owner rollout
 
 - `/archives` lists Archived events; an Admin action sets `status = 'Archived'`.
 - Archived events are frozen and cannot be un-archived: the event row is already blocked by `events_update`; Step 6 must **finish enforcing read-only in the database** for its tasks and related writes, not only by hiding buttons. Historical comments and Drive links stay readable.
+- Only Active events may be archived. Incomplete tasks do not block archiving; the confirmation reports their count and explains that they will be frozen as they are. Archived events cannot be deleted.
 - **Test:** archive an event → dragging/editing/commenting is blocked even via a direct API call.
 
 ## Step 7 — Banner upload

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CalendarDays, FileText, Pencil, Plus } from "lucide-react";
+import { ArchiveEventButton } from "@/components/events/archive-event-button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -45,9 +46,13 @@ function formatDateRange(event: HomeEvent) {
 function ActiveEventCard({
   event,
   canEdit,
+  canArchive,
+  incompleteTaskCount,
 }: {
   event: HomeEvent;
   canEdit: boolean;
+  canArchive: boolean;
+  incompleteTaskCount: number | undefined;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -70,15 +75,24 @@ function ActiveEventCard({
             {event.description}
           </p>
         ) : null}
-        {canEdit && (
-          <Link
-            href={`/events/${event.id}/edit`}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <Pencil aria-hidden />
-            Edit
-          </Link>
-        )}
+        <div className="flex flex-wrap items-start gap-2">
+          {canEdit && (
+            <Link
+              href={`/events/${event.id}/edit`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Pencil aria-hidden />
+              Edit
+            </Link>
+          )}
+          {canArchive && incompleteTaskCount !== undefined ? (
+            <ArchiveEventButton
+              eventId={event.id}
+              eventName={event.name}
+              incompleteTaskCount={incompleteTaskCount}
+            />
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
@@ -153,6 +167,36 @@ export default async function HomePage() {
   const activeEvents = events?.filter((event) => event.status === "Active") ?? [];
   const draftEvents = events?.filter((event) => event.status === "Draft") ?? [];
   const hasEvents = activeEvents.length > 0 || draftEvents.length > 0;
+  const incompleteTaskCounts = new Map<string, number>();
+  let incompleteTasksError = null;
+
+  if (leadershipProfile?.role === "Admin" && activeEvents.length > 0) {
+    const countResults = await Promise.all(
+      activeEvents.map(async (event) => {
+        const { count, error: countError } = await supabase
+          .from("tasks")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", event.id)
+          .neq("status", "Completed");
+
+        return { eventId: event.id, count, error: countError };
+      }),
+    );
+
+    for (const result of countResults) {
+      if (result.error || result.count === null) {
+        incompleteTasksError ??=
+          result.error ?? new Error("Incomplete task count was not returned.");
+        continue;
+      }
+
+      incompleteTaskCounts.set(result.eventId, result.count);
+    }
+  }
+
+  if (incompleteTasksError) {
+    console.error("Failed to count incomplete event tasks:", incompleteTasksError);
+  }
 
   return (
     <>
@@ -173,7 +217,7 @@ export default async function HomePage() {
         }
       />
 
-      {error ? (
+      {error || incompleteTasksError ? (
         <InlineAlert>
           Events could not be loaded. Refresh the page to try again.
         </InlineAlert>
@@ -205,6 +249,8 @@ export default async function HomePage() {
                     key={event.id}
                     event={event}
                     canEdit={Boolean(leadershipProfile)}
+                    canArchive={leadershipProfile?.role === "Admin"}
+                    incompleteTaskCount={incompleteTaskCounts.get(event.id)}
                   />
                 ))}
               </div>
