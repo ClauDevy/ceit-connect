@@ -1,6 +1,6 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-10-12. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-10-15. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 ## Phase 0 — Scaffold (done)
 
@@ -46,8 +46,10 @@ Done:
 - **Step 6 — Event Archives** is implemented: `/archives` lists Archived events for active users and links to a read-only event/task record. Every active user can read its non-confidential tasks, while confidential tasks retain their earlier visibility rules. Task cards show primary and assist assignees with names and avatars, keep deactivated assignees' real names, use initials when an avatar is absent or fails to load, and use `Former member` only when no profile row is returned. Home shows an Admin-only Archive action on Active events; its permanent-action confirmation reports the exact number of non-Completed tasks that will be frozen, using a per-event count that is not subject to row-response limits. If that count cannot be verified, the event's Archive action is unavailable instead of assuming zero. The POST-only archive route re-verifies an active Admin, uses the caller's Supabase session (never service role), updates only an expected Active row, and verifies that exactly one row changed.
 - Migration `20261012150000_freeze_archived_events.sql` is prepared (not yet pushed): it preserves `created_by` immutability, Active-to-Draft rejection, and the all-committee task requirement for Draft-to-Active; permits only Active-to-Archived; blocks Archived event updates/deletes even for service-role writes; and adds a fixed-empty-search-path, fail-closed security-definer trigger that takes a parent-row share lock before blocking every insert/update/delete involving an Archived event's tasks. Existing Archived read visibility is unchanged. Notification read state remains writable by its owner, and historical activity stays readable because neither operation mutates event/task records.
 - Migrations `20261012160000_expand_archived_task_visibility.sql` and `20261012160100_list_archived_event_assignees.sql` are prepared (not yet pushed): the first keeps every existing task-read path and adds active-user access to non-confidential Archived tasks through a restricted parent-status helper that reads independently of caller RLS; the second returns only id, name, and avatar URL for assignees of those tasks, includes users deactivated after assignment, and returns nothing to inactive callers or for non-Archived events. Neither migration changes task writes, `get_task()`, activity-log visibility, or `users` RLS.
+- **Step 7 — Event banners** is implemented: Create/Edit Event crop to 16:9, convert to WebP, compress below 1.5 MB, preview, replace, and remove. Images already within 2% of 16:9 skip the initial crop dialog but retain an Adjust crop action. Create saves the event first and reports a recoverable Edit-page warning if its follow-up upload fails. Edit banner writes use the event's exact optimistic version, adopt the returned `updated_at`, and preserve unsaved form fields on stale conflicts. Home Active and Archive cards display the full 16:9 crop and lazy-load their images; Archived event details use a bounded 16:9 banner, and every location keeps the semantic fallback.
+- Migration `20261015120000_event_banners.sql` is prepared (not yet pushed): it creates the public 2 MB JPEG/PNG/WebP bucket, restricts object paths and writes to active Admins/Co-Admins editing Draft/Active events, and adds fixed-search-path integrity guards requiring each non-null banner URL to use that event's own random WebP object and to reference an existing `storage.objects` row. The route uses the caller's session for ordinary Storage writes and reserves service role for verified, non-current cleanup on non-Archived events.
 
-Not done: everything after Step 6 in `docs/PHASE-3-PLAN.md` (banner upload, Drive preview). The banner box on the event form remains a placeholder.
+Not done: Step 8 (Drive preview) in `docs/PHASE-3-PLAN.md`.
 
 ## Decisions log
 
@@ -71,13 +73,12 @@ Not done: everything after Step 6 in `docs/PHASE-3-PLAN.md` (banner upload, Driv
 - Leftovers (`sidebar.tsx`, `reset-password-form.tsx`, packages `cn` and `p`) removed: YES
 - Service-role key not in any client bundle: YES
 
-Next up after the pending Step 3–6 migrations are reviewed and applied: Phase 3 Step 7 (see `docs/PHASE-3-PLAN.md`).
+Next up after the pending Phase 3 migrations are reviewed and applied: Phase 3 Step 8 (see `docs/PHASE-3-PLAN.md`).
 
 ## Open items
 
 - Tighten `ALLOWED_EMAIL_DOMAINS` on Prod to the university domain only (Vercel env var + redeploy).
 - Deactivate the mistyped fake-email test account on Prod (can't delete — by design).
-- Banner upload (same crop/compress pattern as avatars, 16:9, 1–1.5 MB) — deferred from Step 1.
 - `discord_id` field in Settings — parked until Discord webhooks are scheduled.
 - No automated RLS tests yet (the plan calls for a pgTAP/Supabase test suite in CI; only manual `SET ROLE` tests exist).
 - `/docs/BACKUP.md` runbook not written (Phase 5).

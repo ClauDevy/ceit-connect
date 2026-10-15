@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Archive, ArrowRight, CalendarDays } from "lucide-react";
 import { redirect } from "next/navigation";
+import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ type ArchivedEvent = {
   description: string | null;
   start_date: string;
   end_date: string | null;
+  banner_url: string | null;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -38,13 +40,17 @@ function formatDateRange(event: ArchivedEvent) {
 }
 
 export default async function ArchivesPage() {
-  const profile = await getActiveProfileForRoles(["Admin", "Co-Admin", "Member"]);
+  const profile = await getActiveProfileForRoles([
+    "Admin",
+    "Co-Admin",
+    "Member",
+  ]);
   if (!profile) redirect("/home");
 
   const supabase = await createClient();
   const { data: events, error } = await supabase
     .from("events")
-    .select("id, name, description, start_date, end_date")
+    .select("id, name, description, start_date, end_date, banner_url")
     .eq("status", "Archived")
     .order("start_date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -69,6 +75,13 @@ export default async function ArchivesPage() {
         <div className="grid gap-5 md:grid-cols-2">
           {events.map((event) => (
             <Card key={event.id} className="overflow-hidden">
+              <EventBanner
+                src={event.banner_url}
+                alt={`${event.name} banner`}
+                loading="lazy"
+                decoding="async"
+                className="aspect-video w-full"
+              />
               <CardContent className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
@@ -81,7 +94,10 @@ export default async function ArchivesPage() {
                     {event.name}
                   </h2>
                   <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
-                    <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <CalendarDays
+                      className="mt-0.5 size-4 shrink-0"
+                      aria-hidden
+                    />
                     <span>{formatDateRange(event)}</span>
                   </p>
                   {event.description ? (
