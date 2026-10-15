@@ -46,10 +46,11 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 - Only Active events may be archived. Incomplete tasks do not block archiving; the confirmation reports their count and explains that they will be frozen as they are. Archived events cannot be deleted.
 - **Test:** archive an event → dragging/editing/commenting is blocked even via a direct API call.
 
-## Step 7 — Banner upload
+## Step 7 — Banner upload ✅ done in code; migration pending owner rollout
 
-- New public `banners` bucket (created by hand per environment; ~1.5 MB limit; JPEG/PNG/WebP) with storage policies in a **migration file**, mirroring the `avatars` bucket pattern.
-- Crop 16:9, compress to 1–1.5 MB WebP client-side, upload, then save `banner_url` through a server route that computes/validates the expected URL itself (same pattern as `/api/update-avatar` — never accept a client-supplied URL).
+- A migration creates the public `banners` bucket (2 MB hard limit; JPEG/PNG/WebP), event-scoped Storage policies, and a fail-closed banner URL/object integrity trigger. Only active Admins and Co-Admins may write within Draft/Active event folders; Archived events are frozen.
+- Crop 16:9 and compress below 1.5 MB as WebP client-side. The authenticated server route generates the random object path and public URL, uploads before the object-existence-guarded database update, advances the optimistic event version, and deletes the old file only after the database succeeds.
+- Create Event holds the processed image in the browser until the event exists. Edit Event uploads independently without discarding unsaved form changes, and stale versions require a deliberate reload. Home and Archive cards/details render the stored banner with a safe fallback.
 - **Test:** a 4 MB photo is rejected/forced through crop; the banner shows on the event; the old file is replaced on re-upload.
 
 ## Step 8 — Google Drive preview helper

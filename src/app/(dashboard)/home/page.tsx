@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { CalendarDays, FileText, Pencil, Plus } from "lucide-react";
+import { CalendarDays, Pencil, Plus } from "lucide-react";
 import { ArchiveEventButton } from "@/components/events/archive-event-button";
+import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { TigerLogo } from "@/components/ui/tiger-logo";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,6 +18,7 @@ type HomeEvent = {
   start_date: string;
   end_date: string | null;
   status: "Active" | "Draft";
+  banner_url: string | null;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -56,9 +57,13 @@ function ActiveEventCard({
 }) {
   return (
     <Card className="overflow-hidden">
-      <div className="relative flex h-20 items-center justify-end overflow-hidden bg-gradient-to-br from-primary/15 via-muted to-accent/30 px-6 sm:h-24">
-        <TigerLogo size={72} className="opacity-20" />
-      </div>
+      <EventBanner
+        src={event.banner_url}
+        alt={`${event.name} banner`}
+        loading="lazy"
+        decoding="async"
+        className="aspect-video w-full"
+      />
       <CardContent className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg font-semibold leading-snug">
@@ -109,9 +114,14 @@ function DraftEventCard({
     <Card className="border-2 border-dashed bg-card/70">
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3.5">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-            <FileText className="size-5" aria-hidden />
-          </span>
+          <EventBanner
+            src={event.banner_url}
+            alt={`${event.name} banner`}
+            compact
+            loading="lazy"
+            decoding="async"
+            className="size-11 shrink-0 rounded-xl"
+          />
           <div className="min-w-0">
             <h3 className="font-display font-semibold leading-snug">
               {event.name}
@@ -149,7 +159,7 @@ export default async function HomePage() {
   ]);
   const eventsPromise = supabase
     .from("events")
-    .select("id, name, description, start_date, end_date, status")
+    .select("id, name, description, start_date, end_date, status, banner_url")
     .in("status", ["Active", "Draft"])
     .order("start_date", { ascending: true })
     .order("created_at", { ascending: true })
@@ -164,7 +174,8 @@ export default async function HomePage() {
     console.error("Failed to load Home events:", error);
   }
 
-  const activeEvents = events?.filter((event) => event.status === "Active") ?? [];
+  const activeEvents =
+    events?.filter((event) => event.status === "Active") ?? [];
   const draftEvents = events?.filter((event) => event.status === "Draft") ?? [];
   const hasEvents = activeEvents.length > 0 || draftEvents.length > 0;
   const incompleteTaskCounts = new Map<string, number>();
@@ -195,7 +206,10 @@ export default async function HomePage() {
   }
 
   if (incompleteTasksError) {
-    console.error("Failed to count incomplete event tasks:", incompleteTasksError);
+    console.error(
+      "Failed to count incomplete event tasks:",
+      incompleteTasksError,
+    );
   }
 
   return (

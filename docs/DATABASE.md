@@ -66,11 +66,16 @@ Task Draft visibility is enforced separately from event visibility. `tasks_selec
 - `guard_event_updates` trigger on `events` — rejects updates where `new.created_by is distinct from old.created_by`, status changes from Active back to Draft, Draft-to-Active transitions when the event has no tasks, every non-Active-to-Archived transition, and every update or delete of an Archived event. Its `SECURITY DEFINER` function has a fixed empty `search_path`, so its task checks see every committee instead of being narrowed by the caller's task RLS. For an allowed Draft/Active event deletion, it removes child tasks while the parent remains verifiable; the existing task/activity/notification cascades still run.
 - `tasks_guard_archived_event_writes` trigger on `tasks` — a fixed-empty-`search_path`, `SECURITY DEFINER`, fail-closed guard that reads the real parent event without caller RLS and rejects inserts into, updates within or moves into/out of, and deletes from Archived events. It runs before the assignee guard; rejected writes never reach the activity-log trigger.
 - `events_set_updated_at` trigger on `events` — assigns a monotonic value based on `clock_timestamp()` before every event update. The edit RPC always updates the event row, including task-only saves, so every successful edit advances the concurrency token.
+- `events_guard_banner_url` trigger on `events` — permits a null banner or a Supabase public banner URL for that event's own `<event_id>/<uuid>.webp` object, and verifies the object already exists through a fixed-search-path security-definer helper. This closes direct insert/update paths that could otherwise store arbitrary URLs.
 - Known, accepted limitation: the raw `tasks` row is not masked at the database level; confidentiality depends on the app always using `get_task()`.
 
 ## Storage
 
 Bucket `avatars`: public read, 2 MB limit, MIME types `image/jpeg`, `image/png`, `image/webp`. Files live at `<user_id>/avatar.webp` (one fixed filename, so re-uploading overwrites). Storage RLS: anyone can read; a user can insert/update/delete only inside the folder named after their own `auth.uid()`. **The bucket itself is not created by migrations** — create it by hand in each environment; the migration only creates the policies.
+
+Bucket `banners`: public read, 2 MB limit, MIME types `image/jpeg`, `image/png`, `image/webp`; it is created by the Step 7 migration. Saved app files live at `<event_id>/<random_uuid>.webp`. Storage writes require an active Admin or Co-Admin and an existing Draft or Active event matching the first folder segment. Missing/malformed events, Members, inactive users, and Archived events fail closed. Replacements use a new filename, update `events.banner_url` first, and only then delete the former object.
+
+Known Storage limitation: Postgres and Storage cannot share a transaction. Directly deleting a Draft event, an archive race between upload and URL save, or a Storage outage during post-update cleanup can leave an unreferenced banner object. Cleanup never bypasses the Archived-event freeze.
 
 ## Migrations (apply in this order)
 
@@ -95,6 +100,7 @@ Bucket `avatars`: public read, 2 MB limit, MIME types `image/jpeg`, `image/png`,
 19. `20261012150000_freeze_archived_events.sql` — preserves all event lifecycle guards, restricts archiving to Active events, blocks Archived event updates/deletes, and adds a fail-closed security-definer task trigger that freezes task inserts/updates/deletes without changing read visibility
 20. `20261012160000_expand_archived_task_visibility.sql` — preserves every existing `tasks_select` branch and adds active-user access to non-confidential Archived tasks through a restricted parent-status helper that bypasses caller event RLS
 21. `20261012160100_list_archived_event_assignees.sql` — adds the restricted Archived-event assignee-name reader, including deactivated assignees while exposing only id, name, and avatar URL
+22. `20261015120000_event_banners.sql` — creates the public banners bucket, adds event-scoped Storage RLS, and guards `events.banner_url` with environment-independent URL-shape and object-existence checks
 
 ## Environments
 
