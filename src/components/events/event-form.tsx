@@ -22,6 +22,7 @@ import {
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { BannerUploader } from "@/components/events/banner-uploader";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
+import { uploadEventBanner } from "@/lib/event-banner";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
 
@@ -117,6 +119,7 @@ export type InitialEvent = {
   endDate: string;
   status: "Draft" | "Active";
   updatedAt: string;
+  bannerUrl: string | null;
   tasks: InitialEventTask[];
 };
 
@@ -127,6 +130,7 @@ type EventFormProps = {
   assignees: AssigneeOption[];
   archivedTemplates?: ArchivedEventTemplate[];
   initialEvent?: InitialEvent;
+  bannerNotice?: string;
 };
 
 type TemplateImportResult = {
@@ -346,6 +350,7 @@ export function EventForm({
   assignees,
   archivedTemplates = [],
   initialEvent,
+  bannerNotice,
 }: EventFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"fundamentals" | "tasks">("fundamentals");
@@ -355,6 +360,14 @@ export function EventForm({
   );
   const [startDate, setStartDate] = useState(initialEvent?.startDate ?? "");
   const [endDate, setEndDate] = useState(initialEvent?.endDate ?? "");
+  const [bannerUrl, setBannerUrl] = useState(initialEvent?.bannerUrl ?? null);
+  const [pendingBanner, setPendingBanner] = useState<File | null>(null);
+  const [eventVersion, setEventVersion] = useState(
+    initialEvent?.updatedAt ?? "",
+  );
+  const [showBannerNotice, setShowBannerNotice] = useState(
+    Boolean(bannerNotice),
+  );
   const [phases, setPhases] = useState<PhaseDraft[]>(() =>
     initialEvent ? makeInitialPhases(initialEvent.tasks) : [],
   );
@@ -878,7 +891,7 @@ export function EventForm({
             p_event_id: initialEvent.id,
             // Keep the exact server string. Converting through Date can lose
             // precision and break the optimistic-concurrency comparison.
-            p_expected_updated_at: initialEvent.updatedAt,
+            p_expected_updated_at: eventVersion,
             p_name: name.trim(),
             p_description: description.trim() || null,
             p_start_date: startDate,
@@ -912,6 +925,43 @@ export function EventForm({
         return;
       }
 
+      if (!initialEvent && pendingBanner) {
+        const newEventId = saveResult.data;
+        if (typeof newEventId !== "string") {
+          setError(
+            "The event was saved, but its banner could not be attached. Open the event from Home and try again.",
+          );
+          setStatus("idle");
+          return;
+        }
+
+        const { data: createdEvent, error: versionError } = await supabase
+          .from("events")
+          .select("updated_at")
+          .eq("id", newEventId)
+          .single<{ updated_at: string }>();
+
+        if (versionError || !createdEvent) {
+          console.error("Failed to load the new event version:", versionError);
+          router.replace(`/events/${newEventId}/edit?banner=failed`);
+          router.refresh();
+          return;
+        }
+
+        try {
+          await uploadEventBanner(
+            newEventId,
+            createdEvent.updated_at,
+            pendingBanner,
+          );
+        } catch (bannerError) {
+          console.error("Event saved but banner upload failed:", bannerError);
+          router.replace(`/events/${newEventId}/edit?banner=failed`);
+          router.refresh();
+          return;
+        }
+      }
+
       router.replace("/home");
       router.refresh();
     } catch {
@@ -940,6 +990,10 @@ export function EventForm({
           ) : null
         }
       />
+
+      {bannerNotice && showBannerNotice ? (
+        <InlineAlert className="mb-4">{bannerNotice}</InlineAlert>
+      ) : null}
 
       {initialEvent && (
         <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -1168,8 +1222,21 @@ export function EventForm({
           <CardContent>
             {tab === "fundamentals" ? (
               <div className="grid gap-5">
-                <div className="flex aspect-[21/9] items-center justify-center rounded-xl border-2 border-dashed bg-muted/40 px-4 text-center text-sm text-muted-foreground">
-                  Banner upload is planned for a later step
+                <div className="grid gap-2">
+                  <p className="text-sm font-semibold">Event banner</p>
+                  <BannerUploader
+                    eventName={name}
+                    eventId={initialEvent?.id}
+                    currentBannerUrl={bannerUrl}
+                    expectedUpdatedAt={initialEvent ? eventVersion : undefined}
+                    pendingFile={pendingBanner}
+                    onPendingFileChange={setPendingBanner}
+                    onSaved={(nextBannerUrl, updatedAt) => {
+                      setBannerUrl(nextBannerUrl);
+                      setEventVersion(updatedAt);
+                      setShowBannerNotice(false);
+                    }}
+                  />
                 </div>
 
                 <FormField label="Event name">

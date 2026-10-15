@@ -17,6 +17,7 @@ type EditableEvent = {
   end_date: string | null;
   status: "Draft" | "Active" | "Archived";
   updated_at: string;
+  banner_url: string | null;
 };
 
 type EditableTaskMetadata = {
@@ -73,7 +74,11 @@ function LoadError() {
 
 export default async function EditEventPage({
   params,
-}: PageProps<"/events/[eventId]/edit">) {
+  searchParams,
+}: {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireUser();
   const leadershipProfile = await getActiveProfileForRoles([
     "Admin",
@@ -84,8 +89,12 @@ export default async function EditEventPage({
     redirect("/home");
   }
 
-  const { eventId } = await params;
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
+  const [{ eventId }, query] = await Promise.all([params, searchParams]);
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      eventId,
+    )
+  ) {
     redirect("/home");
   }
 
@@ -93,7 +102,7 @@ export default async function EditEventPage({
   const eventResult = await supabase
     .from("events")
     .select(
-      "id, name, description, start_date, end_date, status, updated_at",
+      "id, name, description, start_date, end_date, status, updated_at, banner_url",
     )
     .eq("id", eventId)
     .maybeSingle<EditableEvent>();
@@ -145,7 +154,9 @@ export default async function EditEventPage({
       supabase.rpc("get_task", { p_task_id: task.id }).single(),
     ),
   );
-  const taskDetailError = taskDetailResults.find((result) => result.error)?.error;
+  const taskDetailError = taskDetailResults.find(
+    (result) => result.error,
+  )?.error;
 
   if (taskDetailError) {
     console.error("Failed to load editable task details:", taskDetailError);
@@ -156,7 +167,9 @@ export default async function EditEventPage({
     taskDetailResults
       .map((result) => result.data)
       .filter(
-        (task): task is { id: string; title: string; description: string | null } =>
+        (
+          task,
+        ): task is { id: string; title: string; description: string | null } =>
           Boolean(task),
       )
       .map((task) => [task.id, task]),
@@ -200,6 +213,11 @@ export default async function EditEventPage({
       committees={committees}
       taskCommittees={taskCommittees}
       assignees={assigneesResult.data ?? []}
+      bannerNotice={
+        query.banner === "failed"
+          ? "The event was saved, but its banner could not be uploaded. Try adding it again here."
+          : undefined
+      }
       initialEvent={{
         id: eventResult.data.id,
         name: eventResult.data.name,
@@ -209,6 +227,7 @@ export default async function EditEventPage({
         status: eventResult.data.status,
         // Preserve the exact Supabase string; never round-trip through Date.
         updatedAt: eventResult.data.updated_at,
+        bannerUrl: eventResult.data.banner_url,
         tasks: initialTasks,
       }}
     />
