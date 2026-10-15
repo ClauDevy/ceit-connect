@@ -10,7 +10,7 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 2. Auth → **URL Configuration**: Site URL = the real deployed address; Redirect URLs must include `<site>/auth/callback`.
 3. Auth → Emails → **SMTP Settings** (custom SMTP).
 4. Auth → Emails → **Templates → Reset Password**: body must show `{{ .Token }}` as plain text (the typed-code flow).
-5. **Storage buckets** (`avatars`, later `banners`) — migrations create only the policies, not the bucket.
+5. **Storage buckets**: `avatars` is still created by hand; the Step 7 banner migration creates and configures `banners` itself so Dev and Prod stay identical.
 6. **Vercel env vars** (+ a fresh redeploy; new variables never apply to an already-built deployment). Location: Project Settings → Environments → *Production* → Add Environment Variable.
 7. The **first Admin account**, created manually (see `docs/DATABASE.md`).
 

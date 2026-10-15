@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, LockKeyhole } from "lucide-react";
 import { redirect } from "next/navigation";
+import { EventBanner } from "@/components/events/event-banner";
 import { PageHeader } from "@/components/shared/page-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ type ArchivedEvent = {
   description: string | null;
   start_date: string;
   end_date: string | null;
+  banner_url: string | null;
 };
 
 type ArchivedTask = {
@@ -82,14 +84,18 @@ export default async function ArchivedEventPage({
 }: {
   params: Promise<{ eventId: string }>;
 }) {
-  const profile = await getActiveProfileForRoles(["Admin", "Co-Admin", "Member"]);
+  const profile = await getActiveProfileForRoles([
+    "Admin",
+    "Co-Admin",
+    "Member",
+  ]);
   if (!profile) redirect("/home");
 
   const { eventId } = await params;
   const supabase = await createClient();
   const { data: event, error: eventError } = await supabase
     .from("events")
-    .select("id, name, description, start_date, end_date")
+    .select("id, name, description, start_date, end_date, banner_url")
     .eq("id", eventId)
     .eq("status", "Archived")
     .maybeSingle<ArchivedEvent>();
@@ -103,7 +109,8 @@ export default async function ArchivedEventPage({
   if (eventError || !event) {
     return (
       <InlineAlert>
-        This archived event could not be loaded. Return to Event Archives and try again.
+        This archived event could not be loaded. Return to Event Archives and
+        try again.
       </InlineAlert>
     );
   }
@@ -129,13 +136,17 @@ export default async function ArchivedEventPage({
     Array.isArray(assigneeRows) && assigneeRows.every(isArchivedAssignee)
       ? assigneeRows
       : [];
-  const assigneesUnavailable = Boolean(assigneesResult.error) || assigneeDataInvalid;
+  const assigneesUnavailable =
+    Boolean(assigneesResult.error) || assigneeDataInvalid;
 
   if (tasksError) {
     console.error("Failed to load Archived event tasks:", tasksError);
   }
   if (assigneesResult.error) {
-    console.error("Failed to load Archived event assignees:", assigneesResult.error);
+    console.error(
+      "Failed to load Archived event assignees:",
+      assigneesResult.error,
+    );
   } else if (assigneeDataInvalid) {
     console.error("Archived event assignees returned invalid data.");
   }
@@ -145,7 +156,9 @@ export default async function ArchivedEventPage({
       supabase.rpc("get_task", { p_task_id: task.id }).single<TaskContent>(),
     ),
   );
-  const taskContentError = taskContentResults.find((result) => result.error)?.error;
+  const taskContentError = taskContentResults.find(
+    (result) => result.error,
+  )?.error;
   if (taskContentError) {
     console.error("Failed to load Archived task content:", taskContentError);
   }
@@ -163,7 +176,11 @@ export default async function ArchivedEventPage({
     <>
       <Link
         href="/archives"
-        className={buttonVariants({ variant: "ghost", size: "sm", className: "mb-4" })}
+        className={buttonVariants({
+          variant: "ghost",
+          size: "sm",
+          className: "mb-4",
+        })}
       >
         <ArrowLeft aria-hidden />
         Event Archives
@@ -177,17 +194,26 @@ export default async function ArchivedEventPage({
 
       <Card className="mb-6 bg-muted/40">
         <CardContent className="flex items-start gap-3">
-          <LockKeyhole className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <LockKeyhole
+            className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
           <div>
             <p className="text-sm font-semibold">Read-only record</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              This event and its tasks are permanently frozen as they stood when archived.
+              This event and its tasks are permanently frozen as they stood when
+              archived.
             </p>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="mb-8">
+      <Card className="mb-8 max-w-3xl overflow-hidden">
+        <EventBanner
+          src={event.banner_url}
+          alt={`${event.name} banner`}
+          className="aspect-video w-full"
+        />
         <CardContent className="space-y-3">
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -198,22 +224,30 @@ export default async function ArchivedEventPage({
               {event.description}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">No event description.</p>
+            <p className="text-sm text-muted-foreground">
+              No event description.
+            </p>
           )}
         </CardContent>
       </Card>
 
       <section aria-labelledby="archived-tasks-heading">
         <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 id="archived-tasks-heading" className="font-display text-lg font-semibold sm:text-xl">
+          <h2
+            id="archived-tasks-heading"
+            className="font-display text-lg font-semibold sm:text-xl"
+          >
             Tasks
           </h2>
-          <span className="text-sm text-muted-foreground">{tasks?.length ?? 0}</span>
+          <span className="text-sm text-muted-foreground">
+            {tasks?.length ?? 0}
+          </span>
         </div>
 
         {tasksError || taskContentError || assigneesUnavailable ? (
           <InlineAlert className="mb-4">
-            Some archived task information could not be loaded. Refresh to try again.
+            Some archived task information could not be loaded. Refresh to try
+            again.
           </InlineAlert>
         ) : null}
 
@@ -228,9 +262,14 @@ export default async function ArchivedEventPage({
                 <Card key={task.id}>
                   <CardHeader className="sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                     <div className="min-w-0">
-                      <CardTitle>{content?.title ?? "Task details unavailable"}</CardTitle>
+                      <CardTitle>
+                        {content?.title ?? "Task details unavailable"}
+                      </CardTitle>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {task.phase || "No phase"} · {task.task_type === "LiveOperation" ? "Live Operation" : "Deliverable"}
+                        {task.phase || "No phase"} ·{" "}
+                        {task.task_type === "LiveOperation"
+                          ? "Live Operation"
+                          : "Deliverable"}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -262,10 +301,14 @@ export default async function ArchivedEventPage({
                           <div className="flex flex-wrap gap-3">
                             {assigneeIds.map((assigneeId) => {
                               const assignee = assigneesById.get(assigneeId);
-                              const name = assignee?.full_name ?? "Former member";
+                              const name =
+                                assignee?.full_name ?? "Former member";
 
                               return (
-                                <span key={assigneeId} className="flex items-center gap-2 text-sm">
+                                <span
+                                  key={assigneeId}
+                                  className="flex items-center gap-2 text-sm"
+                                >
                                   <UserAvatar
                                     name={name}
                                     src={assignee?.avatar_url}
@@ -292,7 +335,9 @@ export default async function ArchivedEventPage({
         ) : !tasksError ? (
           <Card>
             <CardContent>
-              <p className="text-sm text-muted-foreground">No tasks are visible to you in this archive.</p>
+              <p className="text-sm text-muted-foreground">
+                No tasks are visible to you in this archive.
+              </p>
             </CardContent>
           </Card>
         ) : null}
