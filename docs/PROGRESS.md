@@ -49,6 +49,7 @@ Done:
 - **Step 7 — Event banners** is implemented: Create/Edit Event crop to 16:9, convert to WebP, compress below 1.5 MB, preview, replace, and remove. Images already within 2% of 16:9 skip the initial crop dialog but retain an Adjust crop action. Create saves the event first and reports a recoverable Edit-page warning if its follow-up upload fails. Edit banner writes use the event's exact optimistic version, adopt the returned `updated_at`, and preserve unsaved form fields on stale conflicts. Home Active and Archive cards display the full 16:9 crop and lazy-load their images; Archived event details use a bounded 16:9 banner, and every location keeps the semantic fallback.
 - Migration `20261015120000_event_banners.sql` is prepared (not yet pushed): it creates the public 2 MB JPEG/PNG/WebP bucket, restricts object paths and writes to active Admins/Co-Admins editing Draft/Active events, and adds fixed-search-path integrity guards requiring each non-null banner URL to use that event's own random WebP object and to reference an existing `storage.objects` row. The route uses the caller's session for ordinary Storage writes and reserves service role for verified, non-current cleanup on non-Archived events.
 - **Step 8 — Google Drive preview helper** is implemented without database persistence: a pure, unit-tested parser accepts only HTTPS links on the exact `drive.google.com` and `docs.google.com` hosts, recognizes Drive files/folders plus Docs/Sheets/Slides, preserves safe resource keys, and emits canonical open/preview URLs. The reusable `DrivePreview` uses a sandboxed, no-referrer, lazy iframe with a safe open-link fallback, while `YourWorkCard` displays named/type-labelled rows and exposes its local add form only to assignees. Valid submissions clear stale validation errors even when no persistence callback is supplied. `/sandbox` has a mock-only local-state demo in development and returns 404 in production; the real task modal and RLS-backed work-link storage remain Phase 4 work.
+- **Phase 3 gate hardening** is implemented in migration `20261015180000_phase_3_gate_hardening.sql`: inactive callers no longer receive real task content from `get_task()`, Draft-to-Active now requires the same end date and task count as atomic creation, and narrowly scoped deferred triggers prevent Active inserts or task removal/moves from leaving an Active event empty. The migration is prepared only; rollout status must not be changed until the owner confirms Dev and Prod separately.
 
 ## Decisions log
 
@@ -75,6 +76,10 @@ Done:
 Next up after the pending Phase 3 migrations are reviewed and applied: Phase 3 Step 8 (see `docs/PHASE-3-PLAN.md`).
 
 ## Open items
+
+- Migration rollout statements above require owner confirmation before they are changed. The statements currently naming `20261011180000`, `20261011180100`, `20261011200000`, `20261011220000`, `20261012120000`, `20261012150000`, `20261012160000`, `20261012160100`, and `20261015120000` as "prepared (not yet pushed)" may be stale.
+- The Status checks statement that leftover packages `cn` and `p` were removed is stale: both are still present in `package.json`. Package removal is intentionally deferred.
+- The line saying Phase 3 Step 8 is "Next up" is stale because Step 8 is already implemented. The transactional archive RPC is deferred to the start of Phase 4.
 
 - Tighten `ALLOWED_EMAIL_DOMAINS` on Prod to the university domain only (Vercel env var + redeploy).
 - Deactivate the mistyped fake-email test account on Prod (can't delete — by design).
