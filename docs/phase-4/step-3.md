@@ -1,0 +1,17 @@
+# Step 3 — Read-only task modal and confidential/dependency states
+
+**Status:** Gate-critical.
+
+- Open a board card in the relevant `tasks.html` modal layout: status/priority/type, event/committee, description, assignees, deadline/times, dependency/blocked banner, confidential banner, and safe loading/errors. Mutation controls remain disabled.
+- Build on Step 1A: raw confidential rows are limited to active Admin, owning Co-Admin, or non-Draft primary/assist assignee. `allowed_viewers` and optional archive late-share grantees use only the detail RPC. Board visibility never implies raw table visibility.
+- Add a restricted task-detail RPC and keep the board response smaller. The detail RPC and Step 2 board RPC must use the same shared content-access helper with a fixed empty `search_path`, so allowed-viewer and assignee decisions cannot diverge. A masked shell containing only `id`, “Confidential Task,” and board placement is available only for a non-Draft confidential task. For a Draft task, a non-leadership caller receives no row at all; active Admin and active owning Co-Admin receive the authorized real detail shape.
+- Derive `blocked = depends_on_task_id is not null AND dependency.status != 'Completed'`. Resolve dependency labels through the same confidentiality rule. Blocking gates only forward moves and never auto-reverts.
+- Draft confidential content remains leadership-only: active Admin and the active owning Co-Admin. Primary/assist assignment and `tasks.allowed_viewers` grant real confidential content only when the parent is non-Draft. On Active events those paths apply normally; Archived confidential tasks retain their current approved paths, and optional Step 7B adds archive-only viewers.
+- Show the access list only to real-content viewers. Comments/work links re-check current access so revocation applies immediately; masked callers get no child rows.
+- **Database impact:** reads `events`, `tasks`, and safe `users` fields. No columns. New migration: **yes**, for detail/assignee RPC and shared helper if needed. Do not broaden raw task/user RLS; preserve or strictly replace `get_task()` authorization.
+- **Guards that must remain true:** Draft tasks unavailable to Members; Archived tasks frozen; modal is read-only; board/modal masks match.
+- **Security risks:** never fetch full rows then hide fields. Do not expose email, role, Discord id, allowlist UUIDs, hidden dependency names, comments, work links, or inactive details through joins. Avoid divergent access helpers.
+- **Test deliverable:** `docs/PHASE-4-STEP-3-TESTS.md` follows the global contract and proves real/masked shapes, immediate revocation, dependency masking, Draft/Archived behavior, every role, and identical board/detail helper decisions. Include confidential and non-confidential Draft fixtures proving assigned Members, allowlisted Members, and other non-leadership callers receive no detail row—not a shell—and therefore no content, comments, work links, dependency name, or access list; active Admin and owning Co-Admin receive the real rows.
+- **Acceptance:** authorized non-Draft viewers get real content/access list; unauthorized non-Draft confidential viewers get only the shell; Draft remains leadership-only and returns no row to other callers despite assignment or allowlisting; board/detail decisions match; revocation immediately removes task/comment/link access; blocked prerequisite names appear only when authorized.
+
+[Back to Phase 4 index](../PHASE-4-PLAN.md)
