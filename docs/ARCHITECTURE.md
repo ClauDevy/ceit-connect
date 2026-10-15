@@ -85,8 +85,8 @@ Supabase free tier has no automated backups. A designated Technical Lead exports
 | 0 | Environment, UI foundations, Vercel | Done |
 | 1 | Database, security, RLS | Done |
 | 2 | Auth, image pipeline, offboarding | Done |
-| 3 | Event engine, drafts, relative scheduling, archives | **In progress** |
-| 4 | Task engine, Kanban, dependencies, confidentiality UI | Not started |
+| 3 | Event engine, drafts, relative scheduling, archives | Done |
+| 4 | Task engine, Kanban, dependencies, confidentiality UI | **Next** |
 | 5 | Notifications, dashboard wiring, ops handover | Not started |
 
 **Phase 3 gate checks:** auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link renders an inline preview and plain text falls back to a link; active Admins and Co-Admins can see and edit any Draft, while a Member cannot see a Draft even via direct URL; a Co-Admin can launch any Draft but cannot change Active back to Draft or archive one; an Archived event cannot be updated or un-archived.

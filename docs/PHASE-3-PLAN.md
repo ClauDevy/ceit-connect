@@ -8,7 +8,7 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 
 `/events/new`: name, dates, description, Save Draft / Launch Event, real insert. `events_insert` requires `created_by = auth.uid()`.
 
-## Step 2 — Home shows real events
+## Step 2 — Home shows real events ✅ done
 
 - Replace Home's placeholder with a real list/timeline of events (prototype: `docs/prototypes/index.html` — large file, read only the event list section).
 - Draft events render with a **dashed border + grey "Draft" badge** and are visible to **all active Admins and Co-Admins**; Members never see them (enforced by `events_select`; verify, don't re-implement in the UI).
@@ -17,7 +17,7 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 - Empty state uses the tiger mascot when there are no events.
 - **Test:** create one Draft and one Active event → both show for the creator and a different active Admin/Co-Admin; sign in as a Member → the Draft is invisible (list **and** direct URL); a Member has no "+ New Event" button.
 
-## Step 3 — Task Setup (done in code; migrations pending owner rollout)
+## Step 3 — Task Setup ✅ done
 
 - The Tasks tab adds editable phases and tasks (title, committee, Deliverable/LiveOperation type, due date, priority default Medium, description, and optional assignees). Live Operations also expose the existing call/end-time fields with a live-duty warning. Unassigned tasks use empty assignee arrays and land in the Backlog. Empty phases are clearly marked and are not persisted because phases live in `tasks.phase`, not a separate table.
 - `create_event_with_tasks(...)` atomically inserts the event and up to 200 tasks as `SECURITY INVOKER`, derives `created_by` from `auth.uid()`, rejects missing required task keys, validates text lengths/enums/dates/times, and accepts any active user as an assignee. Drafts may have zero tasks; Active events must have at least one task, enforced in both the UI and function.
@@ -26,34 +26,34 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 - Draft task rows, `get_task()` results, assignee status updates, and activity-log snapshots are hidden from Members until the parent event is launched. Active Admins retain full access; active Co-Admins retain access to Draft tasks in their own committee.
 - **Test:** launch an event with 3 tasks → 3 rows with the right `event_id` / `committee_id`; an Active event with zero tasks → rejected atomically; a Co-Admin task for another committee → rejected; a cross-committee active assignee → accepted; an inactive assignee → rejected; a Member cannot read the assignee-list function, a Draft task, or its activity log.
 
-## Step 4 — Edit Event
+## Step 4 — Edit Event ✅ done
 
 - Load an existing event (and its tasks) into the same form; any active Admin or Co-Admin may edit any Draft or Active event (`events_update`). A Co-Admin may launch any Draft by changing it to Active, but nobody may change an Active event back to Draft. Only an Admin may archive an event, and an Archived event cannot be updated or un-archived.
 - Prototype: `docs/prototypes/edit-event.html` (large file, read only the parts you need).
 - **Test:** edit name/dates as a non-creator Co-Admin → saved; launch another creator's Draft as a Co-Admin → saved; attempting to change Active back to Draft as a Co-Admin is rejected; attempting to archive as a Co-Admin is rejected; attempting to edit or un-archive an Archived event is rejected.
 
-## Step 5 — Template Auto-Import ✅ done in code; migration pending owner rollout
+## Step 5 — Template Auto-Import ✅ done
 
 - "Start from Archive Template" lists Archived events; a Supabase SQL function duplicates the chosen event's tasks into the new event.
 - Relative scheduling: `new_task_deadline = new_event_start + (old_task_deadline − old_event_start)`.
 - Assignees are wiped; tasks route to the Backlog.
 - **Test:** import into a future event → dates shift correctly, backlog populated, no assignees.
 
-## Step 6 — Event Archives (read-only) ✅ done in code; migration pending owner rollout
+## Step 6 — Event Archives (read-only) ✅ done
 
 - `/archives` lists Archived events; an Admin action sets `status = 'Archived'`.
 - Archived events are frozen and cannot be un-archived: the event row is already blocked by `events_update`; Step 6 must **finish enforcing read-only in the database** for its tasks and related writes, not only by hiding buttons. Historical comments and Drive links stay readable.
 - Only Active events may be archived. Incomplete tasks do not block archiving; the confirmation reports their count and explains that they will be frozen as they are. Archived events cannot be deleted.
 - **Test:** archive an event → dragging/editing/commenting is blocked even via a direct API call.
 
-## Step 7 — Banner upload ✅ done in code; migration pending owner rollout
+## Step 7 — Banner upload ✅ done
 
 - A migration creates the public `banners` bucket (2 MB hard limit; JPEG/PNG/WebP), event-scoped Storage policies, and a fail-closed banner URL/object integrity trigger. Only active Admins and Co-Admins may write within Draft/Active event folders; Archived events are frozen.
 - Crop 16:9 and compress below 1.5 MB as WebP client-side. The authenticated server route generates the random object path and public URL, uploads before the object-existence-guarded database update, advances the optimistic event version, and deletes the old file only after the database succeeds.
 - Create Event holds the processed image in the browser until the event exists. Edit Event uploads independently without discarding unsaved form changes, and stale versions require a deliberate reload. Home and Archive cards/details render the stored banner with a safe fallback.
 - **Test:** a 4 MB photo is rejected/forced through crop; the banner shows on the event; the old file is replaced on re-upload.
 
-## Step 8 — Google Drive preview helper
+## Step 8 — Google Drive preview helper ✅ done
 
 - Build `toPreviewUrl()` and a small `DrivePreview` component (see `docs/ARCHITECTURE.md` §1) with the plain-link fallback and "Preview unavailable" note. The task modal is a Phase 4 feature, so ship the component now with a tiny demo/test and wire it into the modal when that exists.
 - **Test:** a valid share link renders an inline preview; plain text falls back to a link, never a broken iframe.
