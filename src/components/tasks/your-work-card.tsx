@@ -58,9 +58,9 @@ export function YourWorkCard({
       return;
     }
 
+    setError(null);
     if (!onAddLink) return;
 
-    setError(null);
     setIsAdding(true);
     try {
       await onAddLink({ url: parsed.openUrl, name: name.trim() || undefined });
