@@ -279,6 +279,7 @@ function BoardContents({
   const [backlogOpen, setBacklogOpen] = useState(false);
   const priorityTriggerRef = useRef<HTMLButtonElement>(null);
   const priorityPanelRef = useRef<HTMLDivElement>(null);
+  const priorityOverlayRef = useRef<HTMLButtonElement>(null);
   const priorityReturnFocusRef = useRef(true);
   const committeeTriggerRef = useRef<HTMLButtonElement>(null);
   const committeePanelRef = useRef<HTMLDivElement>(null);
@@ -378,19 +379,20 @@ function BoardContents({
 
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node;
+      const isPriorityOverlay = priorityOverlayRef.current?.contains(target) ?? false;
       if (
         priorityOpen &&
         !priorityPanelRef.current?.contains(target) &&
         !priorityTriggerRef.current?.contains(target)
       ) {
-        closePriorityFilter();
+        closePriorityFilter(isPriorityOverlay);
       }
       if (
         committeeOpen &&
         !committeePanelRef.current?.contains(target) &&
         !committeeTriggerRef.current?.contains(target)
       ) {
-        closeCommitteeFilter();
+        closeCommitteeFilter(false);
       }
     }
 
@@ -654,6 +656,7 @@ function BoardContents({
           {priorityPanelMounted ? (
             <>
               <button
+                ref={priorityOverlayRef}
                 type="button"
                 className={cn(
                   "fixed inset-0 z-40 bg-black/40 transition-opacity duration-150 sm:hidden motion-reduce:duration-[120ms]",
