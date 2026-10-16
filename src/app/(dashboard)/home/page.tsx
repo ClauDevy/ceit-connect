@@ -19,6 +19,7 @@ type HomeEvent = {
   end_date: string | null;
   status: "Active" | "Draft";
   banner_url: string | null;
+  updated_at: string;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -95,6 +96,7 @@ function ActiveEventCard({
               eventId={event.id}
               eventName={event.name}
               incompleteTaskCount={incompleteTaskCount}
+              eventUpdatedAt={event.updated_at}
             />
           ) : null}
         </div>
@@ -159,7 +161,9 @@ export default async function HomePage() {
   ]);
   const eventsPromise = supabase
     .from("events")
-    .select("id, name, description, start_date, end_date, status, banner_url")
+    .select(
+      "id, name, description, start_date, end_date, status, banner_url, updated_at",
+    )
     .in("status", ["Active", "Draft"])
     .order("start_date", { ascending: true })
     .order("created_at", { ascending: true })

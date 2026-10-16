@@ -3,6 +3,38 @@ import { createClient } from "@/lib/supabase/server";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TIMESTAMP_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+
+const RPC_ERRORS: Record<string, { message: string; status: number }> = {
+  CCA01: { message: "Only active Admins can archive events.", status: 403 },
+  CCA02: {
+    message: "The event ID and expected version are required.",
+    status: 400,
+  },
+  CCA03: {
+    message: "Expected incomplete task count must be a non-negative integer.",
+    status: 400,
+  },
+  CCA04: { message: "Event not found.", status: 404 },
+  CCA05: {
+    message: "Draft events cannot be archived. Launch the event first.",
+    status: 409,
+  },
+  CCA06: { message: "This event is already archived.", status: 409 },
+  CCA07: { message: "Only Active events can be archived.", status: 409 },
+  CCA08: {
+    message:
+      "This event changed after you opened the archive confirmation. Refresh and confirm again.",
+    status: 409,
+  },
+  CCA09: {
+    message:
+      "The incomplete task count changed. Refresh and confirm the archive again.",
+    status: 409,
+  },
+  CCA10: { message: "The event could not be archived.", status: 500 },
+};
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -19,7 +51,7 @@ export async function POST(request: Request) {
     .from("users")
     .select("role, is_active")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (requesterError) {
     console.error("Failed to verify archive requester:", requesterError);
@@ -29,7 +61,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!requester.is_active || requester.role !== "Admin") {
+  if (!requester || !requester.is_active || requester.role !== "Admin") {
     return NextResponse.json(
       { error: "Only active Admins can archive events." },
       { status: 403 },
@@ -43,10 +75,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const eventId =
-    typeof body === "object" && body !== null && "eventId" in body
-      ? (body as { eventId?: unknown }).eventId
+  const requestBody =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>)
       : null;
+  const eventId = requestBody?.eventId;
+  const expectedIncompleteTaskCount = requestBody?.expectedIncompleteTaskCount;
+  const expectedUpdatedAt = requestBody?.expectedUpdatedAt;
 
   if (typeof eventId !== "string" || !UUID_PATTERN.test(eventId)) {
     return NextResponse.json(
@@ -55,57 +90,47 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: updatedEvents, error: updateError } = await supabase
-    .from("events")
-    .update({ status: "Archived" })
-    .eq("id", eventId)
-    .eq("status", "Active")
-    .select("id");
-
-  if (updateError) {
-    console.error("Failed to archive event:", updateError);
+  if (
+    typeof expectedIncompleteTaskCount !== "number" ||
+    !Number.isSafeInteger(expectedIncompleteTaskCount) ||
+    expectedIncompleteTaskCount < 0
+  ) {
     return NextResponse.json(
-      { error: "The event could not be archived. Refresh and try again." },
-      { status: 409 },
+      { error: "A valid expected incomplete task count is required." },
+      { status: 400 },
     );
   }
 
-  if (updatedEvents.length !== 1) {
-    const { data: event, error: lookupError } = await supabase
-      .from("events")
-      .select("status")
-      .eq("id", eventId)
-      .maybeSingle();
-
-    if (lookupError) {
-      console.error("Failed to diagnose archive result:", lookupError);
-      return NextResponse.json(
-        { error: "The archive result could not be verified. Refresh and try again." },
-        { status: 500 },
-      );
-    }
-
-    if (!event) {
-      return NextResponse.json({ error: "Event not found." }, { status: 404 });
-    }
-
-    if (event.status === "Draft") {
-      return NextResponse.json(
-        { error: "Draft events cannot be archived. Launch the event first." },
-        { status: 409 },
-      );
-    }
-
-    if (event.status === "Archived") {
-      return NextResponse.json(
-        { error: "This event is already archived." },
-        { status: 409 },
-      );
-    }
-
+  if (
+    typeof expectedUpdatedAt !== "string" ||
+    !TIMESTAMP_PATTERN.test(expectedUpdatedAt)
+  ) {
     return NextResponse.json(
-      { error: "The event was not archived. Refresh and try again." },
-      { status: 409 },
+      { error: "A valid event version is required." },
+      { status: 400 },
+    );
+  }
+
+  const { error: archiveError } = await supabase.rpc("archive_event", {
+    p_event_id: eventId,
+    p_expected_incomplete_task_count: expectedIncompleteTaskCount,
+    // Keep the original database string intact; JS Date loses microseconds.
+    p_expected_updated_at: expectedUpdatedAt,
+  });
+
+  if (archiveError) {
+    const mappedError = RPC_ERRORS[archiveError.code];
+    if (mappedError) {
+      return NextResponse.json(
+        { error: mappedError.message },
+        { status: mappedError.status },
+      );
+    }
+
+    console.error("Failed to archive event:", archiveError);
+    return NextResponse.json(
+      { error: "The event could not be archived. Refresh and try again." },
+      { status: 500 },
     );
   }
 

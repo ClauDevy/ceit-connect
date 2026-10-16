@@ -10,12 +10,14 @@ type ArchiveEventButtonProps = {
   eventId: string;
   eventName: string;
   incompleteTaskCount: number;
+  eventUpdatedAt: string;
 };
 
 export function ArchiveEventButton({
   eventId,
   eventName,
   incompleteTaskCount,
+  eventUpdatedAt,
 }: ArchiveEventButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -31,7 +33,12 @@ export function ArchiveEventButton({
       const response = await fetch("/api/archive-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId }),
+        body: JSON.stringify({
+          eventId,
+          expectedIncompleteTaskCount: incompleteTaskCount,
+          // This is the original database string. Do not round-trip it through Date.
+          expectedUpdatedAt: eventUpdatedAt,
+        }),
       });
       const result: unknown = await response.json();
       const message =
@@ -43,6 +50,7 @@ export function ArchiveEventButton({
           : "The event could not be archived.";
 
       if (!response.ok) {
+        setOpen(false);
         setError(message);
         return;
       }

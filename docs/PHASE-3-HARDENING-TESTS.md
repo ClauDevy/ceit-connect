@@ -379,6 +379,8 @@ rollback;
 
 ## 6. Real archive path stays frozen; Active event deletion still works
 
+> Step 1 supersedes the raw Admin archive below; that raw update now fails by design because authenticated archiving must use `archive_event()`.
+
 ```sql
 begin;
 
