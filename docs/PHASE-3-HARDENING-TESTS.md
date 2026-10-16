@@ -12,7 +12,7 @@ Every block is independent and ends in `rollback`. Expected deferred failures
 are forced with `set constraints all immediate`; no block writes to or deletes
 from `storage.objects`.
 
-## 1. Active and deactivated callers receive the correct `get_task()` content
+## 1. Active callers receive content and deactivated callers receive no row
 
 ```sql
 begin;
@@ -74,9 +74,8 @@ do $$
 begin
   if exists (
     select 1 from public.get_task('d1000000-0000-4000-8000-000000000001')
-    where title = 'Secret title' or description is not null
   ) then
-    raise exception 'A deactivated assignee received real task content.';
+    raise exception 'A deactivated assignee received a get_task row.';
   end if;
 end
 $$;
