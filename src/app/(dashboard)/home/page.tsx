@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Pencil, Plus } from "lucide-react";
+import { ArrowRight, CalendarDays, Pencil, Plus } from "lucide-react";
 import { ArchiveEventButton } from "@/components/events/archive-event-button";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -82,6 +82,13 @@ function ActiveEventCard({
           </p>
         ) : null}
         <div className="flex flex-wrap items-start gap-2">
+          <Link
+            href={`/events/${event.id}`}
+            className={buttonVariants({ size: "sm" })}
+          >
+            View board
+            <ArrowRight aria-hidden />
+          </Link>
           {canEdit && (
             <Link
               href={`/events/${event.id}/edit`}
