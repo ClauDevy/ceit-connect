@@ -1,6 +1,6 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-10-15. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-10-16. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 ## Phase 0 — Scaffold (done)
 
@@ -51,6 +51,11 @@ Done:
 - **Step 8 — Google Drive preview helper** is implemented without database persistence: a pure, unit-tested parser accepts only HTTPS links on the exact `drive.google.com` and `docs.google.com` hosts, recognizes Drive files/folders plus Docs/Sheets/Slides, preserves safe resource keys, and emits canonical open/preview URLs. The reusable `DrivePreview` uses a sandboxed, no-referrer, lazy iframe with a safe open-link fallback, while `YourWorkCard` displays named/type-labelled rows and exposes its local add form only to assignees. Valid submissions clear stale validation errors even when no persistence callback is supplied. `/sandbox` has a mock-only local-state demo in development and returns 404 in production; the real task modal and RLS-backed work-link storage remain Phase 4 work.
 - **Phase 3 gate hardening** is implemented in migration `20261015180000_phase_3_gate_hardening.sql` and applied on Dev and Prod: inactive callers no longer receive real task content from `get_task()`, Draft-to-Active now requires the same end date and task count as atomic creation, and narrowly scoped deferred triggers prevent Active inserts or task removal/moves from leaving an Active event empty.
 
+## Phase 4 — Task engine (in progress)
+
+- **Step 1A — Raw task access hardening** is implemented locally and awaiting the owner's Dev rollout: migration `20261016120000_harden_raw_task_access.sql` replaces only `tasks_select`, `tasks_update`, and `tasks_delete`. Every branch now requires an active profile; backup requests no longer grant raw task rows; active Admin, owning-Co-Admin, non-Draft assignee, and non-confidential Archived read paths remain. No helper, column grant, trigger, RPC, or existing migration changed.
+- `docs/PHASE-4-STEP-1A-TESTS.md` contains the pre-fix leak reproduction plus post-fix direct-read, inactive/profile-less, write, catalog, caller, activity-log, archive-freeze, column-guard, and mixed-committee Edit Event regressions. Each DEV-only paste creates its own Auth/profile fixtures and ends with an intentional `TEST RESULTS` exception that rolls the transaction back.
+
 ## Decisions log
 
 - Magic link remains the required first login; password and Google are optional extras unlocked after it.
@@ -74,7 +79,7 @@ Done:
 - Leftover packages `cn` and `p` removed: NO — removal is deferred.
 - Service-role key not in any client bundle: YES
 
-Next up: Phase 4 — Task engine, Kanban, dependencies, and confidentiality UI.
+Next up: run Step 1A test 1 on Dev before applying the migration, apply the migration to Dev through the owner's normal process, then run the remaining Step 1A tests. Do not begin Phase 4 Step 1 until Step 1A is verified and deployed.
 
 ## Open items
 
