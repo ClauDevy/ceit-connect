@@ -1,14 +1,14 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { EventBoard } from "@/components/events/event-board";
+import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
+import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import {
-  EventBoard,
   isBoardTask,
   type BoardCommittee,
   type BoardEvent,
   type BoardTask,
-} from "@/components/events/event-board";
-import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
-import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
+} from "@/lib/events/board";
 import { createClient } from "@/lib/supabase/server";
 
 const UUID_PATTERN =
