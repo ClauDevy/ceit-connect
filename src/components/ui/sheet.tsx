@@ -30,4 +30,8 @@ function SheetTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return <DialogPrimitive.Title className={cn("sr-only", className)} {...props} />
 }
 
-export { Sheet, SheetClose, SheetContent, SheetTitle }
+function SheetDescription({ className, ...props }: DialogPrimitive.Description.Props) {
+  return <DialogPrimitive.Description className={cn("text-sm text-muted-foreground", className)} {...props} />
+}
+
+export { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle }
