@@ -379,7 +379,7 @@ rollback;
 
 ## 6. Real archive path stays frozen; Active event deletion still works
 
-> Step 1 supersedes the raw Admin archive below; that raw update now fails by design because authenticated archiving must use `archive_event()`.
+> Step 1 supersedes the former raw Admin archive; this test now uses `archive_event()`.
 
 ```sql
 begin;
@@ -408,10 +408,37 @@ select set_config(
 set constraints all immediate;
 set constraints all deferred;
 
-update public.events
-set status = 'Archived'
-where id = current_setting('hardening.archive_event_id')::uuid
-  and status = 'Active';
+do $$
+declare
+  v_event_id uuid := current_setting('hardening.archive_event_id')::uuid;
+  v_expected_incomplete_task_count bigint;
+  v_expected_updated_at timestamptz;
+begin
+  select
+    count(*) filter (where t.status <> 'Completed'),
+    e.updated_at
+  into v_expected_incomplete_task_count, v_expected_updated_at
+  from public.events e
+  left join public.tasks t on t.event_id = e.id
+  where e.id = v_event_id
+  group by e.updated_at;
+
+  perform public.archive_event(
+    v_event_id,
+    v_expected_incomplete_task_count,
+    v_expected_updated_at
+  );
+
+  if not exists (
+    select 1
+    from public.events
+    where id = v_event_id
+      and status = 'Archived'
+  ) then
+    raise exception 'Expected archive_event() to set the fixture event status to Archived.';
+  end if;
+end
+$$;
 
 do $$
 begin
