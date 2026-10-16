@@ -1409,12 +1409,28 @@ with committees as (
     ('Confidential'::text, true),
     ('Public'::text, false)
   ) value(label, is_confidential)
+), task_fixtures as (
+  select * from (values
+    ('CIA'::text, 'Active'::text, true, 'b1a00000-0000-4000-8000-000000000100'::uuid),
+    ('CIA', 'Active', false, 'b1a00000-0000-4000-8000-000000000101'::uuid),
+    ('CIA', 'Draft', true, 'b1a00000-0000-4000-8000-000000000102'::uuid),
+    ('CIA', 'Draft', false, 'b1a00000-0000-4000-8000-000000000103'::uuid),
+    ('CIA', 'Archived', true, 'b1a00000-0000-4000-8000-000000000104'::uuid),
+    ('CIA', 'Archived', false, 'b1a00000-0000-4000-8000-000000000105'::uuid),
+    ('Other', 'Active', true, 'b1a00000-0000-4000-8000-000000000106'::uuid),
+    ('Other', 'Active', false, 'b1a00000-0000-4000-8000-000000000107'::uuid),
+    ('Other', 'Draft', true, 'b1a00000-0000-4000-8000-000000000108'::uuid),
+    ('Other', 'Draft', false, 'b1a00000-0000-4000-8000-000000000109'::uuid),
+    ('Other', 'Archived', true, 'b1a00000-0000-4000-8000-000000000110'::uuid),
+    ('Other', 'Archived', false, 'b1a00000-0000-4000-8000-000000000111'::uuid)
+  ) value(committee_label, event_label, is_confidential, id)
 )
 insert into public.tasks (
-  event_id, committee_id, title, description, is_confidential,
+  id, event_id, committee_id, title, description, is_confidential,
   primary_assignees, assist_assignees, allowed_viewers
 )
 select
+  task_fixtures.id,
   events.id,
   committees.id,
   committees.label || ' ' || events.label || ' ' || confidentiality.label,
@@ -1423,7 +1439,11 @@ select
   array['33333333-3333-3333-3333-333333333333'::uuid],
   array['77777777-7777-4777-8777-777777777777'::uuid],
   array['66666666-6666-4666-8666-666666666666'::uuid]
-from committees cross join events cross join confidentiality;
+from task_fixtures
+join committees on committees.label = task_fixtures.committee_label
+join events on events.label = task_fixtures.event_label
+join confidentiality
+  on confidentiality.is_confidential = task_fixtures.is_confidential;
 
 update public.events set status = 'Archived'
 where id = 'a1a00000-0000-4000-8000-000000000012';
