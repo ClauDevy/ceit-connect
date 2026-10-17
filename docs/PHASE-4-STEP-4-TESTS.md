@@ -884,3 +884,120 @@ begin
 end
 $$;
 ```
+
+## TEST 7 — orphaned creator keeps can_remove boolean
+
+```sql
+begin;
+
+insert into auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+)
+select id, '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated', 'authenticated', email, '', now(),
+  '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+  now(), now()
+from (values
+  ('44700000-0000-4000-8000-000000000001'::uuid, 's4b-admin@test.local'),
+  ('44700000-0000-4000-8000-000000000002'::uuid, 's4b-own@test.local'),
+  ('44700000-0000-4000-8000-000000000003'::uuid, 's4b-creator@test.local'),
+  ('44700000-0000-4000-8000-000000000004'::uuid, 's4b-member@test.local')
+) fixture(id, email);
+
+insert into public.users (id, email, full_name, role, committee_id, is_active)
+values ('44700000-0000-4000-8000-000000000001', 's4b-admin@test.local', 'Admin', 'Admin', null, true);
+insert into public.users (id, email, full_name, role, committee_id, is_active)
+select fixture.id, fixture.email, fixture.name, fixture.role, c.id, true
+from (values
+  ('44700000-0000-4000-8000-000000000002'::uuid, 's4b-own@test.local', 'Owning Co', 'Co-Admin'),
+  ('44700000-0000-4000-8000-000000000003'::uuid, 's4b-creator@test.local', 'Disposable creator', 'Member'),
+  ('44700000-0000-4000-8000-000000000004'::uuid, 's4b-member@test.local', 'Member assignee', 'Member')
+) fixture(id, email, name, role)
+cross join lateral (select id from public.committees order by name limit 1) c;
+
+insert into public.events (id, name, start_date, end_date, status, created_by)
+values (
+  '44710000-0000-4000-8000-000000000001',
+  'Orphan Boolean Active',
+  '2026-12-17',
+  '2026-12-18',
+  'Active',
+  '44700000-0000-4000-8000-000000000001'
+);
+
+insert into public.tasks (id, event_id, committee_id, title, primary_assignees)
+select fixture.id, '44710000-0000-4000-8000-000000000001', c.id,
+  fixture.title, fixture.assignees
+from (values
+  ('44720000-0000-4000-8000-000000000001'::uuid, 'Orphaned links', array[
+    '44700000-0000-4000-8000-000000000003'::uuid,
+    '44700000-0000-4000-8000-000000000004'::uuid
+  ]),
+  ('44720000-0000-4000-8000-000000000002'::uuid, 'Second active task', '{}'::uuid[])
+) fixture(id, title, assignees)
+cross join lateral (select id from public.committees order by name limit 1) c;
+
+select set_config('request.jwt.claims', json_build_object('sub', '44700000-0000-4000-8000-000000000003', 'role', 'authenticated')::text, true);
+select * from public.add_task_work_link('44720000-0000-4000-8000-000000000001', 'Orphan one', 'https://drive.google.com/file/d/OrphanBoolean_One/view');
+select * from public.add_task_work_link('44720000-0000-4000-8000-000000000001', 'Orphan two', 'https://drive.google.com/file/d/OrphanBoolean_Two/view');
+
+delete from auth.users
+where id = '44700000-0000-4000-8000-000000000003';
+set constraints all immediate;
+
+do $$
+declare
+  v_ok boolean;
+  v_types_ok boolean;
+  v_all_types_ok boolean := true;
+  v_results text := '';
+begin
+  select count(*) = 2 into v_ok
+  from public.task_work_links
+  where task_id = '44720000-0000-4000-8000-000000000001'
+    and created_by is null;
+  v_results := v_results || format(E'\nCREATOR_DELETE_ORPHANS_BOTH_LINKS: %s', case when v_ok then 'PASS' else 'FAIL' end);
+
+  perform set_config('request.jwt.claims', json_build_object('sub', '44700000-0000-4000-8000-000000000004', 'role', 'authenticated')::text, true);
+  select
+    count(*) = 2
+      and coalesce(bool_and(item.value -> 'can_remove' = 'false'::jsonb), false),
+    count(*) = 2
+      and coalesce(bool_and(jsonb_typeof(item.value -> 'can_remove') = 'boolean'), false)
+  into v_ok, v_types_ok
+  from public.get_task_work_links('44720000-0000-4000-8000-000000000001') result,
+  lateral jsonb_array_elements(result.links) item(value);
+  v_all_types_ok := v_all_types_ok and v_types_ok;
+  v_results := v_results || format(E'\nNON_CREATOR_MEMBER_GETS_BOOLEAN_FALSE: %s', case when v_ok and v_types_ok then 'PASS' else 'FAIL' end);
+
+  perform set_config('request.jwt.claims', json_build_object('sub', '44700000-0000-4000-8000-000000000001', 'role', 'authenticated')::text, true);
+  select
+    count(*) = 2
+      and coalesce(bool_and(item.value -> 'can_remove' = 'true'::jsonb), false),
+    count(*) = 2
+      and coalesce(bool_and(jsonb_typeof(item.value -> 'can_remove') = 'boolean'), false)
+  into v_ok, v_types_ok
+  from public.get_task_work_links('44720000-0000-4000-8000-000000000001') result,
+  lateral jsonb_array_elements(result.links) item(value);
+  v_all_types_ok := v_all_types_ok and v_types_ok;
+  v_results := v_results || format(E'\nADMIN_GETS_BOOLEAN_TRUE: %s', case when v_ok and v_types_ok then 'PASS' else 'FAIL' end);
+
+  perform set_config('request.jwt.claims', json_build_object('sub', '44700000-0000-4000-8000-000000000002', 'role', 'authenticated')::text, true);
+  select
+    count(*) = 2
+      and coalesce(bool_and(item.value -> 'can_remove' = 'true'::jsonb), false),
+    count(*) = 2
+      and coalesce(bool_and(jsonb_typeof(item.value -> 'can_remove') = 'boolean'), false)
+  into v_ok, v_types_ok
+  from public.get_task_work_links('44720000-0000-4000-8000-000000000001') result,
+  lateral jsonb_array_elements(result.links) item(value);
+  v_all_types_ok := v_all_types_ok and v_types_ok;
+  v_results := v_results || format(E'\nOWNING_CO_ADMIN_GETS_BOOLEAN_TRUE: %s', case when v_ok and v_types_ok then 'PASS' else 'FAIL' end);
+  v_results := v_results || format(E'\nEVERY_CAN_REMOVE_VALUE_IS_BOOLEAN: %s', case when v_all_types_ok then 'PASS' else 'FAIL' end);
+
+  raise exception 'TEST RESULTS %', v_results;
+end
+$$;
+```
