@@ -36,7 +36,7 @@ Each step follows: own branch → implementation → its independent test docume
 1. **[Step 1A — Raw tasks read hardening](phase-4/step-1a.md) — Gate-critical, urgent hotfix.** Ship independently before all other Phase 4 work.
 2. **[Step 1 — Transactional archive RPC](phase-4/step-1.md) — Gate-critical.** Complete the archive work deferred from Phase 3.
 3. **[Step 2 — Read-only event Kanban](phase-4/step-2.md) — Gate-critical, visible early.** Requires Step 1A.
-4. **[Step 3 — Read-only task modal and confidential/dependency states](phase-4/step-3.md) — Gate-critical.**
+4. **[Step 3 — Read-only task detail page and confidential/dependency states](phase-4/step-3.md) — Gate-critical.**
 5. **[Step 4 — Work links and Drive preview wiring](phase-4/step-4.md) — Optional.**
 6. **[Step 5a — Columns, safe backfill, and dependency integrity](phase-4/step-5a.md) — Gate-critical.**
 7. **[Step 5b — Transactional task-move RPC](phase-4/step-5b.md) — Gate-critical.**
