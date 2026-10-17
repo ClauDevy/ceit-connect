@@ -43,6 +43,7 @@ export function DrivePreview({
         <Button
           variant="outline"
           size="sm"
+          nativeButton={false}
           render={
             <a
               href={parsed.openUrl}
