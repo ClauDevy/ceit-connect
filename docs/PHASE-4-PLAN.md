@@ -65,7 +65,7 @@ Each step follows: own branch → implementation → its independent test docume
 - Phase 4 stores mention, Heads Up, assignment, and unlock intent but sends no notifications.
 - Task boards and Workspace use focus refetch/short polling rather than Realtime.
 - `tasks.created_by` is provenance only; historical backfill values are event-creator fallbacks, not proof of the original task author.
-- Optional work links, assignment/assistance polish, comments, archive late-sharing, and My Tasks are not required for the minimum Phase 4 gate unless promoted before implementation.
+- Work links (Step 4) were promoted to Required. Assignment/assistance polish, comments, archive late-sharing, and My Tasks are not required for the minimum Phase 4 gate unless promoted before implementation.
 
 ## Unrelated findings
 

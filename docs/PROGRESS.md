@@ -65,6 +65,7 @@ Done:
 - Migration `20261017150000_task_work_links.sql` is ready for owner review and Dev application: it adds only new work-link objects, enables deny-by-default RLS, preserves existing task readers/policies/triggers, validates only the parser's canonical URL outputs, serializes the per-task cap with a task `FOR NO KEY UPDATE` lock before the parent event `FOR SHARE`, and allows only the `created_by` value-to-null FK update while rejecting every other update.
 - `docs/PHASE-4-STEP-4-TESTS.md` contains rollback-safe DEV coverage for the full role/lifecycle matrix, exact empty-reader shape, add/remove rights, URL/parser parity, duplicates, cap, immediate revocation, Archived immutability, profile deletion, task cascades, lock bodies, grants, catalogs, and unchanged policies.
 - Step 4 follow-up: Base UI link-buttons now declare non-native rendering, and Archived event task cards link to their read-only task detail pages.
+- Step 4 CodeRabbit follow-up: orphaned work links now return boolean `false`, never null, for callers without removal rights.
 
 ## Decisions log
 
