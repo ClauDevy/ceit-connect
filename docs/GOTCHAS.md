@@ -46,6 +46,12 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - `AGENTS.md`'s Next.js block is re-added by `next dev`; leave it in.
 
 ## 5. Supabase CLI and migrations
+
+### SQL testing
+
+- Compute expected values as the table owner before impersonating a role; impersonated roles can see only the rows allowed by RLS.
+- Check catalog-exposed properties (`prosecdef`, `provolatile`, `proconfig`, grants) in `pg_proc`/`pg_catalog`; never infer them by text-matching `pg_get_functiondef()` output.
+
 - `db push` needs a linked project (`Cannot find project ref` → `npx supabase link --project-ref <ref>`). After pushing to Prod, **link back to Dev** so later work can't hit Prod by accident.
 - `unexpected login role status 403 ... necessary privileges`: re-run `npx supabase login` with the account that owns the organization, check `npx supabase projects list` shows the right project linked, and if it persists, check `npx supabase db push --help` for a database-password option (e.g. `--password`) to bypass the temporary login role — verify the exact flag on your CLI version.
 - Schema changes typed into the SQL Editor are not tracked. Convert them to a migration file, and if the change already exists on a remote, mark it applied: `npx supabase migration repair --status applied <timestamp>`.
