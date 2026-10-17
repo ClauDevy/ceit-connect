@@ -55,6 +55,11 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - Order of operations matters: validate (e.g. email domain) **before** creating an account; update the database **before** deleting a Storage file; check the result of every follow-up write.
 - Never `delete` a user "to clean up" because a profile lookup returned null — null also means a query error. Use `maybeSingle()` and check `error` first.
 
+### SQL testing
+
+- Compute expected values as the table owner before impersonating a role; impersonated roles can see only the rows allowed by RLS.
+- Check catalog-exposed properties (`prosecdef`, `provolatile`, `proconfig`, grants) in `pg_proc`/`pg_catalog`; never infer them by text-matching `pg_get_functiondef()` output.
+
 ## 6. Workflow
 - CodeRabbit (VSCode) found real bugs on every branch; run it before each PR and again after fixing.
 - First push of a new branch: VSCode "Publish Branch" (or `git push --set-upstream origin <branch>`).
