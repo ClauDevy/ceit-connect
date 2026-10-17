@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { uploadEventBanner } from "@/lib/event-banner";
+import { getEventSaveErrorMessage } from "@/lib/events/save-error";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
 
@@ -920,7 +921,7 @@ export function EventForm({
       const saveError = saveResult.error;
 
       if (saveError) {
-        setError(saveError.message);
+        setError(getEventSaveErrorMessage(saveError));
         setStatus("idle");
         return;
       }
