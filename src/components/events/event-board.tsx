@@ -1117,7 +1117,7 @@ function BoardContents({
                 Task Backlog
               </SheetTitle>
               <SheetDescription id="event-board-backlog-description" className="text-xs">
-                Unassigned tasks · status controls only
+                Unassigned tasks · read only
               </SheetDescription>
             </div>
             <Badge variant="neutral" className="shrink-0 px-2">
@@ -1152,9 +1152,6 @@ function BoardContents({
                 <EventBoardTaskCard
                   task={task}
                   backlog
-                  permission={getMovePermission(task, viewer)}
-                  busy={boardBusy}
-                  onMoveStatus={handleStatusMove}
                 />
               </div>
             ))}

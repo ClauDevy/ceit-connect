@@ -71,7 +71,7 @@ export function getMovePermission(
   task: BoardTask,
   viewer: BoardViewer,
 ): MovePermission {
-  if (task.is_masked) return "none";
+  if (task.is_masked || task.is_backlog) return "none";
   if (viewer.role === "Admin") return "reorder";
   if (
     viewer.role === "Co-Admin" &&
@@ -100,8 +100,7 @@ export function getLaneTasks(
     (task) =>
       task.id !== excludeTaskId &&
       task.phase === phase &&
-      task.status === status &&
-      !task.is_backlog,
+      task.status === status,
   );
 }
 
