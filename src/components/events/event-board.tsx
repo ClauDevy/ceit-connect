@@ -153,74 +153,85 @@ function TaskCard({
     task.assist_assignees.length > 0;
 
   return (
-    <Card
-      className={cn(
-        "p-0",
-        task.status === "Completed" && !task.is_masked && "opacity-70",
-        backlog &&
-          "transition-[transform,opacity] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0",
-      )}
+    <Link
+      href={`/tasks/${task.id}`}
+      aria-label={`Open ${task.title}`}
+      className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          {!task.is_masked && task.effective_priority ? (
-            <Badge
-              variant={priorityVariant(task.effective_priority)}
-              className={cn(backlog && "gap-1.5 px-2 text-xs")}
-            >
-              {backlog ? (
-                <span className="size-1.5 rounded-full bg-current" aria-hidden />
-              ) : null}
-              {task.effective_priority}
-            </Badge>
-          ) : (
-            <Badge variant="neutral">
-              <LockKeyhole aria-hidden /> Confidential
-            </Badge>
-          )}
-          {task.status === "Completed" && !task.is_masked ? (
-            <Check className="size-4 text-emerald-600" aria-label="Completed" />
+      <Card
+        className={cn(
+          "p-0 transition-[transform,opacity,box-shadow] group-hover:-translate-y-0.5 group-hover:shadow-sm group-active:translate-y-0",
+          task.status === "Completed" && !task.is_masked && "opacity-70",
+        )}
+      >
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            {!task.is_masked && task.effective_priority ? (
+              <Badge
+                variant={priorityVariant(task.effective_priority)}
+                className={cn(backlog && "gap-1.5 px-2 text-xs")}
+              >
+                {backlog ? (
+                  <span
+                    className="size-1.5 rounded-full bg-current"
+                    aria-hidden
+                  />
+                ) : null}
+                {task.effective_priority}
+              </Badge>
+            ) : (
+              <Badge variant="neutral">
+                <LockKeyhole aria-hidden /> Confidential
+              </Badge>
+            )}
+            {task.status === "Completed" && !task.is_masked ? (
+              <Check
+                className="size-4 text-emerald-600"
+                aria-label="Completed"
+              />
+            ) : null}
+          </div>
+          <p
+            className={cn(
+              "text-sm font-semibold leading-snug",
+              backlog && "line-clamp-2",
+              task.status === "Completed" &&
+                !task.is_masked &&
+                "line-through decoration-muted-foreground",
+            )}
+          >
+            {task.title}
+          </p>
+          {backlog && !task.is_masked ? (
+            <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+              <span className="truncate">
+                {task.committee_name ?? "Committee unavailable"}
+              </span>
+              <span
+                className="shrink-0 rounded-full bg-muted px-2 py-0.5"
+                title={task.phase?.trim() || "Unphased"}
+              >
+                {task.phase?.trim() || "Unphased"}
+              </span>
+            </div>
           ) : null}
-        </div>
-        <p
-          className={cn(
-            "text-sm font-semibold leading-snug",
-            backlog && "line-clamp-2",
-            task.status === "Completed" && !task.is_masked &&
-              "line-through decoration-muted-foreground",
-          )}
-        >
-          {task.title}
-        </p>
-        {backlog && !task.is_masked ? (
-          <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-            <span className="truncate">
-              {task.committee_name ?? "Committee unavailable"}
-            </span>
-            <span
-              className="shrink-0 rounded-full bg-muted px-2 py-0.5"
-              title={task.phase?.trim() || "Unphased"}
-            >
-              {task.phase?.trim() || "Unphased"}
-            </span>
-          </div>
-        ) : null}
-        {!backlog || showBacklogFooter ? (
-          <div className="flex min-h-7 items-center justify-between gap-3">
-            <TaskAssignees task={task} />
-            <span className="text-xs text-muted-foreground">
-              {task.is_masked
-                ? null
-                : task.status === "Completed"
-                ? "Completed"
-                : task.due_date
-                  ? `Due ${dueDateFormatter.format(new Date(task.due_date))}`
-                  : null}
-            </span>
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
+          {!backlog || showBacklogFooter ? (
+            <div className="flex min-h-7 items-center justify-between gap-3">
+              <TaskAssignees task={task} />
+              <span className="text-xs text-muted-foreground">
+                {task.is_masked
+                  ? null
+                  : task.status === "Completed"
+                    ? "Completed"
+                    : task.due_date
+                      ? `Due ${dueDateFormatter.format(new Date(task.due_date))}`
+                      : null}
+              </span>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
