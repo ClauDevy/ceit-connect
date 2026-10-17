@@ -104,3 +104,5 @@ Next up: review `20261018130000_transactional_task_move_rpc.sql`, apply it to De
 - `discord_id` field in Settings — parked until Discord webhooks are scheduled.
 - No automated RLS tests yet (the plan calls for a pgTAP/Supabase test suite in CI; only manual `SET ROLE` tests exist).
 - `/docs/BACKUP.md` runbook not written (Phase 5).
+- Raw assignee status updates bypass the dependency forward-move gate, which is enforced only in `move_task`. Decide at Step 6 whether to enforce it in the assignee guard or route all status changes through `move_task`.
+- Activity Log page (`/activity-log`) UI is not in any current Phase 4 step.
