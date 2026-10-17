@@ -69,6 +69,19 @@ insert into public.tasks (
     1024, '2026-10-18T00:00:00Z'
   );
 
+-- The creation trigger always chooses the initial lane tail. Set deliberately
+-- reversed, unused ranks as the owner after insert so this test exercises the
+-- reader's sort_order contract rather than the trigger's insertion order.
+update public.tasks
+set sort_order = case id
+  when '60010000-0000-4000-8000-000000000031' then 8192
+  when '60010000-0000-4000-8000-000000000032' then 4096
+end
+where id in (
+  '60010000-0000-4000-8000-000000000031',
+  '60010000-0000-4000-8000-000000000032'
+);
+
 select set_config(
   'test.s6_owner',
   pg_catalog.pg_get_userbyid(p.proowner),
@@ -96,6 +109,17 @@ select set_config(
 select set_config(
   'test.s6_expected_order',
   array_agg(t.id::text order by t.sort_order, t.id)::text,
+  true
+)
+from public.tasks t
+where t.event_id = '60010000-0000-4000-8000-000000000020';
+
+select set_config(
+  'test.s6_fixture_orders_differ',
+  (
+    array_agg(t.id order by t.sort_order, t.id)
+    is distinct from array_agg(t.id order by t.created_at, t.id)
+  )::text,
   true
 )
 from public.tasks t
@@ -169,6 +193,10 @@ begin
   v_results := v_results || format(
     E'\nORDER_IS_SORT_ORDER_NOT_CREATED_AT: %s',
     case when v_order = current_setting('test.s6_expected_order') then 'PASS' else 'FAIL' end
+  );
+  v_results := v_results || format(
+    E'\nFIXTURE_SORT_ORDER_DIFFERS_FROM_CREATED_AT: %s',
+    case when current_setting('test.s6_fixture_orders_differ')::boolean then 'PASS' else 'FAIL' end
   );
   v_results := v_results || format(
     E'\nRUNTIME_SHAPE_HAS_NO_RANK: %s',
@@ -532,18 +560,22 @@ the same time. Test only on Dev.
 
 1. As Claudee on desktop, drag a card between two neighbors. Refresh: it stays
    between those neighbors.
-2. Reorder a card to first and then last. Refresh after each move.
-3. Drag a card to each other status lane. Confirm there is no delete target and
+2. As Claudee (Admin), reorder an assigned card in a lane with an unassigned
+   (**Backlog**) task ranked between two assigned cards. The move succeeds with
+   no stale-placement error.
+3. Reorder a card to first and then last. Refresh after each move.
+4. Drag a card to each other status lane. Confirm there is no delete target and
    no task disappears.
-4. Turn on the Admin committee filter. Confirm drag handles stop working and
+5. Turn on the Admin committee filter. Confirm drag handles stop working and
    the explanatory message appears; confirm the **Move to** control still works.
-5. Turn on a priority filter that hides a card between two visible cards. Drag
+6. Turn on a priority filter that hides a card between two visible cards. Drag
    around the visible cards and confirm the result either persists or safely
    rejects/refetches; it must never force a stale neighbor placement.
-6. As tv, drag an assigned card to another status. It must land at the true
+7. As tv, drag an assigned card to another status. It must land at the true
    destination tail. Attempt a same-lane reorder; it must not move.
-7. Confirm tv cannot drag the unassigned card or the masked confidential shell.
-   The masked shell must expose no move control.
+8. For every role, confirm Backlog cards have no **Move to** or circular
+   **Complete** control and cannot be dragged. The masked confidential shell
+   must also expose no move control.
 
 ### Keyboard and screen reader checks
 

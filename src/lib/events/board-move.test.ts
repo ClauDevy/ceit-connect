@@ -88,6 +88,26 @@ describe("board move permissions", () => {
       "none",
     );
   });
+
+  it("denies Backlog moves for every role", () => {
+    const backlogTask = { ...assigned, is_backlog: true };
+
+    expect(getMovePermission(backlogTask, admin)).toBe("none");
+    expect(
+      getMovePermission(backlogTask, {
+        id: "coadmin",
+        role: "Co-Admin",
+        committeeId: "committee-a",
+      }),
+    ).toBe("none");
+    expect(
+      getMovePermission(backlogTask, {
+        id: "member",
+        role: "Member",
+        committeeId: "committee-a",
+      }),
+    ).toBe("none");
+  });
 });
 
 describe("neighbor hints and optimistic placement", () => {
@@ -155,6 +175,77 @@ describe("neighbor hints and optimistic placement", () => {
     ).toMatchObject({
       previousNeighborId: "hidden-by-filter",
       nextNeighborId: "c",
+    });
+  });
+
+  it("uses an unassigned task as the adjacent hint between visible drop targets", () => {
+    const tasks = [
+      task("visible-before", "To Do"),
+      task("unassigned", "To Do", { is_backlog: true }),
+      task("visible-after", "To Do"),
+      task("moving", "In Progress"),
+    ];
+
+    expect(
+      createDropMoveIntent({
+        tasks,
+        taskId: "moving",
+        destinationStatus: "To Do",
+        overTaskId: "visible-after",
+        permission: "reorder",
+      }),
+    ).toMatchObject({
+      previousNeighborId: "unassigned",
+      nextNeighborId: "visible-after",
+    });
+  });
+
+  it("captures Undo neighbors from the full lane including unassigned tasks", () => {
+    const tasks = [
+      task("visible-before", "To Do"),
+      task("unassigned", "To Do", { is_backlog: true }),
+      task("moving", "To Do"),
+    ];
+
+    expect(captureTaskNeighbors(tasks, "moving")).toEqual({
+      previousNeighborId: "unassigned",
+      nextNeighborId: null,
+    });
+  });
+
+  it("uses unassigned lane-edge tasks in first and last drop boundaries", () => {
+    expect(
+      createDropMoveIntent({
+        tasks: [
+          task("unassigned-first", "To Do", { is_backlog: true }),
+          task("visible-first", "To Do"),
+          task("moving", "In Progress"),
+        ],
+        taskId: "moving",
+        destinationStatus: "To Do",
+        overTaskId: "visible-first",
+        permission: "reorder",
+      }),
+    ).toMatchObject({
+      previousNeighborId: "unassigned-first",
+      nextNeighborId: "visible-first",
+    });
+
+    expect(
+      createDropMoveIntent({
+        tasks: [
+          task("visible-last", "To Do"),
+          task("unassigned-last", "To Do", { is_backlog: true }),
+          task("moving", "In Progress"),
+        ],
+        taskId: "moving",
+        destinationStatus: "To Do",
+        overTaskId: null,
+        permission: "reorder",
+      }),
+    ).toMatchObject({
+      previousNeighborId: "unassigned-last",
+      nextNeighborId: null,
     });
   });
 
