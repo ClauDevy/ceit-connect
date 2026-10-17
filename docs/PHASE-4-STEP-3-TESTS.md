@@ -596,7 +596,7 @@ values
   ('43500000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 's3-parity-admin@test.local', '', now(),
    '{"provider":"email","providers":["email"]}', '{}', now(), now()),
-  ('43500000-0000-4000-8000-000000000002', '00000000-0000-0000-000000000000',
+  ('43500000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 's3-parity-member@test.local', '', now(),
    '{"provider":"email","providers":["email"]}', '{}', now(), now());
 
