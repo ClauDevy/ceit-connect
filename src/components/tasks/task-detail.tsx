@@ -15,24 +15,35 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
+import {
+  YourWorkCard,
+  type NewWorkLink,
+} from "@/components/tasks/your-work-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { BoardAssignee, BoardPriority } from "@/lib/events/board";
 import {
   getTaskBackHref,
   isTaskDetail,
   type TaskDetail as TaskDetailData,
 } from "@/lib/tasks/detail";
+import {
+  getWorkLinkErrorMessage,
+  isTaskWorkLinks,
+  type TaskWorkLinks,
+} from "@/lib/tasks/work-links";
 import { createClient } from "@/lib/supabase/client";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type TaskDetailProps = {
   taskId: string;
   initialTask?: TaskDetailData | null;
+  initialWorkLinks?: TaskWorkLinks | null;
   canFetch?: boolean;
 };
 
@@ -152,7 +163,78 @@ function MaskedTask({ task }: { task: TaskDetailData }) {
   );
 }
 
-function RealTask({ task }: { task: TaskDetailData }) {
+type WorkLinksSectionProps = {
+  data: TaskWorkLinks | null | undefined;
+  isPending: boolean;
+  hasRefreshError: boolean;
+  onRetry: () => void;
+  onAddLink: (link: NewWorkLink) => Promise<void>;
+  onRemoveLink: (linkId: string) => Promise<void>;
+};
+
+function WorkLinksSection({
+  data,
+  isPending,
+  hasRefreshError,
+  onRetry,
+  onAddLink,
+  onRemoveLink,
+}: WorkLinksSectionProps) {
+  if (isPending) {
+    return (
+      <Card aria-label="Loading work links">
+        <CardContent className="space-y-3">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (data === null) return null;
+
+  if (data === undefined) {
+    return (
+      <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
+        <span>Work links could not be loaded.</span>
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          <RefreshCw aria-hidden /> Retry
+        </Button>
+      </InlineAlert>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {hasRefreshError ? (
+        <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
+          <span>
+            Work links could not refresh. The last successful result is still
+            shown.
+          </span>
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw aria-hidden /> Retry
+          </Button>
+        </InlineAlert>
+      ) : null}
+      <YourWorkCard
+        links={data.links}
+        isAssignee={data.can_add}
+        onAddLink={data.can_add ? onAddLink : undefined}
+        onRemoveLink={onRemoveLink}
+      />
+    </div>
+  );
+}
+
+function RealTask({
+  task,
+  workLinks,
+}: {
+  task: TaskDetailData;
+  workLinks: WorkLinksSectionProps;
+}) {
   const dependencyName = task.dependency_label ?? "a task you can’t view";
   const taskTypeLabel =
     task.task_type === "LiveOperation" ? "Live Operation" : "Deliverable";
@@ -210,7 +292,7 @@ function RealTask({ task }: { task: TaskDetailData }) {
       </header>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-5">
           <Card>
             <CardHeader>
               <CardTitle>Description</CardTitle>
@@ -221,6 +303,7 @@ function RealTask({ task }: { task: TaskDetailData }) {
               </p>
             </CardContent>
           </Card>
+          <WorkLinksSection {...workLinks} />
         </div>
 
         <aside className="space-y-5">
@@ -325,6 +408,7 @@ function RealTask({ task }: { task: TaskDetailData }) {
 function TaskDetailContents({
   taskId,
   initialTask,
+  initialWorkLinks,
   canFetch = true,
 }: TaskDetailProps) {
   const supabase = useMemo(() => createClient(), []);
@@ -350,6 +434,71 @@ function TaskDetailContents({
     refetchInterval: POLL_INTERVAL_MS,
     refetchIntervalInBackground: false,
   });
+
+  const workLinksQuery = useQuery({
+    queryKey: ["task-work-links", taskId],
+    queryFn: async ({ signal }) => {
+      let request = supabase.rpc("get_task_work_links", {
+        p_task_id: taskId,
+      });
+      request = request.abortSignal(signal);
+      const { data, error } = await request;
+      if (error) throw error;
+      if (!Array.isArray(data) || data.length > 1) {
+        throw new Error("The work-link reader returned an invalid response.");
+      }
+      if (data.length === 0) return null;
+      if (!isTaskWorkLinks(data[0])) {
+        throw new Error("The work-link reader returned an invalid response.");
+      }
+      return data[0];
+    },
+    enabled:
+      canFetch &&
+      query.data !== undefined &&
+      query.data !== null &&
+      !query.data.is_masked,
+    initialData: initialWorkLinks,
+    refetchOnWindowFocus: true,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
+
+  async function refreshAccess() {
+    await Promise.all([query.refetch(), workLinksQuery.refetch()]);
+  }
+
+  async function addWorkLink(link: NewWorkLink) {
+    const { data, error } = await supabase.rpc("add_task_work_link", {
+      p_task_id: taskId,
+      p_name: link.name ?? "",
+      p_url: link.url,
+    });
+
+    if (error) {
+      await refreshAccess();
+      throw new Error(getWorkLinkErrorMessage(error, "add"));
+    }
+    if (!Array.isArray(data) || data.length !== 1) {
+      await workLinksQuery.refetch();
+      throw new Error("The link could not be added. Please try again.");
+    }
+
+    await workLinksQuery.refetch();
+  }
+
+  async function removeWorkLink(linkId: string) {
+    const { error } = await supabase.rpc("remove_task_work_link", {
+      p_link_id: linkId,
+    });
+
+    if (error) {
+      await refreshAccess();
+      throw new Error(getWorkLinkErrorMessage(error, "remove"));
+    }
+
+    await workLinksQuery.refetch();
+  }
 
   if (query.isPending) return <TaskDetailSkeleton />;
 
@@ -413,7 +562,17 @@ function TaskDetailContents({
       {query.data.is_masked ? (
         <MaskedTask task={query.data} />
       ) : (
-        <RealTask task={query.data} />
+        <RealTask
+          task={query.data}
+          workLinks={{
+            data: workLinksQuery.data,
+            isPending: workLinksQuery.isPending,
+            hasRefreshError: Boolean(workLinksQuery.error),
+            onRetry: () => void workLinksQuery.refetch(),
+            onAddLink: addWorkLink,
+            onRemoveLink: removeWorkLink,
+          }}
+        />
       )}
     </>
   );
