@@ -1,6 +1,6 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-10-16. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-10-17. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 ## Phase 0 — Scaffold (done)
 
@@ -57,8 +57,10 @@ Done:
 - `docs/PHASE-4-STEP-1A-TESTS.md` contains the pre-fix leak reproduction plus post-fix direct-read, inactive/profile-less, write, catalog, caller, activity-log, archive-freeze, column-guard, and mixed-committee Edit Event regressions. Each DEV-only paste creates its own Auth/profile fixtures and ends with an intentional `TEST RESULTS` exception that rolls the transaction back.
 - **Step 1 — Transactional archive RPC** is merged, verified, and live on Prod: migration `20261016130000_transactional_archive_rpc.sql` makes a restricted event-locking function the only authenticated archive path, checks the Admin's exact confirmed microsecond-capable event version and incomplete-task count, and updates the Archived-task guard to lock old/new parents in deterministic order before re-reading status. The Home confirmation passes the untouched database version string and count to the POST-only caller-session route; stable SQLSTATE codes drive route errors without message matching.
 - `docs/PHASE-4-STEP-1-TESTS.md` contains rollback-safe DEV coverage for microsecond versions, exact/stale counts, stale versions, double submission, all roles and event statuses, raw-policy narrowing, unchanged event/task freezes and Active-event invariants, reparent rejection, function bodies, ownership, grants, and trigger catalogs.
-- **Step 2 — Read-only event Kanban** is implemented locally and awaiting the owner's Dev rollout: `/events/[eventId]` is linked from Active Home cards and renders a responsive, read-only phase/lane board with a Backlog drawer, effective-priority filter, and Admin-only committee filter. The restricted fixed-shape board RPC returns real content, a non-leaking confidential shell, or no row through the same lifecycle-aware helper now used by `get_task()`; its internal priority helper escalates only incomplete tasks, so Completed tasks retain their stored priority. Raw task/user RLS remains unchanged. The client refetches on focus and every 15 seconds only while visible, without Realtime.
+- **Step 2 — Read-only event Kanban** is merged, verified, and live on Prod: `/events/[eventId]` is linked from Active Home cards and renders a responsive, read-only phase/lane board with a Backlog drawer, effective-priority filter, and Admin-only committee filter. The restricted fixed-shape board RPC returns real content, a non-leaking confidential shell, or no row through the same lifecycle-aware helper now used by `get_task()`; its internal priority helper escalates only incomplete tasks, so Completed tasks retain their stored priority. Raw task/user RLS remains unchanged. The client refetches on focus and every 15 seconds only while visible, without Realtime.
 - `docs/PHASE-4-STEP-2-TESTS.md` contains rollback-safe DEV coverage for every role, Active/Draft/Archived/unknown lifecycles, real-versus-masked parity with `get_task()`, profile minimization, Admin-only filtering, inactive/profile-less denial, unchanged RLS, function catalogs, and effective-priority boundaries.
+- **Step 3 — Read-only task detail page** is implemented locally: every board and Backlog card links to `/tasks/[taskId]`, which renders real, confidential-shell, unavailable, loading, retry, dependency, access-list, and Archived read-only states. The restricted detail RPC shares Step 2's lifecycle-aware access helper and effective-priority calculation, exposes only safe profile fields, and returns no dependency id or hidden label. The page refetches on focus and every 15 seconds only while visible, so revoked access converges without Realtime. Raw task/user RLS and existing functions remain unchanged.
+- `docs/PHASE-4-STEP-3-TESTS.md` contains rollback-safe DEV coverage for every role and lifecycle, unknown IDs, exact shell nullability, immediate revocation, dependency masking, safe access lists, board/get-task/detail parity, effective priority, grants, catalogs, and unchanged policies.
 
 ## Decisions log
 
@@ -83,11 +85,10 @@ Done:
 - Leftover packages `cn` and `p` removed: NO — removal is deferred.
 - Service-role key not in any client bundle: YES
 
-Next up: review `20261016140000_read_only_event_board.sql`, apply it to Dev through the owner's normal process, run `docs/PHASE-4-STEP-2-TESTS.md` plus the updated Phase 3 `get_task()` regression, and complete the Admin/Member browser checks before opening the Step 2 PR.
+Next up: review `20261017120000_read_only_task_detail.sql`, apply it to Dev through the owner's normal process, run `docs/PHASE-4-STEP-3-TESTS.md`, and complete the Admin/Member browser checks before opening the Step 3 PR.
 
 ## Open items
 
-- Apply and verify the Step 2 migration on Dev; no Supabase command has been run from this branch.
 - Remove the leftover packages `cn` and `p`; this cleanup is intentionally deferred.
 - Tighten `ALLOWED_EMAIL_DOMAINS` on Prod to the university domain only (Vercel env var + redeploy).
 - Deactivate the mistyped fake-email test account on Prod (can't delete — by design).
