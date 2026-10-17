@@ -59,6 +59,9 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 
 - Compute expected values as the table owner before impersonating a role; impersonated roles can see only the rows allowed by RLS.
 - Check catalog-exposed properties (`prosecdef`, `provolatile`, `proconfig`, grants) in `pg_proc`/`pg_catalog`; never infer them by text-matching `pg_get_functiondef()` output.
+- After Step 5b, a raw task status/phase update run as the SQL Editor owner (`current_user = 'postgres'`) does **not** receive automatic destination ranking. An owner status change keeps its old `sort_order` and can violate `tasks_lane_sort_order_key`; an owner phase change is rejected. Test fixtures that change task status as owner must set `sort_order` explicitly in the same update or call `move_task()` after impersonating an authorized role.
+- No-op task updates and updates whose only real row difference is `sort_order` no longer write `activity_log` rows.
+- `task_lane_tail_sort_order` must remain `VOLATILE`; a `STABLE` function reuses the caller's snapshot and can miss rows committed while waiting on the per-event advisory lock.
 
 ## 6. Workflow
 - CodeRabbit (VSCode) found real bugs on every branch; run it before each PR and again after fixing.
