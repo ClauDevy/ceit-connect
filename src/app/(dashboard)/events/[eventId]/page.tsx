@@ -16,17 +16,21 @@ const UUID_PATTERN =
 
 async function BoardData({
   event,
-  isAdmin,
+  viewer,
 }: {
   event: BoardEvent;
-  isAdmin: boolean;
+  viewer: {
+    id: string;
+    role: "Admin" | "Co-Admin" | "Member";
+    committeeId: string | null;
+  };
 }) {
   const supabase = await createClient();
   const boardPromise = supabase.rpc("list_event_board_tasks", {
     p_event_id: event.id,
     p_committee_id: null,
   });
-  const committeesPromise = isAdmin
+  const committeesPromise = viewer.role === "Admin"
     ? supabase
         .from("committees")
         .select("id, name")
@@ -61,7 +65,7 @@ async function BoardData({
   return (
     <EventBoard
       event={event}
-      isAdmin={isAdmin}
+      viewer={viewer}
       committees={committeesResult.data ?? []}
       initialTasks={boardData}
     />
@@ -71,7 +75,7 @@ async function BoardData({
 export default async function EventBoardPage({
   params,
 }: PageProps<"/events/[eventId]">) {
-  await requireUser();
+  const user = await requireUser();
   const profile = await getActiveProfileForRoles([
     "Admin",
     "Co-Admin",
@@ -98,7 +102,14 @@ export default async function EventBoardPage({
 
   return (
     <Suspense fallback={<EventBoardSkeleton />}>
-      <BoardData event={event} isAdmin={profile.role === "Admin"} />
+      <BoardData
+        event={event}
+        viewer={{
+          id: user.id,
+          role: profile.role,
+          committeeId: profile.committee_id,
+        }}
+      />
     </Suspense>
   );
 }
