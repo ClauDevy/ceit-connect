@@ -1,7 +1,14 @@
 "use client";
 
-import { type FormEvent, useId, useState } from "react";
-import { ChevronDown, ExternalLink, Link2, Plus } from "lucide-react";
+import { type FormEvent, useId, useRef, useState } from "react";
+import {
+  ChevronDown,
+  ExternalLink,
+  Link2,
+  LoaderCircle,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { DrivePreview } from "@/components/tasks/drive-preview";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +26,7 @@ export interface WorkLink {
   id: string;
   url: string;
   name?: string | null;
+  can_remove?: boolean;
 }
 
 export interface NewWorkLink {
@@ -30,18 +38,23 @@ interface YourWorkCardProps {
   links: readonly WorkLink[];
   isAssignee: boolean;
   onAddLink?: (link: NewWorkLink) => void | Promise<void>;
+  onRemoveLink?: (linkId: string) => void | Promise<void>;
 }
 
 export function YourWorkCard({
   links,
   isAssignee,
   onAddLink,
+  onRemoveLink,
 }: YourWorkCardProps) {
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [openPreviewId, setOpenPreviewId] = useState<string | null>(null);
+  const addInFlight = useRef(false);
+  const removeInFlight = useRef(false);
   const fieldId = useId();
   const urlFieldId = `${fieldId}-url`;
   const nameFieldId = `${fieldId}-name`;
@@ -49,6 +62,7 @@ export function YourWorkCard({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (addInFlight.current) return;
     const parsed = parseGoogleDriveLink(url);
 
     if (!parsed) {
@@ -61,15 +75,42 @@ export function YourWorkCard({
     setError(null);
     if (!onAddLink) return;
 
+    addInFlight.current = true;
     setIsAdding(true);
     try {
       await onAddLink({ url: parsed.openUrl, name: name.trim() || undefined });
       setUrl("");
       setName("");
-    } catch {
-      setError("The link could not be added. Please try again.");
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "The link could not be added. Please try again.",
+      );
     } finally {
+      addInFlight.current = false;
       setIsAdding(false);
+    }
+  }
+
+  async function handleRemove(linkId: string) {
+    if (!onRemoveLink || removeInFlight.current) return;
+
+    removeInFlight.current = true;
+    setRemovingId(linkId);
+    setError(null);
+    try {
+      await onRemoveLink(linkId);
+      setOpenPreviewId((current) => (current === linkId ? null : current));
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "The link could not be removed. Please try again.",
+      );
+    } finally {
+      removeInFlight.current = false;
+      setRemovingId(null);
     }
   }
 
@@ -164,6 +205,7 @@ export function YourWorkCard({
                         <Button
                           variant="ghost"
                           size="sm"
+                          nativeButton={false}
                           render={
                             <a
                               href={parsed.openUrl}
@@ -196,6 +238,25 @@ export function YourWorkCard({
                             />
                           </Button>
                         ) : null}
+                        {link.can_remove && onRemoveLink ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Remove ${displayName}`}
+                            disabled={removingId !== null}
+                            onClick={() => void handleRemove(link.id)}
+                          >
+                            {removingId === link.id ? (
+                              <LoaderCircle
+                                aria-hidden="true"
+                                className="animate-spin"
+                              />
+                            ) : (
+                              <Trash2 aria-hidden="true" />
+                            )}
+                          </Button>
+                        ) : null}
                       </>
                     ) : null}
                   </div>
@@ -219,6 +280,11 @@ export function YourWorkCard({
             No resources linked yet.
           </p>
         )}
+        {error && !isAssignee ? (
+          <p id={errorId} role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
