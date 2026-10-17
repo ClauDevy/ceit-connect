@@ -259,76 +259,83 @@ export default async function ArchivedEventPage({
                 new Set([...task.primary_assignees, ...task.assist_assignees]),
               );
               return (
-                <Card key={task.id}>
-                  <CardHeader className="sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <div className="min-w-0">
-                      <CardTitle>
-                        {content?.title ?? "Task details unavailable"}
-                      </CardTitle>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {task.phase || "No phase"} ·{" "}
-                        {task.task_type === "LiveOperation"
-                          ? "Live Operation"
-                          : "Deliverable"}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">{task.status}</Badge>
-                      <Badge variant="neutral">{task.priority}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-4">
-                    {content?.description ? (
-                      <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                        {content.description}
-                      </p>
-                    ) : null}
-                    {task.due_date ? (
-                      <p className="text-xs text-muted-foreground">
-                        Due {taskDateFormatter.format(new Date(task.due_date))}
-                      </p>
-                    ) : null}
-                    {assigneeIds.length > 0 ? (
-                      <div>
-                        <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                          Assignees
+                <Link
+                  key={task.id}
+                  href={`/tasks/${task.id}`}
+                  aria-label={`Open ${content?.title ?? "Task details unavailable"}`}
+                  className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <Card>
+                    <CardHeader className="sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <div className="min-w-0">
+                        <CardTitle>
+                          {content?.title ?? "Task details unavailable"}
+                        </CardTitle>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {task.phase || "No phase"} ·{" "}
+                          {task.task_type === "LiveOperation"
+                            ? "Live Operation"
+                            : "Deliverable"}
                         </p>
-                        {assigneesUnavailable ? (
-                          <p className="text-xs text-muted-foreground">
-                            Assignee names are unavailable.
-                          </p>
-                        ) : (
-                          <div className="flex flex-wrap gap-3">
-                            {assigneeIds.map((assigneeId) => {
-                              const assignee = assigneesById.get(assigneeId);
-                              const name =
-                                assignee?.full_name ?? "Former member";
-
-                              return (
-                                <span
-                                  key={assigneeId}
-                                  className="flex items-center gap-2 text-sm"
-                                >
-                                  <UserAvatar
-                                    name={name}
-                                    src={assignee?.avatar_url}
-                                    size="sm"
-                                    className={
-                                      assignee
-                                        ? undefined
-                                        : "bg-muted text-muted-foreground"
-                                    }
-                                  />
-                                  <span>{name}</span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
                       </div>
-                    ) : null}
-                  </CardContent>
-                </Card>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">{task.status}</Badge>
+                        <Badge variant="neutral">{task.priority}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 pt-4">
+                      {content?.description ? (
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                          {content.description}
+                        </p>
+                      ) : null}
+                      {task.due_date ? (
+                        <p className="text-xs text-muted-foreground">
+                          Due {taskDateFormatter.format(new Date(task.due_date))}
+                        </p>
+                      ) : null}
+                      {assigneeIds.length > 0 ? (
+                        <div>
+                          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                            Assignees
+                          </p>
+                          {assigneesUnavailable ? (
+                            <p className="text-xs text-muted-foreground">
+                              Assignee names are unavailable.
+                            </p>
+                          ) : (
+                            <div className="flex flex-wrap gap-3">
+                              {assigneeIds.map((assigneeId) => {
+                                const assignee = assigneesById.get(assigneeId);
+                                const name =
+                                  assignee?.full_name ?? "Former member";
+
+                                return (
+                                  <span
+                                    key={assigneeId}
+                                    className="flex items-center gap-2 text-sm"
+                                  >
+                                    <UserAvatar
+                                      name={name}
+                                      src={assignee?.avatar_url}
+                                      size="sm"
+                                      className={
+                                        assignee
+                                          ? undefined
+                                          : "bg-muted text-muted-foreground"
+                                      }
+                                    />
+                                    <span>{name}</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                </Link>
               );
             })}
           </div>

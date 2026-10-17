@@ -7,6 +7,10 @@ import {
   isTaskDetail,
   type TaskDetail as TaskDetailData,
 } from "@/lib/tasks/detail";
+import {
+  isTaskWorkLinks,
+  type TaskWorkLinks,
+} from "@/lib/tasks/work-links";
 import { createClient } from "@/lib/supabase/server";
 
 const UUID_PATTERN =
@@ -14,29 +18,54 @@ const UUID_PATTERN =
 
 async function TaskData({ taskId }: { taskId: string }) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_task_detail", {
-    p_task_id: taskId,
-  });
+  const [detailResult, workLinksResult] = await Promise.all([
+    supabase.rpc("get_task_detail", { p_task_id: taskId }),
+    supabase.rpc("get_task_work_links", { p_task_id: taskId }),
+  ]);
 
-  if (error) {
-    console.error("Failed to load task detail:", error);
+  if (detailResult.error) {
+    console.error("Failed to load task detail:", detailResult.error);
     return <TaskDetail taskId={taskId} />;
   }
 
   let initialTask: TaskDetailData | null | undefined;
-  if (Array.isArray(data) && data.length === 0) {
+  if (Array.isArray(detailResult.data) && detailResult.data.length === 0) {
     initialTask = null;
   } else if (
-    Array.isArray(data) &&
-    data.length === 1 &&
-    isTaskDetail(data[0])
+    Array.isArray(detailResult.data) &&
+    detailResult.data.length === 1 &&
+    isTaskDetail(detailResult.data[0])
   ) {
-    initialTask = data[0];
+    initialTask = detailResult.data[0];
   } else {
     console.error("Task detail returned invalid data.");
   }
 
-  return <TaskDetail taskId={taskId} initialTask={initialTask} />;
+  let initialWorkLinks: TaskWorkLinks | null | undefined;
+  if (workLinksResult.error) {
+    console.error("Failed to load task work links:", workLinksResult.error);
+  } else if (
+    Array.isArray(workLinksResult.data) &&
+    workLinksResult.data.length === 0
+  ) {
+    initialWorkLinks = null;
+  } else if (
+    Array.isArray(workLinksResult.data) &&
+    workLinksResult.data.length === 1 &&
+    isTaskWorkLinks(workLinksResult.data[0])
+  ) {
+    initialWorkLinks = workLinksResult.data[0];
+  } else {
+    console.error("Task work links returned invalid data.");
+  }
+
+  return (
+    <TaskDetail
+      taskId={taskId}
+      initialTask={initialTask}
+      initialWorkLinks={initialWorkLinks}
+    />
+  );
 }
 
 export default async function TaskDetailPage({
