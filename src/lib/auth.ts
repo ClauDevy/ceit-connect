@@ -32,7 +32,7 @@ export async function getActiveProfileForRoles(allowedRoles: readonly Role[]) {
   const user = await requireUser()
   const { data: profile, error } = await supabase
     .from("users")
-    .select("role, is_active")
+    .select("role, committee_id, is_active")
     .eq("id", user.id)
     .single()
 

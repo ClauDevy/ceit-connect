@@ -2,16 +2,37 @@
 
 import {
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
   type TransitionEvent,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
 import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
   QueryClient,
   QueryClientProvider,
+  useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -21,14 +42,16 @@ import {
   ChevronDown,
   Filter,
   Inbox,
-  LockKeyhole,
   RefreshCw,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { EventBanner } from "@/components/events/event-banner";
 import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
-import { UserAvatar } from "@/components/shared/user-avatar";
+import {
+  EventBoardTaskCard,
+  SortableEventBoardTaskCard,
+} from "@/components/events/event-board-task-card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,31 +70,39 @@ import {
   type BoardCommittee,
   type BoardEvent,
   type BoardPriority,
+  type BoardStatus,
   type BoardTask,
 } from "@/lib/events/board";
+import {
+  applyOptimisticMove,
+  captureTaskNeighbors,
+  createDropMoveIntent,
+  createStatusMoveIntent,
+  createUndoEntry,
+  createUndoIntent,
+  getBoardRefetchInterval,
+  getMovePermission,
+  mapMoveError,
+  undoReducer,
+  type BoardViewer,
+  type MoveIntent,
+  type NeighborHints,
+} from "@/lib/events/board-move";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type EventBoardProps = {
   event: BoardEvent;
-  isAdmin: boolean;
+  viewer: BoardViewer;
   committees: BoardCommittee[];
   initialTasks?: BoardTask[];
 };
-
-const POLL_INTERVAL_MS = 15_000;
 
 const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
   day: "numeric",
   year: "numeric",
   timeZone: "UTC",
-});
-
-const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  timeZone: "Asia/Manila",
 });
 
 function formatEventDate(date: string) {
@@ -89,151 +120,6 @@ function formatTaskCount(count: number) {
   return `${count} ${count === 1 ? "task" : "tasks"}`;
 }
 
-function priorityVariant(priority: BoardPriority) {
-  if (priority === "Critical") return "destructive" as const;
-  if (priority === "High") return "outline" as const;
-  return "neutral" as const;
-}
-
-function TaskAssignees({ task }: { task: BoardTask }) {
-  const assignees = [
-    ...task.primary_assignees,
-    ...task.assist_assignees,
-  ].filter(
-    (assignee, index, all) =>
-      all.findIndex((candidate) => candidate.id === assignee.id) === index,
-  );
-
-  if (task.is_masked) {
-    return (
-      <LockKeyhole
-        className="size-4 text-muted-foreground"
-        aria-label="Confidential"
-      />
-    );
-  }
-
-  if (assignees.length === 0) return null;
-
-  return (
-    <div className="flex -space-x-2" aria-label="Assignees">
-      {assignees.slice(0, 3).map((assignee) => {
-        const name = assignee.full_name ?? "Former member";
-        return (
-          <UserAvatar
-            key={assignee.id}
-            name={name}
-            src={assignee.avatar_url}
-            size="sm"
-            className="size-7 border-2 border-card text-[10px]"
-          />
-        );
-      })}
-      {assignees.length > 3 ? (
-        <span className="z-10 inline-flex size-7 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold">
-          +{assignees.length - 3}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function TaskCard({
-  task,
-  backlog = false,
-}: {
-  task: BoardTask;
-  backlog?: boolean;
-}) {
-  const showBacklogFooter =
-    task.is_masked ||
-    task.status === "Completed" ||
-    task.due_date !== null ||
-    task.primary_assignees.length > 0 ||
-    task.assist_assignees.length > 0;
-
-  return (
-    <Link
-      href={`/tasks/${task.id}`}
-      aria-label={`Open ${task.title}`}
-      className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    >
-      <Card
-        className={cn(
-          "p-0 transition-[transform,opacity,box-shadow] group-hover:-translate-y-0.5 group-hover:shadow-sm group-active:translate-y-0",
-          task.status === "Completed" && !task.is_masked && "opacity-70",
-        )}
-      >
-        <CardContent className="space-y-3 p-4">
-          <div className="flex items-start justify-between gap-3">
-            {!task.is_masked && task.effective_priority ? (
-              <Badge
-                variant={priorityVariant(task.effective_priority)}
-                className={cn(backlog && "gap-1.5 px-2 text-xs")}
-              >
-                {backlog ? (
-                  <span
-                    className="size-1.5 rounded-full bg-current"
-                    aria-hidden
-                  />
-                ) : null}
-                {task.effective_priority}
-              </Badge>
-            ) : (
-              <Badge variant="neutral">
-                <LockKeyhole aria-hidden /> Confidential
-              </Badge>
-            )}
-            {task.status === "Completed" && !task.is_masked ? (
-              <Check
-                className="size-4 text-emerald-600"
-                aria-label="Completed"
-              />
-            ) : null}
-          </div>
-          <p
-            className={cn(
-              "text-sm font-semibold leading-snug",
-              backlog && "line-clamp-2",
-              task.status === "Completed" &&
-                !task.is_masked &&
-                "line-through decoration-muted-foreground",
-            )}
-          >
-            {task.title}
-          </p>
-          {backlog && !task.is_masked ? (
-            <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-              <span className="truncate">
-                {task.committee_name ?? "Committee unavailable"}
-              </span>
-              <span
-                className="shrink-0 rounded-full bg-muted px-2 py-0.5"
-                title={task.phase?.trim() || "Unphased"}
-              >
-                {task.phase?.trim() || "Unphased"}
-              </span>
-            </div>
-          ) : null}
-          {!backlog || showBacklogFooter ? (
-            <div className="flex min-h-7 items-center justify-between gap-3">
-              <TaskAssignees task={task} />
-              <span className="text-xs text-muted-foreground">
-                {task.is_masked
-                  ? null
-                  : task.status === "Completed"
-                    ? "Completed"
-                    : task.due_date
-                      ? `Due ${dueDateFormatter.format(new Date(task.due_date))}`
-                      : null}
-              </span>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
 
 function PriorityChoices({
   selected,
@@ -270,13 +156,54 @@ function PriorityChoices({
   );
 }
 
+function BoardLaneDropZone({
+  status,
+  disabled,
+  children,
+}: {
+  status: BoardStatus;
+  disabled: boolean;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `lane:${status}`,
+    disabled,
+    data: { type: "lane", status },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "min-h-24 space-y-3 rounded-xl transition-colors",
+        isOver && !disabled && "bg-primary/5 ring-2 ring-primary/30",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+type MoveMutationVariables = {
+  task: BoardTask;
+  intent: MoveIntent;
+  originalNeighbors: NeighborHints;
+  undo: boolean;
+};
+
+type MoveMutationContext = {
+  previousTasks: BoardTask[] | undefined;
+};
+
 function BoardContents({
   event,
-  isAdmin,
+  viewer,
   committees,
   initialTasks,
 }: EventBoardProps) {
   const supabase = useMemo(() => createClient(), []);
+  const queryClient = useQueryClient();
+  const isAdmin = viewer.role === "Admin";
   const [committeeId, setCommitteeId] = useState<string | null>(null);
   const [activePhase, setActivePhase] = useState<string | null>(null);
   const [selectedPriorities, setSelectedPriorities] = useState<
@@ -288,6 +215,15 @@ function BoardContents({
   const [committeePanelMounted, setCommitteePanelMounted] = useState(false);
   const [committeeActiveIndex, setCommitteeActiveIndex] = useState(0);
   const [backlogOpen, setBacklogOpen] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const [undoState, dispatchUndo] = useReducer(undoReducer, {
+    entries: [],
+    undoingTaskId: null,
+  });
+  const boardBusyRef = useRef(false);
   const priorityTriggerRef = useRef<HTMLButtonElement>(null);
   const priorityPanelRef = useRef<HTMLDivElement>(null);
   const priorityOverlayRef = useRef<HTMLButtonElement>(null);
@@ -297,9 +233,18 @@ function BoardContents({
   const committeeOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const committeeReturnFocusRef = useRef(true);
   const backlogButtonRef = useRef<HTMLButtonElement>(null);
+  const boardBusy = pendingTaskId !== null || reconciling;
+  const queryKey = useMemo(
+    () => ["event-board", event.id, committeeId] as const,
+    [event.id, committeeId],
+  );
+  const eventQueryKey = useMemo(
+    () => ["event-board", event.id] as const,
+    [event.id],
+  );
 
   const query = useQuery({
-    queryKey: ["event-board", event.id, committeeId],
+    queryKey,
     queryFn: async ({ signal }) => {
       let request = supabase.rpc("list_event_board_tasks", {
         p_event_id: event.id,
@@ -314,8 +259,8 @@ function BoardContents({
       return data;
     },
     initialData: committeeId === null ? initialTasks : undefined,
-    refetchOnWindowFocus: true,
-    refetchInterval: POLL_INTERVAL_MS,
+    refetchOnWindowFocus: () => !boardBusyRef.current,
+    refetchInterval: () => getBoardRefetchInterval(boardBusyRef.current),
     refetchIntervalInBackground: false,
   });
 
@@ -384,6 +329,104 @@ function BoardContents({
   );
   const committeeButtonLabel =
     committeeOptions[selectedCommitteeIndex]?.name ?? "All committees";
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const moveMutation = useMutation<
+    { task_id: string; status: BoardStatus; sort_order: number },
+    unknown,
+    MoveMutationVariables,
+    MoveMutationContext
+  >({
+    mutationFn: async ({ intent }) => {
+      const { data, error } = await supabase.rpc("move_task", {
+        p_task_id: intent.taskId,
+        p_expected_phase: intent.phase,
+        p_expected_status: intent.expectedStatus,
+        p_destination_status: intent.destinationStatus,
+        p_previous_neighbor_id: intent.previousNeighborId,
+        p_next_neighbor_id: intent.nextNeighborId,
+      });
+      if (error) throw error;
+      const result = Array.isArray(data) ? data[0] : null;
+      if (
+        !result ||
+        typeof result !== "object" ||
+        result.task_id !== intent.taskId ||
+        result.status !== intent.destinationStatus ||
+        typeof result.sort_order !== "number"
+      ) {
+        throw new Error("The task move returned an invalid response.");
+      }
+      return result;
+    },
+    onMutate: async ({ intent }) => {
+      await queryClient.cancelQueries({ queryKey: eventQueryKey });
+      const previousTasks = queryClient.getQueryData<BoardTask[]>(queryKey);
+      queryClient.setQueryData<BoardTask[]>(queryKey, (current) =>
+        current ? applyOptimisticMove(current, intent) : current,
+      );
+      return { previousTasks };
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(queryKey, context.previousTasks);
+      }
+      const mapped = mapMoveError(error);
+      setMoveError(
+        variables.undo ? `Undo failed. ${mapped.message}` : mapped.message,
+      );
+      if (variables.undo) {
+        dispatchUndo({ type: "undo-failure", taskId: variables.task.id });
+      }
+    },
+    onSuccess: (_result, variables) => {
+      setMoveError(null);
+      if (variables.undo) {
+        dispatchUndo({ type: "undo-success", taskId: variables.task.id });
+        return;
+      }
+      dispatchUndo({
+        type: "offer",
+        entry: createUndoEntry(
+          variables.task,
+          variables.intent,
+          variables.originalNeighbors,
+          Date.now(),
+        ),
+      });
+    },
+    onSettled: async () => {
+      // Keep both interval polling and focus refetch disabled until the
+      // authoritative reader has reconciled the optimistic cache.
+      setReconciling(true);
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: eventQueryKey,
+          refetchType: "active",
+        });
+      } finally {
+        boardBusyRef.current = false;
+        setPendingTaskId(null);
+        setReconciling(false);
+      }
+    },
+  });
+
+  useEffect(() => {
+    const timers = undoState.entries.map((entry) =>
+      window.setTimeout(() => {
+        dispatchUndo({
+          type: "expire",
+          taskId: entry.taskId,
+          expiresAt: entry.expiresAt,
+        });
+      }, Math.max(0, entry.expiresAt - Date.now())),
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [undoState.entries]);
 
   useEffect(() => {
     if (!priorityOpen && !committeeOpen) return;
@@ -485,6 +528,7 @@ function BoardContents({
   }
 
   function selectCommittee(id: string | null) {
+    if (boardBusyRef.current) return;
     setCommitteeId(id);
     closeCommitteeFilter();
   }
@@ -515,6 +559,7 @@ function BoardContents({
   }
 
   function togglePriority(priority: BoardPriority) {
+    if (boardBusyRef.current) return;
     setSelectedPriorities((current) => {
       const next = new Set(current);
       if (next.has(priority)) next.delete(priority);
@@ -522,6 +567,100 @@ function BoardContents({
       return next;
     });
   }
+
+  function submitMove(variables: MoveMutationVariables) {
+    if (boardBusyRef.current) return;
+    boardBusyRef.current = true;
+    setPendingTaskId(variables.task.id);
+    setMoveError(null);
+    if (!variables.undo) {
+      dispatchUndo({ type: "clear", taskId: variables.task.id });
+    }
+    moveMutation.mutate(variables);
+  }
+
+  function handleStatusMove(task: BoardTask, destinationStatus: BoardStatus) {
+    const permission = getMovePermission(task, viewer);
+    if (permission === "none") return;
+    const intent = createStatusMoveIntent(task, destinationStatus);
+    if (!intent) return;
+    submitMove({
+      task,
+      intent,
+      originalNeighbors: captureTaskNeighbors(tasks, task.id) ?? {
+        previousNeighborId: null,
+        nextNeighborId: null,
+      },
+      undo: false,
+    });
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    if (boardBusyRef.current || committeeId !== null) return;
+    setActiveTaskId(String(event.active.id));
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveTaskId(null);
+    if (!event.over || boardBusyRef.current || committeeId !== null) return;
+    const taskId = String(event.active.id);
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (!task) return;
+    const permission = getMovePermission(task, viewer);
+    const overStatus = event.over.data.current?.status;
+    if (!BOARD_STATUSES.includes(overStatus as BoardStatus)) return;
+    const overTaskId =
+      event.over.data.current?.type === "task" ? String(event.over.id) : null;
+    const intent = createDropMoveIntent({
+      tasks,
+      taskId,
+      destinationStatus: overStatus as BoardStatus,
+      overTaskId,
+      permission,
+    });
+    if (!intent) return;
+    submitMove({
+      task,
+      intent,
+      originalNeighbors: captureTaskNeighbors(tasks, task.id) ?? {
+        previousNeighborId: null,
+        nextNeighborId: null,
+      },
+      undo: false,
+    });
+  }
+
+  function handleUndo(taskId: string) {
+    const entry = undoState.entries.find((candidate) => candidate.taskId === taskId);
+    if (!entry || boardBusyRef.current) return;
+    if (Date.now() >= entry.expiresAt) {
+      dispatchUndo({ type: "expire", taskId, expiresAt: entry.expiresAt });
+      setMoveError("The Undo window expired. The board was refreshed.");
+      void queryClient.invalidateQueries({ queryKey: eventQueryKey });
+      return;
+    }
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (!task) {
+      dispatchUndo({ type: "undo-failure", taskId });
+      setMoveError("Undo failed because the task is no longer on this board.");
+      void queryClient.invalidateQueries({ queryKey: eventQueryKey });
+      return;
+    }
+    dispatchUndo({ type: "undo-start", taskId });
+    submitMove({
+      task,
+      intent: createUndoIntent(entry),
+      originalNeighbors: {
+        previousNeighborId: entry.previousNeighborId,
+        nextNeighborId: entry.nextNeighborId,
+      },
+      undo: true,
+    });
+  }
+
+  const activeDragTask = activeTaskId
+    ? tasks.find((task) => task.id === activeTaskId) ?? null
+    : null;
 
   return (
     <div className="space-y-7">
@@ -577,6 +716,20 @@ function BoardContents({
         </div>
       </section>
 
+      {moveError ? (
+        <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
+          <span>{moveError}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setMoveError(null)}
+          >
+            Dismiss
+          </Button>
+        </InlineAlert>
+      ) : null}
+
       {query.error ? (
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
           <span>
@@ -616,6 +769,7 @@ function BoardContents({
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground",
                 )}
+                disabled={boardBusy}
                 onClick={() => setActivePhase(phase)}
               >
                 <span className="flex min-w-0 items-center">
@@ -648,6 +802,7 @@ function BoardContents({
             aria-expanded={priorityOpen}
             aria-controls="priority-filter-panel"
             aria-label={priorityButtonLabel}
+            disabled={boardBusy}
             onClick={() =>
               priorityOpen ? closePriorityFilter() : openPriorityFilter()
             }
@@ -727,6 +882,7 @@ function BoardContents({
               aria-expanded={committeeOpen}
               aria-controls="committee-filter-panel"
               aria-label={`Committee: ${committeeButtonLabel}`}
+              disabled={boardBusy}
               onClick={() =>
                 committeeOpen ? closeCommitteeFilter() : openCommitteeFilter()
               }
@@ -809,6 +965,14 @@ function BoardContents({
         </Button>
       </div>
 
+      {committeeId !== null ? (
+        <InlineAlert variant="info">
+          Clear the committee filter to drag cards. Status controls remain
+          available; drag ordering needs the complete lane so neighbor hints
+          cannot skip hidden committees.
+        </InlineAlert>
+      ) : null}
+
       {query.isPending ? (
         <EventBoardSkeleton />
       ) : tasks.length === 0 ? (
@@ -850,51 +1014,88 @@ function BoardContents({
             </div>
           ) : null}
 
-          <div className="grid gap-5 md:grid-cols-3">
-            {BOARD_STATUSES.map((status) => {
-              const laneTasks = assignedPhaseTasks.filter(
-                (task) => task.status === status,
-              );
-              return (
-                <section
-                  key={status}
-                  aria-labelledby={`lane-${status.replaceAll(" ", "-")}`}
-                >
-                  <div className="mb-3.5 flex items-center gap-2 px-0.5">
-                    <span
-                      className={cn(
-                        "size-2 rounded-full",
-                        status === "To Do" && "bg-muted-foreground",
-                        status === "In Progress" && "bg-primary",
-                        status === "Completed" && "bg-emerald-500",
-                      )}
-                    />
-                    <h2
-                      id={`lane-${status.replaceAll(" ", "-")}`}
-                      className="text-sm font-semibold tracking-wide uppercase"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragCancel={() => setActiveTaskId(null)}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="grid gap-5 md:grid-cols-3">
+              {BOARD_STATUSES.map((status) => {
+                const laneTasks = assignedPhaseTasks.filter(
+                  (task) => task.status === status,
+                );
+                return (
+                  <section
+                    key={status}
+                    aria-labelledby={`lane-${status.replaceAll(" ", "-")}`}
+                  >
+                    <div className="mb-3.5 flex items-center gap-2 px-0.5">
+                      <span
+                        className={cn(
+                          "size-2 rounded-full",
+                          status === "To Do" && "bg-muted-foreground",
+                          status === "In Progress" && "bg-primary",
+                          status === "Completed" && "bg-emerald-500",
+                        )}
+                      />
+                      <h2
+                        id={`lane-${status.replaceAll(" ", "-")}`}
+                        className="text-sm font-semibold tracking-wide uppercase"
+                      >
+                        {status}
+                      </h2>
+                      <span className="text-xs text-muted-foreground">
+                        {laneTasks.length}
+                      </span>
+                    </div>
+                    <SortableContext
+                      items={laneTasks.map((task) => task.id)}
+                      strategy={verticalListSortingStrategy}
                     >
-                      {status}
-                    </h2>
-                    <span className="text-xs text-muted-foreground">
-                      {laneTasks.length}
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {laneTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} />
-                    ))}
-                    {laneTasks.length === 0 ? (
-                      <div className="rounded-xl border-2 border-dashed p-4 text-center text-xs text-muted-foreground">
-                        {selectedPriorities.size > 0
-                          ? "No tasks match this filter."
-                          : "No tasks yet"}
-                      </div>
-                    ) : null}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
+                      <BoardLaneDropZone
+                        status={status}
+                        disabled={boardBusy || committeeId !== null}
+                      >
+                        {laneTasks.map((task) => {
+                          const permission = getMovePermission(task, viewer);
+                          return (
+                            <SortableEventBoardTaskCard
+                              key={task.id}
+                              task={task}
+                              permission={permission}
+                              busy={boardBusy}
+                              dragDisabled={
+                                boardBusy ||
+                                committeeId !== null ||
+                                permission === "none"
+                              }
+                              onMoveStatus={handleStatusMove}
+                            />
+                          );
+                        })}
+                        {laneTasks.length === 0 ? (
+                          <div className="rounded-xl border-2 border-dashed p-4 text-center text-xs text-muted-foreground">
+                            {selectedPriorities.size > 0
+                              ? "No tasks match this filter."
+                              : "No tasks yet"}
+                          </div>
+                        ) : null}
+                      </BoardLaneDropZone>
+                    </SortableContext>
+                  </section>
+                );
+              })}
+            </div>
+            <DragOverlay>
+              {activeDragTask ? (
+                <div className="w-80 max-w-[calc(100vw-2rem)]">
+                  <EventBoardTaskCard task={activeDragTask} overlay />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </>
       )}
 
@@ -916,7 +1117,7 @@ function BoardContents({
                 Task Backlog
               </SheetTitle>
               <SheetDescription id="event-board-backlog-description" className="text-xs">
-                Unassigned tasks · read only
+                Unassigned tasks · status controls only
               </SheetDescription>
             </div>
             <Badge variant="neutral" className="shrink-0 px-2">
@@ -948,7 +1149,13 @@ function BoardContents({
                   index === 5 && "delay-[150ms]",
                 )}
               >
-                <TaskCard task={task} backlog />
+                <EventBoardTaskCard
+                  task={task}
+                  backlog
+                  permission={getMovePermission(task, viewer)}
+                  busy={boardBusy}
+                  onMoveStatus={handleStatusMove}
+                />
               </div>
             ))}
             {backlogTasks.length === 0 ? (
@@ -961,6 +1168,35 @@ function BoardContents({
           </div>
         </SheetContent>
       </Sheet>
+
+      <div
+        className="fixed right-4 bottom-20 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4"
+        aria-live="polite"
+        aria-atomic="false"
+      >
+        {undoState.entries.map((entry) => (
+          <div
+            key={`${entry.taskId}-${entry.expiresAt}`}
+            role="status"
+            className="flex items-center justify-between gap-3 rounded-xl border bg-popover px-4 py-3 text-sm shadow-lg"
+          >
+            <span className="min-w-0 truncate">
+              Moved to {entry.toStatus}
+            </span>
+            <Button
+              type="button"
+              variant="link"
+              className="h-9 shrink-0 px-0"
+              disabled={
+                boardBusy || undoState.undoingTaskId === entry.taskId
+              }
+              onClick={() => handleUndo(entry.taskId)}
+            >
+              Undo
+            </Button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
