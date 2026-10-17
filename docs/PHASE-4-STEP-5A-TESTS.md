@@ -85,6 +85,7 @@ begin
 
   select
     array_agg(sort_order order by sort_order) filter (where phase = 'Setup') = array[1024, 2048]::bigint[]
+    and array_agg(title order by sort_order) filter (where phase = 'Setup') = array['First', 'Second']::text[]
     and min(sort_order) filter (where phase = 'Program') = 1024
   into v_ok
   from public.tasks where event_id = v_event_id;
@@ -467,9 +468,13 @@ begin
   join pg_catalog.pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname = 'create_event_with_tasks'
     and pg_get_function_identity_arguments(p.oid) = 'p_name text, p_description text, p_start_date date, p_end_date date, p_status text, p_tasks jsonb'
-    and not p.prosecdef;
+    and not p.prosecdef
+    and exists (
+      select 1 from unnest(coalesce(p.proconfig, '{}'::text[])) config
+      where split_part(config, '=', 1) = 'search_path'
+        and btrim(split_part(config, '=', 2), '"') = ''
+    );
   v_ok := v_ok and (select count(*) = 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'create_event_with_tasks')
-    and v_create_def like '%set search_path to ''''%'
     and has_function_privilege('authenticated', 'public.create_event_with_tasks(text,text,date,date,text,jsonb)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.create_event_with_tasks(text,text,date,date,text,jsonb)', 'EXECUTE')
     and v_create_def not like '%task_dependency_lock_key%';
@@ -479,10 +484,14 @@ begin
   join pg_catalog.pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname = 'edit_event_with_tasks'
     and pg_get_function_identity_arguments(p.oid) = 'p_event_id uuid, p_expected_updated_at timestamp with time zone, p_name text, p_description text, p_start_date date, p_end_date date, p_status text, p_tasks_to_add jsonb, p_tasks_to_update jsonb, p_task_ids_to_delete uuid[]'
-    and not p.prosecdef;
+    and not p.prosecdef
+    and exists (
+      select 1 from unnest(coalesce(p.proconfig, '{}'::text[])) config
+      where split_part(config, '=', 1) = 'search_path'
+        and btrim(split_part(config, '=', 2), '"') = ''
+    );
   v_ok := v_ok
     and (select count(*) = 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'edit_event_with_tasks')
-    and v_edit_def like '%set search_path to ''''%'
     and has_function_privilege('authenticated', 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[])', 'EXECUTE')
     and not has_function_privilege('anon', 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[])', 'EXECUTE');
   v_results := v_results || format(E'\nEDIT_RPC_EXACT_SIGNATURE_INVOKER_AUTHENTICATED_ONLY: %s', case when v_ok then 'PASS' else 'FAIL' end);
@@ -521,7 +530,11 @@ begin
     and p.provolatile = 'i'
     and p.proisstrict
     and not p.prosecdef
-    and lower(pg_get_functiondef(p.oid)) like '%set search_path to ''''%'
+    and exists (
+      select 1 from unnest(coalesce(p.proconfig, '{}'::text[])) config
+      where split_part(config, '=', 1) = 'search_path'
+        and btrim(split_part(config, '=', 2), '"') = ''
+    )
     and not exists (
       select 1
       from lateral pg_catalog.aclexplode(coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl

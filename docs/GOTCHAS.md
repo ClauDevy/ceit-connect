@@ -46,12 +46,6 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - `AGENTS.md`'s Next.js block is re-added by `next dev`; leave it in.
 
 ## 5. Supabase CLI and migrations
-
-### SQL testing
-
-- Compute expected values as the table owner before impersonating a role; impersonated roles can see only the rows allowed by RLS.
-- Check catalog-exposed properties (`prosecdef`, `provolatile`, `proconfig`, grants) in `pg_proc`/`pg_catalog`; never infer them by text-matching `pg_get_functiondef()` output.
-
 - `db push` needs a linked project (`Cannot find project ref` → `npx supabase link --project-ref <ref>`). After pushing to Prod, **link back to Dev** so later work can't hit Prod by accident.
 - `unexpected login role status 403 ... necessary privileges`: re-run `npx supabase login` with the account that owns the organization, check `npx supabase projects list` shows the right project linked, and if it persists, check `npx supabase db push --help` for a database-password option (e.g. `--password`) to bypass the temporary login role — verify the exact flag on your CLI version.
 - Schema changes typed into the SQL Editor are not tracked. Convert them to a migration file, and if the change already exists on a remote, mark it applied: `npx supabase migration repair --status applied <timestamp>`.
@@ -60,6 +54,11 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - A policy on `users` that queries `users` recurses forever — use `my_role()` / `my_committee_id()`.
 - Order of operations matters: validate (e.g. email domain) **before** creating an account; update the database **before** deleting a Storage file; check the result of every follow-up write.
 - Never `delete` a user "to clean up" because a profile lookup returned null — null also means a query error. Use `maybeSingle()` and check `error` first.
+
+### SQL testing
+
+- Compute expected values as the table owner before impersonating a role; impersonated roles can see only the rows allowed by RLS.
+- Check catalog-exposed properties (`prosecdef`, `provolatile`, `proconfig`, grants) in `pg_proc`/`pg_catalog`; never infer them by text-matching `pg_get_functiondef()` output.
 
 ## 6. Workflow
 - CodeRabbit (VSCode) found real bugs on every branch; run it before each PR and again after fixing.
