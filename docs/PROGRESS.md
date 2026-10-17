@@ -1,6 +1,6 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-10-17. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-10-18. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 ## Phase 0 — Scaffold (done)
 
@@ -68,8 +68,12 @@ Done:
 - Step 4 CodeRabbit follow-up: orphaned work links now return boolean `false`, never null, for callers without removal rights.
 - **Step 5a — task creator/order and dependency integrity** is merged, verified, and live on Dev and Prod: migration `20261018120000_task_creator_order_dependency_integrity.sql` safely backfills immutable task creators and deterministic spaced lane ranks without activity noise, centralizes event-scoped ordering/dependency serialization on one advisory-lock key, rejects cross-event/self/cyclic dependencies, protects referenced prerequisites while preserving whole-event cascades, and blocks every real task reparent. `create_event_with_tasks` remains unchanged because the insert trigger derives metadata; `edit_event_with_tasks` changes only enough to lock the stored event's advisory key before task access. Event-save deadlocks now produce a clear retry message.
 - `docs/PHASE-4-STEP-5A-TESTS.md` contains rollback-safe DEV coverage for derived metadata, a real authenticated edit save, deterministic backfill and forced trigger-restoration failure, Member status-to-tail movement, immutable creator/order/event parentage, dependency validation and deletion, event cascades, exact RPC signatures, shared-lock ordering, trigger order, grants, catalogs, and unchanged task policies. Concurrency is verified through function bodies/catalogs rather than two-session tests.
-- **Step 5b — transactional task-move RPC** is implemented locally: migration `20261018130000_transactional_task_move_rpc.sql` adds the one fixed-empty-path postgres-owned definer writer for status/order moves, revalidates role, lifecycle, dependency direction, source freshness, and neighbor/boundary placement, uses the Step 5a event lock key, and deterministically rebalances spaced ranks under the existing deferrable uniqueness constraint. Admins may move any task, Co-Admins remain own-committee, and primary/assist assignees may change status backward or forward but cannot reorder and always land at the true destination tail. The invoker lane trigger uses a trigger-context-only definer scalar helper so raw Member status changes include RLS-hidden lane rows; pure rank writes are omitted from the definer activity trigger while status changes still log once.
+- **Step 5b — transactional task-move RPC** is merged into `main`: migration `20261018130000_transactional_task_move_rpc.sql` adds the one fixed-empty-path postgres-owned definer writer for status/order moves, revalidates role, lifecycle, dependency direction, source freshness, and neighbor/boundary placement, uses the Step 5a event lock key, and deterministically rebalances spaced ranks under the existing deferrable uniqueness constraint. Admins may move any task, Co-Admins remain own-committee, and primary/assist assignees may change status backward or forward but cannot reorder and always land at the true destination tail. The invoker lane trigger uses a trigger-context-only definer scalar helper so raw Member status changes include RLS-hidden lane rows; pure rank writes are omitted from the definer activity trigger while status changes still log once.
 - `docs/PHASE-4-STEP-5B-TESTS.md` contains self-contained rollback-safe DEV coverage for exact catalogs/ownership/grants, the sole-definer-task-writer invariant, event/advisory/task lock order, hidden-lane Member tail placement, all roles, dependency directions, direct forgery, cross-lane rebalance, same-lane rebalance with an old-rank collision that requires the deferred constraint, activity silence, Archived denial, stale state, and valid/stale/removed/cross-lane/forged first/middle/last Undo hints without two-session tests.
+- **Step 6 — desktop drag-and-drop and mobile status controls** is implemented locally on `feature/board-drag-and-drop`: exactly pinned dnd-kit sensors provide desktop pointer/keyboard lane movement with a drag overlay and no delete target; Admins and owning Co-Admins can reorder real cards, assigned Members receive status-only tail movement, and other callers plus masked shells receive no move affordance. Every eligible card also has an accessible Move-to control, while real phones get the prototype's circular Completed control. All writes call `move_task()`; there is no raw task status/order update.
+- Step 6 mutations optimistically update the current React Query board, prevent double submission, pause both 15-second visible polling and focus refetch through the in-flight RPC and authoritative settlement refetch, roll back on failure, and map stale, permission, dependency, Archived, offline, and fallback errors. Successful moves offer an approximately eight-second client-only normal-RPC Undo; same-lane Undo retains previous neighbors/boundaries and cross-lane Undo returns to the old lane's current tail.
+- Migration `20261018140000_order_event_board_by_sort_order.sql` replaces only the board reader's internal order from `created_at, id` to `sort_order, id`, preserving its 12-column shape, masking, lifecycle rules, security attributes, and grants without exposing rank. This closes the refetch snap-back gap discovered while planning Step 6.
+- `docs/PHASE-4-STEP-6-TESTS.md` contains independent DEV-only reader catalog/shape/grant, Admin/Co-Admin/assigned/unassigned ordering, masked-shell, Draft/Archived, and adversarial Undo-hint SQL coverage plus the Claudee/tv pointer, keyboard, real-phone, polling/focus, offline, accessibility, and Undo checklist. Pure Vitest coverage exercises permissions, complete-lane hints, optimistic placement, polling pause, safe error mapping, and the Undo state machine.
 
 ## Decisions log
 
@@ -94,7 +98,7 @@ Done:
 - Leftover packages `cn` and `p` removed: NO — removal is deferred.
 - Service-role key not in any client bundle: YES
 
-Next up: review `20261018130000_transactional_task_move_rpc.sql`, apply it to Dev through the owner's normal process, and run `docs/PHASE-4-STEP-5B-TESTS.md`. Step 6 UI work remains out of scope until Step 5b is verified and merged.
+Next up: the owner applies `20261018140000_order_event_board_by_sort_order.sql` to Dev through the normal process, runs `docs/PHASE-4-STEP-6-TESTS.md`, and completes the Claudee/tv manual checklist before PR review.
 
 ## Open items
 
@@ -104,5 +108,5 @@ Next up: review `20261018130000_transactional_task_move_rpc.sql`, apply it to De
 - `discord_id` field in Settings — parked until Discord webhooks are scheduled.
 - No automated RLS tests yet (the plan calls for a pgTAP/Supabase test suite in CI; only manual `SET ROLE` tests exist).
 - `/docs/BACKUP.md` runbook not written (Phase 5).
-- Raw assignee status updates bypass the dependency forward-move gate, which is enforced only in `move_task`. Decide at Step 6 whether to enforce it in the assignee guard or route all status changes through `move_task`.
+- Raw assignee status updates bypass the dependency forward-move gate, which is enforced only in `move_task`. Step 6 routes every app board status/order write through `move_task`; hardening the remaining direct database path is explicitly deferred beyond this step.
 - Activity Log page (`/activity-log`) UI is not in any current Phase 4 step.
