@@ -8,6 +8,10 @@ import {
   type TaskDetail as TaskDetailData,
 } from "@/lib/tasks/detail";
 import {
+  isTaskEditControlData,
+  type TaskEditControlData,
+} from "@/lib/tasks/edit-controls";
+import {
   isTaskWorkLinks,
   type TaskWorkLinks,
 } from "@/lib/tasks/work-links";
@@ -18,9 +22,10 @@ const UUID_PATTERN =
 
 async function TaskData({ taskId }: { taskId: string }) {
   const supabase = await createClient();
-  const [detailResult, workLinksResult] = await Promise.all([
+  const [detailResult, workLinksResult, editControlsResult] = await Promise.all([
     supabase.rpc("get_task_detail", { p_task_id: taskId }),
     supabase.rpc("get_task_work_links", { p_task_id: taskId }),
+    supabase.rpc("get_task_edit_controls", { p_task_id: taskId }),
   ]);
 
   if (detailResult.error) {
@@ -59,11 +64,30 @@ async function TaskData({ taskId }: { taskId: string }) {
     console.error("Task work links returned invalid data.");
   }
 
+  let initialEditControls: TaskEditControlData | null | undefined;
+  if (editControlsResult.error) {
+    console.error("Failed to load task edit controls:", editControlsResult.error);
+  } else if (
+    Array.isArray(editControlsResult.data) &&
+    editControlsResult.data.length === 0
+  ) {
+    initialEditControls = null;
+  } else if (
+    Array.isArray(editControlsResult.data) &&
+    editControlsResult.data.length === 1 &&
+    isTaskEditControlData(editControlsResult.data[0])
+  ) {
+    initialEditControls = editControlsResult.data[0];
+  } else {
+    console.error("Task edit controls returned invalid data.");
+  }
+
   return (
     <TaskDetail
       taskId={taskId}
       initialTask={initialTask}
       initialWorkLinks={initialWorkLinks}
+      initialEditControls={initialEditControls}
     />
   );
 }
