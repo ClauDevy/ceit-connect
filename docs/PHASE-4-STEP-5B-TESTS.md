@@ -16,6 +16,11 @@ and shared advisory lock precede task-row locks.
 
 ## TEST 1 — catalogs, owner exemption, grants, trigger order, and lock order
 
+> **Superseded by Step 7:** the sole-writer assertion below is correct only
+> immediately after Step 5b. Once Step 7 is applied, it correctly fails because
+> `set_task_dependency(uuid,uuid)` joins `move_task(...)` in the exact privileged
+> writer allowlist. Use `docs/PHASE-4-STEP-7-TESTS.md` for the new assertion.
+
 ```sql
 begin;
 
