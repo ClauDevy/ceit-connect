@@ -173,7 +173,10 @@ begin
 
   select lower(pg_catalog.pg_get_functiondef(v_lane_oid)) into v_body;
   v_ok := strpos(v_body, 'current_user = ''postgres''') > 0
-    and strpos(v_body, 'return new;') > strpos(v_body, 'current_user = ''postgres''')
+    and strpos(
+      substring(v_body from strpos(v_body, 'current_user = ''postgres''')),
+      'return new;'
+    ) > 0
     and strpos(v_body, 'task_dependency_allows_forward_move') > strpos(v_body, 'pg_advisory_xact_lock');
   v_results := v_results || format(E'\nRAW_GATE_AFTER_POSTGRES_RETURN_AND_EVENT_LOCK: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
@@ -597,6 +600,21 @@ begin
   -- Owning Co-Admin succeeds; other Co-Admin and Member do not.
   perform set_config('request.jwt.claims', json_build_object('sub','70030000-0000-4000-8000-000000000012','role','authenticated')::text, true);
   perform public.set_task_confidentiality('70030000-0000-4000-8000-000000000201', true, array['70030000-0000-4000-8000-000000000015']::uuid[]);
+  perform public.set_task_confidentiality(
+    '70030000-0000-4000-8000-000000000201',
+    true,
+    array[
+      '70030000-0000-4000-8000-000000000015',
+      '70030000-0000-4000-8000-000000000014'
+    ]::uuid[]
+  );
+  select allowed_viewers = array[
+    '70030000-0000-4000-8000-000000000015',
+    '70030000-0000-4000-8000-000000000014'
+  ]::uuid[] into v_ok
+  from public.tasks where id = '70030000-0000-4000-8000-000000000201';
+  v_results := v_results || format(E'\nOWNING_COADMIN_ADDS_CROSS_COMMITTEE_ACTIVE_VIEWER: %s', case when v_ok then 'PASS' else 'FAIL' end);
+
   perform public.set_task_confidentiality('70030000-0000-4000-8000-000000000203', true, '{}'::uuid[]);
   select is_confidential into v_ok
   from public.tasks where id = '70030000-0000-4000-8000-000000000203';
