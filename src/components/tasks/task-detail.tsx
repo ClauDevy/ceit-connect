@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
+import { TaskEditControls } from "@/components/tasks/task-edit-controls";
 import {
   YourWorkCard,
   type NewWorkLink,
@@ -33,6 +34,11 @@ import {
   type TaskDetail as TaskDetailData,
 } from "@/lib/tasks/detail";
 import {
+  getTaskEditErrorMessage,
+  isTaskEditControlData,
+  type TaskEditControlData,
+} from "@/lib/tasks/edit-controls";
+import {
   getWorkLinkErrorMessage,
   isTaskWorkLinks,
   type TaskWorkLinks,
@@ -44,6 +50,7 @@ type TaskDetailProps = {
   taskId: string;
   initialTask?: TaskDetailData | null;
   initialWorkLinks?: TaskWorkLinks | null;
+  initialEditControls?: TaskEditControlData | null;
   canFetch?: boolean;
 };
 
@@ -231,9 +238,18 @@ function WorkLinksSection({
 function RealTask({
   task,
   workLinks,
+  editControls,
 }: {
   task: TaskDetailData;
   workLinks: WorkLinksSectionProps;
+  editControls: {
+    data: TaskEditControlData | null | undefined;
+    onSaveDependency: (dependencyId: string | null) => Promise<void>;
+    onSaveConfidentiality: (
+      isConfidential: boolean,
+      viewerIds: string[],
+    ) => Promise<void>;
+  };
 }) {
   const dependencyName = task.dependency_label ?? "a task you can’t view";
   const taskTypeLabel =
@@ -322,7 +338,16 @@ function RealTask({
             </CardContent>
           </Card>
 
-          {task.is_confidential ? (
+          {editControls.data ? (
+            <TaskEditControls
+              controls={editControls.data}
+              onSaveDependency={editControls.onSaveDependency}
+              onSaveConfidentiality={editControls.onSaveConfidentiality}
+            />
+          ) : null}
+
+          {task.is_confidential &&
+          !editControls.data?.can_set_confidentiality ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
@@ -409,6 +434,7 @@ function TaskDetailContents({
   taskId,
   initialTask,
   initialWorkLinks,
+  initialEditControls,
   canFetch = true,
 }: TaskDetailProps) {
   const supabase = useMemo(() => createClient(), []);
@@ -464,8 +490,79 @@ function TaskDetailContents({
     refetchIntervalInBackground: false,
   });
 
+  const editControlsQuery = useQuery({
+    queryKey: ["task-edit-controls", taskId],
+    queryFn: async ({ signal }) => {
+      let request = supabase.rpc("get_task_edit_controls", {
+        p_task_id: taskId,
+      });
+      request = request.abortSignal(signal);
+      const { data, error } = await request;
+      if (error) throw error;
+      if (!Array.isArray(data) || data.length > 1) {
+        throw new Error("The task edit controls returned an invalid response.");
+      }
+      if (data.length === 0) return null;
+      if (!isTaskEditControlData(data[0])) {
+        throw new Error("The task edit controls returned an invalid response.");
+      }
+      return data[0];
+    },
+    enabled: canFetch,
+    initialData: initialEditControls,
+    refetchOnWindowFocus: true,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
+
   async function refreshAccess() {
-    await Promise.all([query.refetch(), workLinksQuery.refetch()]);
+    await Promise.all([
+      query.refetch(),
+      workLinksQuery.refetch(),
+      editControlsQuery.refetch(),
+    ]);
+  }
+
+  async function saveDependency(dependencyId: string | null) {
+    try {
+      const { data, error } = await supabase.rpc("set_task_dependency", {
+        p_task_id: taskId,
+        p_depends_on_task_id: dependencyId,
+      });
+      if (error) throw error;
+      if (!Array.isArray(data) || data.length !== 1) {
+        throw new Error("The dependency writer returned an invalid response.");
+      }
+    } catch (error) {
+      await refreshAccess();
+      throw new Error(getTaskEditErrorMessage(error, "dependency"));
+    }
+
+    await refreshAccess();
+  }
+
+  async function saveConfidentiality(
+    isConfidential: boolean,
+    viewerIds: string[],
+  ) {
+    try {
+      const { data, error } = await supabase.rpc("set_task_confidentiality", {
+        p_task_id: taskId,
+        p_is_confidential: isConfidential,
+        p_allowed_viewers: viewerIds,
+      });
+      if (error) throw error;
+      if (!Array.isArray(data) || data.length !== 1) {
+        throw new Error(
+          "The confidentiality writer returned an invalid response.",
+        );
+      }
+    } catch (error) {
+      await refreshAccess();
+      throw new Error(getTaskEditErrorMessage(error, "confidentiality"));
+    }
+
+    await refreshAccess();
   }
 
   async function addWorkLink(link: NewWorkLink) {
@@ -571,6 +668,11 @@ function TaskDetailContents({
             onRetry: () => void workLinksQuery.refetch(),
             onAddLink: addWorkLink,
             onRemoveLink: removeWorkLink,
+          }}
+          editControls={{
+            data: editControlsQuery.data,
+            onSaveDependency: saveDependency,
+            onSaveConfidentiality: saveConfidentiality,
           }}
         />
       )}

@@ -74,6 +74,9 @@ Done:
 - Step 6 mutations optimistically update the current React Query board, prevent double submission, pause both 15-second visible polling and focus refetch through the in-flight RPC and authoritative settlement refetch, roll back on failure, and map stale, permission, dependency, Archived, offline, and fallback errors. Successful moves offer an approximately eight-second client-only normal-RPC Undo; same-lane Undo retains previous neighbors/boundaries and cross-lane Undo returns to the old lane's current tail.
 - Migration `20261018140000_order_event_board_by_sort_order.sql` replaces only the board reader's internal order from `created_at, id` to `sort_order, id`, preserving its 12-column shape, masking, lifecycle rules, security attributes, and grants without exposing rank. This closes the refetch snap-back gap discovered while planning Step 6.
 - `docs/PHASE-4-STEP-6-TESTS.md` contains independent DEV-only reader catalog/shape/grant, Admin/Co-Admin/assigned/unassigned ordering, masked-shell, Draft/Archived, and adversarial Undo-hint SQL coverage plus the Claudee/tv pointer, keyboard, real-phone, polling/focus, offline, accessibility, and Undo checklist. Pure Vitest coverage exercises permissions, complete-lane hints, optimistic placement, polling pause, safe error mapping, and the Undo state machine.
+- **Step 7 — dependencies and confidentiality controls** is implemented locally on `feature/task-dependency-confidentiality`: `/tasks/[taskId]` now gives real-content Admins/Co-Admins a safe same-event dependency picker, masks inaccessible prerequisite titles as `Confidential Task`, and gives Admins/owning Co-Admins an atomic confidentiality toggle plus active-user access editor. Members, masked dependents, and Archived tasks receive no edit state. The page uses only narrow RPCs, keeps Step 3's read-only states, and refetches task/work-link/edit access after every mutation.
+- Migration `20261020120000_task_dependency_confidentiality_controls.sql` is applied on Dev: it adds the real-access-gated cross-committee dependency writer, RLS-backed owning-leadership confidentiality writer, safe edit-state reader, retained-inactive/new-active viewer validation with a 50-person cap, and a trigger-only helper that closes the raw forward-status dependency bypass. The postgres guard exemption is now exactly `status`/`sort_order`/`depends_on_task_id`, and the exact direct definer task-writer allowlist is `{move_task, set_task_dependency}`. Follow-up migration `20261021120000_fix_confidentiality_viewer_validation.sql` is created but not applied; it makes the stored-viewer comparison null-safe and validates active viewers across committees through `list_active_task_assignees()` without changing the function's security or lifecycle contract.
+- `docs/PHASE-4-STEP-7-TESTS.md` contains independent rollback-safe DEV coverage for catalogs/grants/allowlist/lock order, every role and lifecycle, real versus masked dependent access, masked prerequisite labels, clear/self/cross-event/cycle/delete rules, viewer validation and inactive retention, an owning Co-Admin adding an active viewer from another committee, immediate task/work-link access, direct forgery, combined raw dependency/status updates, and unchanged `move_task()` gating. Vitest covers response validation, capability hiding, payload normalization, and safe error mapping.
 
 ## Decisions log
 
@@ -98,7 +101,7 @@ Done:
 - Leftover packages `cn` and `p` removed: NO — removal is deferred.
 - Service-role key not in any client bundle: YES
 
-Next up: the owner applies `20261018140000_order_event_board_by_sort_order.sql` to Dev through the normal process, runs `docs/PHASE-4-STEP-6-TESTS.md`, and completes the Claudee/tv manual checklist before PR review.
+Next up: the owner reviews the Step 7 follow-up diff, then applies `20261021120000_fix_confidentiality_viewer_validation.sql` to Dev through the normal process, reruns TEST 1 and TEST 3 from `docs/PHASE-4-STEP-7-TESTS.md`, and completes the Claudee/tv manual checklist before PR review.
 
 ## Open items
 
@@ -108,5 +111,4 @@ Next up: the owner applies `20261018140000_order_event_board_by_sort_order.sql` 
 - `discord_id` field in Settings — parked until Discord webhooks are scheduled.
 - No automated RLS tests yet (the plan calls for a pgTAP/Supabase test suite in CI; only manual `SET ROLE` tests exist).
 - `/docs/BACKUP.md` runbook not written (Phase 5).
-- Raw assignee status updates bypass the dependency forward-move gate, which is enforced only in `move_task`. Step 6 routes every app board status/order write through `move_task`; hardening the remaining direct database path is explicitly deferred beyond this step.
 - Activity Log page (`/activity-log`) UI is not in any current Phase 4 step.
