@@ -9,6 +9,7 @@ import {
   isTaskCommentRetryableError,
   isTaskCommentUnavailableError,
   mergeTaskCommentPages,
+  replaceTaskCommentNewestPage,
   trimTaskCommentBody,
   truncateCodePoints,
   type TaskComment,
@@ -73,7 +74,7 @@ describe("task comments", () => {
     expect(truncateCodePoints("A🙂BC", 3)).toBe("A🙂B");
   });
 
-  it("merges a refreshed newest page without discarding loaded older rows", () => {
+  it("merges a loaded older page by id", () => {
     const merged = mergeTaskCommentPages(
       [
         comment("new", "2026-10-23T03:00:00Z", "old body"),
@@ -87,6 +88,46 @@ describe("task comments", () => {
 
     expect(merged.map((row) => row.out_id)).toEqual(["latest", "new", "older"]);
     expect(merged[1].out_body).toBe("edited body");
+  });
+
+  it("replaces a full newest page and retains only cached older rows", () => {
+    const refreshed = replaceTaskCommentNewestPage(
+      [
+        comment("new", "2026-10-23T05:00:00Z", "old body"),
+        comment("deleted", "2026-10-23T04:00:00Z"),
+        comment("boundary", "2026-10-23T03:00:00Z"),
+        comment("older", "2026-10-23T02:00:00Z"),
+      ],
+      [
+        comment("latest", "2026-10-23T06:00:00Z"),
+        comment("new", "2026-10-23T05:00:00Z", "edited body"),
+        comment("boundary", "2026-10-23T03:00:00Z"),
+      ],
+      3,
+    );
+
+    expect(refreshed.map((row) => row.out_id)).toEqual([
+      "latest",
+      "new",
+      "boundary",
+      "older",
+    ]);
+    expect(refreshed[1].out_body).toBe("edited body");
+  });
+
+  it("uses only a partial or empty refreshed newest page", () => {
+    const current = [
+      comment("new", "2026-10-23T05:00:00Z"),
+      comment("deleted", "2026-10-23T04:00:00Z"),
+      comment("older", "2026-10-23T03:00:00Z"),
+    ];
+    const partial = [
+      comment("new", "2026-10-23T05:00:00Z"),
+      comment("older", "2026-10-23T03:00:00Z"),
+    ];
+
+    expect(replaceTaskCommentNewestPage(current, partial, 3)).toEqual(partial);
+    expect(replaceTaskCommentNewestPage(current, [], 3)).toEqual([]);
   });
 
   it.each([
