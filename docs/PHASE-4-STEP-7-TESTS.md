@@ -8,6 +8,22 @@ test is one self-contained SQL Editor paste with its own Auth/profile/event/task
 fixtures and caller impersonation. Every paste ends with an intentional
 `raise exception 'TEST RESULTS ...'`, which rolls the transaction back.
 
+> **Step 8 supersession note:** Step 8 expands the postgres-owner guard to six
+> columns and the direct-writer inventories to eight owner-branch/twelve full
+> writers. Step 8 TEST 1 is now authoritative. The following historical result
+> lines pin earlier catalog states and are expected to differ or cease proving
+> exactness after Step 8; do not require them to report `PASS` when rerunning
+> the older suites:
+>
+> - Step 5B TEST 1: `ONLY_POSTGRES_DEFINER_TASK_UPDATER_IS_MOVE_TASK`.
+> - Step 7 TEST 1: `EXACT_MOVE_AND_DEPENDENCY_WRITER_ALLOWLIST`.
+> - Step 7 TEST 1: `OWNER_BRANCH_EXACT_COLUMN_UNION`.
+> - Step 7 TEST 4: `OWNER_BRANCH_REJECTS_NONUNION_COLUMN` (its rejection remains
+>   valid, but its old exact-column error-message match is superseded).
+> - Step 7A TEST 1: `OWNER_BRANCH_WRITERS_EXACT_FIVE`.
+> - Step 7A TEST 1: `FULL_DIRECT_WRITER_SET_EXACT_NINE`.
+> - Step 7A TEST 1: `OWNER_GUARD_EXACT_FIVE_COLUMNS_AND_MESSAGE`.
+
 No test creates a temporary table or touches `storage.objects`. Every fixture
 sets `sort_order` explicitly. Deferred constraints are forced with
 `set constraints all immediate` before their results are asserted. There are
