@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
+  assigneeIdsAreUnchanged,
   confidentialityViewerIds,
   getTaskEditErrorMessage,
   isTaskEditControlData,
+  isTaskPeopleMutationResult,
 } from "./edit-controls";
 
 const validControls = {
   can_set_dependency: true,
   can_set_confidentiality: true,
+  can_assign_people: true,
+  can_delete: true,
+  can_unassign_self: false,
+  self_unassign_block_code: null,
+  self_unassign_will_lose_access: false,
   depends_on_task_id: null,
   is_confidential: false,
   allowed_viewers: [],
@@ -22,6 +29,21 @@ const validControls = {
     {
       id: "20000000-0000-4000-8000-000000000001",
       full_name: "Viewer",
+      avatar_url: null,
+    },
+  ],
+  primary_assignees: [
+    {
+      id: "30000000-0000-4000-8000-000000000001",
+      full_name: "Primary",
+      avatar_url: null,
+    },
+  ],
+  assist_assignees: [],
+  assignee_options: [
+    {
+      id: "30000000-0000-4000-8000-000000000001",
+      full_name: "Primary",
       avatar_url: null,
     },
   ],
@@ -61,6 +83,36 @@ describe("isTaskEditControlData", () => {
       }),
     ).toBe(false);
   });
+
+  it("requires assignment-only fields to be hidden when denied", () => {
+    expect(
+      isTaskEditControlData({
+        ...validControls,
+        can_assign_people: false,
+        can_delete: false,
+        primary_assignees: [],
+        assist_assignees: [],
+        assignee_options: [],
+      }),
+    ).toBe(true);
+    expect(
+      isTaskEditControlData({
+        ...validControls,
+        can_assign_people: false,
+        can_delete: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects an enabled self-unassign control with a block code", () => {
+    expect(
+      isTaskEditControlData({
+        ...validControls,
+        can_unassign_self: true,
+        self_unassign_block_code: "due",
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("confidentialityViewerIds", () => {
@@ -73,6 +125,32 @@ describe("confidentialityViewerIds", () => {
       "one",
       "two",
     ]);
+  });
+});
+
+describe("assignment helpers", () => {
+  it("detects no-op assignment membership even when order changes", () => {
+    expect(
+      assigneeIdsAreUnchanged(
+        ["one", "three"],
+        ["two"],
+        ["three", "one"],
+        ["two"],
+      ),
+    ).toBe(true);
+    expect(assigneeIdsAreUnchanged(["one"], ["two"], ["one"], [])).toBe(false);
+  });
+
+  it("validates prefixed assignment RPC output", () => {
+    expect(
+      isTaskPeopleMutationResult({
+        out_task_id: "task",
+        out_status: "To Do",
+        out_sort_order: "9223372036854775000",
+        out_primary_assignees: [],
+        out_assist_assignees: ["person"],
+      }),
+    ).toBe(true);
   });
 });
 
@@ -101,11 +179,23 @@ describe("getTaskEditErrorMessage", () => {
   });
 
   it("maps permission and stale errors without leaking details", () => {
-    expect(
-      getTaskEditErrorMessage({ code: "42501" }, "confidentiality"),
-    ).toBe("You no longer have permission to make this change.");
+    expect(getTaskEditErrorMessage({ code: "42501" }, "confidentiality")).toBe(
+      "You no longer have permission to make this change.",
+    );
     expect(getTaskEditErrorMessage({ code: "40001" }, "dependency")).toBe(
       "The task changed. Refresh the page and try again.",
+    );
+  });
+
+  it("maps stable assignment and self-unassign codes", () => {
+    expect(getTaskEditErrorMessage({ code: "CCN01" }, "assignment")).toBe(
+      "Assignees are already up to date",
+    );
+    expect(getTaskEditErrorMessage({ code: "CCU72" }, "unassign")).toBe(
+      "This task is due within 72 hours. Ask an Admin or Co-Admin to remove you.",
+    );
+    expect(getTaskEditErrorMessage({ code: "CCU73" }, "unassign")).toBe(
+      "Completed tasks cannot be self-unassigned. Ask an Admin or Co-Admin to update the assignees.",
     );
   });
 });
