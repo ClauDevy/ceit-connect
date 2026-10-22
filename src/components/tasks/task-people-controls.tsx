@@ -22,6 +22,7 @@ import {
   type TaskEditControlData,
   type TaskEditViewer,
 } from "@/lib/tasks/edit-controls";
+import { formatWorkloadLabel } from "@/lib/tasks/workload";
 
 type TaskPeopleControlsProps = {
   controls: TaskEditControlData;
@@ -32,6 +33,7 @@ type TaskPeopleControlsProps = {
   ) => Promise<void>;
   onDeleteTask: () => Promise<void>;
   onUnassignSelf: () => Promise<void>;
+  workloadCounts: ReadonlyMap<string, number>;
 };
 
 function personName(person: TaskEditViewer) {
@@ -44,6 +46,7 @@ export function TaskPeopleControls({
   onAssignPeople,
   onDeleteTask,
   onUnassignSelf,
+  workloadCounts,
 }: TaskPeopleControlsProps) {
   const currentPrimaryIds = controls.primary_assignees.map(
     (person) => person.id,
@@ -302,7 +305,12 @@ export function TaskPeopleControls({
                         size="sm"
                       />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                        {personName(person)}
+                        {isActive && workloadCounts.has(person.id)
+                          ? formatWorkloadLabel(
+                              personName(person),
+                              workloadCounts.get(person.id)!,
+                            )
+                          : personName(person)}
                       </span>
                       {!isActive ? (
                         <span className="text-xs text-muted-foreground">

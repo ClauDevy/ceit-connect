@@ -88,6 +88,10 @@ import {
   type MoveIntent,
   type NeighborHints,
 } from "@/lib/events/board-move";
+import {
+  getTaskBackupErrorMessage,
+  isClaimTaskResult,
+} from "@/lib/tasks/backup";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -217,6 +221,7 @@ function BoardContents({
   const [backlogOpen, setBacklogOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+  const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
   const [reconciling, setReconciling] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [undoState, dispatchUndo] = useReducer(undoReducer, {
@@ -577,6 +582,40 @@ function BoardContents({
       dispatchUndo({ type: "clear", taskId: variables.task.id });
     }
     moveMutation.mutate(variables);
+  }
+
+  async function handleClaim(task: BoardTask) {
+    if (boardBusyRef.current) return;
+    boardBusyRef.current = true;
+    setPendingTaskId(task.id);
+    setClaimingTaskId(task.id);
+    setMoveError(null);
+
+    try {
+      const { data, error } = await supabase.rpc("claim_task", {
+        p_task_id: task.id,
+      });
+      if (error) throw error;
+      const result = Array.isArray(data) ? data[0] : null;
+      if (!result || data.length !== 1 || !isClaimTaskResult(result)) {
+        throw new Error("The claim writer returned an invalid response.");
+      }
+    } catch (error) {
+      setMoveError(getTaskBackupErrorMessage("claim", error));
+    } finally {
+      setReconciling(true);
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: eventQueryKey,
+          refetchType: "active",
+        });
+      } finally {
+        boardBusyRef.current = false;
+        setPendingTaskId(null);
+        setClaimingTaskId(null);
+        setReconciling(false);
+      }
+    }
   }
 
   function handleStatusMove(task: BoardTask, destinationStatus: BoardStatus) {
@@ -1152,6 +1191,9 @@ function BoardContents({
                 <EventBoardTaskCard
                   task={task}
                   backlog
+                  busy={boardBusy}
+                  claimBusy={claimingTaskId === task.id}
+                  onClaim={handleClaim}
                 />
               </div>
             ))}
