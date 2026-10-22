@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  keepPreviousData,
   QueryClient,
   QueryClientProvider,
   useInfiniteQuery,
@@ -112,6 +113,7 @@ function MyTasksContents({
       initialTasks === undefined || !canUseInitialTasks
         ? undefined
         : { pages: [initialTasks], pageParams: [0] },
+    placeholderData: keepPreviousData,
     getNextPageParam: (lastPage, _pages, lastPageParam) =>
       lastPage.length === MY_TASKS_PAGE_SIZE
         ? lastPageParam + MY_TASKS_PAGE_SIZE
@@ -130,8 +132,16 @@ function MyTasksContents({
   const hasNextPage = query.hasNextPage === true;
 
   useEffect(() => {
+    if (status !== null || query.isPending || query.isPlaceholderData) return;
     onLoadedStateChange?.({ count: loadedCount, hasNextPage });
-  }, [hasNextPage, loadedCount, onLoadedStateChange]);
+  }, [
+    hasNextPage,
+    loadedCount,
+    onLoadedStateChange,
+    query.isPending,
+    query.isPlaceholderData,
+    status,
+  ]);
 
   if (query.isPending) {
     return (
@@ -142,27 +152,24 @@ function MyTasksContents({
     );
   }
 
-  if (query.error && query.data === undefined) {
-    return (
-      <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
-        <span>{getMyTasksErrorMessage(query.error)}</span>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => void query.refetch()}
-        >
-          <RefreshCw aria-hidden /> Retry
-        </Button>
-      </InlineAlert>
-    );
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={query.isPlaceholderData}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <p className="text-xs text-muted-foreground">
-          {sortDescription(sort)} · {tasks.length} loaded
+          {query.isPlaceholderData ? (
+            <span
+              role="status"
+              aria-live="polite"
+              className="inline-flex items-center gap-1.5"
+            >
+              <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+              Updating…
+            </span>
+          ) : (
+            <>
+              {sortDescription(sort)} · {tasks.length} loaded
+            </>
+          )}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <div className="space-y-1">
@@ -224,8 +231,10 @@ function MyTasksContents({
       {query.error ? (
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
           <span>
-            {getMyTasksErrorMessage(query.error)} The last successful result is
-            still shown.
+            {getMyTasksErrorMessage(query.error)}
+            {query.data === undefined
+              ? ""
+              : " The last successful result is still shown."}
           </span>
           <Button
             type="button"
@@ -238,7 +247,7 @@ function MyTasksContents({
         </InlineAlert>
       ) : null}
 
-      {tasks.length === 0 ? (
+      {query.data === undefined ? null : tasks.length === 0 ? (
         <Card>
           <EmptyState
             title={status ? "No tasks match this status" : "No tasks assigned"}
@@ -297,7 +306,7 @@ function MyTasksContents({
           <Button
             type="button"
             variant="outline"
-            disabled={query.isFetchingNextPage}
+            disabled={query.isFetchingNextPage || query.isPlaceholderData}
             onClick={() => void query.fetchNextPage()}
           >
             {query.isFetchingNextPage ? (
