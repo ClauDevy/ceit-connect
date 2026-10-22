@@ -40,6 +40,7 @@ import {
   MAX_TASK_COMMENT_MENTIONS,
   MAX_TASK_COMMENT_MENTION_SEARCH_CODE_POINTS,
   mergeTaskCommentPages,
+  replaceTaskCommentNewestPage,
   TASK_COMMENT_PAGE_SIZE,
   trimTaskCommentBody,
   truncateCodePoints,
@@ -218,7 +219,19 @@ function MentionPicker({
         </div>
       ) : null}
 
-      <div className="relative">
+      <div
+        className="relative"
+        onBlur={(event) => {
+          const nextFocus = event.relatedTarget as Node | null;
+          if (!event.currentTarget.contains(nextFocus)) setOpen(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || !open) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+        }}
+      >
         <AtSign
           className="pointer-events-none absolute top-3 left-3 size-4 text-muted-foreground"
           aria-hidden
@@ -233,15 +246,16 @@ function MentionPicker({
           aria-expanded={open}
           aria-controls={`${inputId}-results`}
           onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
-          onChange={(event) =>
+          onClick={() => setOpen(true)}
+          onChange={(event) => {
+            setOpen(true);
             setSearch(
               truncateCodePoints(
                 event.target.value,
                 MAX_TASK_COMMENT_MENTION_SEARCH_CODE_POINTS,
               ),
-            )
-          }
+            );
+          }}
         />
 
         {open ? (
@@ -492,7 +506,10 @@ export function TaskComments({
       const current =
         queryClient.getQueryData<TaskCommentThreadCache>(newestQueryKey);
       return {
-        comments: mergeTaskCommentPages(current?.comments ?? [], data),
+        comments: replaceTaskCommentNewestPage(
+          current?.comments ?? [],
+          data,
+        ),
         hasMore: current?.olderPagingStarted
           ? current.hasMore
           : (data[0]?.out_has_more ?? false),

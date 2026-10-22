@@ -118,19 +118,44 @@ export function truncateCodePoints(value: string, maximum: number) {
   return Array.from(value).slice(0, maximum).join("");
 }
 
+function compareTaskCommentsNewestFirst(
+  left: TaskComment,
+  right: TaskComment,
+) {
+  const timeDifference =
+    new Date(right.out_created_at).getTime() -
+    new Date(left.out_created_at).getTime();
+  if (timeDifference !== 0) return timeDifference;
+  return right.out_id.localeCompare(left.out_id);
+}
+
 export function mergeTaskCommentPages(
   current: TaskComment[],
   incoming: TaskComment[],
 ) {
   const byId = new Map(current.map((comment) => [comment.out_id, comment]));
   for (const comment of incoming) byId.set(comment.out_id, comment);
-  return [...byId.values()].sort((left, right) => {
-    const timeDifference =
-      new Date(right.out_created_at).getTime() -
-      new Date(left.out_created_at).getTime();
-    if (timeDifference !== 0) return timeDifference;
-    return right.out_id.localeCompare(left.out_id);
-  });
+  return [...byId.values()].sort(compareTaskCommentsNewestFirst);
+}
+
+export function replaceTaskCommentNewestPage(
+  current: TaskComment[],
+  incoming: TaskComment[],
+  pageSize = TASK_COMMENT_PAGE_SIZE,
+) {
+  if (incoming.length < pageSize) return incoming;
+
+  const oldestIncoming = incoming.at(-1);
+  if (!oldestIncoming) return [];
+
+  const cachedOlderComments = current.filter(
+    (comment) =>
+      compareTaskCommentsNewestFirst(comment, oldestIncoming) > 0,
+  );
+
+  return [...incoming, ...cachedOlderComments].sort(
+    compareTaskCommentsNewestFirst,
+  );
 }
 
 export function getTaskCommentErrorCode(error: unknown) {
