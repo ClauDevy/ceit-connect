@@ -14,8 +14,10 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
 import { TaskEditControls } from "@/components/tasks/task-edit-controls";
+import { TaskPeopleControls } from "@/components/tasks/task-people-controls";
 import {
   YourWorkCard,
   type NewWorkLink,
@@ -36,6 +38,8 @@ import {
 import {
   getTaskEditErrorMessage,
   isTaskEditControlData,
+  isTaskDeleteResult,
+  isTaskPeopleMutationResult,
   type TaskEditControlData,
 } from "@/lib/tasks/edit-controls";
 import {
@@ -249,6 +253,12 @@ function RealTask({
       isConfidential: boolean,
       viewerIds: string[],
     ) => Promise<void>;
+    onAssignPeople: (
+      primaryAssigneeIds: string[],
+      assistAssigneeIds: string[],
+    ) => Promise<void>;
+    onDeleteTask: () => Promise<void>;
+    onUnassignSelf: () => Promise<void>;
   };
 }) {
   const dependencyName = task.dependency_label ?? "a task you can’t view";
@@ -339,11 +349,20 @@ function RealTask({
           </Card>
 
           {editControls.data ? (
-            <TaskEditControls
-              controls={editControls.data}
-              onSaveDependency={editControls.onSaveDependency}
-              onSaveConfidentiality={editControls.onSaveConfidentiality}
-            />
+            <>
+              <TaskEditControls
+                controls={editControls.data}
+                onSaveDependency={editControls.onSaveDependency}
+                onSaveConfidentiality={editControls.onSaveConfidentiality}
+              />
+              <TaskPeopleControls
+                controls={editControls.data}
+                taskTitle={task.title}
+                onAssignPeople={editControls.onAssignPeople}
+                onDeleteTask={editControls.onDeleteTask}
+                onUnassignSelf={editControls.onUnassignSelf}
+              />
+            </>
           ) : null}
 
           {task.is_confidential &&
@@ -438,6 +457,7 @@ function TaskDetailContents({
   canFetch = true,
 }: TaskDetailProps) {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const query = useQuery({
     queryKey: ["task-detail", taskId],
     queryFn: async ({ signal }) => {
@@ -565,6 +585,81 @@ function TaskDetailContents({
     await refreshAccess();
   }
 
+  async function assignPeople(
+    primaryAssigneeIds: string[],
+    assistAssigneeIds: string[],
+  ) {
+    try {
+      const { data, error } = await supabase.rpc("assign_task_people", {
+        p_task_id: taskId,
+        p_primary_assignees: primaryAssigneeIds,
+        p_assist_assignees: assistAssigneeIds,
+      });
+      if (error) throw error;
+      if (
+        !Array.isArray(data) ||
+        data.length !== 1 ||
+        !isTaskPeopleMutationResult(data[0])
+      ) {
+        throw new Error("The assignment writer returned an invalid response.");
+      }
+    } catch (error) {
+      await refreshAccess();
+      throw new Error(getTaskEditErrorMessage(error, "assignment"));
+    }
+
+    await refreshAccess();
+  }
+
+  async function deleteTask() {
+    const backHref = getTaskBackHref(query.data ?? null);
+    try {
+      const { data, error } = await supabase.rpc("delete_task", {
+        p_task_id: taskId,
+      });
+      if (error) throw error;
+      if (
+        !Array.isArray(data) ||
+        data.length !== 1 ||
+        !isTaskDeleteResult(data[0])
+      ) {
+        throw new Error("The delete writer returned an invalid response.");
+      }
+    } catch (error) {
+      await refreshAccess();
+      throw new Error(getTaskEditErrorMessage(error, "delete"));
+    }
+
+    router.replace(backHref);
+  }
+
+  async function unassignSelf() {
+    const backHref = getTaskBackHref(query.data ?? null);
+    const willLoseAccess =
+      editControlsQuery.data?.self_unassign_will_lose_access === true;
+    try {
+      const { data, error } = await supabase.rpc("unassign_self", {
+        p_task_id: taskId,
+      });
+      if (error) throw error;
+      if (
+        !Array.isArray(data) ||
+        data.length !== 1 ||
+        !isTaskPeopleMutationResult(data[0])
+      ) {
+        throw new Error(
+          "The self-unassign writer returned an invalid response.",
+        );
+      }
+    } catch (error) {
+      await refreshAccess();
+      throw new Error(getTaskEditErrorMessage(error, "unassign"));
+    }
+
+    await refreshAccess();
+    if (willLoseAccess) router.replace(backHref);
+  }
+
   async function addWorkLink(link: NewWorkLink) {
     const { data, error } = await supabase.rpc("add_task_work_link", {
       p_task_id: taskId,
@@ -673,6 +768,9 @@ function TaskDetailContents({
             data: editControlsQuery.data,
             onSaveDependency: saveDependency,
             onSaveConfidentiality: saveConfidentiality,
+            onAssignPeople: assignPeople,
+            onDeleteTask: deleteTask,
+            onUnassignSelf: unassignSelf,
           }}
         />
       )}
