@@ -1,6 +1,6 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-10-18. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-10-22. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 ## Phase 0 — Scaffold (done)
 
