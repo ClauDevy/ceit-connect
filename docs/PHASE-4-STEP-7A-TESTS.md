@@ -297,9 +297,12 @@ begin
   v_results := v_results || format(E'\nOTHER_COMMITTEE_COADMIN_NONCONFIDENTIAL_ALLOWED: %s', case when v_ok then 'PASS' else 'FAIL' end);
   v_results := v_results || format(E'\nASSIGNMENT_ACTIVITY_EXACTLY_ONCE: %s', case when v_activity_after = v_activity_before + 1 then 'PASS' else 'FAIL' end);
 
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000011','role','authenticated')::text, true);
   select sort_order into v_rank from public.tasks where id = '7a020000-0000-4000-8000-000000000205';
   select count(*) into v_activity_before from public.activity_log where task_id = '7a020000-0000-4000-8000-000000000205' and action = 'UPDATE';
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000013','role','authenticated')::text, true);
   perform public.assign_task_people('7a020000-0000-4000-8000-000000000205','{}'::uuid[],'{}'::uuid[]);
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000011','role','authenticated')::text, true);
   select count(*) into v_activity_after from public.activity_log where task_id = '7a020000-0000-4000-8000-000000000205' and action = 'UPDATE';
   select status = 'To Do'
     and sort_order = v_rank
@@ -308,6 +311,7 @@ begin
   into v_ok from public.tasks where id = '7a020000-0000-4000-8000-000000000205';
   v_results := v_results || format(E'\nASSIGN_TODO_ASSIST_REMOVAL_PRESERVES_RANK_AND_LOGS_ONCE: %s', case when v_ok and v_activity_after = v_activity_before + 1 then 'PASS' else 'FAIL' end);
 
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000013','role','authenticated')::text, true);
   v_denied := false;
   begin
     perform public.assign_task_people('7a020000-0000-4000-8000-000000000202',array['7a020000-0000-4000-8000-000000000013']::uuid[],'{}'::uuid[]);
@@ -324,15 +328,21 @@ begin
   select primary_assignees = array['7a020000-0000-4000-8000-000000000013']::uuid[] into v_ok from public.tasks where id = '7a020000-0000-4000-8000-000000000202';
   v_results := v_results || format(E'\nALLOWED_VIEWER_COADMIN_CONFIDENTIAL_ALLOWED: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000011','role','authenticated')::text, true);
   select sort_order into v_rank from public.tasks where id = '7a020000-0000-4000-8000-000000000203';
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000013','role','authenticated')::text, true);
   perform public.assign_task_people('7a020000-0000-4000-8000-000000000203','{}'::uuid[],array['7a020000-0000-4000-8000-000000000014']::uuid[]);
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000011','role','authenticated')::text, true);
   select status = 'Completed' and sort_order = v_rank into v_ok from public.tasks where id = '7a020000-0000-4000-8000-000000000203';
   v_results := v_results || format(E'\nCOMPLETED_ASSIGNMENT_PRESERVES_STATUS_AND_RANK: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000013','role','authenticated')::text, true);
   perform public.assign_task_people('7a020000-0000-4000-8000-000000000204',array['7a020000-0000-4000-8000-000000000015','7a020000-0000-4000-8000-000000000014']::uuid[],'{}'::uuid[]);
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000011','role','authenticated')::text, true);
   select '7a020000-0000-4000-8000-000000000015'::uuid = any(primary_assignees) into v_ok from public.tasks where id = '7a020000-0000-4000-8000-000000000204';
   v_results := v_results || format(E'\nSTORED_INACTIVE_PRIMARY_RETAINED: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
+  perform set_config('request.jwt.claims', json_build_object('sub','7a020000-0000-4000-8000-000000000013','role','authenticated')::text, true);
   v_denied := false;
   begin
     perform public.assign_task_people('7a020000-0000-4000-8000-000000000204',array['7a020000-0000-4000-8000-000000000014']::uuid[],array['7a020000-0000-4000-8000-000000000015']::uuid[]);
@@ -442,8 +452,11 @@ begin
   end;
   v_results := v_results || format(E'\nNON_TODO_REJECTED: %s', case when v_denied then 'PASS' else 'FAIL' end);
 
+  perform set_config('request.jwt.claims',json_build_object('sub','7a030000-0000-4000-8000-000000000011','role','authenticated')::text,true);
   select count(*) into v_before from public.activity_log where action = 'DELETE' and changes->>'id' = '7a030000-0000-4000-8000-000000000202';
+  perform set_config('request.jwt.claims',json_build_object('sub','7a030000-0000-4000-8000-000000000012','role','authenticated')::text,true);
   perform public.delete_task('7a030000-0000-4000-8000-000000000202');
+  perform set_config('request.jwt.claims',json_build_object('sub','7a030000-0000-4000-8000-000000000011','role','authenticated')::text,true);
   set constraints all immediate;
   select count(*) into v_after from public.activity_log where action = 'DELETE' and changes->>'id' = '7a030000-0000-4000-8000-000000000202';
   v_results := v_results || format(E'\nCROSS_COMMITTEE_COADMIN_DELETE_AND_ONE_ACTIVITY: %s', case when v_after = v_before + 1 then 'PASS' else 'FAIL' end);
@@ -560,7 +573,9 @@ begin
   select event_id into v_event_id
   from public.tasks where id = '7a040000-0000-4000-8000-000000000201';
   select count(*) into v_activity_before from public.activity_log where task_id = '7a040000-0000-4000-8000-000000000201' and action = 'UPDATE';
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000012','role','authenticated')::text,true);
   perform public.unassign_self('7a040000-0000-4000-8000-000000000201');
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000011','role','authenticated')::text,true);
   select count(*) into v_activity_after from public.activity_log where task_id = '7a040000-0000-4000-8000-000000000201' and action = 'UPDATE';
   select count(*) into v_actor_time_rows
   from public.activity_log
@@ -577,7 +592,9 @@ begin
 
   select sort_order into v_stored_sort_order from public.tasks where id = '7a040000-0000-4000-8000-000000000208';
   select count(*) into v_activity_before from public.activity_log where task_id = '7a040000-0000-4000-8000-000000000208' and action = 'UPDATE';
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000012','role','authenticated')::text,true);
   perform public.unassign_self('7a040000-0000-4000-8000-000000000208');
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000011','role','authenticated')::text,true);
   select count(*) into v_activity_after from public.activity_log where task_id = '7a040000-0000-4000-8000-000000000208' and action = 'UPDATE';
   select status = 'To Do'
     and sort_order = v_stored_sort_order
@@ -586,10 +603,13 @@ begin
   into v_ok from public.tasks where id = '7a040000-0000-4000-8000-000000000208';
   v_results := v_results || format(E'\nSELF_UNASSIGN_TODO_ASSIST_PRESERVES_RANK_AND_LOGS_ONCE: %s', case when v_ok and v_activity_after = v_activity_before + 1 then 'PASS' else 'FAIL' end);
 
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000012','role','authenticated')::text,true);
   perform public.unassign_self('7a040000-0000-4000-8000-000000000202');
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000011','role','authenticated')::text,true);
   v_results := v_results || format(E'\nMORE_THAN_72_HOURS_ALLOWED: %s', case when exists (select 1 from public.tasks where id = '7a040000-0000-4000-8000-000000000202' and cardinality(primary_assignees)=0) then 'PASS' else 'FAIL' end);
 
   foreach v_event_id in array array['7a040000-0000-4000-8000-000000000203'::uuid,'7a040000-0000-4000-8000-000000000204'::uuid] loop
+    perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000012','role','authenticated')::text,true);
     v_denied := false;
     begin
       perform public.unassign_self(v_event_id);
@@ -598,14 +618,17 @@ begin
     v_results := v_results || format(E'\nEXACT_OR_OVERDUE_REJECTED_CCU72: %s', case when v_denied then 'PASS' else 'FAIL' end);
   end loop;
 
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000012','role','authenticated')::text,true);
   v_denied := false;
   begin
     perform public.unassign_self('7a040000-0000-4000-8000-000000000205');
   exception when sqlstate 'CCU73' then v_denied := sqlerrm like '%Completed tasks cannot be self-unassigned%';
   end;
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000011','role','authenticated')::text,true);
   v_results := v_results || format(E'\nCOMPLETED_REJECTED_CCU73_WITHOUT_RESET: %s', case when v_denied and exists (select 1 from public.tasks where id='7a040000-0000-4000-8000-000000000205' and status='Completed') then 'PASS' else 'FAIL' end);
 
   select count(*) into v_activity_before from public.activity_log where action='UPDATE' and task_id in ('7a040000-0000-4000-8000-000000000206','7a040000-0000-4000-8000-000000000207');
+  perform set_config('request.jwt.claims',json_build_object('sub','7a040000-0000-4000-8000-000000000011','role','authenticated')::text,true);
   perform public.assign_task_people('7a040000-0000-4000-8000-000000000206','{}'::uuid[],'{}'::uuid[]);
   set constraints all immediate;
   select count(*) into v_activity_after from public.activity_log where action='UPDATE' and task_id in ('7a040000-0000-4000-8000-000000000206','7a040000-0000-4000-8000-000000000207');
