@@ -4,6 +4,10 @@ import { InlineAlert } from "@/components/ui/inline-alert";
 import { PageHeader } from "@/components/shared/page-header";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import {
+  isTaskAssigneeWorkload,
+  toEventAssigneeOption,
+} from "@/lib/tasks/workload";
 
 export default async function CreateEventPage() {
   const user = await requireUser();
@@ -26,7 +30,7 @@ export default async function CreateEventPage() {
       .eq("id", user.id)
       .single(),
     supabase.from("committees").select("id, name").order("name"),
-    supabase.rpc("list_active_task_assignees"),
+    supabase.rpc("list_active_task_assignees_with_workload"),
     supabase
       .from("events")
       .select("id, name, start_date")
@@ -40,7 +44,13 @@ export default async function CreateEventPage() {
     assigneesResult.error ??
     archivedEventsResult.error;
 
-  if (loadError || !currentProfileResult.data) {
+  const workloadRows: unknown = assigneesResult.data;
+  const workloadDataInvalid =
+    !assigneesResult.error &&
+    (!Array.isArray(workloadRows) ||
+      !workloadRows.every(isTaskAssigneeWorkload));
+
+  if (loadError || workloadDataInvalid || !currentProfileResult.data) {
     console.error("Failed to load Create Event task options:", loadError);
     return (
       <div className="mx-auto max-w-5xl">
@@ -69,7 +79,11 @@ export default async function CreateEventPage() {
       role={currentProfile.role}
       committees={committees}
       taskCommittees={taskCommittees}
-      assignees={assigneesResult.data ?? []}
+      assignees={
+        Array.isArray(workloadRows)
+          ? workloadRows.filter(isTaskAssigneeWorkload).map(toEventAssigneeOption)
+          : []
+      }
       archivedTemplates={(archivedEventsResult.data ?? []).map((event) => ({
         id: event.id,
         name: event.name,

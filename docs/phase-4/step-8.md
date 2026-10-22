@@ -1,6 +1,8 @@
 # Step 8 — Backlog claim, self-service assistance, and workload
 
-**Status:** Optional.
+**Status:** Step 8A database contracts are live on Dev and Prod. Step 8B UI is implemented locally.
+
+- Step 8B adds Claim buttons to real Backlog cards, caller-session backup and volunteer controls on task detail, workload labels in leadership assignment pickers, and a paginated Help Wanted surface at `/workspace`. The navigation label is **Tasks** so Step 9A can add the personal My Tasks feed beside Help Wanted without another route or navigation rename.
 
 - Add `claim_task(...)`: any active Admin, Co-Admin, or Member from any committee may claim an unassigned Backlog task. The function derives the claimant from `auth.uid()`, locks and re-reads the task, requires no primary assignees at lock time, and adds the caller exactly once. There is no per-user task limit. Reject Draft and Archived tasks and make concurrent claims deterministic.
 - Show safe workload counts in leadership assignee pickers, such as “Maria — 4 active tasks,” through a restricted aggregate function. Return only active users already available to the picker and counts of non-Completed primary/assist assignments; never return task titles or other task content.

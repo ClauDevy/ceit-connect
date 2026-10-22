@@ -27,7 +27,7 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
     >
       <Icon className="size-5" aria-hidden />
       {/* "Executive Dashboard" is too long for a tab; the full name is in the page header. */}
-      {item.href === "/dashboard" ? "Dashboard" : item.href === "/workspace" ? "Tasks" : item.label}
+      {item.href === "/dashboard" ? "Dashboard" : item.label}
     </Link>
   )
 }

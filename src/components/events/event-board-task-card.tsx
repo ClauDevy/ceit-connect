@@ -28,6 +28,7 @@ import {
   type BoardTask,
 } from "@/lib/events/board";
 import type { MovePermission } from "@/lib/events/board-move";
+import { isClaimableBacklogTask } from "@/lib/tasks/backup";
 import { cn } from "@/lib/utils";
 
 const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -93,6 +94,8 @@ type CardBodyProps = {
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   onMoveStatus?: (task: BoardTask, status: BoardStatus) => void;
+  claimBusy?: boolean;
+  onClaim?: (task: BoardTask) => void;
 };
 
 function CardBody({
@@ -104,6 +107,8 @@ function CardBody({
   dragAttributes,
   dragListeners,
   onMoveStatus,
+  claimBusy = false,
+  onClaim,
 }: CardBodyProps) {
   const showBacklogFooter =
     task.is_masked ||
@@ -211,6 +216,23 @@ function CardBody({
               {task.phase?.trim() || "Unphased"}
             </span>
           </div>
+        ) : null}
+
+        {backlog && isClaimableBacklogTask(task) && onClaim ? (
+          <Button
+            type="button"
+            className="w-full"
+            disabled={busy || claimBusy}
+            onClick={() => onClaim(task)}
+          >
+            {claimBusy ? (
+              <>
+                <LoaderCircle className="animate-spin" aria-hidden /> Claiming
+              </>
+            ) : (
+              "Claim Task"
+            )}
+          </Button>
         ) : null}
 
         {!backlog || showBacklogFooter ? (

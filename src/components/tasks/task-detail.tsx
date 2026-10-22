@@ -17,6 +17,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
 import { TaskEditControls } from "@/components/tasks/task-edit-controls";
+import {
+  TaskBackupRequestedCard,
+  TaskBackupToggle,
+  type BackupBusyAction,
+} from "@/components/tasks/task-backup-controls";
 import { TaskPeopleControls } from "@/components/tasks/task-people-controls";
 import {
   YourWorkCard,
@@ -47,6 +52,21 @@ import {
   isTaskWorkLinks,
   type TaskWorkLinks,
 } from "@/lib/tasks/work-links";
+import {
+  getAcceptVolunteerOutcomeMessage,
+  getTaskBackupErrorMessage,
+  isAcceptVolunteerResult,
+  isBackupToggleResult,
+  isTaskBackupState,
+  isVolunteerTaskResult,
+  isWithdrawVolunteerResult,
+  type TaskBackupState,
+} from "@/lib/tasks/backup";
+import {
+  isTaskAssigneeWorkload,
+  workloadCountsByUserId,
+  type TaskAssigneeWorkload,
+} from "@/lib/tasks/workload";
 import { createClient } from "@/lib/supabase/client";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
@@ -55,6 +75,8 @@ type TaskDetailProps = {
   initialTask?: TaskDetailData | null;
   initialWorkLinks?: TaskWorkLinks | null;
   initialEditControls?: TaskEditControlData | null;
+  initialBackupState?: TaskBackupState | null;
+  initialWorkloads?: TaskAssigneeWorkload[];
   canFetch?: boolean;
 };
 
@@ -243,6 +265,7 @@ function RealTask({
   task,
   workLinks,
   editControls,
+  backup,
 }: {
   task: TaskDetailData;
   workLinks: WorkLinksSectionProps;
@@ -259,6 +282,17 @@ function RealTask({
     ) => Promise<void>;
     onDeleteTask: () => Promise<void>;
     onUnassignSelf: () => Promise<void>;
+    workloadCounts: ReadonlyMap<string, number>;
+  };
+  backup: {
+    data: TaskBackupState | null | undefined;
+    busyAction: BackupBusyAction;
+    error: string | null;
+    notice: string | null;
+    onToggle: (nextState: boolean) => Promise<void>;
+    onVolunteer: () => Promise<void>;
+    onWithdraw: () => Promise<void>;
+    onAccept: (userId: string) => Promise<void>;
   };
 }) {
   const dependencyName = task.dependency_label ?? "a task you can’t view";
@@ -315,6 +349,23 @@ function RealTask({
         <p className="mt-1 text-sm text-muted-foreground">
           {task.event_name} · {task.committee_name}
         </p>
+        {backup.data?.out_can_toggle_backup ? (
+          <div className="mt-4">
+            <TaskBackupToggle
+              state={backup.data}
+              busyAction={backup.busyAction}
+              onToggle={backup.onToggle}
+            />
+          </div>
+        ) : null}
+        <div className="mt-3" aria-live="polite" aria-atomic="true">
+          {backup.error ? <InlineAlert>{backup.error}</InlineAlert> : null}
+          {backup.notice ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {backup.notice}
+            </p>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -333,6 +384,16 @@ function RealTask({
         </div>
 
         <aside className="space-y-5">
+          {backup.data ? (
+            <TaskBackupRequestedCard
+              state={backup.data}
+              busyAction={backup.busyAction}
+              onVolunteer={backup.onVolunteer}
+              onWithdraw={backup.onWithdraw}
+              onAccept={backup.onAccept}
+            />
+          ) : null}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
@@ -361,6 +422,7 @@ function RealTask({
                 onAssignPeople={editControls.onAssignPeople}
                 onDeleteTask={editControls.onDeleteTask}
                 onUnassignSelf={editControls.onUnassignSelf}
+                workloadCounts={editControls.workloadCounts}
               />
             </>
           ) : null}
@@ -454,10 +516,16 @@ function TaskDetailContents({
   initialTask,
   initialWorkLinks,
   initialEditControls,
+  initialBackupState,
+  initialWorkloads,
   canFetch = true,
 }: TaskDetailProps) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const [backupBusyAction, setBackupBusyAction] =
+    useState<BackupBusyAction>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupNotice, setBackupNotice] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["task-detail", taskId],
     queryFn: async ({ signal }) => {
@@ -535,12 +603,196 @@ function TaskDetailContents({
     refetchIntervalInBackground: false,
   });
 
+  const backupStateQuery = useQuery({
+    queryKey: ["task-backup-state", taskId],
+    queryFn: async ({ signal }) => {
+      let request = supabase.rpc("get_task_backup_state", {
+        p_task_id: taskId,
+      });
+      request = request.abortSignal(signal);
+      const { data, error } = await request;
+      if (error) throw error;
+      if (!Array.isArray(data) || data.length > 1) {
+        throw new Error("The task backup state returned an invalid response.");
+      }
+      if (data.length === 0) return null;
+      if (!isTaskBackupState(data[0])) {
+        throw new Error("The task backup state returned an invalid response.");
+      }
+      return data[0];
+    },
+    enabled:
+      canFetch &&
+      query.data !== undefined &&
+      query.data !== null &&
+      !query.data.is_masked,
+    initialData: initialBackupState,
+    refetchOnWindowFocus: true,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
+
+  const workloadQuery = useQuery({
+    queryKey: ["task-assignee-workload"],
+    queryFn: async ({ signal }) => {
+      let request = supabase.rpc("list_active_task_assignees_with_workload");
+      request = request.abortSignal(signal);
+      const { data, error } = await request;
+      if (error) throw error;
+      if (!Array.isArray(data) || !data.every(isTaskAssigneeWorkload)) {
+        throw new Error("The task workload reader returned an invalid response.");
+      }
+      return data;
+    },
+    enabled: canFetch && editControlsQuery.data?.can_assign_people === true,
+    initialData: initialWorkloads,
+    refetchOnWindowFocus: true,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
+
+  const workloadCounts = useMemo(
+    () => workloadCountsByUserId(workloadQuery.data ?? []),
+    [workloadQuery.data],
+  );
+
   async function refreshAccess() {
     await Promise.all([
       query.refetch(),
       workLinksQuery.refetch(),
       editControlsQuery.refetch(),
+      backupStateQuery.refetch(),
+      editControlsQuery.data?.can_assign_people
+        ? workloadQuery.refetch()
+        : Promise.resolve(),
     ]);
+  }
+
+  async function setBackupRequest(nextState: boolean) {
+    if (backupBusyAction) return;
+    setBackupBusyAction("toggle-backup");
+    setBackupError(null);
+    setBackupNotice(null);
+    try {
+      const { data, error } = await supabase.rpc("set_task_backup_request", {
+        p_task_id: taskId,
+        p_request_backup: nextState,
+      });
+      if (error) throw error;
+      if (
+        !Array.isArray(data) ||
+        data.length !== 1 ||
+        !isBackupToggleResult(data[0])
+      ) {
+        throw new Error("The backup writer returned an invalid response.");
+      }
+      setBackupNotice(
+        nextState ? "Backup requested." : "Backup request cancelled.",
+      );
+    } catch (error) {
+      const refreshed = await backupStateQuery.refetch();
+      const code =
+        error && typeof error === "object"
+          ? (error as { code?: string }).code
+          : undefined;
+      const noOpReachedCurrentState =
+        code === "CCB05" &&
+        refreshed.data?.out_request_backup === nextState;
+      if (!noOpReachedCurrentState) {
+        setBackupError(getTaskBackupErrorMessage("toggle-backup", error));
+      }
+    } finally {
+      try {
+        await refreshAccess();
+      } finally {
+        setBackupBusyAction(null);
+      }
+    }
+  }
+
+  async function volunteerForTask() {
+    if (backupBusyAction) return;
+    setBackupBusyAction("volunteer");
+    setBackupError(null);
+    setBackupNotice(null);
+    try {
+      const { data, error } = await supabase.rpc("volunteer_for_task", {
+        p_task_id: taskId,
+      });
+      if (error) throw error;
+      if (
+        !Array.isArray(data) ||
+        data.length !== 1 ||
+        !isVolunteerTaskResult(data[0])
+      ) {
+        throw new Error("The volunteer writer returned an invalid response.");
+      }
+      setBackupNotice("You volunteered to help.");
+    } catch (error) {
+      setBackupError(getTaskBackupErrorMessage("volunteer", error));
+    } finally {
+      try {
+        await refreshAccess();
+      } finally {
+        setBackupBusyAction(null);
+      }
+    }
+  }
+
+  async function withdrawVolunteer() {
+    if (backupBusyAction) return;
+    setBackupBusyAction("withdraw");
+    setBackupError(null);
+    setBackupNotice(null);
+    try {
+      const { data, error } = await supabase.rpc("withdraw_task_volunteer", {
+        p_task_id: taskId,
+      });
+      if (error) throw error;
+      if (
+        !Array.isArray(data) ||
+        data.length !== 1 ||
+        !isWithdrawVolunteerResult(data[0])
+      ) {
+        throw new Error("The withdrawal writer returned an invalid response.");
+      }
+      setBackupNotice("Your volunteer offer was withdrawn.");
+    } catch (error) {
+      setBackupError(getTaskBackupErrorMessage("withdraw", error));
+    } finally {
+      try {
+        await refreshAccess();
+      } finally {
+        setBackupBusyAction(null);
+      }
+    }
+  }
+
+  async function acceptVolunteer(userId: string) {
+    if (backupBusyAction) return;
+    setBackupBusyAction(`accept:${userId}`);
+    setBackupError(null);
+    setBackupNotice(null);
+    try {
+      const { data, error } = await supabase.rpc("accept_task_volunteer", {
+        p_task_id: taskId,
+        p_user_id: userId,
+      });
+      if (error) throw error;
+      const result = Array.isArray(data) ? data[0] : null;
+      if (!result || data.length !== 1 || !isAcceptVolunteerResult(result)) {
+        throw new Error("The acceptance writer returned an invalid response.");
+      }
+      setBackupNotice(getAcceptVolunteerOutcomeMessage(result.out_outcome));
+    } catch (error) {
+      setBackupError(getTaskBackupErrorMessage("accept", error));
+    } finally {
+      try {
+        await refreshAccess();
+      } finally {
+        setBackupBusyAction(null);
+      }
+    }
   }
 
   async function saveDependency(dependencyId: string | null) {
@@ -771,6 +1023,17 @@ function TaskDetailContents({
             onAssignPeople: assignPeople,
             onDeleteTask: deleteTask,
             onUnassignSelf: unassignSelf,
+            workloadCounts,
+          }}
+          backup={{
+            data: backupStateQuery.data,
+            busyAction: backupBusyAction,
+            error: backupError,
+            notice: backupNotice,
+            onToggle: setBackupRequest,
+            onVolunteer: volunteerForTask,
+            onWithdraw: withdrawVolunteer,
+            onAccept: acceptVolunteer,
           }}
         />
       )}

@@ -8,6 +8,10 @@ import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { APP_TIME_ZONE } from "@/lib/timezone";
+import {
+  isTaskAssigneeWorkload,
+  toEventAssigneeOption,
+} from "@/lib/tasks/workload";
 
 type EditableEvent = {
   id: string;
@@ -124,7 +128,7 @@ export default async function EditEventPage({
         .eq("id", user.id)
         .single(),
       supabase.from("committees").select("id, name").order("name"),
-      supabase.rpc("list_active_task_assignees"),
+      supabase.rpc("list_active_task_assignees_with_workload"),
       supabase
         .from("tasks")
         .select(
@@ -141,7 +145,13 @@ export default async function EditEventPage({
     assigneesResult.error ??
     tasksResult.error;
 
-  if (loadError || !currentProfileResult.data) {
+  const workloadRows: unknown = assigneesResult.data;
+  const workloadDataInvalid =
+    !assigneesResult.error &&
+    (!Array.isArray(workloadRows) ||
+      !workloadRows.every(isTaskAssigneeWorkload));
+
+  if (loadError || workloadDataInvalid || !currentProfileResult.data) {
     console.error("Failed to load Edit Event options:", loadError);
     return <LoadError />;
   }
@@ -212,7 +222,11 @@ export default async function EditEventPage({
       role={currentProfile.role}
       committees={committees}
       taskCommittees={taskCommittees}
-      assignees={assigneesResult.data ?? []}
+      assignees={
+        Array.isArray(workloadRows)
+          ? workloadRows.filter(isTaskAssigneeWorkload).map(toEventAssigneeOption)
+          : []
+      }
       bannerNotice={
         query.banner === "failed"
           ? "The event was saved, but its banner could not be uploaded. Try adding it again here."
