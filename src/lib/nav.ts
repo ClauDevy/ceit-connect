@@ -26,7 +26,7 @@ const LEADERSHIP: readonly Role[] = ["Admin", "Co-Admin"];
 // still guarded server-side (see ARCHITECTURE §4F: hide the door, lock the door).
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/home", label: "Home", icon: House, roles: EVERYONE, pinnedOnMobile: true },
-  { href: "/workspace", label: "My Tasks", icon: ListTodo, roles: EVERYONE, pinnedOnMobile: true },
+  { href: "/workspace", label: "Tasks", icon: ListTodo, roles: EVERYONE, pinnedOnMobile: true },
   { href: "/archives", label: "Event Archives", icon: Archive, roles: EVERYONE },
   { href: "/dashboard", label: "Executive Dashboard", icon: ChartColumn, roles: LEADERSHIP, pinnedOnMobile: true },
   { href: "/activity-log", label: "Activity Log", icon: History, roles: ["Admin"] },

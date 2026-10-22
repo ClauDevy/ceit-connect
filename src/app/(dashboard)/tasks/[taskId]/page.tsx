@@ -15,6 +15,14 @@ import {
   isTaskWorkLinks,
   type TaskWorkLinks,
 } from "@/lib/tasks/work-links";
+import {
+  isTaskBackupState,
+  type TaskBackupState,
+} from "@/lib/tasks/backup";
+import {
+  isTaskAssigneeWorkload,
+  type TaskAssigneeWorkload,
+} from "@/lib/tasks/workload";
 import { createClient } from "@/lib/supabase/server";
 
 const UUID_PATTERN =
@@ -22,10 +30,18 @@ const UUID_PATTERN =
 
 async function TaskData({ taskId }: { taskId: string }) {
   const supabase = await createClient();
-  const [detailResult, workLinksResult, editControlsResult] = await Promise.all([
+  const [
+    detailResult,
+    workLinksResult,
+    editControlsResult,
+    backupStateResult,
+    workloadResult,
+  ] = await Promise.all([
     supabase.rpc("get_task_detail", { p_task_id: taskId }),
     supabase.rpc("get_task_work_links", { p_task_id: taskId }),
     supabase.rpc("get_task_edit_controls", { p_task_id: taskId }),
+    supabase.rpc("get_task_backup_state", { p_task_id: taskId }),
+    supabase.rpc("list_active_task_assignees_with_workload"),
   ]);
 
   if (detailResult.error) {
@@ -82,12 +98,44 @@ async function TaskData({ taskId }: { taskId: string }) {
     console.error("Task edit controls returned invalid data.");
   }
 
+  let initialBackupState: TaskBackupState | null | undefined;
+  if (backupStateResult.error) {
+    console.error("Failed to load task backup state:", backupStateResult.error);
+  } else if (
+    Array.isArray(backupStateResult.data) &&
+    backupStateResult.data.length === 0
+  ) {
+    initialBackupState = null;
+  } else if (
+    Array.isArray(backupStateResult.data) &&
+    backupStateResult.data.length === 1 &&
+    isTaskBackupState(backupStateResult.data[0])
+  ) {
+    initialBackupState = backupStateResult.data[0];
+  } else {
+    console.error("Task backup state returned invalid data.");
+  }
+
+  let initialWorkloads: TaskAssigneeWorkload[] | undefined;
+  if (workloadResult.error) {
+    console.error("Failed to load task assignee workload:", workloadResult.error);
+  } else if (
+    Array.isArray(workloadResult.data) &&
+    workloadResult.data.every(isTaskAssigneeWorkload)
+  ) {
+    initialWorkloads = workloadResult.data;
+  } else {
+    console.error("Task assignee workload returned invalid data.");
+  }
+
   return (
     <TaskDetail
       taskId={taskId}
       initialTask={initialTask}
       initialWorkLinks={initialWorkLinks}
       initialEditControls={initialEditControls}
+      initialBackupState={initialBackupState}
+      initialWorkloads={initialWorkloads}
     />
   );
 }

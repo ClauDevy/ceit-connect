@@ -47,6 +47,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { uploadEventBanner } from "@/lib/event-banner";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
+import { formatWorkloadLabel } from "@/lib/tasks/workload";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
 
@@ -55,6 +56,7 @@ type AssigneeOption = {
   full_name: string;
   committee_id: string | null;
   avatar_url: string | null;
+  activeTaskCount: number;
 };
 
 export type ArchivedEventTemplate = {
@@ -2021,7 +2023,10 @@ function AssigneeGroup({
               className="size-7 text-[10px]"
             />
             <span className="min-w-0 flex-1 truncate text-sm font-medium">
-              {assignee.full_name}
+              {formatWorkloadLabel(
+                assignee.full_name,
+                assignee.activeTaskCount,
+              )}
             </span>
             <span className="shrink-0 text-xs text-muted-foreground">
               {assignee.committee_id
