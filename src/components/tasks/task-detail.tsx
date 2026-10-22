@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
+import { TaskComments } from "@/components/tasks/task-comments";
 import { TaskEditControls } from "@/components/tasks/task-edit-controls";
 import {
   TaskBackupRequestedCard,
@@ -266,8 +267,10 @@ function RealTask({
   workLinks,
   editControls,
   backup,
+  onRefreshTask,
 }: {
   task: TaskDetailData;
+  onRefreshTask: () => Promise<void>;
   workLinks: WorkLinksSectionProps;
   editControls: {
     data: TaskEditControlData | null | undefined;
@@ -381,6 +384,11 @@ function RealTask({
             </CardContent>
           </Card>
           <WorkLinksSection {...workLinks} />
+          <TaskComments
+            taskId={task.id}
+            isArchived={task.event_status === "Archived"}
+            onRefreshTask={onRefreshTask}
+          />
         </div>
 
         <aside className="space-y-5">
@@ -1008,6 +1016,9 @@ function TaskDetailContents({
       ) : (
         <RealTask
           task={query.data}
+          onRefreshTask={async () => {
+            await query.refetch();
+          }}
           workLinks={{
             data: workLinksQuery.data,
             isPending: workLinksQuery.isPending,
