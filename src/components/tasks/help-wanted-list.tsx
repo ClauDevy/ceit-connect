@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   QueryClient,
   QueryClientProvider,
@@ -41,8 +41,15 @@ function priorityVariant(priority: HelpWantedTask["out_effective_priority"]) {
 
 function HelpWantedContents({
   initialTasks,
+  active,
+  onLoadedStateChange,
 }: {
   initialTasks?: HelpWantedTask[];
+  active: boolean;
+  onLoadedStateChange?: (state: {
+    count: number;
+    hasNextPage: boolean;
+  }) => void;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
@@ -73,8 +80,9 @@ function HelpWantedContents({
       lastPage.length === HELP_WANTED_PAGE_SIZE
         ? lastPageParam + HELP_WANTED_PAGE_SIZE
         : undefined,
-    refetchOnWindowFocus: true,
-    refetchInterval: POLL_INTERVAL_MS,
+    enabled: active,
+    refetchOnWindowFocus: active,
+    refetchInterval: active ? POLL_INTERVAL_MS : false,
     refetchIntervalInBackground: false,
   });
 
@@ -85,6 +93,13 @@ function HelpWantedContents({
     }
     return [...byId.values()];
   }, [query.data]);
+
+  useEffect(() => {
+    onLoadedStateChange?.({
+      count: tasks.length,
+      hasNextPage: query.hasNextPage === true,
+    });
+  }, [onLoadedStateChange, query.hasNextPage, tasks.length]);
 
   async function volunteer(taskId: string) {
     if (busyTaskId) return;
@@ -294,8 +309,15 @@ function HelpWantedContents({
 
 export function HelpWantedList({
   initialTasks,
+  active = true,
+  onLoadedStateChange,
 }: {
   initialTasks?: HelpWantedTask[];
+  active?: boolean;
+  onLoadedStateChange?: (state: {
+    count: number;
+    hasNextPage: boolean;
+  }) => void;
 }) {
   const [queryClient] = useState(
     () =>
@@ -306,7 +328,11 @@ export function HelpWantedList({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HelpWantedContents initialTasks={initialTasks} />
+      <HelpWantedContents
+        initialTasks={initialTasks}
+        active={active}
+        onLoadedStateChange={onLoadedStateChange}
+      />
     </QueryClientProvider>
   );
 }

@@ -1,12 +1,17 @@
 import { redirect } from "next/navigation";
-import { HelpWantedList } from "@/components/tasks/help-wanted-list";
 import { PageHeader } from "@/components/shared/page-header";
+import { WorkspaceTasks } from "@/components/tasks/workspace-tasks";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import {
   HELP_WANTED_PAGE_SIZE,
   isHelpWantedTask,
   type HelpWantedTask,
 } from "@/lib/tasks/backup";
+import {
+  getMyTasksRpcArgs,
+  isMyTask,
+  type MyTask,
+} from "@/lib/tasks/my-tasks";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function WorkspacePage() {
@@ -19,16 +24,34 @@ export default async function WorkspacePage() {
   if (!profile) redirect("/home");
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_help_wanted_tasks", {
-    p_limit: HELP_WANTED_PAGE_SIZE,
-    p_offset: 0,
-  });
+  const [myTasksResult, helpWantedResult] = await Promise.all([
+    supabase.rpc("list_my_tasks", getMyTasksRpcArgs(null, "deadline", 0)),
+    supabase.rpc("list_help_wanted_tasks", {
+      p_limit: HELP_WANTED_PAGE_SIZE,
+      p_offset: 0,
+    }),
+  ]);
 
-  let initialTasks: HelpWantedTask[] | undefined;
-  if (error) {
-    console.error("Failed to load Help Wanted tasks:", error);
-  } else if (Array.isArray(data) && data.every(isHelpWantedTask)) {
-    initialTasks = data;
+  let initialMyTasks: MyTask[] | undefined;
+  if (myTasksResult.error) {
+    console.error("Failed to load My Tasks:", myTasksResult.error);
+  } else if (
+    Array.isArray(myTasksResult.data) &&
+    myTasksResult.data.every(isMyTask)
+  ) {
+    initialMyTasks = myTasksResult.data;
+  } else {
+    console.error("My Tasks returned invalid data.");
+  }
+
+  let initialHelpWantedTasks: HelpWantedTask[] | undefined;
+  if (helpWantedResult.error) {
+    console.error("Failed to load Help Wanted tasks:", helpWantedResult.error);
+  } else if (
+    Array.isArray(helpWantedResult.data) &&
+    helpWantedResult.data.every(isHelpWantedTask)
+  ) {
+    initialHelpWantedTasks = helpWantedResult.data;
   } else {
     console.error("Help Wanted tasks returned invalid data.");
   }
@@ -37,19 +60,12 @@ export default async function WorkspacePage() {
     <div className="space-y-6">
       <PageHeader
         title="Tasks"
-        description="Find active tasks that need an extra pair of hands."
+        description="Manage your assigned work and find tasks that need an extra pair of hands."
       />
-      <section aria-labelledby="help-wanted-title" className="space-y-4">
-        <div>
-          <h2 id="help-wanted-title" className="font-display text-xl font-semibold">
-            Help Wanted
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Volunteer for tasks you can fully access from any committee.
-          </p>
-        </div>
-        <HelpWantedList initialTasks={initialTasks} />
-      </section>
+      <WorkspaceTasks
+        initialMyTasks={initialMyTasks}
+        initialHelpWantedTasks={initialHelpWantedTasks}
+      />
     </div>
   );
 }
