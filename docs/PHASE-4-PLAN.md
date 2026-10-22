@@ -45,7 +45,7 @@ Each step follows: own branch → implementation → its independent test docume
 10. **[Step 7A — Assignment, deletion, and self-unassign](phase-4/step-7a.md) — Optional.**
 11. **[Step 7B — Archive-only late sharing](phase-4/step-7b.md) — Optional.**
 12. **[Step 8 — Claiming, backup, volunteers, and workload](phase-4/step-8.md) — Optional.**
-13. **[Step 9 — Task comments](phase-4/step-9.md) — Optional.**
+13. **[Step 9 — Task comments](phase-4/step-9.md) — Required.**
 14. **[Step 9A — Tasks personal feed](phase-4/step-9a.md) — Required.**
 15. **[Step 10 — Phase 4 hardening and gate](phase-4/step-10.md) — Gate-critical.**
 
@@ -65,7 +65,7 @@ Each step follows: own branch → implementation → its independent test docume
 - Phase 4 stores mention, Heads Up, assignment, and unlock intent but sends no notifications.
 - Task boards and Workspace use focus refetch/short polling rather than Realtime.
 - `tasks.created_by` is provenance only; historical backfill values are event-creator fallbacks, not proof of the original task author.
-- Work links (Step 4) and the personal My Tasks feed (Step 9A) were promoted to Required. Assignment/assistance polish, comments, and archive late-sharing remain optional for the minimum Phase 4 gate.
+- Work links (Step 4), task comments (Step 9), and the personal My Tasks feed (Step 9A) were promoted to Required. Assignment/assistance polish and archive late-sharing remain optional for the minimum Phase 4 gate.
 
 ## Unrelated findings
 
