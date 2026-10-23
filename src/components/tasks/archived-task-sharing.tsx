@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { LockKeyhole, RefreshCw, Search } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -85,6 +89,7 @@ export function ArchivedTaskSharing({
     },
     retry: (failureCount, error) =>
       !isArchivedTaskShareUnavailableError(error) && failureCount < 1,
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: true,
     refetchInterval: (query) =>
       query.state.dataUpdatedAt > query.state.errorUpdatedAt
@@ -94,8 +99,9 @@ export function ArchivedTaskSharing({
   });
 
   const lastControlsResponseSucceeded =
-    controlsQuery.data !== undefined &&
-    controlsQuery.dataUpdatedAt > controlsQuery.errorUpdatedAt;
+    controlsQuery.isPlaceholderData ||
+    (controlsQuery.data !== undefined &&
+      controlsQuery.dataUpdatedAt > controlsQuery.errorUpdatedAt);
   const controls = lastControlsResponseSucceeded
     ? (controlsQuery.data ?? [])
     : [];
@@ -160,6 +166,7 @@ export function ArchivedTaskSharing({
       ) {
         await refreshTaskSurface();
       }
+      if (action === "revoke") setRevokeTarget(null);
       setActionError(
         getArchivedTaskShareErrorMessage(error, action),
       );
@@ -232,7 +239,7 @@ export function ArchivedTaskSharing({
               ) : null}
             </div>
 
-            {controlsQuery.isFetching ? (
+            {controlsQuery.isPlaceholderData ? (
               <p className="text-sm text-muted-foreground">Loading people…</p>
             ) : controls.length > 0 ? (
               <div className="max-h-64 space-y-1 overflow-y-auto">
