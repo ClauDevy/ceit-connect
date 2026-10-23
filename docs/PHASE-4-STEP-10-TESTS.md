@@ -345,6 +345,7 @@ select set_config('request.jwt.claims',json_build_object('sub','c1010000-0000-40
 select * from public.add_task_work_link('c1012000-0000-4000-8000-000000000003','Seed','https://drive.google.com/file/d/10C1Seed/view');
 
 reset role;
+select set_config('request.jwt.claims','{}',true);
 update public.events set status='Archived'
 where id in ('c1011000-0000-4000-8000-000000000003','c1011000-0000-4000-8000-000000000004');
 set constraints all immediate;
@@ -366,6 +367,7 @@ declare
   c record; v_ok boolean; v_group jsonb := '{}'::jsonb; v_helper text;
   v_raw integer; v_detail integer; v_masked boolean; v_title text;
   v_comments integer; v_links integer; v_added integer; v_code text; v_message text;
+  v_list_code text; v_list_message text;
   v_pre_revoke boolean := true;
 begin
   for c in select * from (values
@@ -411,18 +413,20 @@ begin
     select count(*),bool_or(is_masked),max(title) into v_detail,v_masked,v_title
       from public.get_task_detail(c.task_id);
     select count(*) into v_links from public.get_task_work_links(c.task_id);
-    v_code := 'NO_ERROR'; v_message := 'NO_ERROR'; v_comments := null;
+    v_list_code := 'NO_ERROR'; v_list_message := 'NO_ERROR'; v_comments := null;
     begin select count(*) into v_comments from public.list_task_comments(c.task_id);
-    exception when others then get stacked diagnostics v_code=returned_sqlstate,v_message=message_text; end;
+    exception when others then get stacked diagnostics v_list_code=returned_sqlstate,v_list_message=message_text; end;
+    v_code := 'NO_ERROR'; v_message := 'NO_ERROR';
     v_added := 0;
     begin select count(*) into v_added from public.add_task_comment(c.task_id,'10C1 access probe');
     exception when others then get stacked diagnostics v_code=returned_sqlstate,v_message=message_text; end;
     execute 'reset role';
+    perform set_config('request.jwt.claims','{}',true);
 
     v_ok := v_helper=c.expected and v_raw=c.raw_expected and (
       (c.expected='real' and v_detail=1 and coalesce(v_masked,false)=false and v_title<>'Confidential Task' and v_links=1 and v_comments is not null and ((c.lifecycle='archived' and v_code='CCC05' and v_message='Archived task comments are read-only.') or (c.lifecycle<>'archived' and v_added=1)))
-      or (c.expected='masked' and v_detail=1 and v_masked is true and v_title='Confidential Task' and v_links=0 and v_code='CCC01' and v_message='The task comments are unavailable.')
-      or (c.expected='hidden' and v_detail=0 and v_links=0 and v_code='CCC01' and v_message='The task comments are unavailable.')
+      or (c.expected='masked' and v_detail=1 and v_masked is true and v_title='Confidential Task' and v_links=0 and v_list_code='CCC01' and v_list_message='The task comments are unavailable.' and v_code='CCC01' and v_message='The task comments are unavailable.')
+      or (c.expected='hidden' and v_detail=0 and v_links=0 and v_list_code='CCC01' and v_list_message='The task comments are unavailable.' and v_code='CCC01' and v_message='The task comments are unavailable.')
     );
 
     if c.ord=13 then
@@ -1116,7 +1120,7 @@ begin
   code:=''; begin update public.tasks set priority='High' where id='c1022000-0000-4000-8000-000000000001'; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
   ok:=ok and code='P0001' and msg='Tasks in Archived events are read-only.';
   code:=''; begin insert into public.tasks(id,event_id,committee_id,title) values('c1022000-0000-4000-8000-000000000004','c1021000-0000-4000-8000-000000000001',current_setting('test.s10c2_c')::uuid,'blocked admin insert'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
-  ok:=ok and code='P0001' and msg='Tasks in Archived events are read-only.'; execute 'reset role';
+  ok:=ok and code='P0001' and msg='Tasks in Archived events are read-only.'; execute 'reset role'; perform set_config('request.jwt.claims','{}',true);
   code:=''; begin update public.tasks set priority='Critical' where id='c1022000-0000-4000-8000-000000000001'; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
   ok:=ok and code='P0001' and msg='Tasks in Archived events are read-only.';
   code:=''; begin insert into public.tasks(id,event_id,committee_id,title) values('c1022000-0000-4000-8000-000000000005','c1021000-0000-4000-8000-000000000001',current_setting('test.s10c2_c')::uuid,'blocked owner insert'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
@@ -1134,7 +1138,7 @@ begin
   code:=''; begin delete from public.tasks where id='c1022000-0000-4000-8000-000000000001'; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
   ok:=ok and code='P0001' and msg='Tasks in Archived events are read-only.';
   update public.events set name=name where id='c1021000-0000-4000-8000-000000000001'; get diagnostics n=row_count;
-  ok:=ok and n=0; execute 'reset role';
+  ok:=ok and n=0; execute 'reset role'; perform set_config('request.jwt.claims','{}',true);
   code:=''; begin delete from public.tasks where id='c1022000-0000-4000-8000-000000000001'; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
   ok:=ok and code='P0001' and msg='Tasks in Archived events are read-only.';
   code:=''; begin update public.events set name='blocked owner' where id='c1021000-0000-4000-8000-000000000001'; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
@@ -1247,7 +1251,7 @@ reset role; set local role authenticated;
 select set_config('request.jwt.claims',json_build_object('sub','c1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
 select public.set_task_confidentiality('c1032000-0000-4000-8000-000000000009',true,'{}');
 
-reset role; update public.events set status='Archived' where id='c1031000-0000-4000-8000-000000000003'; set constraints all immediate;
+reset role; select set_config('request.jwt.claims','{}',true); update public.events set status='Archived' where id='c1031000-0000-4000-8000-000000000003'; set constraints all immediate;
 reset role; set local role authenticated;
 select set_config('request.jwt.claims',json_build_object('sub','c1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
 select public.grant_archived_task_viewer('c1032000-0000-4000-8000-000000000009','c1030000-0000-4000-8000-000000000004');
@@ -1255,6 +1259,7 @@ select public.grant_archived_task_viewer('c1032000-0000-4000-8000-000000000009',
 -- Seed the otherwise-unrepresentable invalid row solely to exercise DELETE's
 -- fail-closed non-Archived-parent branch. Trigger state and row roll back.
 reset role;
+select set_config('request.jwt.claims',json_build_object('sub','c1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
 alter table public.archived_task_viewers disable trigger archived_task_viewers_guard_writes;
 insert into public.archived_task_viewers(task_id,user_id,granted_by) values
  ('c1032000-0000-4000-8000-000000000008','c1030000-0000-4000-8000-000000000002','c1030000-0000-4000-8000-000000000001');
@@ -1284,6 +1289,7 @@ do $$ declare ok boolean; begin
 end $$;
 
 reset role;
+select set_config('request.jwt.claims','{}',true);
 do $$ declare ok boolean; b text; r regprocedure; begin
   select condeferrable and condeferred and contype='u' into ok from pg_constraint where conrelid='public.tasks'::regclass and conname='tasks_lane_sort_order_key';
   perform set_config('test.s10c3_results',current_setting('test.s10c3_results')||format(E'\nTASKS_LANE_SORT_ORDER_KEY_CATALOG: %s',case when ok then 'PASS' else 'FAIL' end),true);
@@ -1333,6 +1339,7 @@ do $$ declare code text; msg text; unchanged boolean; begin
 end $$;
 
 reset role;
+select set_config('request.jwt.claims','{}',true);
 do $$ declare code text; msg text; unchanged boolean; enabled boolean; begin
  begin update public.tasks set event_id='c1031000-0000-4000-8000-000000000002' where id='c1032000-0000-4000-8000-000000000007'; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
  select event_id='c1031000-0000-4000-8000-000000000001' into unchanged from public.tasks where id='c1032000-0000-4000-8000-000000000007';
@@ -1351,7 +1358,7 @@ do $$ declare code text; msg text; ok boolean; task_before jsonb; task_after jso
  perform set_config('test.s10c3_results',current_setting('test.s10c3_results')||format(E'\nVOLUNTEER_TASK_ID_IMMUTABLE_AND_ARCHIVED_FROZEN: %s',case when ok then 'PASS' else 'FAIL' end),true);
  code:=''; begin update public.task_comments set task_id='c1032000-0000-4000-8000-000000000009' where id=current_setting('test.s10c3_active_comment')::uuid; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=code='CCC10' and msg='A comment cannot be moved to another task.';
  execute 'set local role authenticated'; perform set_config('request.jwt.claims',json_build_object('sub','c1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
- code:=''; begin perform public.add_task_comment('c1032000-0000-4000-8000-000000000009','blocked'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; execute 'reset role'; ok:=ok and code='CCC05' and msg='Archived task comments are read-only.';
+ code:=''; begin perform public.add_task_comment('c1032000-0000-4000-8000-000000000009','blocked'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; execute 'reset role'; perform set_config('request.jwt.claims','{}',true); ok:=ok and code='CCC05' and msg='Archived task comments are read-only.';
  code:=''; begin delete from public.task_comments where id=current_setting('test.s10c3_archive_comment')::uuid; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCC05' and msg='Archived task comments are read-only.';
  perform set_config('test.s10c3_results',current_setting('test.s10c3_results')||format(E'\nCOMMENT_TASK_ID_IMMUTABLE_AND_ARCHIVED_FROZEN: %s',case when ok then 'PASS' else 'FAIL' end),true);
 
@@ -1366,4 +1373,442 @@ end $$;
 
 reset role; set constraints all immediate;
 do $$ begin raise exception 'TEST RESULTS %',current_setting('test.s10c3_results'); end $$;
+```
+
+## 10D-1 — large result sets
+
+Referenced rather than copied: Step 6 SQL TESTS 1–3, Step 8 TESTS 3–5,
+and Step 9 TESTS 2–3.
+
+Run this entire paste on **Dev** with **Run without RLS**. The intentional final
+exception must contain exactly **12 result lines**, all `PASS`. The 200 task
+rows rely on `tasks_z3_assign_creation_metadata` for a unique rank in each
+event/phase/status lane.
+
+```sql
+begin;
+select set_config('request.jwt.claims','{}',true);
+
+do $$ declare c uuid; begin
+  select id into c from public.committees order by name limit 1;
+  if c is null then raise exception '10D-1 requires a committee.'; end if;
+  perform set_config('test.s10d1_c',c::text,true);
+end $$;
+
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',email,'',now(),'{}','{}',now(),now()
+from (
+  values
+    ('d1010000-0000-4000-8000-000000000001'::uuid,'s10d1-admin@test.local'),
+    ('d1010000-0000-4000-8000-000000000002'::uuid,'s10d1-member@test.local')
+) f(id,email);
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select ('d1010000-0000-4000-9000-'||lpad(gs::text,12,'0'))::uuid,
+  '00000000-0000-0000-0000-000000000000','authenticated','authenticated',
+  's10d1-volunteer-'||lpad(gs::text,2,'0')||'@test.local','',now(),'{}','{}',now(),now()
+from generate_series(1,24) gs;
+
+insert into public.users(id,email,full_name,role,committee_id,is_active) values
+ ('d1010000-0000-4000-8000-000000000001','s10d1-admin@test.local','D1 Admin','Admin',null,true),
+ ('d1010000-0000-4000-8000-000000000002','s10d1-member@test.local','D1 Member','Member',current_setting('test.s10d1_c')::uuid,true);
+insert into public.users(id,email,full_name,role,committee_id,is_active)
+select ('d1010000-0000-4000-9000-'||lpad(gs::text,12,'0'))::uuid,
+  's10d1-volunteer-'||lpad(gs::text,2,'0')||'@test.local',
+  'D1 Volunteer '||lpad(gs::text,2,'0'),'Member',current_setting('test.s10d1_c')::uuid,true
+from generate_series(1,24) gs;
+
+insert into public.events(id,name,start_date,end_date,status,created_by)
+values('d1011000-0000-4000-8000-000000000001','10D1 Large','2027-02-01','2027-02-28','Active','d1010000-0000-4000-8000-000000000001');
+
+insert into public.tasks(id,event_id,committee_id,title,description,phase,status,priority,due_date,
+ primary_assignees,assist_assignees,is_confidential,allowed_viewers,request_backup,created_by)
+select ('d1012000-0000-4000-8000-'||lpad(gs::text,12,'0'))::uuid,
+ 'd1011000-0000-4000-8000-000000000001',current_setting('test.s10d1_c')::uuid,
+ case when gs%4=0 then 'Secret task '||lpad(gs::text,3,'0') else 'Public task '||lpad(gs::text,3,'0') end,
+ case when gs%4=0 then 'SECRET-DESCRIPTION-'||lpad(gs::text,3,'0') else 'Public description '||lpad(gs::text,3,'0') end,
+ (array['Setup','Program','Live Operations','Post-Event'])[(gs%4)+1],
+ (array['To Do','In Progress','Completed'])[(gs%3)+1],
+ (array['Low','Medium','High','Critical'])[(gs%4)+1],
+ '2031-01-01 00:00:00+00'::timestamptz + gs*interval '1 hour',
+ case when gs%4=0 then array['d1010000-0000-4000-8000-000000000001'::uuid] else '{}'::uuid[] end,
+ '{}'::uuid[],gs%4=0,'{}'::uuid[],gs=4,'d1010000-0000-4000-8000-000000000001'
+from generate_series(1,200) gs order by gs;
+set constraints all immediate;
+
+-- These successful owner-path inserts need a real caller because the child
+-- guards derive or validate creator identity through auth.uid().
+select set_config('request.jwt.claims',json_build_object('sub','d1010000-0000-4000-8000-000000000001','role','authenticated')::text,true);
+insert into public.task_comments(task_id,created_by,body,created_at)
+select 'd1012000-0000-4000-8000-000000000004','d1010000-0000-4000-8000-000000000001',
+ 'Comment '||gs,'2031-02-01 00:00:00+00'::timestamptz+gs*interval '1 second'
+from generate_series(1,45) gs;
+insert into public.task_work_links(task_id,name,url,created_by,created_at)
+select 'd1012000-0000-4000-8000-000000000004','Link '||lpad(gs::text,2,'0'),
+ 'https://drive.google.com/file/d/D10D1Link'||lpad(gs::text,2,'0')||'/view',
+ 'd1010000-0000-4000-8000-000000000001','2031-03-01 00:00:00+00'::timestamptz+gs*interval '1 second'
+from generate_series(1,20) gs;
+insert into public.task_volunteers(task_id,user_id,created_at)
+select 'd1012000-0000-4000-8000-000000000004',
+ ('d1010000-0000-4000-9000-'||lpad(gs::text,12,'0'))::uuid,
+ '2031-04-01 00:00:00+00'::timestamptz+gs*interval '1 second'
+from generate_series(1,24) gs;
+select set_config('request.jwt.claims','{}',true);
+select set_config('test.s10d1_results','',true);
+
+do $$ declare ok boolean; begin
+ select count(*)=200 and count(*) filter(where is_confidential)=50
+   and count(distinct phase)=4 and count(distinct status)=3
+ into ok from public.tasks where event_id='d1011000-0000-4000-8000-000000000001';
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nLARGE_EVENT_FIXTURE_EXACT_200_MIXED_TASKS: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub','d1010000-0000-4000-8000-000000000001','role','authenticated')::text,true);
+do $$ declare ok boolean; n integer; first_name text; last_name text; first_id text; last_id text; begin
+ select count(*)=200 and count(*) filter(where is_masked)=0 into ok
+ from public.list_event_board_tasks('d1011000-0000-4000-8000-000000000001',null);
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nADMIN_BOARD_RETURNS_ALL_200_REAL_ROWS: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ select count(distinct b.phase)=4 and count(distinct b.status)=3
+   and count(*) filter(where t.is_confidential)=50 and count(*) filter(where b.is_backlog)=100
+ into ok from public.list_event_board_tasks('d1011000-0000-4000-8000-000000000001',null) b
+ join public.tasks t on t.id=b.id;
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nADMIN_BOARD_MIXED_LANE_STATUS_CONFIDENTIAL_COUNTS_EXACT: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ with board as (
+   select b.id,t.sort_order,b.ordinality ord
+   from public.list_event_board_tasks('d1011000-0000-4000-8000-000000000001',null) with ordinality b
+   join public.tasks t on t.id=b.id
+ ), checked as (
+   select *,lag(sort_order) over(order by ord) prev_rank,lag(id) over(order by ord) prev_id from board
+ ) select count(*) filter(where prev_rank>sort_order or (prev_rank=sort_order and prev_id>id))=0 into ok from checked;
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nADMIN_BOARD_SORT_ORDER_ID_ORDER_EXACT: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ select count(*)=45 and bool_and(not out_has_more)
+   and max(out_body) filter(where ord=1)='Comment 45'
+   and max(out_body) filter(where ord=45)='Comment 1'
+ into ok from public.list_task_comments('d1012000-0000-4000-8000-000000000004',50) with ordinality c(out_id,out_body,out_is_heads_up,out_created_at,out_edited_at,out_author_id,out_author_full_name,out_author_avatar_url,out_mentions,out_can_edit,out_can_delete,out_has_more,ord);
+ perform set_config('test.s10d1_comments_complete',ok::text,true);
+
+ with rows as (
+   select c.*,lag(out_created_at) over(order by ord) p_time,lag(out_id) over(order by ord) p_id
+   from public.list_task_comments('d1012000-0000-4000-8000-000000000004',50) with ordinality c(out_id,out_body,out_is_heads_up,out_created_at,out_edited_at,out_author_id,out_author_full_name,out_author_avatar_url,out_mentions,out_can_edit,out_can_delete,out_has_more,ord)
+ ) select count(*)=45 and count(*) filter(where p_time<out_created_at or (p_time=out_created_at and p_id<out_id))=0
+   and bool_and(out_author_id='d1010000-0000-4000-8000-000000000001' and out_author_full_name='D1 Admin' and jsonb_typeof(out_mentions)='array') into ok from rows;
+ perform set_config('test.s10d1_comments_order',ok::text,true);
+
+ select jsonb_array_length(links),links->0->>'name',links->19->>'name' into n,first_name,last_name
+ from public.get_task_work_links('d1012000-0000-4000-8000-000000000004');
+ ok:=n=20 and first_name='Link 01' and last_name='Link 20';
+ perform set_config('test.s10d1_links_complete',ok::text,true);
+
+ select jsonb_array_length(out_volunteers),out_volunteers->0->>'id',out_volunteers->23->>'id' into n,first_id,last_id
+ from public.get_task_backup_state('d1012000-0000-4000-8000-000000000004');
+ ok:=n=24 and first_id='d1010000-0000-4000-9000-000000000001' and last_id='d1010000-0000-4000-9000-000000000024';
+ perform set_config('test.s10d1_volunteers_complete',ok::text,true);
+end $$;
+
+reset role; set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub','d1010000-0000-4000-8000-000000000002','role','authenticated')::text,true);
+do $$ declare ok boolean; code text; msg text; links_n integer; backup_n integer; begin
+ select count(*)=200 and count(*) filter(where is_masked)=50 into ok
+ from public.list_event_board_tasks('d1011000-0000-4000-8000-000000000001',null);
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nMEMBER_BOARD_RETURNS_200_WITH_EXPECTED_MASK_COUNT: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ select count(*) filter(where is_masked)=50
+   and bool_and(case when is_masked then title='Confidential Task' and effective_priority is null and due_date is null and committee_id is null and primary_assignees='[]'::jsonb and assist_assignees='[]'::jsonb else true end)
+ into ok from public.list_event_board_tasks('d1011000-0000-4000-8000-000000000001',null);
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nMEMBER_MASKED_ROWS_ARE_EXACT_SHELLS_WITH_NO_SECRET_LEAK: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ with board as (
+   select b.id,t.sort_order,b.ordinality ord
+   from public.list_event_board_tasks('d1011000-0000-4000-8000-000000000001',null) with ordinality b
+   join public.tasks t on t.id=b.id where not b.is_masked
+ ), checked as (
+   select *,lag(sort_order) over(order by ord) prev_rank,lag(id) over(order by ord) prev_id from board
+ ) select count(*)=150 and count(*) filter(where prev_rank>sort_order or (prev_rank=sort_order and prev_id>id))=0 into ok from checked;
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nMEMBER_NONCONFIDENTIAL_ROWS_REMAIN_COMPLETE_AND_ORDERED: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nCOMMENTS_45_ROWS_COMPLETE_NEWEST_FIRST: %s',case when current_setting('test.s10d1_comments_complete')::boolean then 'PASS' else 'FAIL' end),true);
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nCOMMENTS_CREATED_AT_ID_TIE_ORDER_AND_SAFE_SHAPE_EXACT: %s',case when current_setting('test.s10d1_comments_order')::boolean then 'PASS' else 'FAIL' end),true);
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nWORK_LINKS_20_ROWS_COMPLETE_OLDEST_FIRST: %s',case when current_setting('test.s10d1_links_complete')::boolean then 'PASS' else 'FAIL' end),true);
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nVOLUNTEERS_24_ROWS_COMPLETE_OLDEST_FIRST: %s',case when current_setting('test.s10d1_volunteers_complete')::boolean then 'PASS' else 'FAIL' end),true);
+
+ code:=''; msg:=''; begin perform count(*) from public.list_task_comments('d1012000-0000-4000-8000-000000000004',50); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select count(*) into links_n from public.get_task_work_links('d1012000-0000-4000-8000-000000000004');
+ select count(*) into backup_n from public.get_task_backup_state('d1012000-0000-4000-8000-000000000004');
+ ok:=code='CCC01' and msg='The task comments are unavailable.' and links_n=0 and backup_n=0;
+ perform set_config('test.s10d1_results',current_setting('test.s10d1_results')||format(E'\nUNAUTHORIZED_CONFIDENTIAL_CHILD_READERS_FAIL_CLOSED: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; select set_config('request.jwt.claims','{}',true); set constraints all immediate;
+do $$ begin raise exception 'TEST RESULTS %',current_setting('test.s10d1_results'); end $$;
+```
+
+## 10D-2 — pagination and caps
+
+Referenced rather than copied: Step 8 TEST 5, Step 9 TEST 3, and Step 9A
+TESTS 3–4.
+
+Run this entire paste on **Dev** with **Run without RLS**. The intentional final
+exception must contain exactly **14 result lines**, all `PASS`. The shared bulk
+fixture contains exactly 105 rows visible in both My Tasks and Help Wanted and
+relies on the task insert trigger for unique lane ranks.
+
+```sql
+begin;
+select set_config('request.jwt.claims','{}',true);
+do $$ declare c uuid; begin select id into c from public.committees order by name limit 1; if c is null then raise exception '10D-2 requires a committee.'; end if; perform set_config('test.s10d2_c',c::text,true); end $$;
+
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',email,'',now(),'{}','{}',now(),now()
+from (values
+ ('d1020000-0000-4000-8000-000000000001'::uuid,'s10d2-admin@test.local'),
+ ('d1020000-0000-4000-8000-000000000002'::uuid,'s10d2-member@test.local')
+) f(id,email);
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select ('d1020000-0000-4000-9000-'||lpad(gs::text,12,'0'))::uuid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',
+ 's10d2-candidate-'||lpad(gs::text,2,'0')||'@test.local','',now(),'{}','{}',now(),now() from generate_series(1,25) gs;
+insert into public.users(id,email,full_name,role,committee_id,is_active) values
+ ('d1020000-0000-4000-8000-000000000001','s10d2-admin@test.local','D2 Admin','Admin',null,true),
+ ('d1020000-0000-4000-8000-000000000002','s10d2-member@test.local','D2 Member','Member',current_setting('test.s10d2_c')::uuid,true);
+insert into public.users(id,email,full_name,role,committee_id,is_active)
+select ('d1020000-0000-4000-9000-'||lpad(gs::text,12,'0'))::uuid,'s10d2-candidate-'||lpad(gs::text,2,'0')||'@test.local',
+ 'Candidate '||lpad(gs::text,2,'0'),'Member',current_setting('test.s10d2_c')::uuid,true from generate_series(1,25) gs;
+
+insert into public.events(id,name,start_date,end_date,status,created_by) values
+ ('d1021000-0000-4000-8000-000000000001','10D2 Active','2027-05-01','2027-05-31','Active','d1020000-0000-4000-8000-000000000001'),
+ ('d1021000-0000-4000-8000-000000000002','10D2 Archive','2027-06-01','2027-06-30','Active','d1020000-0000-4000-8000-000000000001');
+insert into public.tasks(id,event_id,committee_id,title,description,phase,status,priority,due_date,primary_assignees,is_confidential,allowed_viewers,request_backup,created_by)
+select ('d1022000-0000-4000-8000-'||lpad(gs::text,12,'0'))::uuid,'d1021000-0000-4000-8000-000000000001',current_setting('test.s10d2_c')::uuid,
+ 'Paged task '||lpad(gs::text,3,'0'),'Visible paging fixture','Setup','To Do','Medium',
+ '2032-01-01 00:00:00+00'::timestamptz+gs*interval '1 hour',array['d1020000-0000-4000-8000-000000000002'::uuid],false,'{}',true,'d1020000-0000-4000-8000-000000000001'
+from generate_series(1,105) gs order by gs;
+insert into public.tasks(id,event_id,committee_id,title,description,phase,status,priority,due_date,primary_assignees,is_confidential,allowed_viewers,request_backup,created_by) values
+ ('d1022000-0000-4000-9000-000000000001','d1021000-0000-4000-8000-000000000001',current_setting('test.s10d2_c')::uuid,'HIDDEN-PAGING-SECRET','HIDDEN-PAGING-DESCRIPTION','Program','To Do','High','2032-12-31','{}',true,'{}',true,'d1020000-0000-4000-8000-000000000001'),
+ ('d1022000-0000-4000-9000-000000000002','d1021000-0000-4000-8000-000000000002',current_setting('test.s10d2_c')::uuid,'Archived share target','Archived secret','Setup','To Do','Medium','2032-12-30',array['d1020000-0000-4000-8000-000000000001'::uuid],true,'{}',false,'d1020000-0000-4000-8000-000000000001');
+set constraints all immediate;
+
+select set_config('request.jwt.claims',json_build_object('sub','d1020000-0000-4000-8000-000000000001','role','authenticated')::text,true);
+insert into public.task_comments(task_id,created_by,body,created_at)
+ select 'd1022000-0000-4000-8000-000000000001','d1020000-0000-4000-8000-000000000001','Paged comment '||lpad(gs::text,3,'0'),
+ '2033-01-01 00:00:00+00'::timestamptz+((gs-1)/2)*interval '1 second' from generate_series(1,101) gs;
+select set_config('request.jwt.claims','{}',true);
+update public.events set status='Archived' where id='d1021000-0000-4000-8000-000000000002';
+set constraints all immediate;
+select set_config('test.s10d2_results','',true);
+
+reset role; set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub','d1020000-0000-4000-8000-000000000002','role','authenticated')::text,true);
+do $$
+declare ok boolean; code text; msg text; c1t timestamptz; c1id uuid; c2t timestamptz; c2id uuid; n integer;
+begin
+ select count(*)=50 and bool_and(out_has_more) into ok from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50);
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nCOMMENTS_FIRST_PAGE_50_HAS_MORE: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ select out_created_at,out_id into c1t,c1id from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50) with ordinality p order by ordinality desc limit 1;
+ select out_created_at,out_id into c2t,c2id from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50,c1t,c1id) with ordinality p order by ordinality desc limit 1;
+ with all_pages as (
+  select out_id from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50)
+  union all select out_id from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50,c1t,c1id)
+  union all select out_id from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50,c2t,c2id)
+ ) select count(*)=101 and count(distinct out_id)=101 into ok from all_pages;
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nCOMMENTS_REMAINING_PAGES_HAVE_NO_DUPLICATES_OR_GAPS: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ with rows as (
+  select c.*,lag(out_created_at) over(order by ord) pt,lag(out_id) over(order by ord) pid
+  from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50) with ordinality c(out_id,out_body,out_is_heads_up,out_created_at,out_edited_at,out_author_id,out_author_full_name,out_author_avatar_url,out_mentions,out_can_edit,out_can_delete,out_has_more,ord)
+ ) select count(*)=50 and count(*) filter(where pt<out_created_at or (pt=out_created_at and pid<out_id))=0 into ok from rows;
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nCOMMENTS_KEYSET_CREATED_AT_ID_ORDER_IS_STABLE: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ ok:=true;
+ code:=''; begin perform count(*) from public.list_task_comments('d1022000-0000-4000-8000-000000000001',51); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCC02' and msg='Comment pagination is invalid.';
+ code:=''; begin perform count(*) from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50,'2033-01-01',null); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCC02' and msg='Comment pagination is invalid.';
+ code:=''; begin perform count(*) from public.list_task_comments('d1022000-0000-4000-8000-000000000001',50,null,'d1022000-0000-4000-8000-000000000001'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCC02' and msg='Comment pagination is invalid.';
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nCOMMENTS_INVALID_LIMIT_AND_HALF_CURSOR_EXACT_CCC02: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ code:=''; begin perform count(*) from public.list_task_comments('d1022000-0000-4000-9000-000000000001',50); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ ok:=code='CCC01' and msg='The task comments are unavailable.';
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nCOMMENTS_PAGING_NEVER_REVEALS_HIDDEN_TASK_EXACT_CCC01: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ select count(*)=50 and min(out_title)='Paged task 001' and max(out_title)='Paged task 050' into ok from public.list_my_tasks(null,'deadline',50,0);
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nMY_TASKS_FIRST_PAGE_EXACT_50_STABLE_ORDER: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ with pages as (
+  select out_id from public.list_my_tasks(null,'deadline',50,0)
+  union all select out_id from public.list_my_tasks(null,'deadline',50,50)
+  union all select out_id from public.list_my_tasks(null,'deadline',50,100)
+ ) select count(*)=105 and count(distinct out_id)=105
+   and (select min(out_title) from public.list_my_tasks(null,'deadline',50,50))='Paged task 051'
+   and (select max(out_title) from public.list_my_tasks(null,'deadline',50,100))='Paged task 105'
+ into ok from pages;
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nMY_TASKS_REMAINING_PAGES_HAVE_NO_DUPLICATES_OR_GAPS: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ select count(*)=100 into ok from public.list_my_tasks(null,'deadline',100,0);
+ code:=''; begin perform count(*) from public.list_my_tasks(null,'deadline',101,0); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCF02' and msg='My Tasks pagination is invalid.';
+ code:=''; begin perform count(*) from public.list_my_tasks(null,'deadline',50,-1); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCF02' and msg='My Tasks pagination is invalid.';
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nMY_TASKS_LIMIT_100_ACCEPTED_AND_INVALID_PAGING_EXACT_CCF02: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ code:=''; begin perform count(*) from public.list_my_tasks('to do','deadline',50,0); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=code='CCF03' and msg='My Tasks status filter is invalid.';
+ code:=''; begin perform count(*) from public.list_my_tasks(null,'Deadline',50,0); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCF04' and msg='My Tasks sort is invalid.';
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nMY_TASKS_INVALID_STATUS_CCF03_AND_SORT_CCF04: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ select count(*)=0 into ok from public.list_my_tasks(null,'deadline',100,0) where out_id='d1022000-0000-4000-9000-000000000001';
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nMY_TASKS_PAGING_EXCLUDES_UNASSIGNED_CONFIDENTIAL_ROWS: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ with pages as (
+  select out_id from public.list_help_wanted_tasks(50,0)
+  union all select out_id from public.list_help_wanted_tasks(50,50)
+  union all select out_id from public.list_help_wanted_tasks(50,100)
+ ) select count(*)=105 and count(distinct out_id)=105
+   and (select min(out_title) from public.list_help_wanted_tasks(50,0))='Paged task 001'
+   and (select max(out_title) from public.list_help_wanted_tasks(50,100))='Paged task 105'
+ into ok from pages;
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nHELP_WANTED_PAGES_NO_DUPLICATES_GAPS_AND_STABLE_ORDER: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ select count(*)=100 into ok from public.list_help_wanted_tasks(100,0);
+ code:=''; begin perform count(*) from public.list_help_wanted_tasks(101,0); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='22023' and msg='Help Wanted pagination is invalid.';
+ code:=''; begin perform count(*) from public.list_help_wanted_tasks(50,-1); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='22023' and msg='Help Wanted pagination is invalid.';
+ select count(*) into n from public.list_help_wanted_tasks(100,0) where out_id='d1022000-0000-4000-9000-000000000001'; ok:=ok and n=0;
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nHELP_WANTED_CAP_INVALID_22023_AND_CONFIDENTIAL_ROWS_HIDDEN: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ select count(*)=20 and min(out_full_name)='Candidate 01' and max(out_full_name)='Candidate 20' into ok
+ from public.list_task_comment_mention_candidates('d1022000-0000-4000-8000-000000000001','Candidate',20);
+ code:=''; begin perform count(*) from public.list_task_comment_mention_candidates('d1022000-0000-4000-8000-000000000001','Candidate',21); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCC02' and msg='Mention search is invalid.';
+ code:=''; begin perform count(*) from public.list_task_comment_mention_candidates('d1022000-0000-4000-8000-000000000001',repeat('x',101),20); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCC02' and msg='Mention search is invalid.';
+ code:=''; begin perform count(*) from public.list_task_comment_mention_candidates('d1022000-0000-4000-9000-000000000001','Candidate',20); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end; ok:=ok and code='CCC01' and msg='The task comments are unavailable.';
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nMENTION_CANDIDATES_CAP_20_ORDER_SEARCH_ACCESS_AND_INVALID_CCC02: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub','d1020000-0000-4000-8000-000000000001','role','authenticated')::text,true);
+do $$ declare ok boolean; code text; msg text; begin
+ select count(*)=20 and min(out_full_name)='Candidate 01' and max(out_full_name)='Candidate 20'
+ into ok from public.get_archived_task_share_controls('d1022000-0000-4000-9000-000000000002','Candidate');
+ code:=''; begin perform count(*) from public.get_archived_task_share_controls('d1022000-0000-4000-9000-000000000002',repeat('x',101)); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ ok:=ok and code='CCS06' and msg='Archive-only viewer search is invalid.';
+ perform set_config('test.s10d2_results',current_setting('test.s10d2_results')||format(E'\nARCHIVE_SHARE_CONTROLS_CAP_20_ORDER_SEARCH_ACCESS_AND_INVALID_CCS06: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; select set_config('request.jwt.claims','{}',true); set constraints all immediate;
+do $$ begin raise exception 'TEST RESULTS %',current_setting('test.s10d2_results'); end $$;
+```
+
+## 10D-3 — Active-event invariant and 200-item caps
+
+Referenced rather than copied: Step 1 TESTS 5–7.
+
+Run this entire paste on **Dev** with **Run without RLS**. The intentional final
+exception must contain exactly **14 result lines**, all `PASS`. Fixture setup is
+flushed with `set constraints all immediate`; each deferred failure is forced
+inside its own exception subtransaction.
+
+```sql
+begin;
+select set_config('request.jwt.claims','{}',true);
+do $$ declare c uuid; begin select id into c from public.committees order by name limit 1; if c is null then raise exception '10D-3 requires a committee.'; end if; perform set_config('test.s10d3_c',c::text,true); end $$;
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+values('d1030000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','s10d3-admin@test.local','',now(),'{}','{}',now(),now());
+insert into public.users(id,email,full_name,role,committee_id,is_active)
+values('d1030000-0000-4000-8000-000000000001','s10d3-admin@test.local','D3 Admin','Admin',null,true);
+
+insert into public.events(id,name,start_date,end_date,status,created_by) values
+ ('d1031000-0000-4000-8000-000000000001','10D3 Launch Empty','2027-07-01','2027-07-02','Draft','d1030000-0000-4000-8000-000000000001'),
+ ('d1031000-0000-4000-8000-000000000002','10D3 Delete RPC','2027-07-03','2027-07-04','Active','d1030000-0000-4000-8000-000000000001'),
+ ('d1031000-0000-4000-8000-000000000003','10D3 Raw Delete','2027-07-05','2027-07-06','Active','d1030000-0000-4000-8000-000000000001'),
+ ('d1031000-0000-4000-8000-000000000004','10D3 Edit Delete','2027-07-07','2027-07-08','Active','d1030000-0000-4000-8000-000000000001'),
+ ('d1031000-0000-4000-8000-000000000005','10D3 Replace','2027-07-09','2027-07-10','Active','d1030000-0000-4000-8000-000000000001'),
+ ('d1031000-0000-4000-8000-000000000006','10D3 Draft Exempt','2027-07-11',null,'Draft','d1030000-0000-4000-8000-000000000001');
+insert into public.tasks(id,event_id,committee_id,title,phase,status,primary_assignees,created_by) values
+ ('d1032000-0000-4000-8000-000000000002','d1031000-0000-4000-8000-000000000002',current_setting('test.s10d3_c')::uuid,'Delete RPC only','Setup','To Do','{}','d1030000-0000-4000-8000-000000000001'),
+ ('d1032000-0000-4000-8000-000000000003','d1031000-0000-4000-8000-000000000003',current_setting('test.s10d3_c')::uuid,'Raw delete only','Setup','To Do','{}','d1030000-0000-4000-8000-000000000001'),
+ ('d1032000-0000-4000-8000-000000000004','d1031000-0000-4000-8000-000000000004',current_setting('test.s10d3_c')::uuid,'Edit delete only','Setup','To Do','{}','d1030000-0000-4000-8000-000000000001'),
+ ('d1032000-0000-4000-8000-000000000005','d1031000-0000-4000-8000-000000000005',current_setting('test.s10d3_c')::uuid,'Replace old','Setup','To Do','{}','d1030000-0000-4000-8000-000000000001');
+set constraints all immediate;
+select set_config('test.s10d3_results','',true);
+
+do $$ declare ok boolean; begin
+ select t.tgenabled='O' and t.tgdeferrable and t.tginitdeferred into ok from pg_trigger t where t.tgrelid='public.events'::regclass and t.tgname='events_require_task_when_inserted_active';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nACTIVE_INSERT_TRIGGER_ENABLED_DEFERRABLE_INITIALLY_DEFERRED: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ select t.tgenabled='O' and t.tgdeferrable and t.tginitdeferred into ok from pg_trigger t where t.tgrelid='public.tasks'::regclass and t.tgname='tasks_preserve_active_event_task_on_delete';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nLAST_TASK_DELETE_TRIGGER_ENABLED_DEFERRABLE_INITIALLY_DEFERRED: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ select t.tgenabled='O' and t.tgdeferrable and t.tginitdeferred into ok from pg_trigger t where t.tgrelid='public.tasks'::regclass and t.tgname='tasks_preserve_active_event_task_on_event_move';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nEVENT_MOVE_TRIGGER_ENABLED_DEFERRABLE_INITIALLY_DEFERRED: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+set constraints all deferred;
+do $$ declare code text; msg text; ok boolean; begin
+ code:=''; begin
+  insert into public.events(id,name,start_date,end_date,status,created_by) values('d1031000-0000-4000-8000-000000000010','10D3 Raw Empty','2027-08-01','2027-08-02','Active','d1030000-0000-4000-8000-000000000001');
+  set constraints all immediate;
+ exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select code='P0001' and msg='An Active event must have at least one task.' and count(*)=0 into ok from public.events where id='d1031000-0000-4000-8000-000000000010';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nRAW_ACTIVE_INSERT_ZERO_TASKS_DEFERRED_P0001_ATOMIC: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+set constraints all deferred;
+
+reset role; set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub','d1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
+do $$ declare code text; msg text; ok boolean; eid uuid; begin
+ code:=''; begin eid:=public.create_event_with_tasks('10D3 Create Empty',null,'2027-08-03','2027-08-04','Active','[]'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select code='P0001' and msg='An Active event requires at least one task.' and count(*)=0 into ok from public.events where name='10D3 Create Empty';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nCREATE_ACTIVE_ZERO_TASKS_P0001_CREATES_NOTHING: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ code:=''; begin perform public.edit_event_with_tasks('d1031000-0000-4000-8000-000000000001',(select updated_at from public.events where id='d1031000-0000-4000-8000-000000000001'),'10D3 Launch Empty',null,'2027-07-01','2027-07-02','Active','[]','[]','{}'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select code='P0001' and msg='An event requires at least one task before it can be launched.' and status='Draft' into ok from public.events where id='d1031000-0000-4000-8000-000000000001';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nDRAFT_TO_ACTIVE_ZERO_TASKS_P0001_STAYS_DRAFT: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ code:=''; begin perform public.delete_task('d1032000-0000-4000-8000-000000000002'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select code='23514' and msg='An Active event must have at least one task.' and count(*)=1 into ok from public.tasks where id='d1032000-0000-4000-8000-000000000002';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nDELETE_TASK_LAST_TASK_EXACT_23514_UNCHANGED: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+end $$;
+
+reset role; select set_config('request.jwt.claims','{}',true); set constraints all deferred;
+do $$ declare code text; msg text; ok boolean; begin
+ code:=''; begin delete from public.tasks where id='d1032000-0000-4000-8000-000000000003'; set constraints all immediate; exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select code='P0001' and msg='An Active event must have at least one task.' and count(*)=1 into ok from public.tasks where id='d1032000-0000-4000-8000-000000000003';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nRAW_DELETE_LAST_TASK_DEFERRED_P0001_UNCHANGED: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub','d1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
+do $$ declare code text; msg text; ok boolean; begin
+ code:=''; begin perform public.edit_event_with_tasks('d1031000-0000-4000-8000-000000000004',(select updated_at from public.events where id='d1031000-0000-4000-8000-000000000004'),'10D3 Edit Delete Changed',null,'2027-07-07','2027-07-08','Active','[]','[]',array['d1032000-0000-4000-8000-000000000004'::uuid]); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select code='P0001' and msg='An Active event must have at least one task.' and e.name='10D3 Edit Delete'
+   and (select count(*) from public.tasks t where t.event_id=e.id)=1
+ into ok from public.events e where e.id='d1031000-0000-4000-8000-000000000004';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nEDIT_EVENT_DELETE_LAST_TASK_P0001_ATOMIC: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; select set_config('request.jwt.claims','{}',true);
+set constraints all deferred;
+delete from public.tasks where id='d1032000-0000-4000-8000-000000000005';
+insert into public.tasks(id,event_id,committee_id,title,phase,status,primary_assignees,created_by)
+values('d1032000-0000-4000-8000-000000000006','d1031000-0000-4000-8000-000000000005',current_setting('test.s10d3_c')::uuid,'Replace new','Setup','To Do','{}','d1030000-0000-4000-8000-000000000001');
+set constraints all immediate;
+do $$ declare ok boolean; begin
+ select count(*)=1 and min(title)='Replace new' into ok from public.tasks where event_id='d1031000-0000-4000-8000-000000000005';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nSAME_TRANSACTION_LAST_TASK_REPLACEMENT_SUCCEEDS: %s',case when ok then 'PASS' else 'FAIL' end),true);
+ select status='Draft' and not exists(select 1 from public.tasks where event_id='d1031000-0000-4000-8000-000000000006') into ok from public.events where id='d1031000-0000-4000-8000-000000000006';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nDRAFT_ZERO_TASK_EVENT_IS_EXEMPT: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+insert into public.events(id,name,start_date,end_date,status,created_by) values('d1031000-0000-4000-8000-000000000007','10D3 Archived Exempt','2027-07-12','2027-07-13','Archived','d1030000-0000-4000-8000-000000000001');
+set constraints all immediate;
+do $$ declare ok boolean; begin
+ select status='Archived' and not exists(select 1 from public.tasks where event_id='d1031000-0000-4000-8000-000000000007') into ok from public.events where id='d1031000-0000-4000-8000-000000000007';
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nARCHIVED_ZERO_TASK_EVENT_IS_EXEMPT: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; set local role authenticated;
+select set_config('request.jwt.claims',json_build_object('sub','d1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
+do $$ declare tasks200 jsonb; tasks201 jsonb; eid uuid; code text; msg text; ok boolean; updates200 jsonb; begin
+ select jsonb_agg(jsonb_build_object('title','Cap task '||lpad(gs::text,3,'0'),'description',null,'phase','Setup','committee_id',current_setting('test.s10d3_c')::uuid,'task_type','Deliverable','due_date',null,'call_time',null,'end_time',null,'priority','Medium','assignee_ids','[]'::jsonb) order by gs) into tasks200 from generate_series(1,200) gs;
+ select jsonb_agg(jsonb_build_object('title','Over cap '||lpad(gs::text,3,'0'),'description',null,'phase','Setup','committee_id',current_setting('test.s10d3_c')::uuid,'task_type','Deliverable','due_date',null,'call_time',null,'end_time',null,'priority','Medium','assignee_ids','[]'::jsonb) order by gs) into tasks201 from generate_series(1,201) gs;
+ eid:=public.create_event_with_tasks('10D3 Create 200',null,'2027-09-01','2027-09-30','Active',tasks200);
+ perform set_config('test.s10d3_cap_event',eid::text,true);
+ code:=''; begin perform public.create_event_with_tasks('10D3 Create 201',null,'2027-10-01','2027-10-31','Active',tasks201); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select count(*)=200 and code='P0001' and msg='An event cannot contain more than 200 tasks.' and not exists(select 1 from public.events where name='10D3 Create 201') into ok from public.tasks where event_id=eid;
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nCREATE_200_ACCEPTED_AND_201_EXACT_P0001_CAP: %s',case when ok then 'PASS' else 'FAIL' end),true);
+
+ select jsonb_agg(jsonb_build_object('id',t.id,'title',t.title,'description',t.description,'phase',t.phase,'committee_id',t.committee_id,'task_type',t.task_type,'due_date',t.due_date,'call_time',t.call_time,'end_time',t.end_time,'priority',t.priority,'assignee_ids',to_jsonb(t.primary_assignees)) order by t.id) into updates200 from public.tasks t where t.event_id=eid;
+ perform public.edit_event_with_tasks(eid,(select updated_at from public.events where id=eid),'10D3 Edit 200',null,'2027-09-01','2027-09-30','Active','[]',updates200,'{}');
+ code:=''; begin perform public.edit_event_with_tasks(eid,(select updated_at from public.events where id=eid),'10D3 Edit 201',null,'2027-09-01','2027-09-30','Active',tasks201,'[]','{}'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ select count(*)=200 and code='P0001' and msg='A save cannot add, update, or delete more than 200 tasks.' and e.name='10D3 Edit 200' into ok from public.events e join public.tasks t on t.event_id=e.id where e.id=eid group by e.name;
+ perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nEDIT_200_ACCEPTED_AND_201_EXACT_P0001_CAP: %s',case when ok then 'PASS' else 'FAIL' end),true);
+end $$;
+
+reset role; select set_config('request.jwt.claims','{}',true); set constraints all immediate;
+do $$ begin raise exception 'TEST RESULTS %',current_setting('test.s10d3_results'); end $$;
 ```
