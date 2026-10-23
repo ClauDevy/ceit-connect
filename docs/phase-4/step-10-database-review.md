@@ -144,4 +144,4 @@ All are expected enabled in origin mode. The three constraint triggers are expec
 
 ## Conclusion
 
-The tracked migrations satisfy the Step 10A static review criteria: fixed paths, explicit execute boundaries, one signature per Phase 4 function name, active-user enforcement, documented lock orders, exact-one checks for targeted mutations, trigger attachment in source, narrow raw RLS, frozen Archived history, immutable task parents, and no ordinary task-flow service role. Live Dev catalog verification remains pending until the owner runs the read-only paste.
+The tracked migrations satisfy the Step 10A static review criteria: fixed paths, explicit execute boundaries, one signature per Phase 4 function name, active-user enforcement, documented lock orders, exact-one checks for targeted mutations, trigger attachment in source, narrow raw RLS, frozen Archived history, immutable task parents, and no ordinary task-flow service role. The owner ran the read-only catalog paste on Dev, and all five result sets matched: 57 functions, 8 tables, 11 policies, 20 triggers, and 0 overloads.
