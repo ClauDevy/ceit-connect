@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
 import { TaskComments } from "@/components/tasks/task-comments";
+import { ArchivedTaskSharing } from "@/components/tasks/archived-task-sharing";
 import { TaskEditControls } from "@/components/tasks/task-edit-controls";
 import {
   TaskBackupRequestedCard,
@@ -435,8 +436,13 @@ function RealTask({
             </>
           ) : null}
 
-          {task.is_confidential &&
-          !editControls.data?.can_set_confidentiality ? (
+          {task.is_confidential && task.event_status === "Archived" ? (
+            <ArchivedTaskSharing
+              taskId={task.id}
+              viewers={task.access_list}
+            />
+          ) : task.is_confidential &&
+            !editControls.data?.can_set_confidentiality ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
