@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { InlineAlert } from "@/components/ui/inline-alert"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { AvatarCropper } from "@/components/settings/avatar-cropper"
+import { nextAvatarCleanupWarning } from "@/lib/avatar"
 import { createClient } from "@/lib/supabase/client"
 import { getCroppedBlob, type CropArea } from "@/lib/image"
 
@@ -111,7 +112,6 @@ export function AvatarUploader({
   async function handleRemove() {
     setStatus("removing")
     setError("")
-    setCleanupWarning("")
 
     try {
       // The route clears the database first, then performs retry-safe cleanup.
@@ -125,19 +125,18 @@ export function AvatarUploader({
 
       if (!res.ok) {
         setError(data.error ?? "Failed to remove avatar")
-        setStatus("error")
         return
       }
 
       setPreview(null)
-      if (data.cleanupPending === true && typeof data.warning === "string") {
-        setCleanupWarning(data.warning)
-      }
-      setStatus("idle")
+      setCleanupWarning((currentWarning) =>
+        nextAvatarCleanupWarning(currentWarning, data),
+      )
       router.refresh()
     } catch {
       setError("Something went wrong removing the photo.")
-      setStatus("error")
+    } finally {
+      setStatus("idle")
     }
   }
 

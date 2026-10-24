@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { InlineAlert } from "@/components/ui/inline-alert"
 import { PasswordInput } from "@/components/ui/password-input"
 import { createClient } from "@/lib/supabase/client"
+import { finishAuthentication } from "@/lib/auth-navigation"
 
 type ResetPasswordFlowProps = {
   email: string
@@ -23,6 +25,7 @@ export function ResetPasswordFlow({ email, onBack }: ResetPasswordFlowProps) {
   const [newPassword, setNewPassword] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const router = useRouter()
 
   async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault()
@@ -60,12 +63,12 @@ export function ResetPasswordFlow({ email, onBack }: ResetPasswordFlowProps) {
 
       if (!res.ok) {
         setError(data.error ?? "Something went wrong")
-        setBusy(false)
         return
       }
-      window.location.href = "/home"
+      finishAuthentication(router)
     } catch {
       setError("Network error. Please try again.")
+    } finally {
       setBusy(false)
     }
   }
