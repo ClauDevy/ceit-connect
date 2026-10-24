@@ -26,7 +26,7 @@ Start a **new** thread/session (instructions are read when a session starts, so 
 
 > Do not change any files. Read `AGENTS.md` and `docs/PROGRESS.md`, then answer in plain language: (1) What is this project and which phase are we in? (2) Who is allowed to invite users? (3) Why must confidential tasks be read through `get_task`? (4) Which commands are you NOT allowed to run? (5) What is the next step?
 
-A correct answer mentions: Admin-only invites, `get_task` as the security boundary, never running `supabase db push`/`link`, and Phase 3 Step 2. If it can't, the files weren't found — check you opened the repo root.
+A correct answer mentions: Admin-only invites, `get_task` as the security boundary, never running `supabase db push`/`link`, and the current phase and next documented work from `docs/PROGRESS.md`. If it can't, the files weren't found — check you opened the repo root.
 In Kiro you should also see steering documents listed as included at the start of a chat.
 
 ## 4. Safe settings while you're learning
@@ -48,8 +48,8 @@ In Kiro you should also see steering documents listed as included at the start o
 
 ## 6. Prompts you can paste
 
-**Feature (plan first):**
-> Task: Phase 3 Step 2 from `docs/PHASE-3-PLAN.md`. First write a short plan: the files you'll create or change and any migration needed. Wait for my OK before editing anything. After I approve: implement, run `npm run build` and `npm run lint`, and give me the exact manual test steps. Do not commit.
+**Phase 4B build (plan first):**
+> Task: `<batch and task>` from `docs/PHASE-4B-PLAN.md`. Read the plan and relevant project docs first, plus `docs/DESIGN-SYSTEM.md` for a UI batch and the batch's step document if one exists. Before planning, ask me up to 5 grouped questions about anything unclear or conflicting with the docs, then wait for my answers. Next, write a short PLAN listing files to create or change, any migration, and unresolved decisions under "Open questions for the owner"; wait for my OK before editing. After approval, implement only the approved scope, run `npm run build` and `npm run lint`, and give me exact manual test steps. Never run a remote Supabase command, commit, push, or open a PR.
 
 **Bug:**
 > Bug: I did `<what you did>` and got `<what happened>`. Exact error/terminal output: `<paste>`. Find the root cause first and explain it in plain language before changing anything. Then make the smallest fix and tell me how to verify it.
@@ -71,7 +71,7 @@ In Kiro you should also see steering documents listed as included at the start o
 
 **Kiro (IDE or CLI)**
 - Picks up the root `AGENTS.md` automatically, plus everything in `.kiro/steering/`. Both are always included, which is why the steering files here are short — every always-on word costs credits on every request.
-- **Specs** are Kiro's feature workflow: it writes `requirements.md` → `design.md` → `tasks.md` under `.kiro/specs/<feature>/`, and you approve each stage before the next. You do **not** need to write them by hand; describe one Phase 3 step and let Kiro generate them. Rules for keeping them small are already in `structure.md`.
+- **Specs** are Kiro's feature workflow: it writes `requirements.md` → `design.md` → `tasks.md` under `.kiro/specs/<feature>/`, and you approve each stage before the next. You do **not** need to write them by hand; describe one approved planned step and let Kiro generate them. Rules for keeping them small are already in `structure.md`.
 - Don't click "Generate Steering Docs" — it would try to create steering files you already have.
 - If you create a **custom agent** in the CLI, steering files are not automatically included; add this to the agent's config: `{ "resources": ["file://.kiro/steering/**/*.md"] }`.
 - If your Kiro CLI command differs from what a guide shows, `kiro-cli --help` (or the install's help command) lists what's available.
@@ -79,11 +79,11 @@ In Kiro you should also see steering documents listed as included at the start o
 ## 8. Which tool for what (a suggestion)
 
 - **Planning, debugging, learning, design decisions, security/RLS review, documents:** a Claude chat — attach these files or the repo zip. This is the step-by-step style you already know works.
-- **Building a whole Phase 3 step across several files:** Kiro's spec flow (you have credits, and the plan → design → tasks stages give you checkpoints).
+- **Building a whole approved feature step across several files:** Kiro's spec flow (you have credits, and the plan → design → tasks stages give you checkpoints).
 - **Small fixes, explanations, reviewing a diff:** the Codex extension.
 - **Independent review:** keep CodeRabbit.
 
-Do one low-risk practice run first (for example, "add a `+ New Event` link to the sidebar nav") on a throwaway branch before trusting an agent with a real feature.
+Do one low-risk practice run first (for example, a small documentation or interface-copy change) on a throwaway branch before trusting an agent with a real feature.
 
 ## 9. Stop and ask a human/Claude when…
 

@@ -2,7 +2,7 @@
 
 **Status:** Gate-critical.
 
-- Do not add a second general writer beside `edit_event_with_tasks`. General task fields remain in Event Edit with Admin/all-task and Co-Admin/own-committee scope. Board/modal exposes only this step's narrow actions and optional Step 7A.
+- Do not add a second general writer beside `edit_event_with_tasks`. General task fields remain in Event Edit with Admin/all-task and Co-Admin/own-committee scope. The board/task page exposes only this step's narrow actions and the selected Step 7A actions.
 - Add `set_task_dependency(...)` as a narrow `SECURITY DEFINER` function because all active Co-Admins may change one dependency across committees. It changes only `depends_on_task_id`, re-reads both tasks, requires same event, rejects self/cycles, permits clear, and never changes status. Step 5a continues to block prerequisite deletion.
 - Add a narrow confidentiality function changing only `is_confidential/allowed_viewers`. It may remain `SECURITY INVOKER` because active Admin/owning-Co-Admin scope already matches RLS, but still performs explicit active-role/column checks. Viewers may be active users from any committee through the safe picker. Validate existence/activity, duplicates, and a documented maximum server-side.
 - Default definer design matches Step 5b: own cross-committee narrow functions with the migration owner, use fixed empty `search_path`, derive `auth.uid()`, explicitly verify active Admin/Co-Admin, grant only `authenticated`, and extend the assignee guard's single migration-owner branch only to the exact dependency/assignee columns needed by Steps 7/7A. Each function remains limited to its named concern; the independent archive guard is never exempted. `delete_task` needs no update exemption.
