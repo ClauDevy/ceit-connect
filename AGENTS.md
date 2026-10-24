@@ -16,8 +16,8 @@ Task delegation and tracking system for a 12-committee university student counci
 
 ## Status
 
-Phases 0–2 are done and live: scaffold, database + RLS, and the full auth system (magic link, password, Google, invites, avatars, deactivate/reactivate, UI redesign). **Phase 3 (event engine) is in progress.**
-Read `docs/PROGRESS.md` first for the exact current state, then `docs/PHASE-3-PLAN.md` for what to build next.
+Phases 0–4 are complete and live on Dev and Prod: scaffold, database + RLS, auth, the event engine, and the task engine. **Phase 4B is planned; no Phase 4B code is built.**
+Read `docs/PROGRESS.md` first for the exact current state, then `docs/PHASE-4B-PLAN.md` for the approved work and run order.
 
 ## Stack
 
@@ -45,6 +45,12 @@ Roles: `Admin`, `Co-Admin`, `Member`. 12 committees live in a `committees` table
 9. Users are **never deleted**, only deactivated (`is_active = false`) — this protects Event Archives.
 10. Check the `error` of every Supabase call (never ignore it). Validate the runtime type of every request body field. Wrap client `fetch` calls in `try/catch/finally` so buttons can never get stuck.
 
+Phase 4B "Remove former member" anonymizes the account and never deletes it.
+
+## Phase 4B working rules
+
+Read `docs/PHASE-4B-PLAN.md` first and ask up to 5 grouped questions about anything unclear or conflicting before planning. Plans use Medium reasoning; security-critical migrations use High. UI batches also read `docs/DESIGN-SYSTEM.md`. Use Philippine time only.
+
 ## Conventions
 
 - Server Components by default; add `"use client"` only when a file needs hooks or event handlers.
@@ -71,7 +77,8 @@ The owner is a student learning as they build. Always:
 - `docs/ARCHITECTURE.md` — the spec: roles, modules, rules, phases, deviations the team approved
 - `docs/DATABASE.md` — tables, columns, RLS, functions, storage, migration order
 - `docs/PROGRESS.md` — what is done, decisions made, open items
-- `docs/PHASE-3-PLAN.md` — next work, with acceptance checks
+- `docs/PHASE-4B-PLAN.md` — owner-approved Phase 4B scope, decisions, and batch order
+- `docs/phase-4b/` — detailed Phase 4B batch documents as they are created
 - `docs/GOTCHAS.md` — hard-won lessons; **read before touching auth, email, Supabase settings, or deployment**
 - `docs/prototypes/*.html` — design source for pages not built yet; match their layout and behavior. **Each file is 30–125 KB: never read one in full, search for the section you need.**
 
