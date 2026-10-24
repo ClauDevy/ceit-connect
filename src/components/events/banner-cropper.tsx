@@ -11,7 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { CropArea } from "@/lib/image";
+import {
+  minimumContainZoom,
+  type CropArea,
+  type ImageSize,
+} from "@/lib/image";
 
 export function BannerCropper({
   imageSrc,
@@ -26,9 +30,21 @@ export function BannerCropper({
 }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [minZoom, setMinZoom] = useState(1);
   const [area, setArea] = useState<CropArea | null>(null);
+  const [mediaSize, setMediaSize] = useState<ImageSize | null>(null);
+  const [cropSize, setCropSize] = useState<ImageSize | null>(null);
   const onCropComplete = useCallback(
     (_: CropArea, pixels: CropArea) => setArea(pixels),
+    [],
+  );
+  const applyContainZoom = useCallback(
+    (media: ImageSize, viewport: ImageSize) => {
+      const nextMinZoom = minimumContainZoom(media, viewport);
+      setMinZoom(nextMinZoom);
+      setZoom(nextMinZoom);
+      setCrop({ x: 0, y: 0 });
+    },
     [],
   );
 
@@ -43,15 +59,25 @@ export function BannerCropper({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-foreground">
+        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-primary/15 via-muted to-accent/30">
           <Cropper
             image={imageSrc}
             crop={crop}
             zoom={zoom}
+            minZoom={minZoom}
             aspect={16 / 9}
+            restrictPosition={false}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}
+            onMediaLoaded={(nextMediaSize) => {
+              setMediaSize(nextMediaSize);
+              if (cropSize) applyContainZoom(nextMediaSize, cropSize);
+            }}
+            onCropSizeChange={(nextCropSize) => {
+              setCropSize(nextCropSize);
+              if (mediaSize) applyContainZoom(mediaSize, nextCropSize);
+            }}
           />
         </div>
 
@@ -63,7 +89,7 @@ export function BannerCropper({
           <input
             id="banner-zoom"
             type="range"
-            min={1}
+            min={minZoom}
             max={3}
             step={0.1}
             value={zoom}

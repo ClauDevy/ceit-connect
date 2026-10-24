@@ -213,3 +213,22 @@ Focused Part A result before the full gate: 4 files, 20 tests passed.
 
 - In the avatar cropper, zoom portrait, landscape, square, and small images fully out and move them beyond the crop boundary. Confirm saving produces a square, undistorted image with transparent padding where the crop extends past the source.
 - Keyboard-focus each whole-card/row link inside both clipped and unclipped containers. Confirm the two-pixel inset focus ring remains fully visible.
+
+## Batch 1 owner follow-up — banner contain crop and phone PDF frame
+
+### Automated and inspected
+
+- Pure-function tests cover wide and tall source images contained inside a 16:9 banner frame and prove an out-of-source banner crop keeps a 16:9 output with undistorted image placement and transparent margins.
+- The banner cropper uses its own `minZoom`, applies the smaller contain ratio after both media and crop-frame sizes are known, and sets `restrictPosition={false}`. The avatar cropper is unchanged.
+- A headless-Chrome check generated a transparent 3200-by-1800 WebP, forced the production banner settings (`maxSizeMB: 1.45`, `maxWidthOrHeight: 1920`, WebP), decoded the resulting 1920-by-1080 file, and measured alpha. The transparent corner remained `0`; the image center remained `255`. Compression therefore does not flatten padding to black or white.
+- Server-rendered Drive-preview markup proves the iframe uses a phone `3/4` portrait ratio, restores `16/10` at `sm`, remains width-contained, and retains both “Preview unavailable?” and “Open link”.
+- Production `/login` HTML still emits `ceit-theme-init` as a plain inline script at byte 1455, before `</head>` at 1758 and `<body>` at 1765, with no preceding `self.__next_s` queue. The theme implementation is unchanged.
+- `npm test` — passed: 26 files, 263 tests.
+- `npm run build` — passed with Next.js 16.3.4; TypeScript and all 23 generated routes completed successfully.
+- `npm run lint` — passed with zero errors and zero warnings.
+
+### Manual only
+
+- Crop tall, wide, square, and small banner images on first selection and through Adjust crop. Confirm each can show the whole source, transparent letterboxing reveals the semantic banner gradient cleanly in both themes, and the resulting upload stays below 1.5 MB.
+- On a real phone, open the reported Drive PDF. Confirm both horizontal page edges remain visible while the document scrolls vertically inside the portrait viewer, and confirm the hint and Open link still work.
+- With dark mode saved, reload under network throttling and confirm there is no white flash or hydration warning. The production HTML proves pre-body execution; first-paint appearance remains a browser-only check.

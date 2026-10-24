@@ -19,6 +19,8 @@ Fix the approved cross-application UI defects before the redesign begins: stable
 
 - Step 1 aligns the existing comment Edit/Delete buttons only. Moving per-comment Delete into a menu belongs to Batch 3.
 - The avatar cropper must allow zooming out until the whole selected image is visible, starting with the first image picked rather than only after replacing or reopening it.
+- The event-banner cropper follows the same contain-first rule inside its 16:9 frame without changing the avatar cropper. Saved WebP letterboxing stays transparent and the existing 1.5 MB compression contract remains.
+- Drive PDF previews use a taller portrait frame on phones so the Google viewer has enough room for an uncropped page width and internal vertical scrolling; larger screens retain the existing landscape frame.
 - User Management must select and render `avatar_url` in both desktop and phone layouts. Avatar uploads use the authenticated user's fixed `<user_id>/avatar.webp` object, but `/api/update-avatar` owns the public URL and cache version; the client supplies neither.
 - Avatar removal follows `docs/GOTCHAS.md`: clear `users.avatar_url` before deleting Storage. A later Storage failure is a non-blocking, retry-safe cleanup warning.
 - Per-item destructive actions move into menus with confirmation in the redesign batches. Bulk actions and typed-confirmation flows remain buttons that open a confirmation.
@@ -88,11 +90,12 @@ None. No migration, table, function, policy, trigger, index, grant, or remote Su
 - Search state and input nodes remain stable across query-key changes and background refreshes. Placeholder/loading content replaces only the result region.
 - Navigating surfaces expose one valid link across the box. Sibling action buttons remain outside that link while preserving accessible names, keyboard order, and 44px targets on phones.
 - The avatar cropper computes a minimum zoom that can contain the whole image and applies it on the first selected image as well as replacements.
+- The event-banner cropper computes its own 16:9 contain zoom for wide and tall sources, permits positioning beyond the source bounds, and saves transparent padding through the existing WebP compression path.
 - User Management passes the selected `avatar_url` into `UserAvatar` on desktop and phone; a failed committee or member query shows a safe error instead of an empty roster.
 - `/api/update-avatar` rejects signed-out, profile-less, and inactive callers before service-role construction. Save verifies the caller-owned fixed Storage object, derives its public URL and version from object metadata (falling back to server time), stores it, and returns it; client URL/version fields are ignored.
 - Avatar removal clears the database reference before Storage deletion. A cleanup failure leaves the safe database state intact, returns a clear warning, and can be retried idempotently.
 - Every route with a loading state uses a skeleton shaped like that route's real header, controls, and content rather than a generic unrelated page.
-- `DrivePreview` and its fallback fit the phone viewport without horizontal page overflow and keep the open-in-Drive escape path reachable.
+- `DrivePreview` uses a portrait frame on phones and the existing landscape frame on larger screens; it fits the viewport without horizontal page cropping and keeps internal vertical scrolling, the hint, and the open-in-Drive escape path reachable.
 - Comment Edit/Delete controls align consistently at desktop and phone widths; their current authorization and confirmation behavior stays unchanged.
 - Dates and timestamps are displayed and parsed with the shared `Asia/Manila` contract. This audit does not change stored values, schema, or date-only event semantics.
 - Internal auth navigation uses `router.replace("/home")` followed by `router.refresh()` so completed auth screens do not remain in history and `/home` cannot reuse a signed-out client tree. Every failure path releases its busy button.
@@ -137,9 +140,10 @@ The auth navigation tests must prove that successful sign-in and successful pass
 - Use mouse, keyboard, middle-click, and phone taps on every navigating card/row. Confirm the whole box navigates, sibling actions work independently, and no nested-button/link warning appears.
 - On a real phone or equivalent viewport, measure representative interactive targets at 44 by 44 CSS pixels or larger.
 - Pick a portrait, landscape, square, and small avatar image as the first selection. Confirm each can zoom out to show the whole image before cropping.
+- Pick tall, wide, square, and small event-banner images. Confirm the whole image fits at minimum zoom, transparent padding reveals the semantic banner surface correctly in both themes, and the saved WebP remains below 1.5 MB.
 - Re-upload a profile photo and confirm the new image appears in Settings, both User Management layouts, headers, task cards, assignee/viewer lists, comments, and archives. Confirm a missing object is reported safely; simulate removal cleanup failure, verify the URL is already cleared, then retry cleanup.
 - Visit every route with `loading.tsx`; compare its skeleton with the real page in both themes and at phone width.
-- Open representative Drive file/folder and Docs/Sheets/Slides previews at narrow phone widths and confirm no horizontal page overflow.
+- Open a PDF plus representative Drive file/folder and Docs/Sheets/Slides previews on a real phone. Confirm the portrait PDF frame shows both page edges, scrolls vertically inside the viewer, and retains its hint and Open link action.
 - Verify comment Edit/Delete alignment without changing their permissions or moving Delete into a menu.
 - Compare all affected displayed timestamps from browsers in different local timezones; every result must remain correct for `Asia/Manila`.
 - Complete password sign-in and password reset, verify navigation to `/home`, then test back-button/session behavior.
@@ -147,7 +151,7 @@ The auth navigation tests must prove that successful sign-in and successful pass
 
 ## Acceptance
 
-Every current search input remains mounted and focused as appropriate without refreshing the page. Navigating cards and rows are valid whole-box links with separate actions and 44px phone targets. User Management renders stored avatars and fails safely, while avatar save/removal follows the active-profile, server-derived, cache-versioned, database-before-Storage contract. Initial avatar cropping can contain the whole image, skeletons match their routes, Drive preview fits phones, comment actions align, and Philippine-time presentation/parsing is consistent. The unused external `cn` and `p` packages and all four documented warning sources are gone; sign-in, reset, session refresh, theme bootstrap, and the local `cn()` helper still work. Build and lint pass with zero warnings.
+Every current search input remains mounted and focused as appropriate without refreshing the page. Navigating cards and rows are valid whole-box links with separate actions and 44px phone targets. User Management renders stored avatars and fails safely, while avatar save/removal follows the active-profile, server-derived, cache-versioned, database-before-Storage contract. Initial avatar and banner cropping can contain the whole image, banner padding remains transparent through WebP compression, skeletons match their routes, Drive PDF previews use an uncropped-width phone frame, comment actions align, and Philippine-time presentation/parsing is consistent. The unused external `cn` and `p` packages and all four documented warning sources are gone; sign-in, reset, session refresh, theme bootstrap, and the local `cn()` helper still work. Build and lint pass with zero warnings.
 
 ## Open questions for the owner
 
