@@ -1,5 +1,6 @@
 import * as React from "react"
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar"
+import { DesktopHeader } from "@/components/layout/desktop-header"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { NavigationProgress } from "@/components/navigation/navigation-progress"
 import { NavigationProvider } from "@/components/navigation/navigation-provider"
@@ -16,7 +17,8 @@ export function AppShell({ user, children }: { user: CurrentUser; children: Reac
         <DesktopSidebar user={user} />
         <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
           <MobileTopbar user={user} />
-          <main className="w-full min-w-0 max-w-6xl flex-1 px-4 py-6 pb-28 sm:px-6 md:px-10 md:py-8 md:pb-8">
+          <DesktopHeader user={user} />
+          <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 pb-28 sm:px-6 md:px-10 md:py-8 md:pb-8">
             {children}
           </main>
         </div>
