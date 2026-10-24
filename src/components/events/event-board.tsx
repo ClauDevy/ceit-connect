@@ -3,7 +3,6 @@
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
-  type TransitionEvent,
   useEffect,
   useMemo,
   useReducer,
@@ -47,6 +46,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { EventBanner } from "@/components/events/event-banner";
+import { EventBoardProgressRing } from "@/components/events/event-board-progress-ring";
 import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
 import {
   EventBoardTaskCard,
@@ -214,9 +214,7 @@ function BoardContents({
     Set<BoardPriority>
   >(() => new Set());
   const [priorityOpen, setPriorityOpen] = useState(false);
-  const [priorityPanelMounted, setPriorityPanelMounted] = useState(false);
   const [committeeOpen, setCommitteeOpen] = useState(false);
-  const [committeePanelMounted, setCommitteePanelMounted] = useState(false);
   const [committeeActiveIndex, setCommitteeActiveIndex] = useState(0);
   const [backlogOpen, setBacklogOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -232,11 +230,9 @@ function BoardContents({
   const priorityTriggerRef = useRef<HTMLButtonElement>(null);
   const priorityPanelRef = useRef<HTMLDivElement>(null);
   const priorityOverlayRef = useRef<HTMLButtonElement>(null);
-  const priorityReturnFocusRef = useRef(true);
   const committeeTriggerRef = useRef<HTMLButtonElement>(null);
   const committeePanelRef = useRef<HTMLDivElement>(null);
   const committeeOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const committeeReturnFocusRef = useRef(true);
   const backlogButtonRef = useRef<HTMLButtonElement>(null);
   const boardBusy = pendingTaskId !== null || reconciling;
   const queryKey = useMemo(
@@ -471,65 +467,27 @@ function BoardContents({
   }, [priorityOpen, committeeOpen]);
 
   function openPriorityFilter() {
-    committeeReturnFocusRef.current = false;
     if (committeeOpen) closeCommitteeFilter(false);
-    setPriorityPanelMounted(true);
-    requestAnimationFrame(() => setPriorityOpen(true));
+    setPriorityOpen(true);
   }
 
   function closePriorityFilter(returnFocus = true) {
-    priorityReturnFocusRef.current = returnFocus;
     setPriorityOpen(false);
-  }
-
-  function handlePriorityPanelTransitionEnd(
-    event: TransitionEvent<HTMLDivElement>,
-  ) {
-    if (
-      event.target === event.currentTarget &&
-      event.propertyName === "opacity" &&
-      !priorityOpen
-    ) {
-      setPriorityPanelMounted(false);
-      if (priorityReturnFocusRef.current) {
-        priorityTriggerRef.current?.focus();
-      }
-    }
+    if (returnFocus) priorityTriggerRef.current?.focus();
   }
 
   function openCommitteeFilter() {
-    priorityReturnFocusRef.current = false;
     if (priorityOpen) closePriorityFilter(false);
     setCommitteeActiveIndex(Math.max(selectedCommitteeIndex, 0));
-    setCommitteePanelMounted(true);
+    setCommitteeOpen(true);
     requestAnimationFrame(() => {
-      setCommitteeOpen(true);
-      requestAnimationFrame(() => {
-        committeeOptionRefs.current[
-          Math.max(selectedCommitteeIndex, 0)
-        ]?.focus();
-      });
+      committeeOptionRefs.current[Math.max(selectedCommitteeIndex, 0)]?.focus();
     });
   }
 
   function closeCommitteeFilter(returnFocus = true) {
-    committeeReturnFocusRef.current = returnFocus;
     setCommitteeOpen(false);
-  }
-
-  function handleCommitteePanelTransitionEnd(
-    event: TransitionEvent<HTMLDivElement>,
-  ) {
-    if (
-      event.target === event.currentTarget &&
-      event.propertyName === "opacity" &&
-      !committeeOpen
-    ) {
-      setCommitteePanelMounted(false);
-      if (committeeReturnFocusRef.current) {
-        committeeTriggerRef.current?.focus();
-      }
-    }
+    if (returnFocus) committeeTriggerRef.current?.focus();
   }
 
   function selectCommittee(id: string | null) {
@@ -702,7 +660,7 @@ function BoardContents({
     : null;
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <Link
         href="/home"
         className={buttonVariants({ variant: "ghost", size: "sm" })}
@@ -710,48 +668,35 @@ function BoardContents({
         <ArrowLeft aria-hidden /> Home
       </Link>
 
-      <section className="overflow-hidden rounded-3xl border bg-card">
-        <div className="flex flex-col lg:flex-row">
-          <div className="w-full px-5 pt-5 sm:px-8 sm:pt-8 lg:w-2/5 lg:shrink-0 lg:px-0 lg:pt-0">
-            <div className="mx-auto w-full max-w-xl lg:max-w-none">
-              <EventBanner
-                src={event.banner_url}
-                alt={`${event.name} banner`}
-                className="aspect-video w-full"
-              />
+      <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xs">
+        <EventBanner
+          src={event.banner_url}
+          alt={`${event.name} banner`}
+          className="h-28 w-full [&>img]:object-contain sm:h-36"
+        />
+        <div className="flex items-end justify-between gap-4 px-5 py-5 sm:px-7 sm:py-6">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+              <h1 className="min-w-0 break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                {event.name}
+              </h1>
+              <Badge variant="outline">Active</Badge>
             </div>
-          </div>
-          <div className="flex min-w-0 flex-1 items-start justify-between gap-4 p-5 sm:p-8">
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-                <h1 className="min-w-0 break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                  {event.name}
-                </h1>
-                <Badge variant="outline">Active</Badge>
-              </div>
-              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <CalendarDays className="size-4 shrink-0" aria-hidden />
-                {formatEventDateRange(event)}
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <CalendarDays className="size-4 shrink-0" aria-hidden />
+              {formatEventDateRange(event)}
+            </p>
+            {event.description ? (
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                {event.description}
               </p>
-              {event.description ? (
-                <p className="text-sm text-muted-foreground">
-                  {event.description}
-                </p>
-              ) : null}
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-                {completed} of {formatTaskCount(tasks.length)} completed
-              </p>
-            </div>
-            <div className="shrink-0">
-              <div
-                className="grid size-16 place-items-center rounded-full border-6 border-muted text-sm font-bold"
-                aria-label={`${completion}% complete`}
-              >
-                {completion}%
-              </div>
-            </div>
+            ) : null}
+            <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
+              {completed} of {formatTaskCount(tasks.length)} completed
+            </p>
           </div>
+          <EventBoardProgressRing percentage={completion} />
         </div>
       </section>
 
@@ -785,9 +730,9 @@ function BoardContents({
         </InlineAlert>
       ) : null}
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div
-          className="flex w-full min-w-0 gap-8 overflow-x-auto border-b md:flex-1"
+          className="-mx-1 flex w-[calc(100%+0.5rem)] min-w-0 gap-6 overflow-x-auto border-b px-1 md:flex-1"
           role="tablist"
           aria-label="Event phases"
         >
@@ -803,7 +748,7 @@ function BoardContents({
                 aria-selected={selectedPhase === phase}
                 title={phase}
                 className={cn(
-                  "flex h-11 max-w-[75vw] shrink-0 items-center border-b-2 px-1 font-display text-base font-semibold whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:max-w-xs",
+                  "flex h-11 max-w-[75vw] shrink-0 items-center rounded-t-md border-b-2 px-1 font-display text-sm font-semibold whitespace-nowrap transition-colors duration-150 hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none sm:h-10 sm:max-w-xs sm:text-base",
                   selectedPhase === phase
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground",
@@ -813,7 +758,7 @@ function BoardContents({
               >
                 <span className="flex min-w-0 items-center">
                   <span className="truncate">{phase}</span>
-                  <span className="ml-2 shrink-0 rounded-full bg-muted px-2 py-0.5 font-sans text-xs font-normal text-muted-foreground">
+                  <span className="ml-1.5 shrink-0 font-sans text-xs font-normal text-muted-foreground">
                     {formatTaskCount(count)}
                   </span>
                 </span>
@@ -823,9 +768,7 @@ function BoardContents({
         </div>
       </div>
 
-      <div
-        className="flex w-full min-w-0 items-center gap-2"
-      >
+      <div className="flex w-full min-w-0 items-center gap-2">
         <div
           className={cn(
             "flex min-w-0 flex-1 items-center gap-2",
@@ -833,157 +776,148 @@ function BoardContents({
           )}
         >
           <div className="relative min-w-0 flex-1">
-          <Button
-            ref={priorityTriggerRef}
-            variant="outline"
-            className="h-10 w-full min-w-0 justify-start px-3 text-sm"
-            aria-haspopup="dialog"
-            aria-expanded={priorityOpen}
-            aria-controls="priority-filter-panel"
-            aria-label={priorityButtonLabel}
-            disabled={boardBusy}
-            onClick={() =>
-              priorityOpen ? closePriorityFilter() : openPriorityFilter()
-            }
-          >
-            <Filter aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-left">
-              {priorityButtonLabel}
-            </span>
+            <Button
+              ref={priorityTriggerRef}
+              variant="outline"
+              className="h-11 w-full min-w-0 justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+              aria-haspopup="dialog"
+              aria-expanded={priorityOpen}
+              aria-controls="priority-filter-panel"
+              aria-label={priorityButtonLabel}
+              disabled={boardBusy}
+              onClick={() =>
+                priorityOpen ? closePriorityFilter() : openPriorityFilter()
+              }
+            >
+              <Filter aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-left">
+                {priorityButtonLabel}
+              </span>
             <ChevronDown
               className={cn(
-                "ml-auto transition-transform duration-150 motion-reduce:rotate-0 motion-reduce:transition-none",
+                "ml-auto",
                 priorityOpen && "rotate-180",
               )}
-              aria-hidden
-            />
-          </Button>
-          {priorityPanelMounted ? (
-            <>
-              <button
-                ref={priorityOverlayRef}
-                type="button"
-                className={cn(
-                  "fixed inset-0 z-40 bg-black/40 transition-opacity duration-150 sm:hidden motion-reduce:duration-[120ms]",
-                  priorityOpen ? "opacity-100" : "pointer-events-none opacity-0",
-                )}
-                aria-label="Close priority filter"
-                onClick={() => closePriorityFilter()}
+                aria-hidden
               />
-              <div
-                id="priority-filter-panel"
-                ref={priorityPanelRef}
-                role="dialog"
-                aria-label="Priority filter"
-                onTransitionEnd={handlePriorityPanelTransitionEnd}
-                className={cn(
-                  "absolute top-full left-0 z-50 mt-2 w-full min-w-[14rem] max-w-[calc(100vw-1rem)] rounded-2xl border bg-popover p-4 shadow-2xl transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-opacity motion-reduce:duration-[120ms] motion-reduce:transform-none",
-                  priorityOpen
-                    ? "scale-100 opacity-100"
-                    : "pointer-events-none scale-[0.98] opacity-0 motion-reduce:scale-100",
-                )}
-              >
-                <PriorityChoices
-                  selected={selectedPriorities}
-                  onToggle={togglePriority}
+            </Button>
+            {priorityOpen ? (
+              <>
+                <button
+                  ref={priorityOverlayRef}
+                  type="button"
+                  className={cn("fixed inset-0 z-40 bg-black/40 sm:hidden")}
+                  aria-label="Close priority filter"
+                  onClick={() => closePriorityFilter()}
                 />
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  {selectedPriorities.size > 0 ? (
-                    <Button
-                      variant="link"
-                      className="h-11 px-0 lg:h-10"
-                      onClick={() => setSelectedPriorities(new Set())}
-                    >
-                      Clear
-                    </Button>
-                  ) : (
-                    <span />
+                <div
+                  id="priority-filter-panel"
+                  ref={priorityPanelRef}
+                  role="dialog"
+                  aria-label="Priority filter"
+                  className={cn(
+                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-full sm:min-w-[14rem] sm:max-w-[calc(100vw-1rem)]",
                   )}
-                  <Button
-                    className="h-11 sm:hidden"
-                    onClick={() => closePriorityFilter()}
-                  >
-                    Done
-                  </Button>
+                >
+                  <PriorityChoices
+                    selected={selectedPriorities}
+                    onToggle={togglePriority}
+                  />
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    {selectedPriorities.size > 0 ? (
+                      <Button
+                        variant="link"
+                        className="h-11 px-0 lg:h-10"
+                        onClick={() => setSelectedPriorities(new Set())}
+                      >
+                        Clear
+                      </Button>
+                    ) : (
+                      <span />
+                    )}
+                    <Button
+                      className="h-11 sm:hidden"
+                      onClick={() => closePriorityFilter()}
+                    >
+                      Done
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </>
-          ) : null}
+              </>
+            ) : null}
           </div>
 
           {isAdmin ? (
             <div className="relative min-w-0 flex-1">
-            <Button
-              ref={committeeTriggerRef}
-              variant="outline"
-              className="h-10 w-full min-w-0 justify-start px-3 text-sm"
-              aria-haspopup="listbox"
-              aria-expanded={committeeOpen}
-              aria-controls="committee-filter-panel"
-              aria-label={`Committee: ${committeeButtonLabel}`}
-              disabled={boardBusy}
-              onClick={() =>
-                committeeOpen ? closeCommitteeFilter() : openCommitteeFilter()
-              }
-            >
-              <span className="min-w-0 flex-1 truncate text-left">
-                {committeeButtonLabel}
-              </span>
+              <Button
+                ref={committeeTriggerRef}
+                variant="outline"
+                className="h-11 w-full min-w-0 justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+                aria-haspopup="listbox"
+                aria-expanded={committeeOpen}
+                aria-controls="committee-filter-panel"
+                aria-label={`Committee: ${committeeButtonLabel}`}
+                disabled={boardBusy}
+                onClick={() =>
+                  committeeOpen ? closeCommitteeFilter() : openCommitteeFilter()
+                }
+              >
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {committeeButtonLabel}
+                </span>
               <ChevronDown
                 className={cn(
-                  "ml-auto transition-transform duration-150 motion-reduce:rotate-0 motion-reduce:transition-none",
+                  "ml-auto",
                   committeeOpen && "rotate-180",
                 )}
-                aria-hidden
-              />
-            </Button>
-            {committeePanelMounted ? (
-              <div
-                id="committee-filter-panel"
-                ref={committeePanelRef}
-                role="listbox"
-                aria-label="Committee filter"
-                aria-activedescendant={`committee-filter-option-${committeeActiveIndex}`}
-                onTransitionEnd={handleCommitteePanelTransitionEnd}
-                className={cn(
-                  "absolute top-full right-0 z-50 mt-2 w-full min-w-[14rem] max-w-[calc(100vw-1rem)] rounded-2xl border bg-popover p-2 shadow-2xl transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-opacity motion-reduce:duration-[120ms] motion-reduce:transform-none sm:right-auto sm:left-0",
-                  committeeOpen
-                    ? "scale-100 opacity-100"
-                    : "pointer-events-none scale-[0.98] opacity-0 motion-reduce:scale-100",
-                )}
-              >
-                <div className="max-h-60 space-y-1 overflow-y-auto overscroll-contain">
-                  {committeeOptions.map((committee, index) => {
-                    const selected = committee.id === committeeId;
-                    return (
-                      <Button
-                        key={committee.id ?? "all"}
-                        id={`committee-filter-option-${index}`}
-                        ref={(element) => {
-                          committeeOptionRefs.current[index] = element;
-                        }}
-                        type="button"
-                        role="option"
-                        variant="ghost"
-                        className={cn(
-                          "h-11 w-full justify-between px-3 text-left",
-                          selected && "bg-primary/10 text-primary",
-                        )}
-                        aria-selected={selected}
-                        onClick={() => selectCommittee(committee.id)}
-                        onFocus={() => setCommitteeActiveIndex(index)}
-                        onKeyDown={(event) =>
-                          handleCommitteeOptionKeyDown(event, index)
-                        }
-                      >
-                        <span className="min-w-0 truncate">{committee.name}</span>
-                        {selected ? <Check aria-hidden /> : null}
-                      </Button>
-                    );
-                  })}
+                  aria-hidden
+                />
+              </Button>
+              {committeeOpen ? (
+                <div
+                  id="committee-filter-panel"
+                  ref={committeePanelRef}
+                  role="listbox"
+                  aria-label="Committee filter"
+                  aria-activedescendant={`committee-filter-option-${committeeActiveIndex}`}
+                  className={cn(
+                    "absolute top-full right-0 z-50 mt-2 w-full min-w-[14rem] max-w-[calc(100vw-1rem)] rounded-2xl border bg-popover p-2 shadow-2xl sm:right-auto sm:left-0",
+                  )}
+                >
+                  <div className="max-h-60 space-y-1 overflow-y-auto overscroll-contain">
+                    {committeeOptions.map((committee, index) => {
+                      const selected = committee.id === committeeId;
+                      return (
+                        <Button
+                          key={committee.id ?? "all"}
+                          id={`committee-filter-option-${index}`}
+                          ref={(element) => {
+                            committeeOptionRefs.current[index] = element;
+                          }}
+                          type="button"
+                          role="option"
+                          variant="ghost"
+                          className={cn(
+                            "h-11 w-full justify-between px-3 text-left",
+                            selected && "bg-primary/10 text-primary",
+                          )}
+                          aria-selected={selected}
+                          onClick={() => selectCommittee(committee.id)}
+                          onFocus={() => setCommitteeActiveIndex(index)}
+                          onKeyDown={(event) =>
+                            handleCommitteeOptionKeyDown(event, index)
+                          }
+                        >
+                          <span className="min-w-0 truncate">
+                            {committee.name}
+                          </span>
+                          {selected ? <Check aria-hidden /> : null}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -992,7 +926,7 @@ function BoardContents({
           id="event-board-backlog-button"
           ref={backlogButtonRef}
           variant="outline"
-          className="h-10 w-auto min-w-10 shrink-0 px-2.5 md:ml-auto"
+          className="h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10 md:ml-auto"
           aria-label={`Open Backlog, ${formatTaskCount(backlogTasks.length)}`}
           onClick={() => setBacklogOpen(true)}
         >
