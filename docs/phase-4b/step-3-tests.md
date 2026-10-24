@@ -13,7 +13,8 @@
 - `npm run lint` - passed with zero reported errors or warnings.
 - `git diff --check` - passed; Git reported only the repository's Windows LF-to-CRLF working-copy notices.
 - Part A follow-up 2 reran the full gate with the same result: 27 files / 267 tests, Next.js 16.3.4 with all 23 routes, zero-warning lint, and a passing whitespace check.
-- Follow-up 3 Stage 1 passes 27 files / 267 tests, the Next.js 16.3.4 production build with all 23 routes, and zero-warning lint. The Stage 1 scoped whitespace check passes. The repository-wide `git diff --check` reports only unrelated trailing whitespace at `docs/prototypes/index.html:336`; prototype files were not touched.
+- Follow-up 3 Stage 1 passes 27 files / 267 tests, the Next.js 16.3.4 production build with all 23 routes, and zero-warning lint. The Part A application-file scoped whitespace check passes. Commit `3b38c5c` also contains reference-only `docs/prototypes/**` changes that are not shipped application code or covered by the application gate; `git show --check 3b38c5c` reports trailing whitespace at `docs/prototypes/index.html:336`.
+- The Part A CodeRabbit follow-up reran the application gate successfully: 27 files / 267 tests, the Next.js 16.3.4 production build with all 23 routes, and zero-warning lint. The final uncommitted-diff whitespace result is recorded with the follow-up handoff.
 - `git diff --exit-code HEAD -- src/components/ui/segmented-control.tsx src/components/auth/sign-in-panel.tsx` passed with no output. The sign-in segmented control and its caller therefore retain the exact tracked markup, native keyboard behavior, and sizes; the event task-type radio segments are local to `event-form.tsx`.
 - On this Windows machine the package scripts were invoked through `npm.cmd` because PowerShell blocks `npm.ps1`; the package scripts themselves are unchanged.
 

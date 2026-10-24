@@ -76,6 +76,7 @@ export function EventCardMenu({
       router.push("/archives");
       router.refresh();
     } catch {
+      setOpen(false);
       setError(
         "The event could not be archived. Check your connection and try again.",
       );

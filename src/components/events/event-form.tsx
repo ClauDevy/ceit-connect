@@ -1688,10 +1688,11 @@ export function EventForm({
               </FormField>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Type">
+                <FormField label="Type" labelTarget="group">
                   {(control) => (
                     <TaskTypeToggle
                       id={control.id}
+                      aria-labelledby={control.labelId}
                       aria-describedby={control["aria-describedby"]}
                       value={taskEditor.draft.taskType}
                       onValueChange={(value) =>
@@ -2045,22 +2046,26 @@ function TaskTypeToggle({
   id,
   value,
   onValueChange,
+  "aria-labelledby": labelledBy,
   "aria-describedby": describedBy,
 }: {
   id: string;
   value: TaskType;
   onValueChange: (value: TaskType) => void;
+  "aria-labelledby": string;
   "aria-describedby"?: string;
 }) {
   return (
     <div
+      id={id}
       role="radiogroup"
+      aria-labelledby={labelledBy}
       aria-describedby={describedBy}
       className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 focus-within:ring-3 focus-within:ring-ring/50"
     >
-      {taskTypes.map((option, index) => {
+      {taskTypes.map((option) => {
         const selected = option.value === value;
-        const optionId = index === 0 ? id : `${id}-${option.value}`;
+        const optionId = `${id}-${option.value}`;
 
         return (
           <label
