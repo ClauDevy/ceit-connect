@@ -55,7 +55,7 @@ Security reminders that apply to every step: RLS is the real enforcement (add/ad
 
 ## Step 8 — Google Drive preview helper ✅ done
 
-- Build `toPreviewUrl()` and a small `DrivePreview` component (see `docs/ARCHITECTURE.md` §1) with the plain-link fallback and "Preview unavailable" note. The task modal is a Phase 4 feature, so ship the component now with a tiny demo/test and wire it into the modal when that exists.
+- Build `toPreviewUrl()` and a small `DrivePreview` component (see `docs/ARCHITECTURE.md` §1) with the plain-link fallback and "Preview unavailable" note. The task page is a Phase 4 feature, so ship the component now with a tiny demo/test and wire it into the task page when that exists.
 - **Test:** a valid share link renders an inline preview; plain text falls back to a link, never a broken iframe.
 
 ## Phase 3 gate (from the architecture doc)

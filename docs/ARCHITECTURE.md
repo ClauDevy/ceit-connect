@@ -60,7 +60,7 @@ Hiding a nav icon is UX polish, not security. Every UI role check must have a ma
 - **Assist system:** "Request Backup" flags a task with an orange "Help Wanted" badge, visible council-wide. Any member can "Volunteer"; the creator accepts, adding the volunteer to `assist_assignees` and granting edit rights.
 - **Dependencies:** if Task B depends on Task A, B shows a lock icon and "Start Task" is disabled until A is Completed.
 - **Confidential tasks:** RLS is row-level and cannot show a masked title while hiding the description, so a `SECURITY DEFINER` function `get_task(p_task_id)` returns either the real data or a masked "Confidential Task" row. Real content is visible to: Admin; Co-Admin of the same committee; primary assignees; assist assignees; and anyone in `allowed_viewers`. The function's own `can_view` logic is the security boundary — keep it simple and never build it from user-supplied text. **The board must always call `get_task`, never a raw select, wherever confidentiality matters.**
-- **Status updates:** desktop drag-and-drop (dnd-kit, optimistic updates); mobile circular tap-checkbox → Completed. No drag-to-delete; deletion is a confirmed button inside the Task Modal, restricted to Admins/creators.
+- **Status updates:** desktop drag-and-drop (dnd-kit, optimistic updates); mobile circular tap-checkbox → Completed. No drag-to-delete; deletion is a confirmed button on the task page, restricted to Admins/creators.
 - **Priorities:** default Medium; auto-escalates to High 24 hours before due; Critical (flashing red) once overdue.
 - **Comments:** per-task thread via react-mentions; `@mention` targets one user; "Heads Up" blasts all assignees.
 
@@ -90,8 +90,28 @@ Supabase free tier has no automated backups. A designated Technical Lead exports
 | 5 | Notifications, dashboard wiring, ops handover | Not started |
 
 **Phase 3 gate checks:** auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link renders an inline preview and plain text falls back to a link; active Admins and Co-Admins can see and edit any Draft, while a Member cannot see a Draft even via direct URL; a Co-Admin can launch any Draft but cannot change Active back to Draft or archive one; an Archived event cannot be updated or un-archived.
-**Phase 4 gate checks:** blocked task unlocks when its dependency completes; a non-assigned Member sees only "Confidential Task" on the board and in the modal; drag-and-drop works on desktop and tap-checkbox on a real phone.
+**Phase 4 gate checks:** blocked task unlocks when its dependency completes; a non-assigned Member sees only "Confidential Task" on the board and task page; drag-and-drop works on desktop and tap-checkbox on a real phone.
 **Phase 5 gate checks:** a burst of 40+ mentions throttles gracefully; a Co-Admin lands on their own committee with no Level 1 access, a Member has no dashboard link and the URL is blocked server-side; the unread count survives a refresh after an offline notification.
+
+## Planned changes (Phase 4B)
+
+These are approved plans, not built or live rules. Each batch's own docs step moves its line into the applicable live rules when that batch merges.
+
+- **Run order:** 0, 1, 2, 3, 3P, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13d, 13b, 4, 14, then Phase 5, then 15.
+- **Batch 0 — Co-Admin users-UPDATE fix:** remove direct Co-Admin updates to users while preserving own-profile editing; protect the invite route and Users page with the active-profile guard.
+- **Batch 7 — Google sign-in:** securely admit only invited, active, matching-profile users on an allowed domain; do not require a password or trust `app_metadata.provider`.
+- **Batch 8 — Officers:** Admin is the SC President title and keeps `committee_id = null`; the `President` lookup row remains. The only officer operations are: invite a new Admin/Co-Admin, appoint an active Member as Co-Admin/Admin, return a Co-Admin to Member, move a Member to another committee, cancel an unaccepted officer invite, and Admin self-step-down. The last active Admin is always protected. Private `public.app_settings.enforce_officer_role_caps` starts false for testing; when enabled it limits active-plus-pending seats to 2 Admins and 1 Co-Admin per committee under one advisory lock without rewriting existing over-limit accounts.
+- **Batch 9 — Co-Admin user management:** let Co-Admins manage ordinary Members only within their own committee, without any officer operation, committee move, officer management, or account removal.
+- **Batch 10 — Former-member anonymization:** Admins may anonymize eligible deactivated former members while retaining their UUID and history; accounts are never deleted.
+- **Batch 11 — Event and task-page actions:** add Add/Edit Task on the event page, plus Edit and updated-at information on the task page.
+- **Batch 12 — Activity Log visibility:** Admins and Co-Admins receive the masked whole-log reader, raw activity-log `SELECT` is revoked, and Members continue seeing relevant history on task pages.
+- **Batch 13 — Task leave and picker rules:** preserve immediate Member leave for null deadlines or `due_date > now() + interval '72 hours'`; at/inside the boundary use a requester-cancellable leave request. Authorized leadership can approve/deny at the top of `/workspace` and on task detail, with no notifications. Admin/Co-Admin leave and backup volunteering are automatic; picker exclusions and committee-only Select all apply. Caps are 10 Draft events per creator, 20 pending leave requests per person, and 20 pending volunteer offers per person.
+- **Batch 13c — Draft task visibility:** all active Admins and Co-Admins may read Draft tasks and phases, with confidential masking retained and writes remaining committee-scoped.
+- **Batch 13d — Draft and Archived event deletion:** one Admin-only management page with a year filter deletes Draft or Archived events, never Active events. One deletion types the event name; bulk types `DELETE <count> EVENTS`; activity history retains task UUIDs without a foreign key.
+- **Batch 13b — Phase completion:** this runs after 13d; named phases complete when every task is Completed and then freeze task/child mutations. Edit Event may still save metadata without a completed-phase task mutation. `Unphased` never completes or locks. Reopen is callable by any active Admin or the active Co-Admin whose id equals `events.created_by` (Admins only if that Co-Admin is inactive), and moves one chosen task to In Progress.
+- **Batches 3P, 7, and 12 — Paging:** use fetch-21/show-20 "Load more" paging for the approved linear lists in 3P, Users in 7, and Activity Log in 12; keep Kanban fully loaded.
+- **Batch 14 — Hardening and gate:** revoke `TRUNCATE`, `REFERENCES`, and `TRIGGER` from `authenticated` on `events`, `tasks`, `notifications`, and `activity_log`; tighten the Prod email domain; clean up docs and `/sandbox`; verify Step 1 cleanup; enable officer caps through a tracked migration before final release; and update catalog tests and Step 10 allowlists.
+- **Batch 15 — Dependencies v2:** after Phase 5, add normalized multiple prerequisites and transitive automatic dependent reversion with audit coverage; this is outside the Phase 4B completion gate.
 
 ## Approved deviations from the original document
 

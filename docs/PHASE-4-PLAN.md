@@ -2,7 +2,7 @@
 
 ## Goal
 
-Turn the Phase 3 task rows into a real Supabase-backed event board and task modal, one small branch and PR at a time, while preserving the permanent archive freeze, confidential-content boundary, and Active-event-must-have-a-task invariant.
+Turn the Phase 3 task rows into a real Supabase-backed event board and task page at `/tasks/[taskId]`, one small branch and PR at a time, while preserving the permanent archive freeze, confidential-content boundary, and Active-event-must-have-a-task invariant.
 
 Each step follows: own branch → implementation → its independent test document → manual test → `npm run build` → `npm run lint` → CodeRabbit → PR. Do not start the next step until the owner confirms the current one works. Design sources are the relevant searched sections of `docs/prototypes/event.html`, `docs/prototypes/tasks.html`, and `docs/prototypes/dashboard.html`; never read a prototype file in full.
 
@@ -42,32 +42,32 @@ Each step follows: own branch → implementation → its independent test docume
 7. **[Step 5b — Transactional task-move RPC](phase-4/step-5b.md) — Gate-critical.**
 8. **[Step 6 — Drag-and-drop and mobile status controls](phase-4/step-6.md) — Gate-critical.**
 9. **[Step 7 — Dependencies and confidentiality controls](phase-4/step-7.md) — Gate-critical.**
-10. **[Step 7A — Assignment, deletion, and self-unassign](phase-4/step-7a.md) — Optional.**
-11. **[Step 7B — Archive-only late sharing](phase-4/step-7b.md) — Optional.**
-12. **[Step 8 — Claiming, backup, volunteers, and workload](phase-4/step-8.md) — Optional.**
-13. **[Step 9 — Task comments](phase-4/step-9.md) — Required.**
-14. **[Step 9A — Tasks personal feed](phase-4/step-9a.md) — Required.**
+10. **[Step 7A — Assignment, deletion, and self-unassign](phase-4/step-7a.md) — Originally optional; selected, merged, and complete.**
+11. **[Step 7B — Archive-only late sharing](phase-4/step-7b.md) — Originally optional; selected, merged, and complete.**
+12. **[Step 8 — Claiming, backup, volunteers, and workload](phase-4/step-8.md) — Originally optional; selected, merged, and complete.**
+13. **[Step 9 — Task comments](phase-4/step-9.md) — Required; merged and complete.**
+14. **[Step 9A — Tasks personal feed](phase-4/step-9a.md) — Required; merged and complete.**
 15. **[Step 10 — Phase 4 hardening and gate](phase-4/step-10.md) — Gate-critical.**
 
-## Deferred
+## Carried into Phase 4B
 
-- **Add task from the board (former Step 7C):** deferred beyond Phase 4. For now, the Backlog/lane **Add task** affordance links authorized Admins and Co-Admins to Edit Event; Members receive no create control. A future plan must revisit safe single-task creation and total-event capacity enforcement.
-- Notifications and unread behavior are Phase 5.
-- Executive Dashboard data wiring is Phase 5; its prototype is visual reference only in Phase 4.
-- Supabase Realtime for tasks is not part of Phase 4; use focus refetch and short polling.
+- **Batch 11:** Add and Edit Task from the event board, including safe single-task creation and total-event capacity enforcement.
+- **Batch 12:** Activity Log page.
+- **Batch 15, after Phase 5:** dependency v2, including multiple prerequisites and dependency auto-revert.
+- **Phase 5, after Phase 4B batch 14:** notifications, unread behavior, and Executive Dashboard data wiring.
+- Supabase Realtime for tasks remains unplanned; the current app uses focus refetch and short polling.
 
 ## Known limitations
 
-- Raw `tasks` rows are not field-masked at the column level. After Step 1A, a confidential raw row is available only to an active Admin, active owning Co-Admin, or active non-Draft primary/assist assignee. `allowed_viewers` and optional archive late-share viewers use restricted content RPCs. Table-level `SELECT` remains because removing title/description grants would break the invoker-security archive-template import; permanent direct-`SELECT` regression tests guard the residual risk.
+- Raw `tasks` rows are not field-masked at the column level. After Step 1A, a confidential raw row is available only to an active Admin, active owning Co-Admin, or active non-Draft primary/assist assignee. `allowed_viewers` and selected archive late-share viewers use restricted content RPCs. Table-level `SELECT` remains because removing title/description grants would break the invoker-security archive-template import; permanent direct-`SELECT` regression tests guard the residual risk.
 - Only one direct dependency is supported. Blocked state and effective priority are derived. Dependents are not auto-reverted when a prerequisite moves backward.
 - `create_event_with_tasks` caps a new event's initial input at 200 tasks, while `edit_event_with_tasks` limits each submitted add/update/delete list to 200 but does not enforce a 200-row total for an existing event. Phase 4 adds no total-cap trigger because board task creation is deferred.
 - Comment edit history is not versioned; only the current body and `edited_at` are retained.
 - Phase 4 stores mention, Heads Up, assignment, and unlock intent but sends no notifications.
 - Task boards and Workspace use focus refetch/short polling rather than Realtime.
 - `tasks.created_by` is provenance only; historical backfill values are event-creator fallbacks, not proof of the original task author.
-- Work links (Step 4), task comments (Step 9), and the personal My Tasks feed (Step 9A) were promoted to Required. Assignment/assistance polish and archive late-sharing remain optional for the minimum Phase 4 gate.
+- Work links (Step 4), task comments (Step 9), and the personal My Tasks feed (Step 9A) were promoted to Required. Steps 7A, 7B, and 8 were originally optional, then selected, merged, and included in the completed Phase 4 gate.
 
-## Unrelated findings
+## Open items
 
-- `package.json` still contains the deferred unused packages `cn` and `p`.
-- Production `ALLOWED_EMAIL_DOMAINS`, the mistyped fake-email Prod account, and parked `discord_id` Settings work remain outside Phase 4.
+See the single canonical Open items list in `docs/PROGRESS.md`.

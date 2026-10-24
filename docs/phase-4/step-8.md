@@ -1,6 +1,6 @@
 # Step 8 — Backlog claim, self-service assistance, and workload
 
-**Status:** Step 8A database contracts are live on Dev and Prod. Step 8B UI is implemented locally.
+**Status:** Originally optional; selected, merged, verified, and live on Dev and Prod. Step 8A contains the database contracts and Step 8B contains the UI.
 
 - Step 8B adds Claim buttons to real Backlog cards, caller-session backup and volunteer controls on task detail, workload labels in leadership assignment pickers, and a paginated Help Wanted surface at `/workspace`. The navigation label is **Tasks** so Step 9A can add the personal My Tasks feed beside Help Wanted without another route or navigation rename.
 

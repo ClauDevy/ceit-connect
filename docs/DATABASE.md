@@ -181,16 +181,16 @@ Known Storage limitation: Postgres and Storage cannot share a transaction. Direc
 
 ## Migrations (apply in this order)
 
-1. `20260925125834_committees_and_users.sql`
-2. `20260926044920_fix_users_rls_recursion.sql`
-3. `20260926051331_events_and_tasks.sql`
-4. `20260926053015_notifications_and_activity_log.sql`
-5. `20260926124051_fix_privilege_escalation_and_search_path.sql`
-6. `20260927043940_fix_activity_log_leak_and_task_column_guard.sql`
-7. `20260927044341_fix_activity_log_backup_confidential_leak.sql`
-8. `20260927170612_recreate_missing_assignee_guard_trigger.sql`
+1. `20260925125834_committees_and_users.sql` — creates the 12-row committees lookup, the app-profile `users` table, their initial RLS policies, and the users-to-Auth/committee relationships
+2. `20260926044920_fix_users_rls_recursion.sql` — adds security-definer role/committee lookup helpers and replaces the self-referencing users policies so their authorization checks do not recurse through users RLS
+3. `20260926051331_events_and_tasks.sql` — creates the initial events and tasks tables and RLS policies, the confidential-content `get_task()` reader, and the assignee-update guard trigger
+4. `20260926053015_notifications_and_activity_log.sql` — creates notifications and the immutable activity-log table, adds their initial read/update policies, and attaches the task activity trigger
+5. `20260926124051_fix_privilege_escalation_and_search_path.sql` — pins the role/committee helpers to `public` and replaces the Co-Admin update policy so it cannot promote a same-committee user to Admin
+6. `20260927043940_fix_activity_log_leak_and_task_column_guard.sql` — narrows activity-log reads, replaces the assignee guard with a status-only JSON diff, requires event creators to match the caller, pins missed function search paths, adds Admin committee management, and makes role helpers ignore inactive profiles
+7. `20260927044341_fix_activity_log_backup_confidential_leak.sql` — prevents Help Wanted visibility from exposing confidential task activity and removes the nonexistent `updated_at` exception from the assignee guard
+8. `20260927170612_recreate_missing_assignee_guard_trigger.sql` — recreates the status-only assignee guard function and attaches the previously missing `tasks_restrict_assignee_updates` trigger
 9. `20261001135007_add_password_set_column.sql` (includes a backfill from `auth.users.encrypted_password`)
-10. `20261002094633_avatar_storage_policies.sql`
+10. `20261002094633_avatar_storage_policies.sql` — adds public avatar-object reads and authenticated insert/update/delete policies limited to the caller's own Storage folder
 11. `20261007061905_tighten_events_insert_policy.sql` — drops and recreates `events_insert` so it also requires `created_by = auth.uid()`
 12. `20261011114905_update_event_visibility_and_edit_permissions.sql` — lets active Admins/Co-Admins see and edit all Draft/Active events, reserves archiving for Admins, blocks Active-to-Draft reversals, freezes Archived event rows, and makes `created_by` immutable
 13. `20261011180000_enforce_draft_task_visibility.sql` — prevents Members from reading or updating Draft tasks, applies the same rule inside `get_task()`, and prevents Draft task snapshots from leaking through `activity_log`

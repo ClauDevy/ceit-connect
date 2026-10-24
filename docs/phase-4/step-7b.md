@@ -1,6 +1,6 @@
 # Step 7B — Archive-only late sharing
 
-**Status:** Optional. Step 7B-DB is applied on Dev and all five SQL test pastes pass. Step 7B-UI is implemented locally and awaits manual Dev verification.
+**Status:** Originally optional; selected, merged, and live on Dev and Prod. All five Step 7B-DB SQL test pastes and the Step 7B-UI manual verification passed (owner-confirmed).
 
 - Migration `20261023160000_archived_task_viewers.sql` adds deny-by-default `archived_task_viewers(task_id, user_id, granted_by, created_at)` with primary key `(task_id, user_id)`, reverse/grantor indexes, derived grantor, immutable rows, and a fail-closed task-then-event Archived-parent guard with no cascade exception.
 - Narrow grant/revoke functions authorize an active Admin or owning active Co-Admin before taking locks, then lock task, lock stored parent event, and re-check relationship, authority, and Archived-confidential status. Grant requires an active target without existing real access; revoke deletes the exact row and also works after target deactivation.
