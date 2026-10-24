@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CalendarDays, Pencil, Plus } from "lucide-react";
-import { ArchiveEventButton } from "@/components/events/archive-event-button";
+import { EventCardMenu } from "@/components/events/event-card-menu";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -30,6 +30,21 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const exactTimestampFormatter = new Intl.DateTimeFormat("en-PH", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZone: "Asia/Manila",
+  timeZoneName: "short",
+});
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
+});
+
 function formatDate(date: string) {
   return dateFormatter.format(new Date(`${date}T00:00:00Z`));
 }
@@ -46,6 +61,44 @@ function formatDateRange(event: HomeEvent) {
   return `${formatDate(event.start_date)} – ${formatDate(event.end_date)}`;
 }
 
+function formatLastEdited(value: string | null | undefined) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const elapsedSeconds = (date.getTime() - Date.now()) / 1000;
+  const absoluteSeconds = Math.abs(elapsedSeconds);
+  let unit: Intl.RelativeTimeFormatUnit = "second";
+  let divisor = 1;
+
+  if (absoluteSeconds >= 60 * 60 * 24 * 365) {
+    unit = "year";
+    divisor = 60 * 60 * 24 * 365;
+  } else if (absoluteSeconds >= 60 * 60 * 24 * 30) {
+    unit = "month";
+    divisor = 60 * 60 * 24 * 30;
+  } else if (absoluteSeconds >= 60 * 60 * 24) {
+    unit = "day";
+    divisor = 60 * 60 * 24;
+  } else if (absoluteSeconds >= 60 * 60) {
+    unit = "hour";
+    divisor = 60 * 60;
+  } else if (absoluteSeconds >= 60) {
+    unit = "minute";
+    divisor = 60;
+  }
+
+  return {
+    exact: exactTimestampFormatter.format(date),
+    iso: date.toISOString(),
+    relative: relativeTimeFormatter.format(
+      Math.round(elapsedSeconds / divisor),
+      unit,
+    ),
+  };
+}
+
 function ActiveEventCard({
   event,
   canEdit,
@@ -58,7 +111,7 @@ function ActiveEventCard({
   incompleteTaskCount: number | undefined;
 }) {
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="group relative overflow-hidden border-border/70 hover:border-primary/40 hover:shadow-sm focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/30">
       <StretchedLink
         href={`/events/${event.id}`}
         label={`Open ${event.name}`}
@@ -70,7 +123,15 @@ function ActiveEventCard({
         decoding="async"
         className="aspect-video w-full"
       />
-      <CardContent className="space-y-3">
+      <EventCardMenu
+        eventId={event.id}
+        eventName={event.name}
+        canEdit={canEdit}
+        canArchive={canArchive}
+        incompleteTaskCount={incompleteTaskCount}
+        eventUpdatedAt={event.updated_at}
+      />
+      <CardContent className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg font-semibold leading-snug">
             {event.name}
@@ -86,24 +147,8 @@ function ActiveEventCard({
             {event.description}
           </p>
         ) : null}
-        <div className="relative z-20 flex flex-wrap items-start gap-2">
-          {canEdit && (
-            <Link
-              href={`/events/${event.id}/edit`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Pencil aria-hidden />
-              Edit
-            </Link>
-          )}
-          {canArchive && incompleteTaskCount !== undefined ? (
-            <ArchiveEventButton
-              eventId={event.id}
-              eventName={event.name}
-              incompleteTaskCount={incompleteTaskCount}
-              eventUpdatedAt={event.updated_at}
-            />
-          ) : null}
+        <div className="border-t border-border/70 pt-3 text-sm font-semibold text-primary group-hover:text-foreground group-focus-within:text-foreground">
+          View board <span aria-hidden>→</span>
         </div>
       </CardContent>
     </Card>
@@ -117,6 +162,8 @@ function DraftEventCard({
   event: HomeEvent;
   canEdit: boolean;
 }) {
+  const lastEdited = formatLastEdited(event.updated_at);
+
   return (
     <Card className="relative border-2 border-dashed bg-card/70">
       {canEdit ? (
@@ -125,7 +172,7 @@ function DraftEventCard({
           label={`Edit ${event.name}`}
         />
       ) : null}
-      <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <CardContent className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div className="flex min-w-0 items-start gap-3.5">
           <EventBanner
             src={event.banner_url}
@@ -143,11 +190,33 @@ function DraftEventCard({
               <CalendarDays className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               <span>{formatDateRange(event)}</span>
             </p>
+            <div className="mt-2 grid gap-0.5 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">Not launched</p>
+              {lastEdited ? (
+                <time
+                  dateTime={lastEdited.iso}
+                  title={`${lastEdited.exact} (Philippine time)`}
+                  aria-label={`Last edited ${lastEdited.exact}, Philippine time`}
+                >
+                  Last edited {lastEdited.relative}
+                </time>
+              ) : null}
+            </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Badge variant="neutral">Draft</Badge>
-          {canEdit ? <span className="text-sm font-medium text-primary">Edit</span> : null}
+        <div className="relative z-20 flex flex-wrap items-center gap-2 sm:justify-end">
+          <Badge variant="neutral" className="shrink-0">
+            Draft
+          </Badge>
+          {canEdit ? (
+            <Link
+              href={`/events/${event.id}/edit`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Pencil aria-hidden />
+              Edit
+            </Link>
+          ) : null}
         </div>
       </CardContent>
     </Card>
@@ -252,16 +321,21 @@ export default async function HomePage() {
         <div className="space-y-9">
           {activeEvents.length > 0 ? (
             <section aria-labelledby="active-events-heading">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <h2
-                  id="active-events-heading"
-                  className="font-display text-lg font-semibold sm:text-xl"
-                >
-                  Active events
-                </h2>
-                <span className="text-sm text-muted-foreground">
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <h2
+                    id="active-events-heading"
+                    className="font-display text-lg font-semibold sm:text-xl"
+                  >
+                    Active events
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Open an event to view its task board.
+                  </p>
+                </div>
+                <Badge variant="neutral" aria-label={`${activeEvents.length} active events`}>
                   {activeEvents.length}
-                </span>
+                </Badge>
               </div>
               <div className="grid gap-5 lg:grid-cols-2">
                 {activeEvents.map((event) => (
@@ -291,9 +365,9 @@ export default async function HomePage() {
                     Draft — visible to Admins and Co-Admins
                   </p>
                 </div>
-                <span className="text-sm text-muted-foreground">
+                <Badge variant="neutral" aria-label={`${draftEvents.length} draft events`}>
                   {draftEvents.length}
-                </span>
+                </Badge>
               </div>
               <div className="grid gap-4">
                 {draftEvents.map((event) => (

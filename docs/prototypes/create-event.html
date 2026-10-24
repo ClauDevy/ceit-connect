@@ -153,8 +153,8 @@
           <circle cx="48" cy="46" r="3.2" fill="#1B140F"/><circle cx="72" cy="46" r="3.2" fill="#1B140F"/>
         </svg>
         <div>
-          <p class="font-display font-semibold text-base">Let's put your next event together</p>
-          <p class="text-xs text-slate-600 dark:text-night-muted mt-0.5">Fill in the details, break the work into phases, and launch when it's ready. Your progress autosaves as a Draft along the way.</p>
+          <p id="create-event-heading" class="font-display font-semibold text-base">Let's put your next event together</p>
+          <p id="create-event-intro" class="text-xs text-slate-600 dark:text-night-muted mt-0.5">Fill in the details, break the work into phases, and launch when it's ready. Your progress autosaves as a Draft along the way.</p>
         </div>
       </div>
 
@@ -542,6 +542,7 @@
             <input id="assignee-search-input" type="text" placeholder="Search members…" class="w-full rounded-lg border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-council/40 focus:border-council">
           </div>
           <div id="task-assignees-list" class="flex flex-col gap-1 max-h-40 overflow-y-auto rounded-xl border border-slate-300 dark:border-white/15 bg-card dark:bg-white/5 p-2"></div>
+          <div id="assignee-workload-summary" class="hidden mt-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] px-3 py-2 text-[11px] leading-relaxed text-slate-600 dark:text-night-muted" aria-live="polite"></div>
           <p class="text-[10.5px] text-slate-500 dark:text-night-muted mt-1.5">Tasks are unassigned by default and sit in the Backlog until someone claims or is given them.</p>
         </div>
       </div>
@@ -759,9 +760,9 @@
     high: 'bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light',
   };
   var statusStyle = {
-    'todo': { dot: 'bg-slate-400', label: 'To Do' },
-    'in-progress': { dot: 'bg-sky-500', label: 'In Progress' },
-    'completed': { dot: 'bg-emerald-500', label: 'Completed' },
+    'todo': { dot: 'task-state-dot-todo', label: 'To Do' },
+    'in-progress': { dot: 'task-state-dot-progress', label: 'In Progress' },
+    'completed': { dot: 'task-state-dot-completed', label: 'Completed' },
   };
 
   var taskSeq = 0;
@@ -833,7 +834,7 @@
       ? '<span class="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-night-muted text-[10.5px] font-semibold px-2 py-1"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>' + allTasks[task.dependsOn].name + '</span>'
       : '<span class="inline-flex items-center rounded-md border border-slate-300 dark:border-white/15 text-slate-500 dark:text-night-muted text-[10.5px] font-semibold px-2 py-1">None</span>';
     var nameText = task.confidential
-      ? '<span class="italic text-slate-500 dark:text-night-muted"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="inline -mt-0.5 mr-1"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>Confidential Task</span>'
+      ? '<span class="italic task-state-confidential-foreground"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="inline -mt-0.5 mr-1"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>Confidential Task</span>'
       : task.name;
     var backupBadge = task.requestBackup ? '<span class="inline-flex items-center gap-1 rounded-md bg-council-wash dark:bg-night-wash text-council-dark dark:text-council-light text-[9.5px] font-bold px-1.5 py-0.5 ml-1.5 align-middle">🚨 Help Wanted</span>' : '';
     var nameHTML = '<div>' + nameText + backupBadge + '</div>';
@@ -1117,25 +1118,82 @@
     var pool = MEMBERS.filter(function (m) { return m.name.toLowerCase().indexOf(q) !== -1; });
     var inCommittee = pool.filter(function (m) { return m.committee === committee; });
     var outside = pool.filter(function (m) { return m.committee !== committee; });
+    var selectedShown = pool.filter(function (m) { return currentSelectedAssignees.indexOf(m.name) !== -1; }).length;
     function rowHTML(m) {
       var checked = currentSelectedAssignees.indexOf(m.name) !== -1 ? 'checked' : '';
+      var eventCount = getMemberOpenTaskCount(m.name);
+      var totalCount = m.active + eventCount;
+      var workloadTone = totalCount >= 5 ? 'text-red-600 dark:text-red-400' : totalCount >= 3 ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-night-muted';
       return '<label class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer text-sm">' +
         '<span class="flex items-center gap-2"><input type="checkbox" value="' + m.name + '" class="assignee-checkbox accent-orange-600" ' + checked + '>' + m.name + '</span>' +
-        '<span class="text-[10.5px] text-slate-500 dark:text-night-muted">' + m.committee + ' · ' + m.active + ' active</span>' +
+        '<span class="text-right leading-tight"><span class="block text-[10.5px] text-slate-500 dark:text-night-muted">' + m.committee + '</span><span class="block text-[10px] ' + workloadTone + '">' + totalCount + ' open task' + (totalCount === 1 ? '' : 's') + '</span></span>' +
       '</label>';
     }
-    var html = '';
+    var html = '<div class="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-slate-200 dark:border-white/10"><label class="flex items-center gap-2 text-xs font-semibold cursor-pointer"><input id="select-visible-assignees" type="checkbox" class="accent-orange-600" ' + (pool.length && selectedShown === pool.length ? 'checked' : '') + '><span>Select all shown (' + pool.length + ')</span></label><button id="clear-visible-assignees" type="button" class="text-[11px] font-semibold text-slate-500 hover:text-council disabled:opacity-40" ' + (pool.length ? '' : 'disabled') + '>Clear shown</button></div>';
     if (inCommittee.length) html += '<p class="text-[9.5px] uppercase tracking-wide font-bold text-slate-400 dark:text-night-muted/70 px-2 pt-1">In ' + committee + '</p>' + inCommittee.map(rowHTML).join('');
     if (outside.length) html += '<p class="text-[9.5px] uppercase tracking-wide font-bold text-slate-400 dark:text-night-muted/70 px-2 pt-2">Other Committees</p>' + outside.map(rowHTML).join('');
-    if (!inCommittee.length && !outside.length) html = '<p class="text-xs text-slate-500 dark:text-night-muted text-center py-3">No members match.</p>';
+    if (!inCommittee.length && !outside.length) html += '<p class="text-xs text-slate-500 dark:text-night-muted text-center py-3">No members match.</p>';
     listEl.innerHTML = html;
+    var selectShown = document.getElementById('select-visible-assignees');
+    selectShown.indeterminate = selectedShown > 0 && selectedShown < pool.length;
+    selectShown.addEventListener('change', function () {
+      var shownNames = pool.map(function (m) { return m.name; });
+      if (selectShown.checked) {
+        pool.forEach(function (m) { if (currentSelectedAssignees.indexOf(m.name) === -1) currentSelectedAssignees.push(m.name); });
+      } else {
+        currentSelectedAssignees = currentSelectedAssignees.filter(function (name) { return shownNames.indexOf(name) === -1; });
+      }
+      renderAssigneeList(filterText);
+      if (document.getElementById('task-confidential-input').checked) renderAccessChips();
+    });
+    document.getElementById('clear-visible-assignees').addEventListener('click', function () {
+      var shownNames = pool.map(function (m) { return m.name; });
+      currentSelectedAssignees = currentSelectedAssignees.filter(function (name) { return shownNames.indexOf(name) === -1; });
+      renderAssigneeList(filterText);
+      if (document.getElementById('task-confidential-input').checked) renderAccessChips();
+    });
     Array.prototype.forEach.call(listEl.querySelectorAll('.assignee-checkbox'), function (cb) {
       cb.addEventListener('change', function () {
         if (cb.checked) { if (currentSelectedAssignees.indexOf(cb.value) === -1) currentSelectedAssignees.push(cb.value); }
         else { currentSelectedAssignees = currentSelectedAssignees.filter(function (n) { return n !== cb.value; }); }
         if (document.getElementById('task-confidential-input').checked) renderAccessChips();
+        renderAssigneeList(filterText);
       });
     });
+    renderAssigneeWorkloadSummary();
+  }
+
+  function getMemberOpenTaskCount(name) {
+    var count = 0;
+    Object.keys(allTasks).forEach(function (id) {
+      var task = allTasks[id];
+      if (task && task.status !== 'completed' && task.status !== 'done' && Array.isArray(task.assignees) && task.assignees.indexOf(name) !== -1) count++;
+    });
+    return count;
+  }
+
+  function renderAssigneeWorkloadSummary() {
+    var summary = document.getElementById('assignee-workload-summary');
+    if (!summary) return;
+    if (!currentSelectedAssignees.length) { summary.classList.add('hidden'); summary.textContent = ''; return; }
+    var overloaded = false;
+    var details = currentSelectedAssignees.map(function (name) {
+      var member = MEMBERS.find(function (m) { return m.name === name; });
+      var eventCount = getMemberOpenTaskCount(name);
+      var total = (member ? member.active : 0) + eventCount;
+      if (total >= 5) overloaded = true;
+      var nextDue = Object.keys(allTasks).map(function (id) { return allTasks[id]; }).filter(function (task) {
+        return task && task.status !== 'completed' && task.status !== 'done' && Array.isArray(task.assignees) && task.assignees.indexOf(name) !== -1 && task.due;
+      }).map(function (task) { return task.due; }).sort()[0];
+      var dueText = nextDue ? ' · next event task due ' + new Date(nextDue + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+      return name + ': ' + total + ' open tasks overall (' + eventCount + ' in this event)' + dueText;
+    });
+    summary.textContent = details.join('  |  ') + (overloaded ? ' · High workload: consider assigning someone else.' : '');
+    summary.classList.toggle('border-amber-300', overloaded);
+    summary.classList.toggle('dark:border-amber-700', overloaded);
+    summary.classList.toggle('text-amber-800', overloaded);
+    summary.classList.toggle('dark:text-amber-300', overloaded);
+    summary.classList.remove('hidden');
   }
   document.getElementById('assignee-search-input').addEventListener('input', function () { renderAssigneeList(this.value); });
 
@@ -1252,10 +1310,81 @@
     document.getElementById('ready-tiger').classList.toggle('flex', ready);
   }
 
-  document.getElementById('save-draft-btn').addEventListener('click', function () { showToast('Saved as Draft'); });
+  var homeDraftStorageKey = 'ceitHomeIntramuralsDraft';
+  var homeDraftEditMode = new URLSearchParams(window.location.search).get('editDraft') === 'home-intramurals-2026';
+  var homeDraftState = null;
+  if (homeDraftEditMode) {
+    try { homeDraftState = JSON.parse(sessionStorage.getItem(homeDraftStorageKey) || 'null'); } catch (error) { homeDraftState = null; }
+  }
+  if (homeDraftEditMode && homeDraftState) {
+    document.getElementById('mode-picker').classList.add('hidden');
+    document.getElementById('create-event-heading').textContent = 'Edit event draft';
+    document.getElementById('create-event-intro').textContent = 'Update event details, dates, phases, and tasks. Changes stay private until launch.';
+    document.getElementById('save-draft-btn').textContent = 'Save Draft Changes';
+    eventNameInput.value = homeDraftState.name || '';
+    eventStartInput.value = homeDraftState.startDate || '';
+    eventEndInput.value = homeDraftState.endDate || '';
+    eventDescInput.value = homeDraftState.description || '';
+    descCounter.textContent = eventDescInput.value.length + '/300';
+    if (Array.isArray(homeDraftState.phases)) {
+      phases = homeDraftState.phases;
+      allTasks = {};
+      taskSeq = 0;
+      phaseSeq = 0;
+      phases.forEach(function (phase, phaseIndex) {
+        phaseSeq = Math.max(phaseSeq, Number(String(phase.id).replace('phase-', '')) || phaseIndex + 1);
+        phase.number = phase.number || String(phaseIndex + 1).padStart(2, '0');
+        phase.tasks = Array.isArray(phase.tasks) ? phase.tasks : [];
+        phase.tasks.forEach(function (task) {
+          allTasks[task.id] = { name: task.name, phaseId: phase.id };
+          taskSeq = Math.max(taskSeq, Number(String(task.id).replace('t', '')) || 0);
+        });
+      });
+    }
+    if (homeDraftState.banner) {
+      bannerPreview.src = homeDraftState.banner;
+      bannerPreview.classList.remove('hidden');
+      bannerPlaceholder.classList.add('hidden');
+      document.getElementById('summary-banner-img').src = homeDraftState.banner;
+      document.getElementById('summary-banner-img').classList.remove('hidden');
+      document.getElementById('summary-banner-placeholder').classList.add('hidden');
+    }
+  }
+
+  function saveHomeDraft(status) {
+    var banner = bannerPreview.classList.contains('hidden') ? '' : bannerPreview.src;
+    var saved = {
+      id: 'home-intramurals-2026',
+      name: eventNameInput.value.trim(),
+      startDate: eventStartInput.value,
+      endDate: eventEndInput.value,
+      description: eventDescInput.value,
+      phases: phases,
+      banner: banner,
+      status: status,
+      lastEdited: new Date().toISOString()
+    };
+    try {
+      sessionStorage.setItem(homeDraftStorageKey, JSON.stringify(saved));
+      showToast(status === 'launched' ? 'Event launched' : 'Draft changes saved');
+      window.setTimeout(function () { window.location.href = 'index.html'; }, 350);
+    } catch (error) {
+      showToast('Could not save this draft in this browser session');
+    }
+  }
+
+  document.getElementById('save-draft-btn').addEventListener('click', function () {
+    if (homeDraftEditMode && homeDraftState) { saveHomeDraft('draft'); return; }
+    showToast('Saved as Draft');
+  });
   document.getElementById('launch-event-btn').addEventListener('click', function () {
     if (this.disabled) return;
-    showToast('Event launched — now visible to all committees');
+    if (homeDraftEditMode && homeDraftState) {
+      if (!window.confirm('Launching makes this event visible to all committees. Continue?')) return;
+      saveHomeDraft('launched');
+      return;
+    }
+    showToast('Event launched - now visible to all committees');
   });
 
   renderPhases();
@@ -1296,5 +1425,6 @@
   })();
 </script>
 
+<script src="app-footer.js"></script>
 </body>
 </html>

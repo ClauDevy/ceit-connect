@@ -74,7 +74,7 @@ export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid max-w-sm gap-4">
+    <form onSubmit={handleSubmit} className="grid w-full gap-4">
       {hasPassword && (
         <FormField label="Current password">
           {(control) => (
@@ -112,7 +112,11 @@ export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
           />
         )}
       </FormField>
-      <Button type="submit" disabled={status === "saving"} className="w-fit">
+      <Button
+        type="submit"
+        disabled={status === "saving"}
+        className="w-full sm:w-fit"
+      >
         {status === "saving" ? "Saving…" : hasPassword ? "Change password" : "Set password"}
       </Button>
     </form>

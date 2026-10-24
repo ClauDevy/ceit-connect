@@ -142,9 +142,22 @@ export function AvatarUploader({
 
   return (
     <div className="grid gap-4">
-      <div className="flex items-center gap-4">
-        <UserAvatar name={userName} src={preview} size="lg" />
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col items-start gap-4 rounded-xl border bg-muted/20 p-4 sm:flex-row sm:items-center">
+        <UserAvatar
+          name={userName}
+          src={preview}
+          size="lg"
+          className="ring-4 ring-background"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">
+            {preview ? "Your current photo" : "Add a profile photo"}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Square photos crop best. Images must be under 2MB and are compressed
+            before upload.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             disabled={status === "saving"}
@@ -171,6 +184,7 @@ export function AvatarUploader({
               {status === "removing" ? "Retrying…" : "Retry photo cleanup"}
             </Button>
           )}
+          </div>
           <input
             ref={fileInput}
             type="file"
@@ -180,10 +194,6 @@ export function AvatarUploader({
           />
         </div>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Square crop, under 2MB. We shrink it to under 500KB before uploading.
-      </p>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">

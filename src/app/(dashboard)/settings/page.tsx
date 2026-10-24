@@ -1,3 +1,4 @@
+import { Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
@@ -17,16 +18,17 @@ export default async function SettingsPage() {
     .single();
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-4xl">
       <PageHeader
         title="Settings"
         description="Your profile photo and sign-in options."
       />
 
-      <div className="grid max-w-xl gap-5">
+      <div className="grid gap-5 lg:grid-cols-2">
         <SettingsSection
           title="Profile"
           description="Update the name shown across the council workspace."
+          icon={<UserRound aria-hidden />}
         >
           <FullNameForm currentName={profile?.full_name ?? ""} />
         </SettingsSection>
@@ -34,6 +36,7 @@ export default async function SettingsPage() {
         <SettingsSection
           title="Profile photo"
           description="Shown next to your name across the council workspace."
+          icon={<ImageIcon aria-hidden />}
         >
           <AvatarUploader
             userId={user.id}
@@ -44,6 +47,7 @@ export default async function SettingsPage() {
 
         <SettingsSection
           title="Password"
+          icon={<KeyRound aria-hidden />}
           description={
             profile?.password_set
               ? "Update your password."
