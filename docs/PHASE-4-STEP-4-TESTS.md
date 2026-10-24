@@ -2,6 +2,11 @@
 
 **Run on DEV only. Choose Run without RLS in the pop-up.**
 
+> **Obsolete after Phase 4B Batch 0:** the `USER_POLICIES_UNCHANGED`
+> assertion includes `co_admin_update_own_committee_members` and the former
+> four-policy count. Keep its historical result count unchanged; use
+> `docs/phase-4b/step-0-tests.md` for the current `users` policy catalog.
+
 Apply `20261017150000_task_work_links.sql` to Dev through the owner's normal
 process before running these tests. Each numbered test is one self-contained
 SQL Editor paste with its own Auth/profile/event/task fixtures and caller
