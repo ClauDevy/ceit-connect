@@ -4,7 +4,7 @@
 
 ## Goal
 
-Add one narrow Admin-only `delete_event()` RPC for deleting a Draft or Archived event through one Admin-only management page with a year filter. A single deletion requires the exact event name; bulk deletion requires `DELETE <count> EVENTS`. Keep Active deletion blocked, preserve immutable activity history with its original task UUID values after task rows are gone, handle task/child cascades without weakening ordinary Archived immutability, and clean up the event’s banner Storage object through the existing verified server boundary.
+Add one narrow server-only `delete_event()` RPC for deleting a Draft or Archived event through one Admin-only management page with a year filter. A single deletion requires the exact event name; bulk deletion requires `DELETE <count> EVENTS`. Keep Active deletion blocked, preserve immutable activity history with its original task UUID values after task rows are gone, handle task/child cascades without weakening ordinary Archived immutability, and durably track post-commit banner Storage cleanup through the verified server boundary.
 
 The stable run order for this group is **13, 13c, 13d, 13b**. Batch 13d runs after Draft visibility and before phase completion.
 
@@ -35,9 +35,9 @@ The stable run order for this group is **13, 13c, 13d, 13b**. Batch 13d runs aft
 
 ## Scope: in / out
 
-**In:** one caller-session `delete_event()` RPC; active-Admin re-verification; Draft/Archived-only lifecycle; Active denial; typed confirmation; multiple selected events with a year filter; safe per-event result reporting; event/task/child cascades; exact archive-guard exception; retained activity task UUIDs with no FK; Batch 12 reader compatibility; existing banner object cleanup and failure reporting; exact grants/catalogs; regression tests.
+**In:** one service-role-only `delete_event()` RPC behind an Admin-authenticated server route; route and function active-Admin verification; Draft/Archived-only lifecycle; Active denial; typed confirmation; multiple selected events with a year filter; safe per-event result reporting; event/task/child cascades; exact archive-guard exception; retained activity task UUIDs with no FK; Batch 12 reader compatibility; private durable banner-cleanup jobs, Admin pending count and Retry action; exact grants/catalogs; regression tests.
 
-**Out:** Active deletion; unarchiving; restoring deleted events; deleting individual Archived tasks; weakening ordinary Archived task/child freezes; deleting or editing activity rows; a general service-role event-delete route; notification redesign; scheduled orphan cleanup; Realtime; completed-phase implementation.
+**Out:** Active deletion; unarchiving; restoring deleted events; deleting individual Archived tasks; weakening ordinary Archived task/child freezes; deleting or editing activity rows; browser-executable event deletion; notification redesign; cron or scheduled orphan cleanup; Realtime; completed-phase implementation.
 
 ## Database impact
 
@@ -45,19 +45,28 @@ Add one tracked security-critical migration; never edit the existing archive, ac
 
 ### `delete_event()` boundary
 
-Create exactly one authenticated mutation entry point named `delete_event()`. It must:
+Create exactly one database deletion entry point named `delete_event()`. Browser sessions cannot execute it: revoke execute from `PUBLIC`, `anon`, and `authenticated`, and grant it only to the server role used by the route. It must:
 
-- derive the caller from `auth.uid()` and verify an active Admin before event lookup so unauthorized callers cannot probe ids;
-- validate the supplied event id and any exact confirmation/version input approved during implementation;
+- accept the event id and the actor id passed by the server route, and independently re-read the actor from `public.users` as an active Admin before event lookup so an invalid actor cannot probe ids;
+- validate the supplied event id, actor id, and any exact confirmation/version input approved during implementation;
 - lock the stored event row and re-read status;
 - accept only `Draft` or `Archived` and return a stable safe error for `Active`, unknown, stale, inactive, profile-less, or unauthorized cases;
+- when the event has a banner, upsert exactly one cleanup job for its server-derived bucket and exact stored object path in the same transaction as the event deletion;
 - delete exactly one event per call and verify the affected-row count;
-- return only the minimum safe result needed for UI reconciliation and post-commit banner cleanup; and
-- use a fixed empty `search_path`, exact ownership, no overload, revoked default execute, and an authenticated-only execute grant.
+- return only the minimum safe deletion and cleanup-job identity needed by the route; and
+- use a fixed empty `search_path`, exact ownership, no overload, revoked default execute, and a service-role-only execute grant.
 
-The bulk UI calls this one-event RPC once for each confirmed selected event and reports each result. Do not add a broad client-controlled array delete RPC merely for bulk UX.
+The browser calls one server route. Before constructing or using `createServiceRoleClient()`, the route independently verifies that the real caller is logged in, has an active profile, and is an Admin. It passes that caller's UUID as the actor id and never accepts actor authority from the request body. The bulk route calls the one-event RPC once for each confirmed selected event and reports each result. Do not add a broad client-controlled array delete RPC merely for bulk UX.
 
-Raw authenticated event deletion must no longer be a second usable path. Narrow or remove the existing direct delete policy/grant as required so authenticated deletion goes only through `delete_event()`. The lifecycle/task guards need a non-forgeable exception for this exact RPC rather than a blanket `current_user = 'postgres'` exemption. If the existing owner model cannot identify the narrow path safely, use the Phase 4-approved fallback of a dedicated `NOLOGIN` executor role with only the exact privileges needed by `delete_event()` and pin it in catalog tests.
+Raw authenticated event deletion must no longer be a second usable path. Narrow or remove the existing direct delete policy/grant as required so authenticated sessions cannot delete an event or execute `delete_event()`. The lifecycle/task guards need a non-forgeable exception for this exact server-only RPC rather than a blanket `current_user = 'postgres'` exemption. If the existing owner model cannot identify the narrow path safely, use the Phase 4-approved fallback of a dedicated `NOLOGIN` executor role with only the exact privileges needed by `delete_event()` and pin it in catalog tests.
+
+### Durable banner-cleanup jobs
+
+Add private `public.event_storage_cleanup_jobs` in the same tracked migration. At minimum it contains a server-derived job id and deleted `event_id` value without a foreign key, `bucket_id`, exact `object_path`, `status` constrained to `pending`, `done`, or `failed`, nonnegative `attempt_count`, nullable bounded `last_error` containing only a sanitized short message (never raw database, Storage, stack, or provider text), and `created_at`, `updated_at`, `last_attempt_at`, and `completed_at` timestamps with state-consistency checks. A unique constraint on `(bucket_id, object_path)` makes retry/upsert idempotent.
+
+Enable RLS and revoke all table privileges from `PUBLIC`, `anon`, and `authenticated`. Browser clients receive no policy, row count, or direct reader/writer. Only the verified server route, through the service role and narrowly cataloged functions or exact server-only table operations, may list retryable jobs, mark an attempt, or change `pending`/`failed` to `done`/`failed`. No cron job or scheduled worker is added.
+
+`delete_event()` derives the bucket and exact object path from the locked stored event and writes/upserts the cleanup row in the same transaction as deletion. An event without a banner creates no job. Bulk deletion invokes the one-event boundary separately, so each deleted event with a banner has one unique job and one independently reportable outcome.
 
 ### Archived freeze and cascades
 
@@ -85,9 +94,9 @@ Batch 12’s masked reader must remain safe when the referenced task row no long
 
 Because event banners and Storage objects exist in this repository, deletion must address them explicitly.
 
-The database deletion and Storage deletion cannot be one transaction. `delete_event()` returns the already-validated banner object identity needed by a server-only route after the database commit. The route first re-verifies the active Admin and performs the ordinary deletion with the caller’s Supabase session. Only after database success may it use `createServiceRoleClient()` to remove that exact former event banner object; it must never trust a client-supplied URL or path.
+The database deletion and Storage deletion cannot be one transaction. `delete_event()` returns the already-validated cleanup-job identity needed by the server route after the database commit. Only after database success may the route use the Storage API with `createServiceRoleClient()` to remove that job's exact bucket/object path; it must never trust a client-supplied URL or path and must never delete from `storage.objects` with SQL.
 
-A Storage cleanup failure does not recreate the deleted database rows. Report the event as deleted with a cleanup warning in the per-event result so the owner can address the orphan. Never delete a banner before the database deletion succeeds, and never broaden cleanup to another event’s folder or object.
+Before each Storage attempt, the route increments `attempt_count` and records `last_attempt_at`. On confirmed removal or already-absent success it marks the job `done`, clears `last_error`, and records `completed_at`; on failure it marks `failed`, clears `completed_at`, and stores only the bounded sanitized error. A Storage failure does not recreate deleted database rows. Report the event as deleted with a pending-cleanup result, never false rollback or full success. Never delete a banner before the database deletion succeeds, and never broaden cleanup to another event’s folder or object.
 
 ## Deletion UI behavior
 
@@ -97,7 +106,10 @@ A Storage cleanup failure does not recreate the deleted database rows. Report th
 - Every destructive run requires typed confirmation and shows the exact selected count and event names before submission.
 - A single selected event requires its exact event name. A multi-event run requires `DELETE <count> EVENTS` using the authoritative selected count.
 - Draft and Archived rows share one Admin-only management page and one year filter.
+- The page obtains an Admin-only pending-cleanup count through the server route and shows a **Retry** button when `pending` or `failed` jobs exist. It never reads the cleanup table directly.
+- At the start of every confirmed deletion run, the route retries existing `pending` and `failed` jobs before processing newly selected events. The Retry button invokes the same bounded idempotent server workflow. There is no cron job.
 - Disable duplicate submission, preserve the selection on partial failure, and return a per-event success/failure/cleanup-warning report.
+- Bulk results list each event's deletion outcome and whether its banner cleanup is `done` or still pending/failed; the displayed pending count refreshes from the authoritative server result.
 - The client treats the list as advisory. Each RPC call re-checks the real stored status and caller.
 - A stale event that became Active is rejected even if it remained selected in the browser.
 - Successful deletion invalidates Home, Archives, event, activity, and relevant task/feed queries. It does not claim that a failed banner cleanup also succeeded.
@@ -114,6 +126,8 @@ A Storage cleanup failure does not recreate the deleted database rows. Report th
 - Removing the activity FK does not add INSERT/UPDATE/DELETE privileges or permissive policies on `activity_log`.
 - Confidential history remains masked after live task/event rows disappear.
 - Banner cleanup is server-only, path-derived from the deleted stored event, scoped to one exact object, and performed only after database success.
+- `delete_event()` and every cleanup-job reader/writer are unavailable to `PUBLIC`, `anon`, and `authenticated`; the route verifies the caller before service-role use, and the function separately verifies the passed actor as an active Admin.
+- Cleanup jobs are unique by bucket/object path, contain only sanitized bounded errors, and are retried idempotently through the Storage API. No SQL deletes `storage.objects`, no client reads the ledger, and no cron job is introduced.
 - Batch 13b’s later completed-phase guard must permit only this approved whole-event cascade and must not create another event deletion path.
 
 ## Security risks
@@ -124,6 +138,9 @@ A Storage cleanup failure does not recreate the deleted database rows. Report th
 - Reading orphaned activity by joining only live tasks can hide all history or accidentally unmask confidential snapshots. The reader needs an explicit deleted-record branch.
 - A client-supplied banner path can delete another event’s object. Return/derive the exact stored identity server-side and validate the expected event folder.
 - Deleting Storage first can lose a banner while a database rejection leaves the event intact. Database deletion must happen first.
+- Granting `delete_event()` to `authenticated` would let browser sessions bypass the route's typed-confirmation and orchestration boundary. Keep execute service-only and re-verify the actor inside the function.
+- Logging raw database, provider, or stack errors in the cleanup ledger can persist secrets or internals. Map failures to a short sanitized message before writing `last_error`.
+- A non-unique job or blind retry can delete the wrong path twice or lose failure state. Use the exact unique bucket/path row, increment attempts, and treat already-absent Storage success as `done`.
 - Bulk UI success can conceal partial failures. Report each RPC and cleanup result independently.
 - Tests run as the SQL Editor owner bypass RLS. Role authorization requires impersonated direct-call tests.
 
@@ -144,9 +161,11 @@ A Storage cleanup failure does not recreate the deleted database rows. Report th
 
 Create `docs/phase-4b/step-13d-tests.md` when the batch lands. Include independent rollback-safe Dev SQL pastes ending in the intentional `TEST RESULTS` exception, focused route/result tests, and a manual destructive-flow checklist using disposable Dev fixtures only.
 
-Cover active/inactive/profile-less Admin, Co-Admin, and Member callers; Draft, Active, Archived, unknown, stale, and double-submit cases; raw DELETE denial; exact one-row effects; event/task/work-link/comment/volunteer/archive-viewer/notification cascades; dependency chains; completed and incomplete tasks; concurrent lifecycle change; Archived guard non-regression; retained UUIDs in INSERT/UPDATE/DELETE activity rows; historical null preservation; immutable log grants/policies; confidential orphan masking; year filtering; visible-only bulk selection; typed confirmation; partial results; exact banner object cleanup; wrong-path rejection; and Storage cleanup failure after successful database deletion.
+Cover active/inactive/profile-less Admin, Co-Admin, Member, and unauthenticated route callers; direct `delete_event()` calls from `PUBLIC`/`anon`/`authenticated`; forged actor ids; Draft, Active, Archived, unknown, stale, and double-submit cases; raw DELETE denial; exact one-row effects; event/task/work-link/comment/volunteer/archive-viewer/notification cascades; dependency chains; completed and incomplete tasks; concurrent lifecycle change; Archived guard non-regression; retained UUIDs in INSERT/UPDATE/DELETE activity rows; historical null preservation; immutable log grants/policies; confidential orphan masking; year filtering; visible-only bulk selection; typed confirmation; partial results; exact banner object cleanup; wrong-path rejection; and Storage cleanup failure after successful database deletion.
 
-Pin `delete_event()` signature/owner/security/search path/grant/no-overload status, the exact deletion executor boundary, event/task/child trigger definitions and order, removal of only the activity task FK, retained activity indexes/immutability, raw event delete closure, and zero unintended task writers.
+For `event_storage_cleanup_jobs`, assert columns and bounds, status/timestamp checks, RLS, zero `PUBLIC`/`anon`/`authenticated` privileges and policies, service-only functions/grants, one job written in the same transaction as each banner-bearing event deletion, no job for no-banner events, unique bucket/path rejection or idempotent upsert, one job per bulk event, sanitized-error length/content, attempt increments, pending/failed retry at deletion-run start, Retry-button route behavior, already-absent success, `done`/`failed` transitions, pending-count accuracy, and no SQL deletion from `storage.objects`.
+
+Pin `delete_event()` actor-bearing signature/owner/security/search path/service-only grant/no-overload status, cleanup-job functions and table grants, the exact deletion executor boundary, event/task/child trigger definitions and order, removal of only the activity task FK, retained activity indexes/immutability, raw event delete closure, and zero unintended task writers.
 
 ## Manual checklist
 
@@ -157,11 +176,13 @@ Pin `delete_event()` signature/owner/security/search path/grant/no-overload stat
 - Attempt raw DELETE and direct Archived task/child deletes; confirm the RPC exception does not make them writable.
 - Review deleted confidential history as each approved Activity Log role and confirm masking remains correct with no live task row.
 - Delete an event with a banner and confirm only its exact object is removed after database success. Exercise a simulated cleanup failure and confirm the deletion result reports an orphan warning rather than false rollback or full success.
+- Confirm the failed job persists with a sanitized short error and incremented attempt count, the Admin page shows the pending-cleanup count and Retry button, Retry marks it done, and the next deletion run retries outstanding jobs before new deletions.
+- Delete several banner-bearing events in bulk and confirm one unique job/result per event. As `anon`, `authenticated`, and a direct browser caller, confirm the ledger and `delete_event()` are inaccessible. Inspect the Storage operation and confirm it uses the API rather than SQL against `storage.objects`.
 - Confirm repeated submission is safely reported and cannot delete an unrelated event.
 
 ## Acceptance
 
-One authenticated `delete_event()` RPC is the only application path for event deletion. It permits only active Admins deleting a real Draft or Archived event, rejects Active and every unauthorized/stale case, preserves ordinary Archived immutability, and cascades event children atomically. Immutable activity rows survive with retained task UUIDs and safe confidential masking after live rows disappear. One Admin-only management page provides the year filter, exact event-name confirmation for one deletion, `DELETE <count> EVENTS` for bulk, visible-result selection, and per-event reporting. Existing event banners receive exact server-only post-database cleanup with honest warning behavior on Storage failure.
+One service-role-only `delete_event()` RPC behind the verified server route is the only application path for event deletion. Browser roles cannot execute it; the route verifies the logged-in active Admin before service-role use, passes the actor id, and the function re-verifies that actor. It deletes only real Draft or Archived events, rejects Active and every unauthorized/stale case, preserves ordinary Archived immutability, and cascades event children atomically. Immutable activity rows survive with retained task UUIDs and safe confidential masking after live rows disappear. One Admin-only management page provides the year filter, exact event-name confirmation for one deletion, `DELETE <count> EVENTS` for bulk, visible-result selection, pending-cleanup count/Retry, and per-event reporting. Banner jobs are written atomically with database deletion, private from browser roles, unique and idempotent by exact object, processed through the Storage API after commit, and durably marked done or failed with sanitized retry state.
 
 ## Open questions for the owner
 
@@ -171,5 +192,5 @@ None.
 
 - Update this file and `docs/PROGRESS.md` only after implementation and verification; do not claim Dev/Prod application without owner confirmation.
 - Add `docs/phase-4b/step-13d-tests.md`.
-- Update `docs/ARCHITECTURE.md` and `docs/DATABASE.md` with the final deletion RPC, raw-delete closure, guard exception, activity UUID/no-FK contract, cascade behavior, and banner cleanup boundary.
-- Add Batch 13d objects and constraint/trigger changes to the post-13b authoritative Phase 4B catalog and Batch 14 allowlists.
+- Update `docs/ARCHITECTURE.md` and `docs/DATABASE.md` with the final service-only deletion RPC, actor re-verification, raw-delete closure, guard exception, activity UUID/no-FK contract, cascade behavior, cleanup-job table, and Storage API retry boundary.
+- Add Batch 13d objects, cleanup-job grants/RLS/constraints, and constraint/trigger changes to the post-13b authoritative Phase 4B catalog and Batch 14 allowlists.

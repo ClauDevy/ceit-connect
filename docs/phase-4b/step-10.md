@@ -61,7 +61,9 @@ Full UUID inventory to preserve:
 
 Add a new tracked security-critical migration that adds `users.anonymized_at timestamptz null`, narrows reactivation so `anonymized_at is null` is mandatory, and adds fixed-search-path Admin-only functions for preview/eligibility and the database anonymization step. Do not edit any applied migration.
 
-The database operation must derive an active Admin caller, reject self-removal and all Admin targets, lock the target, require `is_active = false`, and check `anonymized_at`. Before first anonymization it must reject a target when any Draft/Active event has a task in `To Do` or `In Progress` with the target UUID in either assignee array. Archived assignments deliberately remain and do not block.
+The database operation must derive an active Admin caller, reject self-removal and all Admin targets, and coordinate with every assignee-array writer through one shared per-user transaction-level advisory lock namespace. Collect all affected unique user ids, sort them by UUID, and take every per-user lock in that order before any task or event row lock; a writer assigning several people locks all of them first. Removal takes the target user's lock before locking or checking any task/event row, then locks and re-reads the target, requires `is_active = false`, checks `anonymized_at`, and re-checks open assignments. Before first anonymization it rejects a target when any Draft/Active event has a task in `To Do` or `In Progress` with the target UUID in either assignee array. Archived assignments deliberately remain and do not block.
+
+Every current or future writer that can change `primary_assignees` or `assist_assignees` follows the same order: sorted per-user advisory locks first, then the established event lock, task lock, and child locks. This includes Create/Edit Event task payloads, `assign_task_people`, `unassign_self`, claim, volunteer acceptance, Batch 11 Add/Edit Task, and Batch 13 auto-helper and leave-request approval writers. A serializable transaction with bounded retry is acceptable only if implementation proves it provides the same assignment-versus-removal exclusion and documents the retry contract; mixing strategies or taking user locks after rows is forbidden.
 
 For an eligible first attempt, use a deterministic unique address derived from the immutable UUID, such as `<uuid>@former.invalid`; `.invalid` is non-routable and the UUID makes it unique. In one database transaction set profile email to that value, `full_name = 'Former member'`, `avatar_url = null`, `is_active = false`, and `anonymized_at` to the server timestamp. Leave role, committee, UUID, comments, arrays, foreign keys, notifications, volunteers, archived viewers, work-link provenance, and activity snapshots intact unless a later owner decision explicitly says otherwise.
 
@@ -77,6 +79,7 @@ Because these systems cannot share a transaction, retries inspect current profil
 - Only deactivated, non-Admin targets are eligible. Admin-to-Admin protection and the last-active-Admin invariant remain defense in depth even though an active Admin is already ineligible.
 - Accept 1–50 unique UUIDs. “Select all” means only the currently visible filtered results, never unseen pages or the entire database.
 - Preview is not authorization. Re-lock and re-check target state and open tasks during execution.
+- Removal and all assignee-array writers take the same per-user advisory locks in sorted UUID order before every task/event row lock. Multi-person assignment locks the complete unique user set first; no writer may reverse or partially acquire that order.
 - Open-task blocking uses only Draft/Active parents and `To Do`/`In Progress` status with membership in primary or assist assignees. Archived tasks remain frozen historical references and do not block forever.
 - Keep the UUID everywhere. Do not remove comments, mentions, assignment arrays, viewers, volunteers, notifications, work-link provenance, archived shares, creator fields, or activity snapshots merely to hide identity.
 - Replace both profile and Auth email with the same deterministic non-routable value, keep `is_active = false`, set the exact name `Former member`, clear `avatar_url`, ban Auth login, and remove the Storage avatar object.
@@ -87,7 +90,7 @@ Because these systems cannot share a transaction, retries inspect current profil
 - Auth Admin update and Storage deletion require service role and bypass RLS. The route must verify logged-in state, active Admin role, target eligibility, and confirmation before privileged work.
 - A client-supplied preview, target status, task count, or anonymized email is untrusted. Derive all authoritative values server-side.
 - Open-task checks against UUID arrays have no foreign-key help. Test both primary and assist arrays, both open statuses, and parent event lifecycle under the target lock/transaction.
-- A race can assign a task after a stale preview. Execution must re-check; any assignment writer introduced later must be regression-tested against removal’s eligibility contract.
+- A race can assign a task after a stale preview. The shared per-user lock makes assignment and removal mutually exclusive; after waiting, both paths re-read target/anonymization/assignment state before writing. A missing writer, inconsistent lock key, partial multi-user lock set, or row-first lock order reopens the race or creates a deadlock.
 - Auth, Postgres, and Storage cannot commit atomically. Hiding partial failures or retrying with a new email would strand accounts. Deterministic identity and explicit result states are mandatory.
 - A ban alone does not retroactively invalidate an already issued access token. `is_active = false`, active-profile RLS/helpers, route guards, and the anonymized marker remain the immediate application boundary.
 - Rewriting immutable activity snapshots would corrupt the audit trail. Their UUIDs are not personal-display fields and must remain unchanged.
@@ -107,7 +110,9 @@ Because these systems cannot share a transaction, retries inspect current profil
 
 Create `docs/phase-4b/step-10-tests.md` when the batch lands. Include one self-contained rollback-safe Dev SQL paste ending in the required intentional `TEST RESULTS` exception, plus route/orchestration tests using mocked Auth and Storage boundaries.
 
-Cover active target, Admin target, self target, already anonymized target, inactive eligible Member, inactive Co-Admin, 0/1/50/51 selections, duplicate IDs, stale preview, and unauthorized callers. For open-task eligibility, cross primary/assist assignment with To Do/In Progress/Completed and Draft/Active/Archived parents; only open Draft/Active combinations skip. Prove UUIDs and all listed foreign-key/array/history locations remain unchanged while profile PII changes.
+Cover active target, Admin target, self target, already anonymized target, inactive eligible Member, inactive Co-Admin, 0/1/50/51 selections, duplicate IDs, stale preview, and unauthorized callers. For open-task eligibility, cross primary/assist assignment with To Do/In Progress/Completed and Draft/Active/Archived parents; only open Draft/Active combinations skip. Prove UUIDs and all listed foreign-key/array/history locations remain unchanged while profile PII changes. Pin the shared per-user lock-key helper and inventory every direct or indirect writer of either assignee array.
+
+Add genuine overlapping-transaction tests for assignment racing with removal in both arrival orders. Cover a one-person and multi-person assignment with deliberately reversed input order, and prove locks are acquired in sorted unique user-id order before task/event rows. Exactly one valid outcome wins: a committed open assignment makes removal return `skipped`, or committed removal makes assignment reject the inactive/anonymized target. Assert no deadlock, partial array update, removed-but-assigned account, duplicate assignee, or retry without authoritative re-read.
 
 Inject failure before database completion, during Auth update, and during Storage removal. Assert per-user `removed`, `skipped`, `failed`, or `cleanup-pending` results; deterministic retries; no duplicate identities; permanent reactivation denial; and no claim of cross-service rollback. Test mixed batches where every outcome appears without one user’s failure corrupting another.
 
@@ -119,13 +124,14 @@ Inject failure before database completion, during Auth update, and during Storag
 - Attempt reactivation through the UI and a direct request. Confirm an anonymized account can never be reactivated.
 - Verify comments remain and display `Former member`; archived assignments/history remain linked; immutable activity snapshots are unchanged.
 - Verify a To Do/In Progress primary or assist assignment in Draft or Active causes `skipped`. Verify Completed tasks and all Archived tasks do not block removal.
+- Run the assignment-versus-removal overlap in both orders, including a multi-person assignment whose submitted ids are unsorted. Confirm sorted user-lock acquisition, one valid winner, and no partial assignments or deadlock.
 - Simulate Auth failure and Storage failure. Confirm `failed` or `cleanup-pending` appears for that user, other users continue, and retry completes the same deterministic identity.
 - As Co-Admin, Member, inactive Admin, and profile-less user, attempt preview and execution directly; all must fail without revealing eligibility details.
 - Confirm no event deletion control or behavior appears in this batch.
 
 ## Acceptance
 
-An active Admin can preview and confirm at most 50 visible selected deactivated accounts by typing `REMOVE <count> MEMBERS`. Eligible accounts are anonymized in place under the same UUID, permanently non-reactivatable, banned from Auth login, renamed `Former member`, assigned matching deterministic non-routable Auth/profile emails, cleared of avatar URL, and stripped of the Storage avatar object. Open Draft/Active assignments are skipped, Archived history never blocks or changes, comments stay, partial failures are explicit and idempotently retryable, and no user or event is deleted.
+An active Admin can preview and confirm at most 50 visible selected deactivated accounts by typing `REMOVE <count> MEMBERS`. Eligible accounts are anonymized in place under the same UUID, permanently non-reactivatable, banned from Auth login, renamed `Former member`, assigned matching deterministic non-routable Auth/profile emails, cleared of avatar URL, and stripped of the Storage avatar object. Removal and every assignee-array writer share sorted per-user locks taken before task/event rows, so an account cannot become removed while concurrently entering an open assignment. Open Draft/Active assignments are skipped, Archived history never blocks or changes, comments stay, partial failures are explicit and idempotently retryable, and no user or event is deleted.
 
 ## Open questions for the owner
 

@@ -10,7 +10,7 @@ Close Phase 4B with privilege hardening, `/sandbox` cleanup, narrowly scoped doc
 
 ### `docs/PHASE-4B-PLAN.md` — Batches
 
-- Batch 14 runs after Batch 4 and closes the Phase 4B completion gate before Phase 5.
+- Batch 14 runs only after every preceding Phase 4B batch in the approved run order, including the Batch 7–13 implementation and test reruns plus all task, event, and activity dependencies; it remains the final gate before Phase 5.
 - Revoke `TRUNCATE`, `REFERENCES`, and `TRIGGER` from `authenticated` on `events`, `tasks`, `notifications`, and `activity_log`.
 - Tighten the Production email-domain setting; clean up docs and `/sandbox`; verify Step 1's package/lint/root-script cleanup remains complete; enable officer caps; and update catalog tests and Step 10 allowlists.
 
@@ -39,13 +39,13 @@ Close Phase 4B with privilege hardening, `/sandbox` cleanup, narrowly scoped doc
 
 ## Scope: in / out
 
-**In:** one read-only preflight query run separately on Dev and Prod; tracked least-privilege and cap-enablement migrations; exact post-migration assertions; Production-only `ALLOWED_EMAIL_DOMAINS=cvsu.edu.ph` Vercel change and redeploy; removal of the sandbox route/demo after reference verification; verification that Step 1's packages and four warning sources remain gone; limited docs reconciliation; new authoritative Phase 4B catalog test; expanded Step 10 allowlists; SQL/app/manual regression sessions; final gate ledger.
+**In:** read-only privilege and grant-source preflight queries run separately on Dev and Prod; tracked least-privilege and cap-enablement migrations; exact post-migration assertions; Production-only `ALLOWED_EMAIL_DOMAINS=cvsu.edu.ph` Vercel change and redeploy; removal of the sandbox route/demo after reference verification; verification that Step 1's packages and four warning sources remain gone; limited docs reconciliation; new authoritative Phase 4B catalog test; expanded Step 10 allowlists; SQL/app/manual regression sessions; final gate ledger.
 
 **Out:** any Supabase remote write by Codex; changing Dev’s allowed testing domains; a custom website domain; Resend; Phase 5 notifications/Discord/Executive Dashboard; Batch 15 dependencies v2; unrelated package upgrades; broad refactors; additional docs cleanup not named above; deleting real data; rewriting applied migrations; claiming Dev/Prod completion without owner evidence.
 
 ## Read-only grant preflight for the owner
 
-Run this **single read-only query** once in the Dev SQL Editor and once in the Prod SQL Editor before writing or applying the Batch 14 migration. Save both four-row results with the environment name. It reports direct grants and effective privileges, including privileges inherited through role membership or `PUBLIC`.
+Run this read-only effective-privilege query once in the Dev SQL Editor and once in the Prod SQL Editor before writing or applying the Batch 14 migration. Save both four-row results with the environment name. The direct-grant column is only the grant made to `authenticated`; the effective column can also include privileges supplied by `PUBLIC`, membership in another role, or ownership.
 
 ```sql
 with target_tables(table_name) as (
@@ -76,7 +76,55 @@ where class_row.relnamespace = 'public'::regnamespace
 order by class_row.relname;
 ```
 
-This query changes nothing. Do not use it to infer RLS behavior: table privileges and row policies are separate layers. If an unwanted effective privilege is inherited rather than granted directly to `authenticated`, stop and document the granting role before designing the migration; do not guess or revoke unrelated privileges.
+This query changes nothing. Do not use it to infer RLS behavior: table privileges and row policies are separate layers. Whenever an unwanted effective privilege is absent from `authenticated_direct_grants`, run this second read-only inspection before choosing a revoke:
+
+```sql
+with target_tables(table_name) as (
+  values ('events'), ('tasks'), ('notifications'), ('activity_log')
+), applicable_acl as (
+  select
+    class_row.oid,
+    class_row.relname,
+    class_row.relowner,
+    acl_row.grantor,
+    acl_row.grantee,
+    acl_row.privilege_type,
+    acl_row.is_grantable
+  from pg_catalog.pg_class class_row
+  join target_tables target on target.table_name = class_row.relname
+  cross join lateral pg_catalog.aclexplode(
+    coalesce(class_row.relacl, pg_catalog.acldefault('r', class_row.relowner))
+  ) acl_row
+  where class_row.relnamespace = 'public'::regnamespace
+    and class_row.relkind in ('r', 'p')
+)
+select
+  format('public.%I', applicable_acl.relname) as table_name,
+  applicable_acl.privilege_type,
+  case
+    when applicable_acl.grantee = 0 then 'PUBLIC'
+    else grantee_role.rolname
+  end as grant_source,
+  case
+    when applicable_acl.grantee = 0 then 'PUBLIC'
+    when applicable_acl.grantee = 'authenticated'::regrole::oid then 'authenticated direct'
+    else 'role inherited by authenticated'
+  end as source_kind,
+  grantor_role.rolname as granted_by,
+  applicable_acl.is_grantable
+from applicable_acl
+left join pg_catalog.pg_roles grantee_role on grantee_role.oid = applicable_acl.grantee
+left join pg_catalog.pg_roles grantor_role on grantor_role.oid = applicable_acl.grantor
+where applicable_acl.grantee = 0
+   or applicable_acl.grantee = 'authenticated'::regrole::oid
+   or (
+     applicable_acl.grantee <> 0
+     and pg_catalog.pg_has_role('authenticated', applicable_acl.grantee, 'MEMBER')
+   )
+order by applicable_acl.relname, applicable_acl.privilege_type, grant_source;
+```
+
+Save the granting role, grantor, and whether the source is `PUBLIC`, direct, or inherited. If the effective result still has no matching ACL row, inspect the table owner and the membership path to that owner read-only and record it before proceeding. Do not guess, revoke from an unrelated role, or design the migration until the source is known.
 
 ## Database impact
 
@@ -110,6 +158,8 @@ Never print, copy into docs, or commit any other environment variable value or s
   - removing stale `/sandbox`, `cn`, `p`, three-warning, and Production email-domain open items after each is verified;
   - updating `docs/DATABASE.md` for the final grants, functions, policies, triggers, and authoritative inventories;
   - expanding Phase 4 Step 10 allowlists/catalog references and adding the final Phase 4B gate evidence;
+  - reconciling the stale Drive-preview demo/test wording at `docs/PHASE-3-PLAN.md:58` after `/sandbox` is removed, while preserving Phase 3 as historical completed work;
+  - correcting the volunteer-accept authorization summary at `docs/ARCHITECTURE.md:60` against the final live rule; this mismatch is intentionally recorded here rather than edited before Batch 14;
   - preserving the parked custom domain, Resend, backup, calendar, and Realtime items unless the owner separately changes them.
 
 Any other stale, contradictory, or desirable documentation cleanup discovered during the batch is listed for the owner and is not edited without approval.
@@ -125,6 +175,8 @@ The catalog paste inventories and pins, at minimum:
 - the exact current direct-task-writer set, postgres-owner-branch writer set, owner-branch column union, reset/helper callers, and completed-phase normal-writer block list;
 - activity-log raw-SELECT revocation and the fixed-shape reader grant;
 - event/task parent immutability, archive/event deletion behavior, anonymization/account guards, `app_settings` denial, enabled role caps, and every new deny-by-default child table;
+- `event_storage_cleanup_jobs`: its exact columns, fixed status/attempt/timestamp and unique banner-object constraints, RLS state, policies, grants, service-only writers, cleanup functions, and zero access for `anon` or `authenticated`; include its pending/failed counts without exposing stored errors;
+- proof that event-banner cleanup uses the Storage API rather than SQL writes to `storage.objects`, and that deletion produces one idempotent cleanup job per banner object;
 - effective table grants, including explicit false assertions for `TRUNCATE`, `REFERENCES`, and `TRIGGER` on the four Batch 14 targets;
 - zero unexpected service-role use in ordinary task, activity, account, or event flows.
 
@@ -137,9 +189,11 @@ Follow the Phase 4 Step 10 pattern: focused static/database review, independent 
 ### Gate A — database and application review
 
 - Review every Phase 4B RPC, RLS policy, direct grant, service-role route, trigger exemption, task/event/child guard, confidentiality projection, lock order, affected-row check, paging cursor, and current-role/`is_active` check through Batch 13b.
+- Review the event-cleanup job catalog, its same-transaction creation by `delete_event()`, service-only state changes, idempotent unique object key, sanitized errors, Admin retry boundary, and denial to browser roles.
 - Verify no page relies only on layout authorization and no service-role route trusts client roles, ids, emails, committees, creators, state, counts, or previews.
 - Verify Archived freezes, task `event_id` immutability, Active-event task preservation, total-event capacity, completed-phase freeze, enabled role caps, anonymization permanence, Draft scope, activity masking, and event deletion history behavior together.
 - Confirm Batch 14 removes only the approved sandbox files and verifies Step 1's package/warning cleanup while preserving real Drive preview, auth, middleware refresh, theme bootstrap, and navigation behavior.
+- Confirm the two deferred documentation mismatches are corrected in Batch 14 only after their final implementation sources are rechecked.
 
 ### Gate B — earlier Phase 4 test documents to re-run after Batches 7–13
 
@@ -208,8 +262,8 @@ The final ledger separately records: catalog paste; privilege preflight and post
 
 Create `docs/phase-4b/step-14-tests.md` after Batch 13b. It contains:
 
-- the new authoritative Phase 4B catalog paste and expected live result sets;
-- exact privilege checks before/after the Batch 14 migration;
+- the new authoritative Phase 4B catalog paste and expected live result sets, including `event_storage_cleanup_jobs` and its access boundary;
+- exact effective-privilege and grant-source checks before/after the Batch 14 migration;
 - grouped re-run ledgers for every Phase 4 document listed above and every Phase 4B Batch 7–13 suite;
 - new cross-batch tests for account/role changes against task access, Add/Edit against capacity/archive/completed phases, activity masking after assignment/role/event deletion, Draft expansion, anonymized historical actors, and final writer/guard allowlists;
 - large-result and keyset paging coverage for Users, Home/Archives/Workspace, activity, comments, and pending requests as applicable;
@@ -219,13 +273,14 @@ Every SQL paste is independently rollback-safe on Dev and ends with the intentio
 
 ## Manual checklist
 
-- Run and save the one read-only grant query on Dev and Prod before implementation. Resolve any inherited privilege source before approving SQL.
+- Run and save the read-only effective-privilege query on Dev and Prod before implementation. For every unexplained effective privilege, also save the grant-source inspection (and, if needed, the ownership/membership inspection) before approving SQL.
 - After the owner applies the migration to Dev, rerun the grant query and confirm all targeted effective privileges are absent on all four tables while approved application flows still work.
 - Complete every Gate B session and the Admin/Co-Admin/Member review; record evidence and dates rather than checking items from earlier historical runs.
 - Search imports, then confirm `/sandbox` returns 404 because the route is removed while real task Drive previews still work.
 - Confirm `cn` and `p` are absent from both manifest and lockfile and that no unrelated dependency version changed.
 - Exercise both fixed auth navigation flows, normal session refresh, and theme bootstrap after Step 1; confirm lint still reports zero warnings.
 - Confirm `public.app_settings.enforce_officer_role_caps` is true after the Dev migration, existing accounts are unchanged, and Step 8's caps-on invite/appointment/activation checks still pass before final release.
+- Confirm the cleanup-job catalog has one idempotent row per deleted banner object, no `anon`/`authenticated` access, sanitized failure text, accurate pending/failed counts, and successful Admin retry through the Storage API.
 - Have the owner set Production `ALLOWED_EMAIL_DOMAINS` to exactly `cvsu.edu.ph`, redeploy, and verify allowed/rejected invite domains. Confirm Dev still permits its approved test domains.
 - Confirm no custom website domain or Resend work appears in code, settings instructions, or completion claims.
 - After merge, have the owner apply the migration to Prod, rerun the read-only query there, and record confirmation. Do not run the Dev regression fixtures on Prod.

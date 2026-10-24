@@ -19,6 +19,7 @@ Give Home, Archives, My Tasks, and Help Wanted one reliable paging pattern: fetc
 ### `docs/PHASE-4B-PLAN.md` — Audit resolutions
 
 - Paging uses 20 items plus Load more for linear lists only (fetch 21, show 20). Home, Archives, My Tasks, and Help Wanted are in 3P; Users is in 7; Activity Log is in 12.
+- All four Step 3P lists keep offset paging with one shared client strategy; do not switch them to keyset paging. Batch 12 Activity Log uses keyset paging under its own contract.
 
 ## Current state
 
@@ -31,9 +32,9 @@ Give Home, Archives, My Tasks, and Help Wanted one reliable paging pattern: fetc
 
 ## Scope: in / out
 
-**In:** combined 20-row Home pages while retaining Active and Draft headings; 20-row Archives pages; 20-row My Tasks and Help Wanted pages; 21-row lookahead; correct append/dedupe behavior; current sorting, filters, polling/focus rules, error states, and loaded-count indicators.
+**In:** combined 20-row Home pages while retaining Active and Draft headings; 20-row Archives pages; 20-row My Tasks and Help Wanted pages; 21-row lookahead; the same page-reset and id-deduplicated append strategy for all four lists; current sorting, filters, polling/focus rules, error states, and loaded-count indicators.
 
-**Out:** Kanban paging; Users paging (Batch 7); Activity Log paging (Batch 12); new search/filter features; reordered Home statuses; comments, which retain 25-item keyset pages with a maximum of 50; any page not named above.
+**Out:** Kanban paging; Users paging (Batch 7); Activity Log paging, which uses keyset paging in Batch 12; converting any Step 3P list to keyset; new search/filter features; reordered Home statuses; comments, which retain 25-item keyset pages with a maximum of 50; any page not named above.
 
 ## Database impact
 
@@ -44,16 +45,18 @@ If an owner-approved server-side search/filter or another discovered requirement
 ## Guards that must remain true
 
 - Fetch 21, expose only 20, and advance by 20 so no row is skipped; the lookahead row must reappear as the first candidate of the next request.
+- Home, Archives, My Tasks, and Help Wanted all reset to page 1, replace accumulated rows, and clear stale `has_more` state whenever their authoritative source, tab, filter, sort, or query identity changes. Polling/focus refresh of the source also restarts from page 1 rather than appending against an old snapshot.
+- On Load more, append only rows whose stable id is not already present. Deduplicate by id across the full accumulated result while preserving the server's established order; never use display text or array position as identity.
 - Home uses one combined ordered result, retains its Active and Draft headings, and does not silently introduce status-first ordering.
 - My Tasks remains caller-derived, Active-event-only, assignment-scoped, filter/sort aware, and confidential-safe. Help Wanted remains Active/incomplete/current-real-content scoped.
-- Poll only the active Workspace tab under the existing visible/focus policy; append without duplicates and disable Load more while unsettled.
-- Kanban and comment paging remain unchanged.
+- Poll only the active Workspace tab under the existing visible/focus policy; use the same page-1 reset and id-deduplicated append behavior and disable Load more while unsettled.
+- Kanban and comment paging remain unchanged. Batch 12 Activity Log remains a separate keyset-paged list.
 
 ## Security risks
 
 - Do not move protected filtering to the client or accept a user id for My Tasks.
 - A lookahead row must never be rendered, counted as loaded, or leaked through an accessibility announcement before it becomes part of a visible page.
-- Preserve stable tie-break ordering across page boundaries; unsafe offsets or changed filters can duplicate or skip rows.
+- Preserve stable tie-break ordering across page boundaries. Offset paging has a small accepted skip risk when rows are inserted or deleted ahead of a later offset between requests; page-1 resets on source/filter/sort changes and authoritative refresh reduce stale accumulation, while id deduplication prevents repeated cards. Do not describe this as gap-free under concurrent source mutation and do not switch to keyset in this batch.
 - Any reader replacement must replace the existing signature and retain zero overloads, grants, active-caller checks, masking, and fixed output shape.
 
 ## Earlier test docs to re-run or update
@@ -66,20 +69,21 @@ If an owner-approved server-side search/filter or another discovered requirement
 
 ## Test deliverable
 
-Create `docs/phase-4b/step-3p-tests.md` when the batch lands. Cover 0, 1, 19, 20, 21, 40, and 41 visible-row boundaries; exact-multiple false positives; no duplicates/gaps; preserved filters/order; retry/loading state; active-tab polling; and conditional SQL/catalog regression only if a reader changes.
+Create `docs/phase-4b/step-3p-tests.md` when the batch lands. For each of Home, Archives, My Tasks, and Help Wanted, cover 0, 1, 19, 20, 21, 40, and 41 visible-row boundaries; exact-multiple false positives; page-1 replacement whenever source/filter/sort/tab identity changes; stable-id deduplication across repeated/overlapping pages; preserved order; retry/loading state; active-tab polling; and the documented small concurrent offset-skip risk. Add a regression assertion that none of the four switches to keyset and that Batch 12 Activity Log retains keyset paging. Run conditional SQL/catalog regression only if a reader changes.
 
 ## Manual checklist
 
 - As **Claudee**, **Claude HAAAA**, and **tv**, test every accessible target list at phone width and desktop width in both light and dark themes.
-- Home: verify one combined 20-item page, preserved Active/Draft headings and current date ordering, and correct continuation after Load more.
-- Archives: verify newest-first ordering, 20 visible rows, correct Load more visibility, and working record links.
-- My Tasks and Help Wanted: verify 20 visible rows, filters/sorts and loaded-count badges, active-tab-only polling/focus behavior, actions, and no duplicates or gaps after repeated loads.
+- Home: verify one combined 20-item page, preserved Active/Draft headings and current date ordering, correct continuation after Load more, id deduplication, and a page-1 reset after its source changes.
+- Archives: verify newest-first ordering, 20 visible rows, correct Load more visibility, working record links, id deduplication, and a page-1 reset after its source or year/filter state changes.
+- My Tasks and Help Wanted: verify 20 visible rows, filters/sorts and loaded-count badges, active-tab-only polling/focus behavior, actions, id deduplication after repeated/overlapping loads, and page-1 replacement whenever source, tab, filter, or sort changes.
 - For every list, verify empty, error, retry, loading, exact-20, and final-page states; Load more appears only when a 21st row exists and is disabled while loading.
-- Confirm Kanban, Users, Activity Log, and task comments retain their existing loading/paging behavior.
+- Simulate an insert/delete ahead of a loaded offset and record the documented small skip risk without claiming gap-free concurrent offset paging.
+- Confirm Kanban, Users, and task comments retain their existing loading/paging behavior, and Batch 12 Activity Log retains keyset paging.
 
 ## Acceptance
 
-Each named linear list renders pages of 20 and shows Load more only when a 21st result exists. Repeated loads preserve the established order and access rules without duplicates or gaps; Home keeps both section headings; exact multiples do not show a false Load more; and out-of-scope lists remain unchanged.
+Each named linear list renders offset pages of 20 and shows Load more only when a 21st result exists. All four reset to page 1 when source/filter/sort/tab identity changes and deduplicate appended rows by stable id while preserving established order and access rules. The small concurrent offset-skip risk is documented rather than hidden or used to expand scope into keyset paging. Home keeps both section headings, exact multiples do not show a false Load more, Batch 12 Activity Log remains keyset-paged, and out-of-scope lists remain unchanged.
 
 ## Open questions for the owner
 

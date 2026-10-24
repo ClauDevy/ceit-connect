@@ -56,6 +56,8 @@ For Add Task, lock and re-read the stored event, require `Active`, verify the ac
 
 For Edit Task, identify the stored task first, lock and re-read its stored parent, require `Active`, re-check Admin/owning-Co-Admin authority, and update only the approved Task Setup fields. Preserve stored `event_id`, `created_by`, `status`, `sort_order`, dependency, and backup state. Validate text lengths, enums, Live Operation timestamps, assignment limits, newly active versus retained inactive assignees, confidentiality/viewer rules, and no-op/stale writes. Do not reconstruct hidden task content in the client.
 
+Every Add/Edit Task writer that changes `primary_assignees` or `assist_assignees` must use Step 10's shared per-user advisory lock contract: collect every affected user id, sort the unique ids, take all per-user locks in that order before any task or event row lock, and only then re-read and mutate assignments.
+
 The migration must make Batch 13b integration explicit: both new mutation entry points are ordinary writers that the completed-phase freeze must deny. Batch 13b’s writer catalog and phase-freeze tests must include their exact signatures rather than relying on UI hiding.
 
 ### Approved `tasks.updated_at` design
