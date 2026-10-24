@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Pencil, Plus } from "lucide-react";
+import { CalendarDays, Pencil, Plus } from "lucide-react";
 import { ArchiveEventButton } from "@/components/events/archive-event-button";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,7 +58,11 @@ function ActiveEventCard({
   incompleteTaskCount: number | undefined;
 }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="relative overflow-hidden">
+      <StretchedLink
+        href={`/events/${event.id}`}
+        label={`Open ${event.name}`}
+      />
       <EventBanner
         src={event.banner_url}
         alt={`${event.name} banner`}
@@ -81,14 +86,7 @@ function ActiveEventCard({
             {event.description}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-start gap-2">
-          <Link
-            href={`/events/${event.id}`}
-            className={buttonVariants({ size: "sm" })}
-          >
-            View board
-            <ArrowRight aria-hidden />
-          </Link>
+        <div className="relative z-20 flex flex-wrap items-start gap-2">
           {canEdit && (
             <Link
               href={`/events/${event.id}/edit`}
@@ -120,7 +118,13 @@ function DraftEventCard({
   canEdit: boolean;
 }) {
   return (
-    <Card className="border-2 border-dashed bg-card/70">
+    <Card className="relative border-2 border-dashed bg-card/70">
+      {canEdit ? (
+        <StretchedLink
+          href={`/events/${event.id}/edit`}
+          label={`Edit ${event.name}`}
+        />
+      ) : null}
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3.5">
           <EventBanner
@@ -143,15 +147,7 @@ function DraftEventCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Badge variant="neutral">Draft</Badge>
-          {canEdit && (
-            <Link
-              href={`/events/${event.id}/edit`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Pencil aria-hidden />
-              Edit
-            </Link>
-          )}
+          {canEdit ? <span className="text-sm font-medium text-primary">Edit</span> : null}
         </div>
       </CardContent>
     </Card>

@@ -5,21 +5,6 @@ vi.mock("next/font/google", () => ({
   Fredoka: () => ({ variable: "display-font" }),
   Plus_Jakarta_Sans: () => ({ variable: "body-font" }),
 }));
-vi.mock("next/script", () => ({
-  default: ({
-    id,
-    strategy,
-    children,
-  }: {
-    id: string;
-    strategy: string;
-    children: React.ReactNode;
-  }) => (
-    <script id={id} data-strategy={strategy}>
-      {children}
-    </script>
-  ),
-}));
 vi.mock("@/lib/utils", () => ({
   cn: (...values: string[]) => values.join(" "),
 }));
@@ -30,7 +15,7 @@ vi.mock("@/lib/theme", () => ({
 import RootLayout from "./layout";
 
 describe("RootLayout theme bootstrap", () => {
-  it("renders an identified beforeInteractive script before page content", () => {
+  it("renders an identified inline script directly in head before body content", () => {
     const html = renderToStaticMarkup(
       <RootLayout params={Promise.resolve({})}>
         <main>Page content</main>
@@ -38,10 +23,8 @@ describe("RootLayout theme bootstrap", () => {
     );
 
     expect(html).toContain('id="ceit-theme-init"');
-    expect(html).toContain('data-strategy="beforeInteractive"');
     expect(html).toContain("document.documentElement.classList.add('theme-test')");
-    expect(html.indexOf("ceit-theme-init")).toBeLessThan(
-      html.indexOf("Page content"),
-    );
+    expect(html.indexOf("ceit-theme-init")).toBeLessThan(html.indexOf("</head>"));
+    expect(html.indexOf("</head>")).toBeLessThan(html.indexOf("<body"));
   });
 });

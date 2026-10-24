@@ -195,6 +195,7 @@ export function AvatarUploader({
 
       {imageSrc && (
         <AvatarCropper
+          key={imageSrc}
           imageSrc={imageSrc}
           saving={status === "saving"}
           onSave={handleSave}

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
+import { preventSearchFormSubmission } from "@/lib/search";
 import type { BoardAssignee } from "@/lib/events/board";
 import {
   getArchivedTaskShareErrorCode,
@@ -223,11 +224,13 @@ export function ArchivedTaskSharing({
                 />
                 <Input
                   id="archived-viewer-search"
+                  type="search"
                   value={search}
                   maxLength={MAX_ARCHIVED_TASK_VIEWER_SEARCH_LENGTH}
                   disabled={busyAction !== null}
                   aria-invalid={Boolean(searchError)}
                   onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={preventSearchFormSubmission}
                   placeholder="Search people"
                   className="pl-9"
                 />

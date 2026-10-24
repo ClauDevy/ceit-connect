@@ -32,20 +32,24 @@ export function ResetPasswordFlow({ email, onBack }: ResetPasswordFlowProps) {
     setError("")
     setBusy(true)
 
-    const supabase = createClient()
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
-      type: "recovery",
-    })
+    try {
+      const supabase = createClient()
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "recovery",
+      })
 
-    setBusy(false)
-
-    if (verifyError) {
-      setError("That code is incorrect or has expired.")
-      return
+      if (verifyError) {
+        setError("That code is incorrect or has expired.")
+        return
+      }
+      setStep("password")
+    } catch {
+      setError("Unable to verify the code. Please try again.")
+    } finally {
+      setBusy(false)
     }
-    setStep("password")
   }
 
   async function handleSetPassword(e: React.FormEvent) {
