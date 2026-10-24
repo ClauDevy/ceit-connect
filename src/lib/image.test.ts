@@ -37,6 +37,15 @@ describe("minimumContainZoom", () => {
       ),
     ).toBe(1);
   });
+
+  it.each([
+    ["wide", { width: 1600, height: 600 }, 0.2],
+    ["tall", { width: 600, height: 1600 }, 0.1125],
+  ])("contains the whole %s banner image in a 16:9 frame", (_, media, expected) => {
+    expect(minimumContainZoom(media, { width: 320, height: 180 })).toBe(
+      expected,
+    );
+  });
 });
 
 describe("getCropDrawPlan", () => {
@@ -50,6 +59,19 @@ describe("getCropDrawPlan", () => {
       output: { width: 150, height: 150 },
       source: { x: 0, y: 0, width: 100, height: 50 },
       destination: { x: 25, y: 50, width: 100, height: 50 },
+    });
+  });
+
+  it("places a tall image without distortion in a transparent 16:9 crop", () => {
+    expect(
+      getCropDrawPlan(
+        { width: 90, height: 160 },
+        { x: -115, y: 0, width: 320, height: 180 },
+      ),
+    ).toEqual({
+      output: { width: 320, height: 180 },
+      source: { x: 0, y: 0, width: 90, height: 160 },
+      destination: { x: 115, y: 0, width: 90, height: 160 },
     });
   });
 });
