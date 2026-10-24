@@ -9,6 +9,7 @@ import {
 import {
   Archive,
   ArrowLeft,
+  CalendarClock,
   LockKeyhole,
   RefreshCw,
   Users,
@@ -166,7 +167,7 @@ function BackLink({ task }: { task: TaskDetailData | null }) {
   return (
     <Link
       href={getTaskBackHref(task)}
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground active:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
     >
       <ArrowLeft className="size-4" aria-hidden /> {label}
     </Link>
@@ -177,7 +178,7 @@ function MaskedTask({ task }: { task: TaskDetailData }) {
   return (
     <div className="space-y-5">
       <BackLink task={task} />
-      <Card>
+      <Card className="border-dashed bg-gradient-to-br from-card via-card to-muted/60">
         <CardContent className="py-10 text-center sm:py-14">
           <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
             <LockKeyhole className="size-6" aria-hidden />
@@ -218,7 +219,7 @@ function WorkLinksSection({
   if (isPending) {
     return (
       <Card aria-label="Loading work links">
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 px-4 py-4 sm:px-5 sm:py-5">
           <Skeleton className="h-5 w-24" />
           <Skeleton className="h-4 w-72 max-w-full" />
           <Skeleton className="h-10 w-full" />
@@ -337,32 +338,36 @@ function RealTask({
         </InlineAlert>
       ) : null}
 
-      <header>
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{task.status}</Badge>
-          {task.effective_priority ? (
-            <Badge variant={priorityVariant(task.effective_priority)}>
-              {task.effective_priority} priority
-            </Badge>
-          ) : null}
-          <Badge variant="neutral">{taskTypeLabel}</Badge>
-        </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-          {task.title}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {task.event_name} · {task.committee_name}
-        </p>
-        {backup.data?.out_can_toggle_backup ? (
-          <div className="mt-4">
-            <TaskBackupToggle
-              state={backup.data}
-              busyAction={backup.busyAction}
-              onToggle={backup.onToggle}
-            />
+      <header className="space-y-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{task.status}</Badge>
+              {task.effective_priority ? (
+                <Badge variant={priorityVariant(task.effective_priority)}>
+                  {task.effective_priority} priority
+                </Badge>
+              ) : null}
+              <Badge variant="neutral">{taskTypeLabel}</Badge>
+            </div>
+            <h1 className="max-w-3xl font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+              {task.title}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {task.event_name} · {task.committee_name}
+            </p>
           </div>
-        ) : null}
-        <div className="mt-3" aria-live="polite" aria-atomic="true">
+          {backup.data?.out_can_toggle_backup ? (
+            <div className="sm:shrink-0">
+              <TaskBackupToggle
+                state={backup.data}
+                busyAction={backup.busyAction}
+                onToggle={backup.onToggle}
+              />
+            </div>
+          ) : null}
+        </div>
+        <div className="empty:hidden" aria-live="polite" aria-atomic="true">
           {backup.error ? <InlineAlert>{backup.error}</InlineAlert> : null}
           {backup.notice ? (
             <p role="status" className="text-sm text-muted-foreground">
@@ -372,13 +377,13 @@ function RealTask({
         </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 space-y-5">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
+            <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
+              <CardTitle className="text-[15px]">Description</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
               <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                 {task.description?.trim() || "No description provided."}
               </p>
@@ -392,7 +397,7 @@ function RealTask({
           />
         </div>
 
-        <aside className="space-y-5">
+        <aside className="space-y-4">
           {backup.data ? (
             <TaskBackupRequestedCard
               state={backup.data}
@@ -404,12 +409,12 @@ function RealTask({
           ) : null}
 
           <Card>
-            <CardHeader>
+            <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
               <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
                 <Users className="size-4" aria-hidden /> Assignees
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5 pt-4">
+            <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
               <AssigneeList
                 label="Primary"
                 assignees={task.primary_assignees}
@@ -437,20 +442,17 @@ function RealTask({
           ) : null}
 
           {task.is_confidential && task.event_status === "Archived" ? (
-            <ArchivedTaskSharing
-              taskId={task.id}
-              viewers={task.access_list}
-            />
+            <ArchivedTaskSharing taskId={task.id} viewers={task.access_list} />
           ) : task.is_confidential &&
             !editControls.data?.can_set_confidentiality ? (
             <Card>
-              <CardHeader>
+              <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
                 <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
                   <LockKeyhole className="size-4" aria-hidden /> Additional
                   viewers
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-4">
+              <CardContent className="px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
                 {task.access_list.length > 0 ? (
                   <div className="space-y-2.5">
                     {task.access_list.map((viewer) => {
@@ -482,7 +484,12 @@ function RealTask({
           ) : null}
 
           <Card>
-            <CardContent className="space-y-3">
+            <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
+              <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                <CalendarClock className="size-4" aria-hidden /> Schedule
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
               {task.task_type === "LiveOperation" ? (
                 <>
                   <DetailRow
@@ -654,7 +661,9 @@ function TaskDetailContents({
       const { data, error } = await request;
       if (error) throw error;
       if (!Array.isArray(data) || !data.every(isTaskAssigneeWorkload)) {
-        throw new Error("The task workload reader returned an invalid response.");
+        throw new Error(
+          "The task workload reader returned an invalid response.",
+        );
       }
       return data;
     },
@@ -710,8 +719,7 @@ function TaskDetailContents({
           ? (error as { code?: string }).code
           : undefined;
       const noOpReachedCurrentState =
-        code === "CCB05" &&
-        refreshed.data?.out_request_backup === nextState;
+        code === "CCB05" && refreshed.data?.out_request_backup === nextState;
       if (!noOpReachedCurrentState) {
         setBackupError(getTaskBackupErrorMessage("toggle-backup", error));
       }
@@ -962,7 +970,7 @@ function TaskDetailContents({
 
   if (query.error && query.data === undefined) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-5 [&_button]:transition-colors [&_button]:duration-150 motion-reduce:[&_button]:transition-none">
         <BackLink task={null} />
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
           <span>Task details could not be loaded.</span>
@@ -980,7 +988,7 @@ function TaskDetailContents({
 
   if (query.data === null) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-5 [&_button]:transition-colors [&_button]:duration-150 motion-reduce:[&_button]:transition-none">
         <BackLink task={null} />
         <Card>
           <EmptyState
@@ -1001,7 +1009,7 @@ function TaskDetailContents({
   }
 
   return (
-    <>
+    <div className="[&_button]:transition-colors [&_button]:duration-150 motion-reduce:[&_button]:transition-none">
       {query.error ? (
         <InlineAlert className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <span>
@@ -1054,7 +1062,7 @@ function TaskDetailContents({
           }}
         />
       )}
-    </>
+    </div>
   );
 }
 

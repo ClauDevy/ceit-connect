@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LogOut, Search, Trash2, UsersRound } from "lucide-react";
+import { Ellipsis, LogOut, Search, Trash2, UsersRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,12 @@ import {
 } from "@/components/ui/dialog";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   assigneeIdsAreUnchanged,
   MAX_TASK_ASSIGNEES,
@@ -180,13 +186,13 @@ export function TaskPeopleControls({
   return (
     <>
       {controls.can_assign_people ? (
-        <Card>
-          <CardHeader>
+        <Card className="overflow-hidden">
+          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
             <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
               <UsersRound className="size-4" aria-hidden /> Assignment
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 pt-4">
+          <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
             <p className="text-sm text-muted-foreground">
               {currentPrimaryIds.length} primary · {currentAssistIds.length}{" "}
               assist
@@ -206,13 +212,36 @@ export function TaskPeopleControls({
       ) : null}
 
       {showTaskActions ? (
-        <Card>
-          <CardHeader>
+        <Card className="overflow-hidden">
+          <CardHeader className="flex-row items-center justify-between gap-3 px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
             <CardTitle className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
               Task actions
             </CardTitle>
+            {controls.can_delete ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label={`More actions for ${taskTitle}`}
+                  disabled={deleting || unassigning}
+                  className="inline-flex size-11 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none sm:size-9"
+                >
+                  <Ellipsis aria-hidden className="size-5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent aria-label={`Actions for ${taskTitle}`}>
+                  <DropdownMenuItem
+                    className="text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+                    onClick={() => {
+                      setActionError(null);
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                    Delete task
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </CardHeader>
-          <CardContent className="space-y-3 pt-4">
+          <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
             {controls.can_unassign_self || selfUnassignMessage ? (
               <div className="space-y-2">
                 <Button
@@ -237,28 +266,13 @@ export function TaskPeopleControls({
                 ) : null}
               </div>
             ) : null}
-            {controls.can_delete ? (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  setActionError(null);
-                  setDeleteOpen(true);
-                }}
-                disabled={deleting || unassigning}
-              >
-                <Trash2 aria-hidden /> Delete task
-              </Button>
-            ) : null}
             {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
           </CardContent>
         </Card>
       ) : null}
 
       <Dialog open={assignmentOpen} onOpenChange={setAssignmentOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] overflow-hidden sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Task assignees</DialogTitle>
             <DialogDescription>
@@ -266,7 +280,7 @@ export function TaskPeopleControls({
               primary owner returns to the To Do Backlog unless it is Completed.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
             <label htmlFor="task-assignee-search" className="sr-only">
               Search assignees
             </label>
@@ -288,7 +302,7 @@ export function TaskPeopleControls({
             <p className="text-xs text-muted-foreground">
               {assignmentCount} of {MAX_TASK_ASSIGNEES} assigned
             </p>
-            <div className="max-h-72 space-y-2 overflow-y-auto">
+            <div className="space-y-2">
               {people.map((person) => {
                 const category = primaryIds.includes(person.id)
                   ? "primary"
@@ -297,7 +311,7 @@ export function TaskPeopleControls({
                     : "none";
                 const isActive = activeOptionIds.has(person.id);
                 return (
-                  <fieldset key={person.id} className="rounded-lg border p-3">
+                  <fieldset key={person.id} className="rounded-xl border p-3">
                     <legend className="sr-only">
                       Assignment for {personName(person)}
                     </legend>
@@ -321,14 +335,14 @@ export function TaskPeopleControls({
                         </span>
                       ) : null}
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-3 gap-1 text-xs sm:gap-2">
                       {(["none", "primary", "assist"] as const).map((value) => {
                         const inputId = `task-assignee-${person.id}-${value}`;
                         return (
                           <label
                             key={value}
                             htmlFor={inputId}
-                            className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-muted"
+                            className="flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 hover:bg-muted sm:px-2"
                           >
                             <input
                               id={inputId}

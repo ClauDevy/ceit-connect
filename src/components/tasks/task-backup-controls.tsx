@@ -7,11 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TaskBackupState } from "@/lib/tasks/backup";
 
 export type BackupBusyAction =
-  | "toggle-backup"
-  | "volunteer"
-  | "withdraw"
-  | `accept:${string}`
-  | null;
+  "toggle-backup" | "volunteer" | "withdraw" | `accept:${string}` | null;
 
 type TaskBackupControlProps = {
   state: TaskBackupState;
@@ -60,12 +56,12 @@ export function TaskBackupRequestedCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
         <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
           <TriangleAlert className="size-4" aria-hidden /> Backup Requested
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-4">
+      <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
         {state.out_can_accept ? (
           state.out_volunteers.length > 0 ? (
             <div className="space-y-3">
