@@ -1,6 +1,6 @@
 # Step 1: UI bug fixes and cleanup
 
-**Status:** Planned | **Branch:** `fix/ui-bugs` | **Reasoning level:** Medium
+**Status:** In progress (Part A implemented locally) | **Branch:** `fix/ui-bugs` | **Reasoning level:** Medium
 
 ## Goal
 
@@ -19,6 +19,8 @@ Fix the approved cross-application UI defects before the redesign begins: stable
 
 - Step 1 aligns the existing comment Edit/Delete buttons only. Moving per-comment Delete into a menu belongs to Batch 3.
 - The avatar cropper must allow zooming out until the whole selected image is visible, starting with the first image picked rather than only after replacing or reopening it.
+- User Management must select and render `avatar_url` in both desktop and phone layouts. Avatar uploads use the authenticated user's fixed `<user_id>/avatar.webp` object, but `/api/update-avatar` owns the public URL and cache version; the client supplies neither.
+- Avatar removal follows `docs/GOTCHAS.md`: clear `users.avatar_url` before deleting Storage. A later Storage failure is a non-blocking, retry-safe cleanup warning.
 - Per-item destructive actions move into menus with confirmation in the redesign batches. Bulk actions and typed-confirmation flows remain buttons that open a confirmation.
 
 ## Current state
@@ -52,9 +54,9 @@ The separate development-only warning is the raw `<script dangerouslySetInnerHTM
 
 ## Scope: in / out
 
-**In:** all current search boxes; all current whole-card/row destinations; 44px phone targets; first-selection avatar crop zoom range; route-specific loading skeletons; Drive preview containment on narrow phones; comment Edit/Delete alignment; application display/parsing audit for `Asia/Manila`; removal of the unused external `cn` and `p` packages after proof; the exact three lint warnings; and the development-only root-layout script warning.
+**In:** all current search boxes; all current whole-card/row destinations; 44px phone targets; first-selection avatar crop zoom range; User Management avatar rendering and safe query failures; active-profile-guarded, server-derived avatar URL/versioning and retry-safe removal; route-specific loading skeletons; Drive preview containment on narrow phones; comment Edit/Delete alignment; application display/parsing audit for `Asia/Manila`; removal of the unused external `cn` and `p` packages after proof; the exact three lint warnings; and the development-only root-layout script warning.
 
-**Out:** database migrations; RLS or authorization changes; visual redesign beyond the named fixes; moving comment Delete into a menu; new destructive-action flows; paging; motion polish; mobile-board layout; unrelated package upgrades or cleanup.
+**Out:** database migrations, RLS, policies, functions, triggers, indexes, or grants; authorization changes other than the golden-rule-3 active-profile check in `/api/update-avatar`; visual redesign beyond the named fixes; moving comment Delete into a menu; new destructive-action flows; paging; motion polish; mobile-board layout; unrelated package upgrades or cleanup. Active-user checks for `/api/set-password` and `/api/complete-reset` are deferred to Batch 14.
 
 ## Database impact
 
@@ -65,6 +67,9 @@ None. No migration, table, function, policy, trigger, index, grant, or remote Su
 - Search state and input nodes remain stable across query-key changes and background refreshes. Placeholder/loading content replaces only the result region.
 - Navigating surfaces expose one valid link across the box. Sibling action buttons remain outside that link while preserving accessible names, keyboard order, and 44px targets on phones.
 - The avatar cropper computes a minimum zoom that can contain the whole image and applies it on the first selected image as well as replacements.
+- User Management passes the selected `avatar_url` into `UserAvatar` on desktop and phone; a failed committee or member query shows a safe error instead of an empty roster.
+- `/api/update-avatar` rejects signed-out, profile-less, and inactive callers before service-role construction. Save verifies the caller-owned fixed Storage object, derives its public URL and version from object metadata (falling back to server time), stores it, and returns it; client URL/version fields are ignored.
+- Avatar removal clears the database reference before Storage deletion. A cleanup failure leaves the safe database state intact, returns a clear warning, and can be retried idempotently.
 - Every route with a loading state uses a skeleton shaped like that route's real header, controls, and content rather than a generic unrelated page.
 - `DrivePreview` and its fallback fit the phone viewport without horizontal page overflow and keep the open-in-Drive escape path reachable.
 - Comment Edit/Delete controls align consistently at desktop and phone widths; their current authorization and confirmation behavior stays unchanged.
@@ -76,6 +81,7 @@ None. No migration, table, function, policy, trigger, index, grant, or remote Su
 
 - No nested interactive control appears inside a link.
 - Search fixes do not broaden returned data, expose hidden counts, or change authorization.
+- `avatar_url` remains server-derived, existing stored URLs remain valid, and deactivation through `/api/toggle-user-active` still clears the URL before its checked Storage cleanup.
 - Skeletons contain no real confidential or stale content.
 - Drive preview retains its safe exact-host parser, sandbox, referrer policy, lazy loading, and fallback link.
 - Date-only `events.start_date` and `events.end_date` remain `yyyy-mm-dd` strings; timestamp conversion does not depend on the viewer's browser timezone.
@@ -100,7 +106,7 @@ None. No migration, table, function, policy, trigger, index, grant, or remote Su
 
 Create `docs/phase-4b/step-1-tests.md` when the batch lands. Record the pre-change three-warning lint baseline above, the proof that no source imports external `cn` or `p`, every changed file, and final test/build/lint results.
 
-Add focused coverage for search input identity/focus through typing, debounce and refetch; form non-submission; link and sibling-action markup; 44px phone targets; initial avatar crop containment; route-specific skeleton structure; Drive preview overflow; comment alignment; Philippine-time display/parsing; theme initialization; and auth navigation.
+Add focused coverage for server-derived avatar paths/versioning; update-avatar caller denial, object verification, untrusted-field ignoring, database-before-Storage removal, and retry warning; User Management query failure and desktop/phone avatar markup; search input identity/focus through typing, debounce and refetch; form non-submission; link and sibling-action markup; 44px phone targets; initial avatar crop containment; route-specific skeleton structure; Drive preview overflow; comment alignment; Philippine-time display/parsing; theme initialization; and auth navigation. Browser-only interaction checks are marked manual rather than simulated with a new DOM dependency.
 
 The auth navigation tests must prove that successful sign-in and successful password reset still reach `/home` after replacing `window.location.href`.
 
@@ -110,6 +116,7 @@ The auth navigation tests must prove that successful sign-in and successful pass
 - Use mouse, keyboard, middle-click, and phone taps on every navigating card/row. Confirm the whole box navigates, sibling actions work independently, and no nested-button/link warning appears.
 - On a real phone or equivalent viewport, measure representative interactive targets at 44 by 44 CSS pixels or larger.
 - Pick a portrait, landscape, square, and small avatar image as the first selection. Confirm each can zoom out to show the whole image before cropping.
+- Re-upload a profile photo and confirm the new image appears in Settings, both User Management layouts, headers, task cards, assignee/viewer lists, comments, and archives. Confirm a missing object is reported safely; simulate removal cleanup failure, verify the URL is already cleared, then retry cleanup.
 - Visit every route with `loading.tsx`; compare its skeleton with the real page in both themes and at phone width.
 - Open representative Drive file/folder and Docs/Sheets/Slides previews at narrow phone widths and confirm no horizontal page overflow.
 - Verify comment Edit/Delete alignment without changing their permissions or moving Delete into a menu.
@@ -119,7 +126,7 @@ The auth navigation tests must prove that successful sign-in and successful pass
 
 ## Acceptance
 
-Every current search input remains mounted and focused as appropriate without refreshing the page. Navigating cards and rows are valid whole-box links with separate actions and 44px phone targets. Initial avatar cropping can contain the whole image, skeletons match their routes, Drive preview fits phones, comment actions align, and Philippine-time presentation/parsing is consistent. The unused external `cn` and `p` packages and all four documented warning sources are gone; sign-in, reset, session refresh, theme bootstrap, and the local `cn()` helper still work. Build and lint pass with zero warnings.
+Every current search input remains mounted and focused as appropriate without refreshing the page. Navigating cards and rows are valid whole-box links with separate actions and 44px phone targets. User Management renders stored avatars and fails safely, while avatar save/removal follows the active-profile, server-derived, cache-versioned, database-before-Storage contract. Initial avatar cropping can contain the whole image, skeletons match their routes, Drive preview fits phones, comment actions align, and Philippine-time presentation/parsing is consistent. The unused external `cn` and `p` packages and all four documented warning sources are gone; sign-in, reset, session refresh, theme bootstrap, and the local `cn()` helper still work. Build and lint pass with zero warnings.
 
 ## Open questions for the owner
 

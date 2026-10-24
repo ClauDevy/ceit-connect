@@ -32,7 +32,7 @@ export function MembersTable({ members, committeeName, currentUserId, pendingId,
           <TableRow key={member.id} aria-busy={pendingId === member.id}>
             <TableCell>
               <div className="flex items-center gap-3">
-                <UserAvatar name={member.full_name} size="sm" />
+                <UserAvatar name={member.full_name} src={member.avatar_url} size="sm" />
                 <div className="min-w-0">
                   <p className="truncate font-medium">{member.full_name}</p>
                   <p className="truncate text-xs text-muted-foreground">{member.email}</p>

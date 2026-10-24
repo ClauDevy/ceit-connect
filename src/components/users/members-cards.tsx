@@ -22,7 +22,7 @@ export function MembersCards({ members, committeeName, currentUserId, pendingId,
       {members.map((member) => (
         <li key={member.id} aria-busy={pendingId === member.id} className="grid min-w-0 gap-3 p-4">
           <div className="flex min-w-0 items-start gap-3">
-            <UserAvatar name={member.full_name} size="md" />
+            <UserAvatar name={member.full_name} src={member.avatar_url} size="md" />
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{member.full_name}</p>
               <p className="truncate text-xs text-muted-foreground">{member.email}</p>

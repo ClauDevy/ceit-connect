@@ -1,3 +1,4 @@
+import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -22,6 +23,11 @@ vi.mock("@/components/shared/page-header", () => ({
   PageHeader: () => null,
 }));
 vi.mock("@/components/users/users-table", () => ({ UsersTable: () => null }));
+vi.mock("@/components/ui/inline-alert", () => ({
+  InlineAlert: ({ children }: { children: React.ReactNode }) => (
+    <div role="alert">{children}</div>
+  ),
+}));
 
 import UsersPage from "./page";
 
@@ -59,5 +65,28 @@ describe("Users page guard", () => {
     await expect(UsersPage()).resolves.toBeTruthy();
     expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith(["Admin"]);
     expect(mocks.createClient).toHaveBeenCalledTimes(1);
+    expect(select).toHaveBeenCalledWith(
+      "id, full_name, email, role, committee_id, avatar_url, is_active",
+    );
+  });
+
+  it("shows a safe error instead of an empty roster when a query fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const from = vi.fn((table: string) => ({
+      select: vi.fn(() => ({
+        order: vi.fn().mockResolvedValue(
+          table === "users"
+            ? { data: null, error: { message: "private database detail" } }
+            : { data: [], error: null },
+        ),
+      })),
+    }));
+    mocks.createClient.mockResolvedValue({ from });
+
+    const html = renderToStaticMarkup(await UsersPage());
+
+    expect(html).toContain("User Management could not be loaded");
+    expect(html).not.toContain("No members yet");
+    expect(html).not.toContain("private database detail");
   });
 });
