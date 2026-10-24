@@ -1,6 +1,6 @@
 # Step 1: UI bug fixes and cleanup
 
-**Status:** In progress (Part A implemented locally) | **Branch:** `fix/ui-bugs` | **Reasoning level:** Medium
+**Status:** In progress (Parts A and B implemented locally) | **Branch:** `fix/ui-bugs` | **Reasoning level:** Medium
 
 ## Goal
 
@@ -48,9 +48,9 @@ Local filtering and debounced server searches use different query paths, but all
 - `src/components/auth/reset-password-flow.tsx:66:7` — `@next/next/no-location-assign-relative-destination` for `window.location.href = "/home"`.
 - `src/lib/supabase/middleware.ts:34:13` — `@typescript-eslint/no-unused-vars` because `user` is assigned but never used.
 
-The separate development-only warning is the raw `<script dangerouslySetInnerHTML>` in `src/app/layout.tsx`. Step 1 must resolve it using the supported Next.js 16 approach after consulting the installed Next.js documentation, while preserving the pre-hydration theme behavior and avoiding a production regression.
+The separate development-only warning was the raw `<script dangerouslySetInnerHTML>` in `src/app/layout.tsx`. Part B replaces it with the installed Next.js 16-supported inline `next/script`, with a stable `id` and `beforeInteractive` directly in the root layout, while preserving the pre-hydration theme behavior.
 
-`package.json` currently declares the external packages `cn` and `p`. Repository search finds no import from either package. The many `cn(...)` calls import the local `@/lib/utils` helper and must remain.
+The pre-Part-B manifest declared the external packages `cn` and `p`. Separate searches for double- and single-quoted ESM/CommonJS imports find no use of either package; 28 imports use the local `@/lib/utils` helper. Part B removes only the unused manifest and lockfile entries.
 
 ## Scope: in / out
 
@@ -74,7 +74,7 @@ None. No migration, table, function, policy, trigger, index, grant, or remote Su
 - `DrivePreview` and its fallback fit the phone viewport without horizontal page overflow and keep the open-in-Drive escape path reachable.
 - Comment Edit/Delete controls align consistently at desktop and phone widths; their current authorization and confirmation behavior stays unchanged.
 - Dates and timestamps are displayed and parsed with the shared `Asia/Manila` contract. This audit does not change stored values, schema, or date-only event semantics.
-- Internal auth navigation uses the supported Next.js client navigation API without leaving buttons stuck or breaking back-button protections.
+- Internal auth navigation uses `router.replace("/home")` followed by `router.refresh()` so completed auth screens do not remain in history and `/home` cannot reuse a signed-out client tree. Every failure path releases its busy button.
 - Removing the unused middleware binding must not change Supabase session refresh behavior.
 
 ## Guards that must remain true

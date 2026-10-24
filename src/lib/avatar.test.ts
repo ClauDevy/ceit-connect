@@ -3,6 +3,7 @@ import {
   avatarObjectPath,
   buildVersionedAvatarUrl,
   findAvatarObject,
+  nextAvatarCleanupWarning,
 } from "./avatar";
 
 describe("avatar URL helpers", () => {
@@ -54,5 +55,36 @@ describe("avatar URL helpers", () => {
     expect(new URL(server).searchParams.get("v")).toBe(
       "2026-10-25T00:00:00.000Z",
     );
+  });
+});
+
+describe("nextAvatarCleanupWarning", () => {
+  const existingWarning = "The photo was removed, but storage cleanup is pending.";
+
+  it("keeps the existing warning when no successful response is available", () => {
+    expect(nextAvatarCleanupWarning(existingWarning, undefined)).toBe(
+      existingWarning,
+    );
+  });
+
+  it("clears the warning when cleanup is no longer pending", () => {
+    expect(
+      nextAvatarCleanupWarning(existingWarning, { cleanupPending: false }),
+    ).toBe("");
+  });
+
+  it("updates the warning when cleanup remains pending", () => {
+    expect(
+      nextAvatarCleanupWarning(existingWarning, {
+        cleanupPending: true,
+        warning: "Storage cleanup still needs another retry.",
+      }),
+    ).toBe("Storage cleanup still needs another retry.");
+  });
+
+  it("keeps the existing warning when a pending response has no warning", () => {
+    expect(
+      nextAvatarCleanupWarning(existingWarning, { cleanupPending: true }),
+    ).toBe(existingWarning);
   });
 });

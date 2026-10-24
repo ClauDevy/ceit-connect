@@ -24,3 +24,28 @@ export function buildVersionedAvatarUrl(
   url.searchParams.set("v", version);
   return url.toString();
 }
+
+export function nextAvatarCleanupWarning(
+  currentWarning: string,
+  response: unknown,
+) {
+  if (!response || typeof response !== "object" || Array.isArray(response)) {
+    return currentWarning;
+  }
+
+  const { cleanupPending, warning } = response as Record<string, unknown>;
+
+  if (cleanupPending === false) {
+    return "";
+  }
+
+  if (
+    cleanupPending === true &&
+    typeof warning === "string" &&
+    warning.trim().length > 0
+  ) {
+    return warning;
+  }
+
+  return currentWarning;
+}
