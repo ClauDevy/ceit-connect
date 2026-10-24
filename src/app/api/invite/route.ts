@@ -1,40 +1,60 @@
 import { NextResponse } from "next/server";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { getActiveProfileForRoles, getAuthUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  // Step 1: confirm a real Admin is making this request
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  // Route handlers must return JSON for signed-out callers. Calling
+  // requireUser() here would throw Next.js's 307 redirect response instead.
+  const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
-  const { data: requester } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (requester?.role !== "Admin") {
+  const requester = await getActiveProfileForRoles(["Admin"]);
+  if (!requester) {
     return NextResponse.json(
-      { error: "Only Admins can invite members" },
+      { error: "Only active Admins can invite members" },
       { status: 403 }
     );
   }
 
   // Step 2: read + validate the new member's details
-  const body = await request.json();
-  const { email, fullName, role, committeeId } = body as {
-    email?: unknown;
-    fullName?: string;
-    role?: string;
-    committeeId?: string | null;
-  };
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
 
-  if (!email || typeof email !== "string" || !fullName || !role) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  const { email, fullName, role, committeeId } = body as Record<
+    string,
+    unknown
+  >;
+
+  if (
+    typeof email !== "string" ||
+    typeof fullName !== "string" ||
+    typeof role !== "string" ||
+    (committeeId !== undefined &&
+      committeeId !== null &&
+      typeof committeeId !== "string")
+  ) {
+    return NextResponse.json(
+      { error: "Email, name, and role are required" },
+      { status: 400 }
+    );
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedFullName = fullName.trim();
+  const normalizedCommitteeId =
+    typeof committeeId === "string" ? committeeId.trim() : committeeId;
+
+  if (!normalizedEmail || !normalizedFullName || !role) {
     return NextResponse.json(
       { error: "Email, name, and role are required" },
       { status: 400 }
@@ -45,7 +65,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
-  if (role !== "Admin" && !committeeId) {
+  if (role !== "Admin" && !normalizedCommitteeId) {
     return NextResponse.json(
       { error: "Committee is required for Co-Admin and Member roles" },
       { status: 400 }
@@ -61,7 +81,7 @@ export async function POST(request: Request) {
     .map((d) => d.trim().toLowerCase())
     .filter(Boolean);
 
-  const emailDomain = email.split("@")[1]?.toLowerCase();
+  const emailDomain = normalizedEmail.split("@")[1]?.toLowerCase();
 
   if (allowedDomains.length > 0 && !allowedDomains.includes(emailDomain)) {
     return NextResponse.json(
@@ -77,7 +97,7 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
 
   const { data: created, error: inviteError } =
-    await adminClient.auth.admin.inviteUserByEmail(email, {
+    await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
       redirectTo: `${origin}/auth/callback`,
     });
 
@@ -91,16 +111,23 @@ export async function POST(request: Request) {
   // Step 4: create their profile row to match
   const { error: profileError } = await adminClient.from("users").insert({
     id: created.user.id,
-    email,
-    full_name: fullName,
+    email: normalizedEmail,
+    full_name: normalizedFullName,
     role,
-    committee_id: role === "Admin" ? null : committeeId,
+    committee_id: role === "Admin" ? null : normalizedCommitteeId,
   });
 
   if (profileError) {
     // The auth account was created but the profile insert failed —
     // clean up so we don't leave a broken half-account behind.
-    await adminClient.auth.admin.deleteUser(created.user.id);
+    const { error: rollbackError } =
+      await adminClient.auth.admin.deleteUser(created.user.id);
+    if (rollbackError) {
+      return NextResponse.json(
+        { error: "Failed to create profile and roll back the invitation" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { error: `Failed to create profile: ${profileError.message}` },
       { status: 500 }

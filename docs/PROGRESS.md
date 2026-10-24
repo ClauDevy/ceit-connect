@@ -95,9 +95,11 @@ Done:
 - **Step 10D — large-results, pagination, and invariant coverage passed on Dev (owner-confirmed).** Its three pastes passed with the ledger-recorded `12 / 14 / 14` result lines.
 - **Step 10E — app review and final gate passed on Dev (owner-confirmed 2026-10-24).** All six required SQL re-run sessions, the three-user manual app review, and the command checks passed. The optional legacy Phase 3 regression session was not part of the required gate.
 
-## Phase 4B (planned)
+## Phase 4B
 
-Phase 4B has not been built. Its owner-approved scope and run order are documented in `docs/PHASE-4B-PLAN.md`.
+- **Batch 0 — users authorization fix is implemented and verified locally but is not claimed on Dev or Prod.** Migration `20261024120000_users_authorization_fix.sql` drops the broad Co-Admin users UPDATE policy, revokes direct users UPDATE from `PUBLIC`/`anon`/`authenticated`, and adds the authenticated-only `update_own_profile(text)` definer that can change only the active caller's validated `full_name`. Settings gains the first full-name editor; no name-saving UI existed before Batch 0. `/users` and `/api/invite` now guard themselves with the active-Admin profile check, and invite returns JSON 401 for signed-out callers before the role check or service-role construction.
+- `docs/phase-4b/step-0-tests.md` contains the independent rollback-safe 32-line Dev SQL suite. Local verification passes all 222 Vitest tests and the production build; lint has zero errors and the same three pre-existing warnings assigned to Batch 1. Vitest covers shared whitespace/code-point validation, all invite caller classes and service-role ordering, and the Users page guard. Historical Phase 4 Step 2/3/4 policy assertions are marked obsolete without changing their historical result counts.
+- The remaining owner-approved scope and run order are documented in `docs/PHASE-4B-PLAN.md`.
 
 ## Decisions log
 
@@ -128,12 +130,16 @@ Phase 4B has not been built. Its owner-approved scope and run order are document
 - Remaining cleanup is tracked once in the canonical Open items list below.
 - Service-role key not in any client bundle: YES
 
-Next up: Phase 4B Batch 0 (`fix/users-authz`), then Batch 1 (`fix/ui-bugs`), from `docs/PHASE-4B-PLAN.md`; no Phase 4B implementation is claimed.
+Next up after Batch 0 is applied, manually verified, reviewed, and merged: Phase 4B Batch 1 (`fix/ui-bugs`).
 
 ## Open items
 
 - Batch 1: remove the unused external `cn` and `p` packages with proof, resolve the exact three lint warnings and development-only root-layout script warning, and after the batch merges remove these cleanup items from this list.
 - Batch 14: enable the Admin and Co-Admin caps before the final release through a tracked migration.
+- Batch 8 or 14: replace or constrain `admin_full_access_users`; it still permits direct Admin INSERT/DELETE when matching table grants exist, and `my_role()` ignores `is_active`, so a deactivated Admin can still read all `users` rows.
+- Batch 14: extend its privilege-revoke inventory to `public.users`, including `INSERT`, `DELETE`, `TRUNCATE`, `REFERENCES`, and `TRIGGER`; the current plan names only events, tasks, notifications, and activity_log.
+- Batch 1 security follow-up: `/api/update-avatar`, `/api/set-password`, and `/api/complete-reset` use `createServiceRoleClient()` without independently re-checking `is_active`, contrary to golden rule 3.
+- Batch 1 reliability follow-up: avatar removal ignores the caller-session Storage deletion error; the Users page ignores committee/member query errors; and non-Batch-0 routes still contain incomplete request-body or Supabase-error checks.
 - Add the parked `discord_id` Settings field when Discord webhooks are scheduled.
 - Tighten Prod `ALLOWED_EMAIL_DOMAINS` to the university domain only.
 - Deactivate the mistyped fake-email test account on Prod.

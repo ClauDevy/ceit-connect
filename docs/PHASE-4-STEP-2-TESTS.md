@@ -2,6 +2,11 @@
 
 **Run on DEV only. Choose Run without RLS in the pop-up.**
 
+> **Obsolete after Phase 4B Batch 0:** TEST 5 hard-codes the former
+> `co_admin_update_own_committee_members` policy and four-policy count. Keep
+> its historical result count unchanged; use
+> `docs/phase-4b/step-0-tests.md` for the current `users` policy catalog.
+
 Apply `20261016140000_read_only_event_board.sql` to Dev through the owner's
 normal process before running these tests. Also re-run the existing
 `get_task()` tests in `docs/PHASE-3-HARDENING-TESTS.md` on Dev after this
