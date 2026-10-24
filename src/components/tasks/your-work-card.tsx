@@ -3,13 +3,13 @@
 import { type FormEvent, useId, useRef, useState } from "react";
 import {
   ChevronDown,
-  ExternalLink,
   Link2,
   LoaderCircle,
   Plus,
   Trash2,
 } from "lucide-react";
 import { DrivePreview } from "@/components/tasks/drive-preview";
+import { StretchedExternalLink } from "@/components/shared/stretched-link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -188,7 +188,13 @@ export function YourWorkCard({
                   key={link.id}
                   className="overflow-hidden rounded-xl border border-border"
                 >
-                  <div className="flex items-center gap-3 px-3.5 py-3">
+                  <div className="relative flex items-center gap-3 px-3.5 py-3">
+                    {parsed ? (
+                      <StretchedExternalLink
+                        href={parsed.openUrl}
+                        label={`Open ${displayName} in Google Drive`}
+                      />
+                    ) : null}
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-primary">
                       <Link2 aria-hidden="true" className="size-4" />
                     </span>
@@ -202,26 +208,12 @@ export function YourWorkCard({
                     </div>
                     {parsed ? (
                       <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          nativeButton={false}
-                          render={
-                            <a
-                              href={parsed.openUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            />
-                          }
-                        >
-                          Open
-                          <ExternalLink aria-hidden="true" />
-                        </Button>
                         {parsed.previewUrl ? (
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="relative z-20"
                             aria-expanded={isPreviewOpen}
                             aria-controls={`work-link-preview-${link.id}`}
                             onClick={() =>
@@ -243,6 +235,7 @@ export function YourWorkCard({
                             type="button"
                             variant="ghost"
                             size="icon-sm"
+                            className="relative z-20"
                             aria-label={`Remove ${displayName}`}
                             disabled={removingId !== null}
                             onClick={() => void handleRemove(link.id)}

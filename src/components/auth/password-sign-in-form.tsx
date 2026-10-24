@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { InlineAlert } from "@/components/ui/inline-alert"
 import { PasswordInput } from "@/components/ui/password-input"
 import { EmailField } from "@/components/auth/email-field"
 import { createClient } from "@/lib/supabase/client"
+import { finishAuthentication } from "@/lib/auth-navigation"
 
 type PasswordSignInFormProps = {
   email: string
@@ -20,21 +22,28 @@ export function PasswordSignInForm({ email, onEmailChange, onForgotPassword }: P
   const [signingIn, setSigningIn] = useState(false)
   const [startingReset, setStartingReset] = useState(false)
   const [error, setError] = useState("")
+  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSigningIn(true)
     setError("")
 
-    const supabase = createClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    try {
+      const supabase = createClient()
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (signInError) {
+      if (signInError) {
+        setError("Incorrect email or password.")
+        return
+      }
+
+      finishAuthentication(router)
+    } catch {
+      setError("Unable to sign in. Please try again.")
+    } finally {
       setSigningIn(false)
-      setError("Incorrect email or password.")
-      return
     }
-    window.location.href = "/home"
   }
 
   async function handleForgot() {

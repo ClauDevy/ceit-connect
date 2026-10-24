@@ -13,7 +13,11 @@ export function MobileTopbar({ user }: { user: CurrentUser }) {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Link href="/settings" aria-label="Your profile and settings">
+        <Link
+          href="/settings"
+          aria-label="Your profile and settings"
+          className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
           <UserAvatar name={user.name} src={user.avatarUrl} size="sm" />
         </Link>
       </div>

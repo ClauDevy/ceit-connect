@@ -23,6 +23,7 @@ import {
   type TaskEditViewer,
 } from "@/lib/tasks/edit-controls";
 import { formatWorkloadLabel } from "@/lib/tasks/workload";
+import { preventSearchFormSubmission } from "@/lib/search";
 
 type TaskPeopleControlsProps = {
   controls: TaskEditControlData;
@@ -276,8 +277,10 @@ export function TaskPeopleControls({
               />
               <Input
                 id="task-assignee-search"
+                type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={preventSearchFormSubmission}
                 placeholder="Search people"
                 className="pl-9"
               />

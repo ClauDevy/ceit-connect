@@ -1,11 +1,10 @@
-import Link from "next/link";
-import { Archive, ArrowRight, CalendarDays } from "lucide-react";
+import { Archive, CalendarDays } from "lucide-react";
 import { redirect } from "next/navigation";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles } from "@/lib/auth";
@@ -74,7 +73,11 @@ export default async function ArchivesPage() {
       ) : events?.length ? (
         <div className="grid gap-5 md:grid-cols-2">
           {events.map((event) => (
-            <Card key={event.id} className="overflow-hidden">
+            <Card key={event.id} className="relative overflow-hidden">
+              <StretchedLink
+                href={`/archives/${event.id}`}
+                label={`View ${event.name} archive`}
+              />
               <EventBanner
                 src={event.banner_url}
                 alt={`${event.name} banner`}
@@ -106,13 +109,7 @@ export default async function ArchivesPage() {
                     </p>
                   ) : null}
                 </div>
-                <Link
-                  href={`/archives/${event.id}`}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  View record
-                  <ArrowRight aria-hidden />
-                </Link>
+                <span className="text-sm font-medium text-primary">View record</span>
               </CardContent>
             </Card>
           ))}
