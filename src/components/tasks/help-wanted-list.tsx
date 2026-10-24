@@ -6,13 +6,19 @@ import {
   QueryClientProvider,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { LoaderCircle, RefreshCw, TriangleAlert } from "lucide-react";
+import {
+  ChevronRight,
+  LoaderCircle,
+  RefreshCw,
+  TriangleAlert,
+} from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   HELP_WANTED_PAGE_SIZE,
   getTaskBackupErrorMessage,
@@ -33,10 +39,11 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: APP_TIME_ZONE.iana,
 });
 
-function priorityVariant(priority: HelpWantedTask["out_effective_priority"]) {
-  if (priority === "Critical") return "destructive" as const;
-  if (priority === "High") return "outline" as const;
-  return "neutral" as const;
+function priorityAccent(priority: HelpWantedTask["out_effective_priority"]) {
+  if (priority === "Critical") return "border-l-destructive";
+  if (priority === "High") return "border-l-primary";
+  if (priority === "Medium") return "border-l-secondary-foreground";
+  return "border-l-muted-foreground";
 }
 
 function HelpWantedContents({
@@ -136,10 +143,9 @@ function HelpWantedContents({
     setActionError(null);
     setActionNotice(null);
     try {
-      const { data, error } = await supabase.rpc(
-        "withdraw_task_volunteer",
-        { p_task_id: taskId },
-      );
+      const { data, error } = await supabase.rpc("withdraw_task_volunteer", {
+        p_task_id: taskId,
+      });
       if (error) throw error;
       if (
         !Array.isArray(data) ||
@@ -162,10 +168,25 @@ function HelpWantedContents({
 
   if (query.isPending) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-        <LoaderCircle className="animate-spin" aria-hidden /> Loading Help
-        Wanted tasks…
-      </div>
+      <Card
+        className="overflow-hidden"
+        role="status"
+        aria-label="Loading Help Wanted tasks"
+      >
+        <div className="divide-y" aria-hidden>
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="space-y-2.5 px-4 py-3.5 sm:px-5">
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only">Loading Help Wanted tasks…</span>
+      </Card>
     );
   }
 
@@ -186,7 +207,11 @@ function HelpWantedContents({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        {tasks.length} {tasks.length === 1 ? "task" : "tasks"} loaded
+      </p>
+
       <div aria-live="polite" aria-atomic="true">
         {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
         {actionNotice ? (
@@ -214,77 +239,95 @@ function HelpWantedContents({
       ) : null}
 
       {tasks.length === 0 ? (
-        <Card>
+        <Card className="border-dashed">
           <EmptyState
             title="No tasks need backup"
             description="When someone requests help on an active task you can access, it will appear here."
           />
         </Card>
       ) : (
-        <div className="space-y-3">
-          {tasks.map((task) => {
-            const busy = busyTaskId === task.out_id;
-            return (
-              <Card key={task.out_id} className="relative p-0">
-                <StretchedLink
-                  href={`/tasks/${task.out_id}`}
-                  label={`Open ${task.out_title}`}
-                />
-                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{task.out_status}</Badge>
-                      <Badge variant={priorityVariant(task.out_effective_priority)}>
-                        {task.out_effective_priority}
-                      </Badge>
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                        <TriangleAlert className="size-3.5" aria-hidden /> Help
-                        Wanted
-                      </span>
+        <Card className="overflow-hidden p-0">
+          <div className="divide-y">
+            {tasks.map((task) => {
+              const busy = busyTaskId === task.out_id;
+              return (
+                <div
+                  key={task.out_id}
+                  className={`group relative border-l-4 ${priorityAccent(task.out_effective_priority)} transition-colors duration-150 hover:bg-muted/40 focus-within:bg-muted/40 motion-reduce:transition-none`}
+                >
+                  <StretchedLink
+                    href={`/tasks/${task.out_id}`}
+                    label={`Open ${task.out_title}`}
+                  />
+                  <CardContent className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <Badge variant="outline">{task.out_status}</Badge>
+                        <p className="min-w-0 text-sm font-semibold sm:text-base">
+                          {task.out_title}
+                        </p>
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                          <TriangleAlert className="size-3.5" aria-hidden />{" "}
+                          Help Wanted
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                        {task.out_effective_priority} · {task.out_event_name} ·{" "}
+                        {task.out_committee_name} ·{" "}
+                        {task.out_due_date
+                          ? `Due ${dueDateFormatter.format(new Date(task.out_due_date))}`
+                          : "No deadline"}
+                      </p>
                     </div>
-                    <p className="text-sm font-semibold">{task.out_title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {task.out_event_name} · {task.out_committee_name} ·{" "}
-                      {task.out_phase?.trim() || "Unphased"}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {task.out_due_date
-                        ? `Due ${dueDateFormatter.format(new Date(task.out_due_date))}`
-                        : "No deadline"}
-                    </p>
-                  </div>
-                  {task.out_has_volunteered ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="relative z-20 shrink-0"
-                      disabled={busyTaskId !== null}
-                      onClick={() => void withdraw(task.out_id)}
-                    >
-                      {busy ? (
-                        <LoaderCircle className="animate-spin" aria-hidden />
+                    <div className="flex shrink-0 items-center gap-2">
+                      {task.out_has_volunteered ? (
+                        <div className="relative z-20">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            disabled={busyTaskId !== null}
+                            onClick={() => void withdraw(task.out_id)}
+                          >
+                            {busy ? (
+                              <LoaderCircle
+                                className="animate-spin"
+                                aria-hidden
+                              />
+                            ) : null}
+                            Withdraw
+                          </Button>
+                        </div>
+                      ) : task.out_can_volunteer ? (
+                        <div className="relative z-20">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            disabled={busyTaskId !== null}
+                            onClick={() => void volunteer(task.out_id)}
+                          >
+                            {busy ? (
+                              <LoaderCircle
+                                className="animate-spin"
+                                aria-hidden
+                              />
+                            ) : null}
+                            Volunteer
+                          </Button>
+                        </div>
                       ) : null}
-                      Withdraw
-                    </Button>
-                  ) : task.out_can_volunteer ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="relative z-20 shrink-0"
-                      disabled={busyTaskId !== null}
-                      onClick={() => void volunteer(task.out_id)}
-                    >
-                      {busy ? (
-                        <LoaderCircle className="animate-spin" aria-hidden />
-                      ) : null}
-                      Volunteer
-                    </Button>
-                  ) : null}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                      <ChevronRight
+                        className="size-4 text-muted-foreground transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-foreground motion-reduce:transition-none"
+                        aria-hidden
+                      />
+                    </div>
+                  </CardContent>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       )}
 
       {query.hasNextPage ? (

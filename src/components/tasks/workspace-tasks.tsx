@@ -1,22 +1,44 @@
 "use client";
 
 import { useCallback, useRef, useState, type KeyboardEvent } from "react";
+import { HandHelping, ListChecks } from "lucide-react";
 import { HelpWantedList } from "@/components/tasks/help-wanted-list";
 import { MyTasksList } from "@/components/tasks/my-tasks-list";
 import {
-  HELP_WANTED_PAGE_SIZE,
-  type HelpWantedTask,
-} from "@/lib/tasks/backup";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { HELP_WANTED_PAGE_SIZE, type HelpWantedTask } from "@/lib/tasks/backup";
 import {
   MY_TASKS_PAGE_SIZE,
   formatLoadedTaskCount,
   getLoadedMyTasksCount,
+  isMyTasksSort,
+  isMyTasksStatus,
   type MyTask,
+  type MyTasksSort,
+  type MyTasksStatus,
 } from "@/lib/tasks/my-tasks";
 import { cn } from "@/lib/utils";
 
 type WorkspaceTab = "mine" | "help";
 type LoadedState = { count: number; hasNextPage: boolean };
+
+const statusItems = [
+  { value: "all", label: "All statuses" },
+  { value: "To Do", label: "To Do" },
+  { value: "In Progress", label: "In Progress" },
+  { value: "Completed", label: "Completed" },
+];
+
+const sortItems = [
+  { value: "deadline", label: "Deadline" },
+  { value: "priority", label: "Priority" },
+  { value: "event", label: "Event" },
+];
 
 export function WorkspaceTasks({
   initialMyTasks,
@@ -26,6 +48,8 @@ export function WorkspaceTasks({
   initialHelpWantedTasks?: HelpWantedTask[];
 }) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("mine");
+  const [status, setStatus] = useState<MyTasksStatus>(null);
+  const [sort, setSort] = useState<MyTasksSort>("deadline");
   const [myTasksState, setMyTasksState] = useState<LoadedState>(() => ({
     count: getLoadedMyTasksCount(initialMyTasks ?? []),
     hasNextPage: initialMyTasks?.length === MY_TASKS_PAGE_SIZE,
@@ -57,62 +81,146 @@ export function WorkspaceTasks({
   }
 
   return (
-    <section aria-label="Task workspace" className="space-y-5">
-      <div
-        role="tablist"
-        aria-label="Task lists"
-        className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-secondary p-1"
-      >
-        <button
-          ref={myTasksTabRef}
-          id="my-tasks-tab"
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "mine"}
-          aria-controls="my-tasks-panel"
-          tabIndex={activeTab === "mine" ? 0 : -1}
-          className={cn(
-            "flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
-            activeTab === "mine"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-          onClick={() => setActiveTab("mine")}
-          onKeyDown={(event) => handleTabKeyDown(event, "mine")}
+    <section
+      aria-label="Task workspace"
+      className="space-y-3 [&_button]:transition-colors [&_button]:duration-150 motion-reduce:[&_button]:transition-none"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div
+          role="tablist"
+          aria-label="Task lists"
+          className="grid w-full grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:inline-grid sm:w-auto"
         >
-          My Tasks
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {formatLoadedTaskCount(
-              myTasksState.count,
-              myTasksState.hasNextPage,
+          <button
+            ref={myTasksTabRef}
+            id="my-tasks-tab"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "mine"}
+            aria-controls="my-tasks-panel"
+            tabIndex={activeTab === "mine" ? 0 : -1}
+            className={cn(
+              "flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold outline-none transition-colors duration-150 active:translate-y-px focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none sm:px-3.5",
+              activeTab === "mine"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
-          </span>
-        </button>
-        <button
-          ref={helpWantedTabRef}
-          id="help-wanted-tab"
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "help"}
-          aria-controls="help-wanted-panel"
-          tabIndex={activeTab === "help" ? 0 : -1}
-          className={cn(
-            "flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
-            activeTab === "help"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-          onClick={() => setActiveTab("help")}
-          onKeyDown={(event) => handleTabKeyDown(event, "help")}
-        >
-          Help Wanted
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {formatLoadedTaskCount(
-              helpWantedState.count,
-              helpWantedState.hasNextPage,
+            onClick={() => setActiveTab("mine")}
+            onKeyDown={(event) => handleTabKeyDown(event, "mine")}
+          >
+            <ListChecks className="size-4 shrink-0" aria-hidden />
+            My Tasks
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-semibold",
+                activeTab === "mine"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {formatLoadedTaskCount(
+                myTasksState.count,
+                myTasksState.hasNextPage,
+              )}
+            </span>
+          </button>
+          <button
+            ref={helpWantedTabRef}
+            id="help-wanted-tab"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "help"}
+            aria-controls="help-wanted-panel"
+            tabIndex={activeTab === "help" ? 0 : -1}
+            className={cn(
+              "flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold outline-none transition-colors duration-150 active:translate-y-px focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none sm:px-3.5",
+              activeTab === "help"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
-          </span>
-        </button>
+            onClick={() => setActiveTab("help")}
+            onKeyDown={(event) => handleTabKeyDown(event, "help")}
+          >
+            <HandHelping className="size-4 shrink-0" aria-hidden />
+            Help Wanted
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-semibold",
+                activeTab === "help"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {formatLoadedTaskCount(
+                helpWantedState.count,
+                helpWantedState.hasNextPage,
+              )}
+            </span>
+          </button>
+        </div>
+        {activeTab === "mine" ? (
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+            <div className="space-y-1">
+              <label
+                htmlFor="my-tasks-status"
+                className="block text-xs font-medium text-muted-foreground"
+              >
+                Status
+              </label>
+              <Select
+                items={statusItems}
+                value={status ?? "all"}
+                onValueChange={(value) => {
+                  if (value === "all") setStatus(null);
+                  else if (isMyTasksStatus(value)) setStatus(value);
+                }}
+              >
+                <SelectTrigger
+                  id="my-tasks-status"
+                  className="w-full sm:min-w-36"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="my-tasks-sort"
+                className="block text-xs font-medium text-muted-foreground"
+              >
+                Sort
+              </label>
+              <Select
+                items={sortItems}
+                value={sort}
+                onValueChange={(value) => {
+                  if (isMyTasksSort(value)) setSort(value);
+                }}
+              >
+                <SelectTrigger
+                  id="my-tasks-sort"
+                  className="w-full sm:min-w-32"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -120,17 +228,13 @@ export function WorkspaceTasks({
         role="tabpanel"
         aria-labelledby="my-tasks-tab"
         hidden={activeTab !== "mine"}
-        className="space-y-4"
+        className="space-y-3 focus-visible:outline-none"
       >
-        <div>
-          <h2 className="font-display text-xl font-semibold">My Tasks</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your primary and assist assignments from active events.
-          </p>
-        </div>
         <MyTasksList
           initialTasks={initialMyTasks}
           active={activeTab === "mine"}
+          status={status}
+          sort={sort}
           onLoadedStateChange={updateMyTasksState}
         />
       </div>
@@ -140,14 +244,8 @@ export function WorkspaceTasks({
         role="tabpanel"
         aria-labelledby="help-wanted-tab"
         hidden={activeTab !== "help"}
-        className="space-y-4"
+        className="space-y-3 focus-visible:outline-none"
       >
-        <div>
-          <h2 className="font-display text-xl font-semibold">Help Wanted</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Volunteer for tasks you can fully access from any committee.
-          </p>
-        </div>
         <HelpWantedList
           initialTasks={initialHelpWantedTasks}
           active={activeTab === "help"}
