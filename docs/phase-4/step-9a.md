@@ -1,6 +1,6 @@
 # Step 9A — Tasks personal feed (Workspace)
 
-**Status:** Required. Step 9A-DB is applied on Dev and all four SQL test pastes pass. Step 9A-UI is implemented locally and awaits the manual checklist below.
+**Status:** Required, merged, and live on Dev and Prod. All four Step 9A-DB SQL test pastes and the Step 9A-UI manual checklist passed (owner-confirmed).
 
 - Add the **My Tasks** tab to the existing **Tasks** page at `/workspace`, using the relevant searched sections of `tasks.html`. List the active caller's primary and assist assignments across Active events, including Completed tasks, with one status filter and **Deadline**, **Priority**, and **Event** sorts; there are no priority or deadline filters. Links open the existing task detail page. Help Wanted remains the Step 8 tab rather than being reimplemented here.
 - Use a restricted, fixed-shape personal-feed RPC that derives `auth.uid()`; never accept a user id selecting whose feed to read. Because the caller is an assignee, confidential assignments return real content under the normal current-access rule. Draft tasks remain leadership-only and Archived tasks stay in Archives rather than the active Workspace feed.

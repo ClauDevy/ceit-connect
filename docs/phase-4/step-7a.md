@@ -1,6 +1,6 @@
 # Step 7A — Assignment, deletion, and self-unassign
 
-**Status:** Implemented locally; migration not yet applied.
+**Status:** Originally optional; selected, merged, verified, and live on Dev and Prod (owner-confirmed).
 
 - Add `assign_task_people(...)`, a narrow definer changing only primary/assist arrays. Active Admins and active Co-Admins may use it only when they have `real` access to the task. Validate ids, activity/new-assignee rule, duplicates, the combined 100-person maximum, and existing-inactive retention. A no-op has stable SQLSTATE `CCN01`. Removing the final primary applies the shared safe `To Do` tail reset only when the stored status is neither `To Do` nor `Completed`; an already-`To Do` task keeps its rank, and a Completed task keeps its status and rank.
 - Add `delete_task(...)` for active Admins/Co-Admins with `real` task access. Delete only a stored `To Do` task; reject prerequisites and deletion leaving an Active event empty. Confirmation stays in a modal; no drag-delete. Deferred tests force constraints immediate.
