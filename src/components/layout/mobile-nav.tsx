@@ -4,10 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Ellipsis } from "lucide-react"
 import { useNavClick, useNavigation } from "@/components/navigation/navigation-provider"
-import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { SignOutButton } from "@/components/layout/sign-out-button"
-import { UserAvatar } from "@/components/shared/user-avatar"
 import { isNavActive, navForRole, type NavItem } from "@/lib/nav"
 import type { CurrentUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -82,15 +79,7 @@ export function MobileNav({ user }: { user: CurrentUser }) {
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent>
           <SheetTitle>More pages</SheetTitle>
-          <div className="flex items-center gap-3 px-3 py-2">
-            <UserAvatar name={user.name} src={user.avatarUrl} size="sm" />
-            <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-sm font-semibold">{user.name}</p>
-              <Badge className="mt-0.5 px-2 text-[11px]">{user.role}</Badge>
-            </div>
-            <SignOutButton variant="icon" />
-          </div>
-          <nav aria-label="More pages" className="mt-1 flex flex-col border-t pt-2">
+          <nav aria-label="More pages" className="flex flex-col">
             {more.map((item) => (
               <MoreLink
                 key={item.href}

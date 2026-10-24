@@ -1,6 +1,6 @@
 # Step 2: UI redesign shell
 
-**Status:** Planned | **Branch:** `feature/ui-redesign-shell` | **Reasoning level:** Medium
+**Status:** Implemented and verified locally; manual account checks pending | **Branch:** `feature/ui-redesign-shell` | **Reasoning level:** Medium
 
 ## Goal
 
@@ -77,6 +77,15 @@ Once the owner approves `docs/DESIGN-SYSTEM.md`, Batch 2 visibly and accessibly 
 ## Open questions for the owner
 
 None.
+
+## Implementation results
+
+- The desktop sidebar remains collapsible, opens labeled by default, remembers the existing local preference, and now contains navigation plus a separate Sign out action. Theme and identity moved to a centered-width desktop header with avatar, full name, and role only.
+- The phone header keeps the compact theme/avatar pattern. Its avatar opens an accessible menu with full name, role, Settings, and a native `POST /auth/signout` action. The More sheet keeps its full role-filtered navigation inventory without duplicate identity or sign-out controls.
+- The shell content column is centered, Home remains Active/Draft events only, and Create Event is now the single labeled primary action with its existing leadership-only condition. Data reads, role checks, event actions, and page guards did not change.
+- Home and shared page-header skeleton geometry now match the responsive labeled-action layout. Semantic tokens, focus styles, phone targets, safe-area spacing, and width containment are preserved.
+- Pure navigation tests pin the complete Admin, Co-Admin, and Member desktop/mobile inventories and active-route matching. Local verification passes 27 test files / 267 tests, the Next.js 16.3.4 production build with all 23 routes, and lint with zero reported issues.
+- No database, migration, RLS, grant, Supabase CLI, deployment, commit, or push work was performed. Real-browser checks remain recorded in `docs/phase-4b/step-2-tests.md` and are not claimed complete.
 
 ## Docs to update when this lands
 

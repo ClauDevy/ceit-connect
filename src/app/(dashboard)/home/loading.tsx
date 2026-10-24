@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeaderSkeleton } from "@/components/shared/page-skeleton";
 
 function EventCardSkeleton() {
   return (
@@ -19,15 +20,12 @@ function EventCardSkeleton() {
 export default function HomeLoading() {
   return (
     <div role="status" aria-label="Loading events">
-      <div className="mb-8 space-y-2">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-4 w-72 max-w-full" />
-      </div>
+      <PageHeaderSkeleton withAction />
       <div className="mb-4 flex items-center justify-between">
         <Skeleton className="h-7 w-32" />
         <Skeleton className="h-4 w-5" />
       </div>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <EventCardSkeleton />
         <EventCardSkeleton />
       </div>
