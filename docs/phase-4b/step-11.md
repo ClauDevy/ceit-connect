@@ -54,9 +54,11 @@ Use narrow, caller-session task mutation RPCs or an equivalently narrow database
 
 For Add Task, lock and re-read the stored event, require `Active`, verify the active caller’s role and committee authority, serialize capacity with the event’s established task/advisory lock discipline, count all tasks independently of caller RLS, reject when 200 rows already exist, and then insert exactly one task. The database derives `event_id`, `created_by`, initial `status = 'To Do'`, and lane-tail `sort_order`; none is trusted from the browser. The 200-row check must be race-safe, not a UI count.
 
-For Edit Task, identify the stored task first, lock and re-read its stored parent, require `Active`, re-check Admin/owning-Co-Admin authority, and update only the approved Task Setup fields. Preserve stored `event_id`, `created_by`, `status`, `sort_order`, dependency, and backup state. Validate text lengths, enums, Live Operation timestamps, assignment limits, newly active versus retained inactive assignees, confidentiality/viewer rules, and no-op/stale writes. Do not reconstruct hidden task content in the client.
+For Edit Task, identify the stored task first, require its stored parent to be `Active`, re-check Admin/owning-Co-Admin authority, and update only the approved Task Setup fields. Preserve stored `event_id`, `created_by`, `status`, `sort_order`, dependency, and backup state. Validate text lengths, enums, Live Operation timestamps, assignment limits, newly active versus retained inactive assignees, confidentiality/viewer rules, and no-op/stale writes. Do not reconstruct hidden task content in the client. An edit that does not change either assignee array keeps the established row-first parent/task locking path and does not rewrite those arrays.
 
-Every Add/Edit Task writer that changes `primary_assignees` or `assist_assignees` must use Step 10's shared per-user advisory lock contract: collect every affected user id, sort the unique ids, take all per-user locks in that order before any task or event row lock, and only then re-read and mutate assignments.
+Every Add/Edit Task writer that changes `primary_assignees` or `assist_assignees` must use Step 10's shared per-user advisory lock contract. For Add Task, form the affected-user set from the proposed primary/assist ids because no stored task exists. For Edit Task, first read the stored and proposed arrays without row locks and form the affected-user set from their union. Deduplicate the applicable set, sort it by UUID, and take every per-user transaction advisory lock in that order before any task or event row lock. Then take the established parent/event and, for Edit, task row locks and re-read the authoritative rows. Edit recomputes the affected-user set from the now-authoritative arrays plus the proposal; Add revalidates its proposed users after the event lock before inserting.
+
+If the recomputed set differs from the set already locked, the database function must raise the specific retry error `CCL01` and make no mutation. It must never acquire the missing lock late in that transaction because doing so would break the global sorted order. The server route catches only `CCL01` and retries the whole function in a new transaction, which releases the earlier transaction-level locks, for a fixed maximum of three total attempts. Other errors are not retried. After the third `CCL01`, return a friendly “Assignments changed while saving. Please try again.” response without exposing database text or leaving the form busy.
 
 The migration must make Batch 13b integration explicit: both new mutation entry points are ordinary writers that the completed-phase freeze must deny. Batch 13b’s writer catalog and phase-freeze tests must include their exact signatures rather than relying on UI hiding.
 
@@ -79,12 +81,15 @@ The Edit Task RPC accepts the exact expected timestamp, locks the row, compares 
 - Status movement remains exclusively in `move_task()`; Edit Task cannot smuggle status or rank changes.
 - Rank-only reorder/rebalance remains absent from the business activity log and does not advance `tasks.updated_at`.
 - Batch 13b can freeze Add/Edit when a phase is complete without replacing or bypassing these entry points.
+- Assignee-changing writes lock the complete sorted affected-user set before parent/task rows. A changed discovery set raises `CCL01`; it is never completed by taking late user locks. Non-assignee edits retain row-first locking and do not rewrite assignee arrays.
 
 ## Security risks
 
 - A client-supplied event id, committee, creator, status, rank, expected timestamp, assignee list, or viewer list is untrusted. Re-read stored relationships and derive security fields server-side.
 - Counting only RLS-visible rows lets a Co-Admin bypass the 200-task cap. Capacity must count every task in the stored event under the serialized database boundary.
 - A count followed by an unlocked insert permits two concurrent creators to exceed 200. The check and insert require one shared serialization contract.
+- An unlocked assignee snapshot can become stale before row locking. Recompute after the authoritative row re-read and restart the transaction on `CCL01`; taking only newly discovered user locks in place can invert the global order and deadlock another writer.
+- An unbounded or broad retry loop can hide real validation failures and keep the request busy. Retry only `CCL01`, use three total attempts, and surface the fixed friendly message on exhaustion.
 - A general definer writer can silently broaden the assignee guard. Prefer invoker security; otherwise pin the exact writer name and column union and reject every non-union column.
 - Returning raw task rows to prefill an edit form can leak confidential content. Use the existing real-content and control readers, and show no form for masked/hidden results.
 - A stale edit can overwrite a status, assignment, or confidentiality change made elsewhere. The recommended per-task concurrency token prevents blind last-write-wins behavior.
@@ -111,7 +116,9 @@ Batch 13b must later add Batch 11’s RPCs to its completed-phase writer matrix 
 
 Create `docs/phase-4b/step-11-tests.md` when the batch lands. Include one self-contained rollback-safe Dev SQL paste ending in the required intentional `TEST RESULTS` exception plus focused application tests and a manual checklist.
 
-Cover 0, 199, 200, and attempted 201 task totals; two serialized creation attempts at 199; Admin-any-committee and owning/non-owning Co-Admin cases; Member, inactive, and profile-less denial; Active/Draft/Archived parents; stale role/committee/event/task state; forged event/creator/status/rank; `event_id` immutability; lane-tail placement with RLS-hidden rows and rank exhaustion; new/retained inactive assignees; confidential viewer validation; malformed Live Operation timestamps; no-op and stale edits; and exact affected-row counts.
+Cover 0, 199, 200, and attempted 201 task totals; two serialized creation attempts at 199; Admin-any-committee and owning/non-owning Co-Admin cases; Member, inactive, and profile-less denial; Active/Draft/Archived parents; stale role/committee/event/task state; forged event/creator/status/rank; `event_id` immutability; lane-tail placement with RLS-hidden rows and rank exhaustion; new/retained inactive assignees; confidential viewer validation; malformed Live Operation timestamps; no-op and stale edits; and exact affected-row counts. For assignee changes, prove the unlocked discovery set includes stored and proposed primary/assist ids, all unique user locks are sorted and precede row locks, an authoritative set change raises `CCL01` without a write, and no late lock is acquired.
+
+Add route tests proving `CCL01` starts a new transaction and succeeds when a later attempt stabilizes, only `CCL01` is retried, and three consecutive retry errors produce the friendly try-again response with no partial mutation or stuck busy state. Prove an edit that does not change assignees follows the row-first path and never rewrites either array.
 
 Test insert defaults, meaningful field changes, status moves, dependency/assignment/confidentiality/backup changes, rank-only moves and rebalances, child-table comment/work-link changes, forged timestamp input, microsecond stale detection, one activity row for a meaningful update, and zero activity/timestamp change for rank-only writes.
 
@@ -127,11 +134,12 @@ Assert the exact current direct-writer set, owner-branch writer set, owner-colum
 - Edit every Task Setup field, including Philippine Live Operation times, assignments, and confidential viewers. Confirm status, dependency, backup state, parent, creator, and order remain unchanged.
 - Change a task’s status through the existing move control; confirm Edit Task still has no Status field and the board order remains authoritative.
 - Verify meaningful task changes advance Last updated; rank-only reorder, comments, and work links do not.
+- Race an assignee change against another assignment writer; confirm the first stale set returns `CCL01`, the route retries in a new transaction, and forced three-attempt exhaustion shows the friendly try-again message without taking a late user lock.
 - After Batch 13b lands, complete a phase and confirm Add/Edit is absent or denied for that phase until the approved reopen flow runs.
 
 ## Acceptance
 
-Active Admins can add or edit a task from the event board and edit the same task from its detail page. Active Co-Admins can do so only for their committee. New tasks are validated, capacity-safe, caller-derived, `To Do`, and at the true lane tail. Edits use the complete Task Setup model without changing status, rank, parent, creator, dependency, or backup state. The approved `tasks.updated_at` token advances for meaningful task-row changes including status, but not rank-only or child-table changes. Drafts remain on Edit Event, Archived rows remain frozen, every Active event retains a task, writer inventories are current, and Batch 13b has an explicit integration point.
+Active Admins can add or edit a task from the event board and edit the same task from its detail page. Active Co-Admins can do so only for their committee. New tasks are validated, capacity-safe, caller-derived, `To Do`, and at the true lane tail. Edits use the complete Task Setup model without changing status, rank, parent, creator, dependency, or backup state. Assignee-changing edits acquire the complete sorted user-lock set before row locks and restart outside the function on `CCL01`; unchanged-assignee edits retain row-first locking. The approved `tasks.updated_at` token advances for meaningful task-row changes including status, but not rank-only or child-table changes. Drafts remain on Edit Event, Archived rows remain frozen, every Active event retains a task, writer inventories are current, and Batch 13b has an explicit integration point.
 
 ## Open questions for the owner
 

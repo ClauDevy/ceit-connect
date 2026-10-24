@@ -11,7 +11,7 @@ Close Phase 4B with privilege hardening, `/sandbox` cleanup, narrowly scoped doc
 ### `docs/PHASE-4B-PLAN.md` — Batches
 
 - Batch 14 runs only after every preceding Phase 4B batch in the approved run order, including the Batch 7–13 implementation and test reruns plus all task, event, and activity dependencies; it remains the final gate before Phase 5.
-- Revoke `TRUNCATE`, `REFERENCES`, and `TRIGGER` from `authenticated` on `events`, `tasks`, `notifications`, and `activity_log`.
+- Remove effective `TRUNCATE`, `REFERENCES`, and `TRIGGER` from `authenticated` on `events`, `tasks`, `notifications`, and `activity_log` by revoking each privilege from its confirmed direct, inherited, or `PUBLIC` grant source.
 - Tighten the Production email-domain setting; clean up docs and `/sandbox`; verify Step 1's package/lint/root-script cleanup remains complete; enable officer caps; and update catalog tests and Step 10 allowlists.
 
 ### `docs/PHASE-4B-PLAN.md` — Audit resolutions
@@ -119,20 +119,22 @@ where applicable_acl.grantee = 0
    or applicable_acl.grantee = 'authenticated'::regrole::oid
    or (
      applicable_acl.grantee <> 0
-     and pg_catalog.pg_has_role('authenticated', applicable_acl.grantee, 'MEMBER')
+     and pg_catalog.pg_has_role('authenticated', applicable_acl.grantee, 'USAGE')
    )
 order by applicable_acl.relname, applicable_acl.privilege_type, grant_source;
 ```
 
-Save the granting role, grantor, and whether the source is `PUBLIC`, direct, or inherited. If the effective result still has no matching ACL row, inspect the table owner and the membership path to that owner read-only and record it before proceeding. Do not guess, revoke from an unrelated role, or design the migration until the source is known.
+Save the granting role, grantor, and whether the source is `PUBLIC`, direct, or inherited. If the effective result still has no matching ACL row, inspect the table owner and the usable membership path to that owner read-only and record it before proceeding. Do not guess, revoke from an unrelated role, or design the migration until the source is known.
+
+Classify every targeted effective privilege before writing the migration. A direct `authenticated` source may be revoked from `authenticated`. An inherited source requires a read-only dependency inspection of the identified granting role and a source-role revoke reviewed for every role that can use it; do not revoke only from `authenticated`, because that leaves the inherited privilege effective. A `PUBLIC` source requires a read-only report enumerating roles that currently receive the target privilege solely through `PUBLIC`; proceed with a `PUBLIC` revoke only when the owner confirms that no approved role depends on it. If any source or dependency remains unresolved, stop before creating the migration.
 
 ## Database impact
 
-After reviewing both preflight results, add one tracked migration that revokes only `TRUNCATE`, `REFERENCES`, and `TRIGGER` from `authenticated` on the four named tables. Do not edit earlier migrations and do not revoke the ordinary DML privileges required by existing RLS-backed application paths unless a separately approved reader/writer migration already removed them.
+After reviewing both preflight results, add one tracked migration that revokes only `TRUNCATE`, `REFERENCES`, and `TRIGGER` on the four named tables, with each `REVOKE` aimed at its confirmed source. Revoke a direct grant from `authenticated`; revoke an inherited grant from the identified source role only after its dependency review; revoke from `PUBLIC` only after the saved dependency report proves no approved role relies solely on that grant. If all present target privileges are confirmed direct, the migration may contain only the `authenticated` revokes. Do not edit earlier migrations and do not revoke ordinary DML privileges required by existing RLS-backed application paths unless a separately approved reader/writer migration already removed them.
 
 The same Batch 14 migration, or a separate ordered Batch 14 migration if review is clearer, updates the singleton `public.app_settings.enforce_officer_role_caps` value from false to true. It must affect exactly one setting row and assert the final true value. It does not update any user, pending invite, role, committee, or active state. Existing over-limit accounts remain valid; the already-tested Step 8 officer functions block only new invites, appointments, and activations beyond the enabled caps.
 
-The migration must assert before commit that all 12 targeted effective privilege checks are false, that RLS remains enabled, and that the expected application privileges/policies/functions/triggers remain present. Account for any inheritance discovered by the owner’s preflight with the narrowest reviewed revocation; do not broaden the target table or role list silently.
+The migration must assert before commit that all 12 targeted effective privilege checks for `authenticated` are false, that RLS remains enabled, and that the expected application privileges/policies/functions/triggers remain present. It must also assert the reviewed source-specific outcome and preserve every approved dependent role identified by preflight. Do not broaden the target table, privilege, or source-role list silently.
 
 No remote command is part of implementation by Codex. The owner reviews the migration line by line, applies it to Dev, runs the Batch 14 SQL/gate tests, completes the app checklist, merges, then applies it to Prod under the established run order.
 
@@ -234,7 +236,7 @@ The final ledger separately records: catalog paste; privilege preflight and post
 
 ## Guards that must remain true
 
-- The Batch 14 migration changes only the three named privileges on the four named tables unless the read-only preflight proves a narrow inherited source that the owner separately reviews.
+- The Batch 14 migration changes only the three named privileges on the four named tables and aims each revoke at the proven direct, inherited, or `PUBLIC` grant source. A `PUBLIC` revoke requires saved proof that no approved role depends solely on it; all 12 effective checks for `authenticated` must be false afterward.
 - RLS, fixed-shape RPCs, table DML grants required by existing flows, and trigger execution remain functional after privilege revocation.
 - `activity_log` remains immutable and readable only through the Batch 12 safe boundary.
 - Archived events/tasks/children remain frozen; Draft and Active deletion rules remain as approved; activity history preserves task UUIDs after Batch 13d.
@@ -249,7 +251,7 @@ The final ledger separately records: catalog paste; privilege preflight and post
 ## Security risks
 
 - The sandbox cannot see remote grants. Designing revocations from migration text alone may miss inherited privileges or environment drift; the owner’s read-only preflight is mandatory.
-- `REVOKE` from the wrong role or broad table set can break legitimate application paths. Compare direct and effective privileges and assert preserved behavior.
+- `REVOKE` from the wrong role or broad table set can either leave an inherited privilege effective or break legitimate application paths. Match every revoke to its recorded source, inventory inherited-role consumers, and never revoke `PUBLIC` without proving no approved role relies solely on it.
 - Vercel environment values are deployment-specific. Editing Preview/Development or failing to redeploy would leave Production unchanged; printing other values could expose secrets.
 - Treating `ALLOWED_EMAIL_DOMAINS` as a custom website-domain task would mix unrelated parked scope and fail to tighten invite/auth validation.
 - Deleting the shared Drive preview instead of the demo-only component would break real task work links. Verify imports first.
@@ -263,7 +265,7 @@ The final ledger separately records: catalog paste; privilege preflight and post
 Create `docs/phase-4b/step-14-tests.md` after Batch 13b. It contains:
 
 - the new authoritative Phase 4B catalog paste and expected live result sets, including `event_storage_cleanup_jobs` and its access boundary;
-- exact effective-privilege and grant-source checks before/after the Batch 14 migration;
+- exact effective-privilege, usable grant-source, inherited-role dependency, and any required `PUBLIC`-dependency checks before/after the Batch 14 migration;
 - grouped re-run ledgers for every Phase 4 document listed above and every Phase 4B Batch 7–13 suite;
 - new cross-batch tests for account/role changes against task access, Add/Edit against capacity/archive/completed phases, activity masking after assignment/role/event deletion, Draft expansion, anonymized historical actors, and final writer/guard allowlists;
 - large-result and keyset paging coverage for Users, Home/Archives/Workspace, activity, comments, and pending requests as applicable;
@@ -273,7 +275,7 @@ Every SQL paste is independently rollback-safe on Dev and ends with the intentio
 
 ## Manual checklist
 
-- Run and save the read-only effective-privilege query on Dev and Prod before implementation. For every unexplained effective privilege, also save the grant-source inspection (and, if needed, the ownership/membership inspection) before approving SQL.
+- Run and save the read-only effective-privilege query on Dev and Prod before implementation. For every effective privilege, save its usable grant source; for inherited sources save the source-role dependency inspection, and for `PUBLIC` save proof that no approved role depends solely on it before approving that revoke.
 - After the owner applies the migration to Dev, rerun the grant query and confirm all targeted effective privileges are absent on all four tables while approved application flows still work.
 - Complete every Gate B session and the Admin/Co-Admin/Member review; record evidence and dates rather than checking items from earlier historical runs.
 - Search imports, then confirm `/sandbox` returns 404 because the route is removed while real task Drive previews still work.

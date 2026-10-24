@@ -23,10 +23,10 @@ Give Home, Archives, My Tasks, and Help Wanted one reliable paging pattern: fetc
 
 ## Current state
 
-- `src/app/(dashboard)/home/page.tsx` makes one direct RLS-backed `events` query for Active and Draft rows, ordered by `start_date ASC` then `created_at ASC`, and only then splits rows into Active and Draft sections. It has no limit or paging.
-- `src/app/(dashboard)/archives/page.tsx` directly reads all Archived events, ordered by `start_date DESC` then `created_at DESC`, with no paging.
-- `src/lib/tasks/my-tasks.ts` sets `MY_TASKS_PAGE_SIZE = 50`; `src/components/tasks/my-tasks-list.tsx` treats an exact 50-row result as proof of another page. Migration `20261022150000_list_my_tasks.sql` defines `list_my_tasks(text,text,integer,integer)` with offset paging and a 100-row maximum.
-- `src/lib/tasks/backup.ts` sets `HELP_WANTED_PAGE_SIZE = 50`; `src/components/tasks/help-wanted-list.tsx` has the same exact-page false-positive rule. Migration `20261022120000_task_claim_backup_volunteers.sql` defines `list_help_wanted_tasks(integer,integer)` with offset paging and a 100-row maximum.
+- `src/app/(dashboard)/home/page.tsx` makes one direct RLS-backed `events` query for Active and Draft rows, ordered by `start_date ASC` then `created_at ASC`, and only then splits rows into Active and Draft sections. It has no unique final tie-breaker, limit, or paging.
+- `src/app/(dashboard)/archives/page.tsx` directly reads all Archived events, ordered by `start_date DESC` then `created_at DESC`, with no unique final tie-breaker or paging.
+- `src/lib/tasks/my-tasks.ts` sets `MY_TASKS_PAGE_SIZE = 50`; `src/components/tasks/my-tasks-list.tsx` treats an exact 50-row result as proof of another page. The sole tracked definition, migration `20261022150000_list_my_tasks.sql`, defines `list_my_tasks(text,text,integer,integer)` with offset paging, a 100-row maximum, its existing filter-selected business sort, and final `task_id ASC` tie-breaker.
+- `src/lib/tasks/backup.ts` sets `HELP_WANTED_PAGE_SIZE = 50`; `src/components/tasks/help-wanted-list.tsx` has the same exact-page false-positive rule. The sole tracked definition, migration `20261022120000_task_claim_backup_volunteers.sql`, defines `list_help_wanted_tasks(integer,integer)` with offset paging, a 100-row maximum, and `due_date ASC NULLS LAST, task_id ASC` ordering.
 - Comments are separate: `src/lib/tasks/comments.ts` uses 25 rows, while migration `20261023130000_task_comments.sql` permits up to 50 and uses keyset paging plus an explicit `out_has_more` result.
 - `docs/phase-4/step-10-database-review.md` and `docs/PHASE-4-STEP-10-TESTS.md` record one live signature per Phase 4 function name and zero overloads.
 
@@ -38,13 +38,14 @@ Give Home, Archives, My Tasks, and Help Wanted one reliable paging pattern: fetc
 
 ## Database impact
 
-None expected. The two task readers already accept limits up to 100, so callers can request 21 without a function change; Home and Archives currently use direct RLS-backed event reads. No migration, table, policy, or grant change is planned.
+None expected. The two task readers already accept limits up to 100 and already end every current ordering with unique `task_id`, so callers can request 21 without a function change. Home and Archives use direct RLS-backed event reads and need only an `id` tie-breaker appended in their application queries. No migration, table, policy, grant, or side-by-side RPC replacement is planned.
 
 If an owner-approved server-side search/filter or another discovered requirement changes a reader, add a new tracked migration and `CREATE OR REPLACE FUNCTION` the same signature; never create an overload or edit an applied migration. Preserve owner, volatility, fixed search path, fixed result shape, revokes/grants, caller derivation, authorization, ordering, and error contracts.
 
 ## Guards that must remain true
 
 - Fetch 21, expose only 20, and advance by 20 so no row is skipped; the lookahead row must reappear as the first candidate of the next request.
+- Every offset ordering ends with a unique stable id after its existing business-sort columns: Home uses `start_date ASC, created_at ASC, id ASC`; Archives uses `start_date DESC, created_at DESC, id DESC`; `list_my_tasks(...)` preserves its selected sort and ends with `task_id ASC`; and `list_help_wanted_tasks(...)` remains `due_date ASC NULLS LAST, task_id ASC`.
 - Home, Archives, My Tasks, and Help Wanted all reset to page 1, replace accumulated rows, and clear stale `has_more` state whenever their authoritative source, tab, filter, sort, or query identity changes. Polling/focus refresh of the source also restarts from page 1 rather than appending against an old snapshot.
 - On Load more, append only rows whose stable id is not already present. Deduplicate by id across the full accumulated result while preserving the server's established order; never use display text or array position as identity.
 - Home uses one combined ordered result, retains its Active and Draft headings, and does not silently introduce status-first ordering.
@@ -56,7 +57,7 @@ If an owner-approved server-side search/filter or another discovered requirement
 
 - Do not move protected filtering to the client or accept a user id for My Tasks.
 - A lookahead row must never be rendered, counted as loaded, or leaked through an accessibility announcement before it becomes part of a visible page.
-- Preserve stable tie-break ordering across page boundaries. Offset paging has a small accepted skip risk when rows are inserted or deleted ahead of a later offset between requests; page-1 resets on source/filter/sort changes and authoritative refresh reduce stale accumulation, while id deduplication prevents repeated cards. Do not describe this as gap-free under concurrent source mutation and do not switch to keyset in this batch.
+- Preserve each unique stable id as the final tie-breaker across page boundaries, especially when multiple rows share `start_date`, `created_at`, due date, priority, status, or event name. Offset paging still has a small accepted skip risk when rows are inserted or deleted ahead of a later offset between requests; page-1 resets on source/filter/sort changes and authoritative refresh reduce stale accumulation, while id deduplication prevents repeated cards. Do not describe this as gap-free under concurrent source mutation and do not switch to keyset in this batch.
 - Any reader replacement must replace the existing signature and retain zero overloads, grants, active-caller checks, masking, and fixed output shape.
 
 ## Earlier test docs to re-run or update
@@ -69,13 +70,13 @@ If an owner-approved server-side search/filter or another discovered requirement
 
 ## Test deliverable
 
-Create `docs/phase-4b/step-3p-tests.md` when the batch lands. For each of Home, Archives, My Tasks, and Help Wanted, cover 0, 1, 19, 20, 21, 40, and 41 visible-row boundaries; exact-multiple false positives; page-1 replacement whenever source/filter/sort/tab identity changes; stable-id deduplication across repeated/overlapping pages; preserved order; retry/loading state; active-tab polling; and the documented small concurrent offset-skip risk. Add a regression assertion that none of the four switches to keyset and that Batch 12 Activity Log retains keyset paging. Run conditional SQL/catalog regression only if a reader changes.
+Create `docs/phase-4b/step-3p-tests.md` when the batch lands. For each of Home, Archives, My Tasks, and Help Wanted, cover 0, 1, 19, 20, 21, 40, and 41 visible-row boundaries; many rows sharing every non-unique business-sort value across a page boundary; exact final-id ordering; exact-multiple false positives; page-1 replacement whenever source/filter/sort/tab identity changes; stable-id deduplication across repeated/overlapping pages; preserved order; retry/loading state; active-tab polling; and the documented small concurrent offset-skip risk. Add a regression assertion that neither task RPC changes or gains an overload, none of the four switches to keyset, and Batch 12 Activity Log retains keyset paging. Run conditional SQL/catalog regression only if a reader changes.
 
 ## Manual checklist
 
 - As **Claudee**, **Claude HAAAA**, and **tv**, test every accessible target list at phone width and desktop width in both light and dark themes.
-- Home: verify one combined 20-item page, preserved Active/Draft headings and current date ordering, correct continuation after Load more, id deduplication, and a page-1 reset after its source changes.
-- Archives: verify newest-first ordering, 20 visible rows, correct Load more visibility, working record links, id deduplication, and a page-1 reset after its source or year/filter state changes.
+- Home: verify one combined 20-item page, preserved Active/Draft headings and `start_date ASC, created_at ASC, id ASC` ordering, correct continuation after Load more when dates tie, id deduplication, and a page-1 reset after its source changes.
+- Archives: verify `start_date DESC, created_at DESC, id DESC` ordering, 20 visible rows, correct continuation when dates tie, correct Load more visibility, working record links, id deduplication, and a page-1 reset after its source or year/filter state changes.
 - My Tasks and Help Wanted: verify 20 visible rows, filters/sorts and loaded-count badges, active-tab-only polling/focus behavior, actions, id deduplication after repeated/overlapping loads, and page-1 replacement whenever source, tab, filter, or sort changes.
 - For every list, verify empty, error, retry, loading, exact-20, and final-page states; Load more appears only when a 21st row exists and is disabled while loading.
 - Simulate an insert/delete ahead of a loaded offset and record the documented small skip risk without claiming gap-free concurrent offset paging.
@@ -83,7 +84,7 @@ Create `docs/phase-4b/step-3p-tests.md` when the batch lands. For each of Home, 
 
 ## Acceptance
 
-Each named linear list renders offset pages of 20 and shows Load more only when a 21st result exists. All four reset to page 1 when source/filter/sort/tab identity changes and deduplicate appended rows by stable id while preserving established order and access rules. The small concurrent offset-skip risk is documented rather than hidden or used to expand scope into keyset paging. Home keeps both section headings, exact multiples do not show a false Load more, Batch 12 Activity Log remains keyset-paged, and out-of-scope lists remain unchanged.
+Each named linear list renders offset pages of 20 and shows Load more only when a 21st result exists. Every ordering ends with its unique stable id, including Home and Archives after `start_date` and `created_at`; both existing task RPC definitions already satisfy that invariant and remain unchanged. All four reset to page 1 when source/filter/sort/tab identity changes and deduplicate appended rows by stable id while preserving established order and access rules. The small concurrent offset-skip risk is documented rather than hidden or used to expand scope into keyset paging. Home keeps both section headings, exact multiples do not show a false Load more, Batch 12 Activity Log remains keyset-paged, and out-of-scope lists remain unchanged.
 
 ## Open questions for the owner
 
