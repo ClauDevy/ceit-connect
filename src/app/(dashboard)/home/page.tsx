@@ -228,11 +228,10 @@ export default async function HomePage() {
           leadershipProfile ? (
             <Link
               href="/events/new"
-              aria-label="Create event"
-              title="Create event"
-              className={buttonVariants({ size: "icon" })}
+              className={buttonVariants()}
             >
               <Plus aria-hidden />
+              Create Event
             </Link>
           ) : null
         }
@@ -264,7 +263,7 @@ export default async function HomePage() {
                   {activeEvents.length}
                 </span>
               </div>
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-5 lg:grid-cols-2">
                 {activeEvents.map((event) => (
                   <ActiveEventCard
                     key={event.id}

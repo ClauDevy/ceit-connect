@@ -4,8 +4,7 @@ import { ChevronLeft } from "lucide-react"
 import { Brand } from "@/components/layout/brand"
 import { NavLink } from "@/components/layout/nav-link"
 import { useNavigation } from "@/components/navigation/navigation-provider"
-import { UserCard } from "@/components/layout/user-card"
-import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { SignOutButton } from "@/components/layout/sign-out-button"
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed"
 import { isNavActive, navForRole } from "@/lib/nav"
 import type { CurrentUser } from "@/lib/types"
@@ -50,9 +49,11 @@ export function DesktopSidebar({ user }: { user: CurrentUser }) {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <ThemeToggle variant="row" collapsed={collapsed} />
-          <UserCard user={user} collapsed={collapsed} />
+        <div className="border-t pt-4">
+          <SignOutButton
+            variant={collapsed ? "icon" : "inline"}
+            className={cn(collapsed && "flex justify-center")}
+          />
         </div>
       </div>
     </aside>

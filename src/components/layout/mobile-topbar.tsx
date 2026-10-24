@@ -1,6 +1,5 @@
-import Link from "next/link"
 import { TigerLogo } from "@/components/ui/tiger-logo"
-import { UserAvatar } from "@/components/shared/user-avatar"
+import { AvatarMenu } from "@/components/layout/avatar-menu"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import type { CurrentUser } from "@/lib/types"
 
@@ -13,13 +12,7 @@ export function MobileTopbar({ user }: { user: CurrentUser }) {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Link
-          href="/settings"
-          aria-label="Your profile and settings"
-          className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <UserAvatar name={user.name} src={user.avatarUrl} size="sm" />
-        </Link>
+        <AvatarMenu user={user} />
       </div>
     </header>
   )
