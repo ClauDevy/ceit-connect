@@ -4,7 +4,7 @@ import type { CurrentUser } from "@/lib/types"
 
 export function DesktopHeader({ user }: { user: CurrentUser }) {
   return (
-    <header className="hidden shrink-0 border-b bg-card/95 backdrop-blur md:block">
+    <header className="sticky top-0 z-20 hidden shrink-0 border-b border-border/70 bg-background/85 shadow-xs backdrop-blur-sm md:block">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-end gap-4 px-10 py-3">
         <ThemeToggle />
         <UserCard user={user} />

@@ -17,21 +17,52 @@ function EventCardSkeleton() {
   );
 }
 
+function DraftCardSkeleton() {
+  return (
+    <div className="rounded-2xl border-2 border-dashed bg-card p-5 sm:p-6" aria-hidden>
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="flex min-w-0 items-start gap-3.5">
+        <Skeleton className="size-11 shrink-0 rounded-xl" />
+        <div className="grid flex-1 gap-2">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-14 rounded-full" />
+          <Skeleton className="h-11 w-20 rounded-md md:h-8" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomeLoading() {
   return (
     <div role="status" aria-label="Loading events">
       <PageHeaderSkeleton withAction />
-      <div className="mb-4 flex items-center justify-between">
-        <Skeleton className="h-7 w-32" />
-        <Skeleton className="h-4 w-5" />
+      <div className="mb-4 flex items-end justify-between">
+        <div className="grid gap-1.5">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-3 w-52" />
+        </div>
+        <Skeleton className="h-5 w-9 rounded-full" />
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
         <EventCardSkeleton />
         <EventCardSkeleton />
       </div>
-      <div className="mt-8 space-y-3">
-        <Skeleton className="h-7 w-32" />
-        <Skeleton className="h-20 w-full rounded-2xl border" />
+      <div className="mt-8 space-y-4">
+        <div className="flex items-end justify-between">
+          <div className="grid gap-1.5">
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-3 w-56" />
+          </div>
+          <Skeleton className="h-5 w-9 rounded-full" />
+        </div>
+        <DraftCardSkeleton />
       </div>
       <span className="sr-only">Loading events…</span>
     </div>

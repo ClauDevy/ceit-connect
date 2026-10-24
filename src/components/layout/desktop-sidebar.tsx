@@ -27,7 +27,7 @@ export function DesktopSidebar({ user }: { user: CurrentUser }) {
         onClick={toggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute top-9 -right-3 z-10 flex size-6 items-center justify-center rounded-full border bg-sidebar text-muted-foreground outline-none transition-colors hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="absolute top-9 -right-3 z-30 flex size-6 items-center justify-center rounded-full border bg-sidebar text-muted-foreground outline-none transition-colors hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <ChevronLeft
           className={cn("size-3 transition-transform duration-200", collapsed && "rotate-180")}

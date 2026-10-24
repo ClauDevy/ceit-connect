@@ -56,7 +56,7 @@ export function FullNameForm({ currentName }: { currentName: string }) {
   const unchanged = parsedName.success && parsedName.data === savedName;
 
   return (
-    <form onSubmit={handleSubmit} className="grid max-w-sm gap-4">
+    <form onSubmit={handleSubmit} className="grid gap-4">
       <FormField label="Full name" error={error || null}>
         {(control) => (
           <Input
@@ -73,18 +73,28 @@ export function FullNameForm({ currentName }: { currentName: string }) {
           />
         )}
       </FormField>
-      {message && (
-        <p role="status" className="text-sm text-accent-foreground">
-          {message}
+      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p
+          role="status"
+          aria-live="polite"
+          className={
+            message
+              ? "text-sm font-medium text-accent-foreground"
+              : unchanged
+                ? "text-xs text-muted-foreground"
+                : "text-xs font-semibold text-accent-foreground"
+          }
+        >
+          {message || (unchanged ? "No unsaved changes." : "Unsaved changes")}
         </p>
-      )}
-      <Button
-        type="submit"
-        disabled={saving || unchanged}
-        className="w-fit"
-      >
-        {saving ? "Saving…" : "Save"}
-      </Button>
+        <Button
+          type="submit"
+          disabled={saving || unchanged}
+          className="w-full sm:w-auto"
+        >
+          {saving ? "Saving…" : "Save profile"}
+        </Button>
+      </div>
     </form>
   );
 }

@@ -77,15 +77,28 @@ export function TableSkeleton({ rows = 6 }: { rows?: number }) {
 
 export function SettingsSkeleton() {
   return (
-    <div role="status" aria-label="Loading settings">
+    <div
+      role="status"
+      aria-label="Loading settings"
+      className="mx-auto w-full max-w-4xl"
+    >
       <PageHeaderSkeleton />
-      <div className="grid max-w-xl gap-5">
+      <div className="grid gap-5 lg:grid-cols-2">
         {["profile", "photo", "password"].map((section) => (
-          <Card key={section} className="grid gap-4 p-6" data-skeleton={`settings-${section}`}>
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-72 max-w-full" />
+          <Card
+            key={section}
+            className="grid gap-4 border-border/70 p-6"
+            data-skeleton={`settings-${section}`}
+          >
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-10 rounded-xl" />
+              <div className="grid flex-1 gap-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-72 max-w-full" />
+              </div>
+            </div>
             {section === "photo" ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 rounded-xl border p-4">
                 <Skeleton className="size-16 rounded-full" />
                 <Skeleton className="h-11 w-32 rounded-xl md:h-10" />
               </div>

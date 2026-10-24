@@ -112,10 +112,10 @@
 
     <!-- Desktop topbar -->
     <div class="hidden md:flex items-center justify-end gap-3 px-6 md:px-10 pt-6">
-      <button id="notif-btn" class="relative w-9 h-9 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-night-muted hover:text-council transition-colors">
+      <a href="notifications.html" aria-label="Notifications" class="relative w-9 h-9 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-night-muted hover:text-council transition-colors">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 3 1 4.5 2 6H4c1-1.5 2-3 2-6Z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>
         <span class="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-rose-500 border border-card dark:border-night-card"></span>
-      </button>
+      </a>
       <div class="flex items-center gap-2.5 pl-1">
         <div class="w-9 h-9 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-sm shrink-0">JC</div>
         <div class="leading-tight hidden lg:block">
@@ -138,8 +138,9 @@
           <p class="text-sm text-slate-500 dark:text-night-muted mt-1 max-w-xl">A secure, read-only audit trail of administrative actions and database changes across all 12 committees.</p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="refresh-btn" class="w-9 h-9 rounded-xl border border-slate-300 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 transition-colors shrink-0" title="Refresh">
-            <svg id="refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.35M3 4v5h5"/></svg>
+          <button id="refresh-btn" type="button" class="activity-refresh-button w-9 h-9 rounded-xl border border-slate-300 dark:border-white/15 flex items-center justify-center text-slate-600 dark:text-night-muted hover:bg-slate-100 dark:hover:bg-white/5 active:bg-council-wash dark:active:bg-night-wash focus-visible:text-council transition-colors shrink-0 disabled:opacity-60 disabled:cursor-wait" title="Refresh activity log" aria-label="Refresh activity log" aria-controls="log-tbody" aria-busy="false">
+            <svg id="refresh-icon" class="activity-refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.35M3 4v5h5"/></svg>
+            <span id="refresh-status" class="sr-only" role="status" aria-live="polite"></span>
           </button>
           <button id="export-btn" class="flex items-center gap-1.5 rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm px-4 py-2.5 hover:bg-council-dark transition-colors shrink-0">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -152,15 +153,15 @@
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 mb-6">
         <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
           <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Total Entries</p>
-          <p class="font-display font-semibold text-2xl mt-1">3,000</p>
+          <p id="stat-total" class="font-display font-semibold text-2xl mt-1">0</p>
         </div>
         <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
           <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Auth Failures · 24h</p>
-          <p class="font-display font-semibold text-2xl mt-1 text-red-500">4</p>
+          <p id="stat-auth-failures" class="font-display font-semibold text-2xl mt-1 text-red-500">0</p>
         </div>
         <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
           <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Deletions · 24h</p>
-          <p class="font-display font-semibold text-2xl mt-1 text-rose-500">2</p>
+          <p id="stat-deletions" class="font-display font-semibold text-2xl mt-1 text-rose-500">0</p>
         </div>
         <div class="rounded-2xl bg-card dark:bg-night-card border border-slate-300/60 dark:border-white/10 p-4">
           <p class="text-[11px] text-slate-500 dark:text-night-muted font-medium">Retention Window</p>
@@ -310,7 +311,7 @@
 
 <!-- TOAST -->
 <div id="toast" class="toast toast-hidden fixed bottom-20 md:bottom-5 right-5 left-5 sm:left-auto z-50 flex items-center gap-2.5 rounded-xl bg-ink dark:bg-night-card border border-white/10 text-white px-4 py-3 shadow-xl text-sm">
-  <svg id="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-emerald-400"><path d="M20 6 9 17l-5-5"/></svg>
+  <svg id="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 feedback-success"><path d="M20 6 9 17l-5-5"/></svg>
   <span id="toast-text">Saved</span>
 </div>
 
@@ -337,7 +338,8 @@
     sidebarToggleIcon.style.transform = sidebar.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
   });
 
-  document.getElementById('bottom-nav-more').addEventListener('click', function (e) {
+  var bottomNavMore = document.getElementById('bottom-nav-more');
+  if (bottomNavMore) bottomNavMore.addEventListener('click', function (e) {
     e.preventDefault();
     showToast('Event Archives & Settings are one tap away from Home → Menu');
   });
@@ -351,8 +353,8 @@
     toastIcon.innerHTML = tone === 'error'
       ? '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>'
       : '<path d="M20 6 9 17l-5-5"/>';
-    toastIcon.classList.toggle('text-emerald-400', tone !== 'error');
-    toastIcon.classList.toggle('text-red-400', tone === 'error');
+    toastIcon.classList.toggle('feedback-success', tone !== 'error');
+    toastIcon.classList.toggle('feedback-danger', tone === 'error');
     toast.classList.remove('toast-hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toast.classList.add('toast-hidden'); }, 3200);
@@ -365,7 +367,6 @@
     red: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400',
     emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
     sky: 'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400',
-    violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400',
     council: 'bg-council-wash text-council-dark dark:bg-night-wash dark:text-council-light',
     slate: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-night-muted'
   };
@@ -389,14 +390,15 @@
     { key:'auth_failure', label:'AUTH FAILURE', tone:'red' },
     { key:'create_task', label:'CREATED TASK', tone:'emerald' },
     { key:'invite_user', label:'INVITED USER', tone:'sky' },
-    { key:'role_change', label:'ROLE CHANGED', tone:'violet' },
+    { key:'role_change', label:'ROLE CHANGED', tone:'council' },
     { key:'launch_event', label:'LAUNCHED EVENT', tone:'council' },
     { key:'complete_task', label:'COMPLETED TASK', tone:'emerald' },
     { key:'view_confidential', label:'VIEWED CONFIDENTIAL', tone:'slate' },
     { key:'deactivate_user', label:'DEACTIVATED USER', tone:'rose' }
   ];
   var COMMITTEES = ['President','CIA','COEXA','COMRECS','COFBUM','CARA','COPI','COPR','COBAP','COSEA','COSCA','COSRAW'];
-  var NOW = new Date('2026-05-23T15:00:00');
+  var LOG_REFERENCE = new Date('2026-05-23T15:00:00');
+  var NOW = new Date();
 
   var rawLogs = [
     { u:'VP Juan', role:'Co-Admin', a:'delete_task', row:'"Print Tarpaulin"', c:'CARA', s:'logged', ts:'2026-05-23T14:15:00', old:'Task existed in Phase 2: Marketing', neu:'Permanently removed', ip:'192.168.1.42', dev:'Chrome · Windows' },
@@ -419,16 +421,36 @@
     { u:'Sys Admin', role:'System', a:'view_confidential', row:'Task ID: 6602', c:'President', s:'logged', ts:'2026-05-15T21:03:00', old:'—', neu:'Viewed by Admin override', ip:'System process', dev:'Supabase Edge Function' }
   ];
 
-  var logs = rawLogs.map(function (r, i) {
-    var action = ACTIONS.find(function (a) { return a.key === r.a; });
-    return {
-      id: i + 1,
-      ts: new Date(r.ts),
-      user: r.u, role: r.role, initials: r.u.split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase(),
-      action: action, row: r.row, committee: r.c, status: r.s,
-      detail: { old: r.old, neu: r.neu, ip: r.ip, dev: r.dev, id: 'LOG-' + (100000 + i) }
-    };
-  });
+  function buildLogs(records) {
+    return records.map(function (r, i) {
+      var action = ACTIONS.find(function (a) { return a.key === r.a; });
+      return {
+        id: i + 1,
+        ts: new Date(new Date(r.ts).getTime() + (NOW.getTime() - LOG_REFERENCE.getTime())),
+        user: r.u, role: r.role, initials: r.u.split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase(),
+        action: action, row: r.row, committee: r.c, status: r.s,
+        detail: { old: r.old, neu: r.neu, ip: r.ip, dev: r.dev, id: 'LOG-' + (100000 + i) }
+      };
+    });
+  }
+  var logs = buildLogs(rawLogs);
+
+  function readActivityRecords() {
+    return new Promise(function (resolve, reject) {
+      setTimeout(function () {
+        try {
+          var stored = localStorage.getItem('ceitActivityLogRecords');
+          var records = stored === null ? rawLogs.slice() : JSON.parse(stored);
+          var valid = Array.isArray(records) && records.every(function (record) {
+            return record && ['u','role','a','row','c','s','ts','old','neu','ip','dev'].every(function (key) { return typeof record[key] === 'string'; }) &&
+              ACTIONS.some(function (action) { return action.key === record.a; }) && !isNaN(Date.parse(record.ts));
+          });
+          if (!valid) throw new Error('Invalid activity-log records');
+          resolve(records);
+        } catch (error) { reject(error); }
+      }, 250);
+    });
+  }
 
   function badge(action) {
     return '<span class="badge-pill ' + TONE[action.tone] + '"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' + ICON[action.key] + '</svg>' + action.label + '</span>';
@@ -502,9 +524,9 @@
 
   function statusIcon(s, withLabel) {
     var map = {
-      logged:  { color:'text-emerald-600 dark:text-emerald-400', label:'Logged', svg:'<path d="m4.5 12.75 6 6 9-13.5"/>' },
-      flagged: { color:'text-amber-500', label:'Flagged', svg:'<path d="M10.3 3.9 2.6 17.1a1 1 0 0 0 .86 1.5h17.1a1 1 0 0 0 .86-1.5L13.7 3.9a1 1 0 0 0-1.74 0Z"/><path d="M12 9v4M12 16.5h.01"/>' },
-      blocked: { color:'text-red-500', label:'Blocked', svg:'<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>' }
+      logged:  { color:'feedback-success', label:'Logged', svg:'<path d="m4.5 12.75 6 6 9-13.5"/>' },
+      flagged: { color:'feedback-warning', label:'Flagged', svg:'<path d="M10.3 3.9 2.6 17.1a1 1 0 0 0 .86 1.5h17.1a1 1 0 0 0 .86-1.5L13.7 3.9a1 1 0 0 0-1.74 0Z"/><path d="M12 9v4M12 16.5h.01"/>' },
+      blocked: { color:'feedback-danger', label:'Blocked', svg:'<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>' }
     };
     var m = map[s] || map.logged;
     return '<span class="inline-flex items-center gap-1.5 ' + m.color + '" title="' + m.label + '"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + m.svg + '</svg>' + (withLabel ? '<span class="text-[11px] font-semibold">' + m.label + '</span>' : '') + '</span>';
@@ -561,7 +583,15 @@
   }
   committeeFilter.addEventListener('change', updateFilterPreview);
 
+  function updateStats() {
+    var cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    document.getElementById("stat-total").textContent = logs.length.toLocaleString();
+    document.getElementById("stat-auth-failures").textContent = logs.filter(function (l) { return l.action.key === "auth_failure" && l.ts >= cutoff; }).length;
+    document.getElementById("stat-deletions").textContent = logs.filter(function (l) { return (l.action.key === "delete_task" || l.action.key === "delete_event") && l.ts >= cutoff; }).length;
+  }
+
   function render() {
+    updateStats();
     var filtered = getFiltered();
     var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     if (state.page > totalPages) state.page = totalPages;
@@ -714,25 +744,51 @@
   document.getElementById('empty-reset-btn').addEventListener('click', function () { resetFilters(); showToast('Filters reset'); });
 
   // ================= Refresh =================
-  document.getElementById('refresh-btn').addEventListener('click', function () {
-    var icon = document.getElementById('refresh-icon');
-    icon.classList.remove('spin-once'); void icon.offsetWidth; icon.classList.add('spin-once');
-    setTimeout(function () { render(); showToast('Activity log refreshed'); }, 500);
+  var refreshButton = document.getElementById('refresh-btn');
+  var refreshIcon = document.getElementById('refresh-icon');
+  var refreshStatus = document.getElementById('refresh-status');
+  var isRefreshing = false;
+  refreshButton.addEventListener('click', function () {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    refreshButton.disabled = true;
+    refreshButton.setAttribute('aria-busy', 'true');
+    refreshIcon.classList.add('is-refreshing');
+    refreshStatus.textContent = 'Refreshing activity log.';
+    readActivityRecords().then(function (records) {
+      var refreshedLogs = buildLogs(records);
+      logs = refreshedLogs;
+      expanded.clear();
+      render();
+      refreshStatus.textContent = 'Activity log updated.';
+      showToast('Activity log refreshed');
+    }).catch(function () {
+      refreshStatus.textContent = 'Activity log refresh failed. Existing records were kept.';
+      showToast('Could not refresh activity log. Existing records were kept.', 'error');
+    }).finally(function () {
+      isRefreshing = false;
+      refreshButton.disabled = false;
+      refreshButton.setAttribute('aria-busy', 'false');
+      refreshIcon.classList.remove('is-refreshing');
+    });
   });
 
   // ================= Export CSV =================
   document.getElementById('export-btn').addEventListener('click', function () {
     var rows = getFiltered();
     if (!rows.length) { showToast("Nothing to export — try clearing your filters.", 'error'); return; }
-    var header = ['Timestamp','User','Role','Action','Affected DB Row','Committee','Status','Log ID'];
-    var csv = [header.join(',')].concat(rows.map(function (l) {
-      return [fmtTs(l.ts), l.user, l.role, l.action.label, '"' + l.row.replace(/"/g,'""') + '"', l.committee, l.status, l.detail.id].join(',');
-    })).join('\n');
-    var blob = new Blob([csv], { type: 'text/csv' });
+    function csvCell(value) { return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"'; }
+    var header = ['Timestamp','User','Role','Action Executed','Affected DB Row','Committee','Status','Log ID'];
+    var csv = [header].concat(rows.map(function (l) {
+      return [fmtTs(l.ts), l.user, l.role, l.action.label, l.row, l.committee, l.status, l.detail.id];
+    })).map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = 'ceit-connect-activity-log.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     showToast(rows.length + ' entries exported as CSV');
   });
 
@@ -772,5 +828,6 @@
   })();
 </script>
 
+<script src="app-footer.js"></script>
 </body>
 </html>

@@ -368,6 +368,19 @@ background-repeat:no-repeat; background-position:right .7rem center; background-
 
 .chevron-btn svg { transition: transform .2s ease; }
 
+.project-footer { border-top: 1px solid rgba(148, 163, 184, .35); background: rgba(255, 255, 255, .72); }
+.dark .project-footer { border-color: rgba(255, 255, 255, .1); background: rgba(28, 22, 18, .72); }
+.project-footer-inner { width: min(100% - 2rem, 76rem); margin-inline: auto; padding-block: 1.5rem; }
+.project-footer-grid { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr); gap: 1rem 2rem; }
+.project-footer-member-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem 1rem; margin-top: .5rem; }
+.project-footer-title { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 1.05rem; }
+.project-footer-detail { color: #64748b; font-size: .75rem; line-height: 1.55; }
+.dark .project-footer-detail { color: #b7a997; }
+.project-footer-credit { border-top: 1px solid rgba(148, 163, 184, .25); margin-top: 1.1rem; padding-top: .8rem; display: flex; justify-content: space-between; gap: .5rem 1rem; flex-wrap: wrap; color: #64748b; font-size: .68rem; }
+.dark .project-footer-credit { border-color: rgba(255, 255, 255, .1); color: #b7a997; }
+@media (max-width: 640px) { .project-footer-grid { grid-template-columns: 1fr; gap: 1.1rem; } .project-footer-member-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 380px) { .project-footer-member-grid { grid-template-columns: 1fr; } }
+
 .log-row.expanded .chevron-btn svg, .log-card.expanded .chevron-btn svg { transform: rotate(180deg); }
 
 .detail-row.hidden-row, .card-detail.hidden-row { display:none; }
@@ -619,4 +632,146 @@ background: linear-gradient(135deg, #3A2013 0%, #221B15 55%, #17120E 100%);
 @media (prefers-reduced-motion: reduce) {
 .animate-float, .animate-wave, .mascot-tail, .mascot-eyes-open, .mascot-eyes-closed { animation: none; }
 .mascot-eyes-closed { opacity: 0; }
+}
+
+/* ---------- Shared card and interaction system ---------- */
+:root {
+  --card-border: #ded8cf;
+  --card-shadow: 0 1px 2px rgba(27, 20, 15, 0.035);
+  --card-shadow-hover: 0 5px 14px -10px rgba(27, 20, 15, 0.24);
+  --focus-ring: rgba(168, 68, 10, 0.78);
+}
+
+.dark {
+  --card-border: rgba(255, 255, 255, 0.12);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --card-shadow-hover: 0 6px 16px -11px rgba(0, 0, 0, 0.55);
+  --focus-ring: #ffb266;
+}
+
+.bg-card.rounded-xl.border:not(.border-dashed),
+.bg-card.rounded-2xl.border:not(.border-dashed),
+.bg-card.rounded-3xl.border:not(.border-dashed) {
+  border-color: var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.event-card,
+.archive-card,
+.task-card,
+.log-card {
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.event-card:hover,
+.archive-card:hover,
+.task-card:not(.is-locked):hover,
+.event-card:focus-visible,
+.archive-card:focus-visible,
+.task-card:focus-visible {
+  border-color: rgba(168, 68, 10, 0.34);
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.dark .event-card:hover,
+.dark .archive-card:hover,
+.dark .task-card:not(.is-locked):hover,
+.dark .event-card:focus-visible,
+.dark .archive-card:focus-visible,
+.dark .task-card:focus-visible {
+  border-color: rgba(255, 157, 71, 0.38);
+}
+
+.log-card:hover { background-color: rgba(91, 81, 71, 0.035); }
+.dark .log-card:hover { background-color: rgba(255, 255, 255, 0.035); }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+.role-card input:focus-visible + .role-card-inner,
+.appear-card input:focus-visible + .appear-card-inner {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+button:not(:disabled):active,
+a:active { transform: translateY(1px); }
+button:disabled { cursor: not-allowed; opacity: 0.52; }
+
+.card-skeleton {
+  background: linear-gradient(90deg, rgba(91, 81, 71, 0.06) 25%, rgba(91, 81, 71, 0.11) 50%, rgba(91, 81, 71, 0.06) 75%);
+  background-size: 200% 100%;
+  animation: card-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.dark .card-skeleton {
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.035) 25%, rgba(255, 255, 255, 0.075) 50%, rgba(255, 255, 255, 0.035) 75%);
+}
+@keyframes card-skeleton-shimmer { to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .event-card, .archive-card, .task-card, .log-card { transition: none; }
+  .card-skeleton { animation: none; }
+}
+
+:root {
+  --brand-primary: #EC6608;
+  --brand-primary-dark: #A8440A;
+  --brand-primary-light: #FFDDBB;
+  --brand-primary-wash: #FFF1E2;
+  --status-todo: #5B5147;
+  --status-todo-wash: rgba(91, 81, 71, .1);
+  --status-progress: var(--brand-primary-dark);
+  --status-progress-wash: rgba(168, 68, 10, .1);
+  --status-completed: #047857;
+  --status-completed-wash: rgba(4, 120, 87, .1);
+  --status-confidential: #0369A1;
+  --status-confidential-wash: rgba(3, 105, 161, .12);
+  --feedback-warning: #B45309;
+  --feedback-danger: #DC2626;
+}
+
+.dark {
+  --status-todo: #B7A997;
+  --status-todo-wash: rgba(183, 169, 151, .16);
+  --status-progress: #FF9D47;
+  --status-progress-wash: rgba(255, 157, 71, .16);
+  --status-completed: #34D399;
+  --status-completed-wash: rgba(52, 211, 153, .16);
+  --status-confidential: #38BDF8;
+  --status-confidential-wash: rgba(56, 189, 248, .16);
+  --feedback-warning: #FBBF24;
+  --feedback-danger: #F87171;
+}
+
+.task-status-color[data-status="todo"] { color: var(--status-todo); }
+.task-status-color[data-status="inProgress"] { color: var(--status-progress); }
+.task-status-color[data-status="completed"] { color: var(--status-completed); }
+.task-status-color[data-status="confidential"] { color: var(--status-confidential); }
+.task-status-tint[data-status="todo"] { color: var(--status-todo); background: var(--status-todo-wash); }
+.task-status-tint[data-status="inProgress"] { color: var(--status-progress); background: var(--status-progress-wash); }
+.task-status-tint[data-status="completed"] { color: var(--status-completed); background: var(--status-completed-wash); }
+.task-status-tint[data-status="confidential"] { color: var(--status-confidential); background: var(--status-confidential-wash); }
+.task-state-todo { color: var(--status-todo); background: var(--status-todo-wash); border-color: var(--status-todo); }
+.task-state-progress { color: var(--status-progress); background: var(--status-progress-wash); border-color: var(--status-progress); }
+.task-state-completed { color: var(--status-completed); background: var(--status-completed-wash); border-color: var(--status-completed); }
+.task-state-confidential { color: var(--status-confidential); background: var(--status-confidential-wash); border-color: var(--status-confidential); }
+.task-state-dot-todo { background: var(--status-todo); }
+.task-state-dot-progress { background: var(--status-progress); }
+.task-state-dot-completed { background: var(--status-completed); }
+.task-state-dot-confidential { background: var(--status-confidential); }
+.feedback-success { color: var(--status-completed); }
+.feedback-warning { color: var(--feedback-warning); }
+.feedback-danger { color: var(--feedback-danger); }
+.feedback-neutral { color: var(--status-todo); }
+
+@keyframes activity-refresh-spin { to { transform: rotate(360deg); } }
+.activity-refresh-icon.is-refreshing { animation: activity-refresh-spin .8s linear infinite; }
+.activity-refresh-button:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+.activity-refresh-button[aria-busy="true"] { color: var(--status-progress); border-color: var(--status-progress); background: var(--status-progress-wash); }
+@media (prefers-reduced-motion: reduce) {
+  .activity-refresh-icon.is-refreshing { animation: none; }
 }

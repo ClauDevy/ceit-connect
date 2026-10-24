@@ -1,16 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Archive,
   CalendarDays,
+  Check,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  Circle,
+  Clock3,
   FileText,
   LoaderCircle,
+  ListChecks,
   Pencil,
   Plus,
   RotateCcw,
@@ -22,6 +27,7 @@ import {
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { TigerLogo } from "@/components/ui/tiger-logo";
 import { BannerUploader } from "@/components/events/banner-uploader";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -347,6 +353,7 @@ export function EventForm({
     useState<TemplateImportSummary | null>(null);
   const [pendingTemplateImport, setPendingTemplateImport] =
     useState<PendingTemplateImport | null>(null);
+  const taskDialogScrollRef = useRef<HTMLDivElement>(null);
 
   const taskCount = phases.reduce((sum, phase) => sum + phase.tasks.length, 0);
   const nameSet = name.trim().length > 0;
@@ -683,13 +690,24 @@ export function EventForm({
   function saveTask() {
     if (!taskEditor) return;
 
+    const revealTaskProblem = (field: string, message: string) => {
+      setTaskEditorError(message);
+      requestAnimationFrame(() => {
+        const control = taskDialogScrollRef.current?.querySelector<HTMLElement>(
+          `[data-task-field="${field}"]`,
+        );
+        control?.scrollIntoView({ block: "center" });
+        control?.focus();
+      });
+    };
+
     const title = taskEditor.draft.title.trim();
     if (!title) {
-      setTaskEditorError("Give the task a title.");
+      revealTaskProblem("title", "Give the task a title.");
       return;
     }
     if (!taskEditor.draft.committeeId) {
-      setTaskEditorError("Choose a committee.");
+      revealTaskProblem("committee", "Choose a committee.");
       return;
     }
     if (
@@ -699,7 +717,8 @@ export function EventForm({
         taskEditor.draft.endTime) &&
       (!taskEditor.draft.callDate || !taskEditor.draft.callTime)
     ) {
-      setTaskEditorError(
+      revealTaskProblem(
+        !taskEditor.draft.callDate ? "call-date" : "call-time",
         "Choose both a duty date and call time when adding a live-duty schedule.",
       );
       return;
@@ -710,7 +729,7 @@ export function EventForm({
       taskEditor.draft.endTime &&
       taskEditor.draft.endTime < taskEditor.draft.callTime
     ) {
-      setTaskEditorError("End time cannot be before call time.");
+      revealTaskProblem("end-time", "End time cannot be before call time.");
       return;
     }
 
@@ -932,12 +951,11 @@ export function EventForm({
         }
         actions={
           initialEvent ? (
-            <Link
-              href="/home"
-              className={buttonVariants({ variant: "outline" })}
+            <Badge
+              variant={initialEvent.status === "Draft" ? "neutral" : "outline"}
             >
-              Cancel
-            </Link>
+              {initialEvent.status}
+            </Badge>
           ) : null
         }
       />
@@ -946,20 +964,9 @@ export function EventForm({
         <InlineAlert className="mb-4">{bannerNotice}</InlineAlert>
       ) : null}
 
-      {initialEvent && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Current status:</span>
-          <Badge
-            variant={initialEvent.status === "Draft" ? "neutral" : "outline"}
-          >
-            {initialEvent.status}
-          </Badge>
-        </div>
-      )}
-
       {!initialEvent && (
-        <Card className="mb-6">
-          <CardHeader>
+        <Card className="mb-6 overflow-hidden border-border/70">
+          <CardHeader className="border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
             <CardTitle>Choose a starting point</CardTitle>
             <p className="text-sm text-muted-foreground">
               Build a fresh task list or copy the structure of an Archived
@@ -972,13 +979,20 @@ export function EventForm({
                 type="button"
                 aria-pressed={templateMode === "scratch"}
                 onClick={() => setTemplateMode("scratch")}
-                className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors ${
+                className={`relative flex min-h-20 items-start gap-3 rounded-2xl border-2 p-4 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                   templateMode === "scratch"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/50 hover:bg-muted/30"
                 }`}
               >
-                <FileText className="mt-0.5 size-5 shrink-0 text-primary" />
+                {templateMode === "scratch" ? (
+                  <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Check aria-hidden className="size-3" />
+                  </span>
+                ) : null}
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <FileText aria-hidden className="size-5" />
+                </span>
                 <span>
                   <span className="block font-semibold">
                     Start from Scratch
@@ -992,13 +1006,20 @@ export function EventForm({
                 type="button"
                 aria-pressed={templateMode === "archive"}
                 onClick={() => setTemplateMode("archive")}
-                className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors ${
+                className={`relative flex min-h-20 items-start gap-3 rounded-2xl border-2 p-4 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                   templateMode === "archive"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:border-primary/50 hover:bg-muted/30"
                 }`}
               >
-                <Archive className="mt-0.5 size-5 shrink-0 text-primary" />
+                {templateMode === "archive" ? (
+                  <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Check aria-hidden className="size-3" />
+                  </span>
+                ) : null}
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Archive aria-hidden className="size-5" />
+                </span>
                 <span>
                   <span className="block font-semibold">
                     Start from Archive Template
@@ -1069,9 +1090,10 @@ export function EventForm({
                   ))}
 
                   {archivedTemplates.length === 0 && (
-                    <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
-                      No Archived events are available yet.
-                    </p>
+                    <div className="grid justify-items-center gap-2 rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
+                      <TigerLogo size={36} className="shrink-0 opacity-70 grayscale" />
+                      <p>No Archived events are available yet.</p>
+                    </div>
                   )}
                   {archivedTemplates.length > 0 &&
                     filteredArchivedTemplates.length === 0 && (
@@ -1145,13 +1167,17 @@ export function EventForm({
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card>
-          <div className="flex gap-1 border-b px-5 pt-3 sm:px-6">
+      <div className="grid min-w-0 gap-6 lg:items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Card className="min-w-0 overflow-hidden border-border/70">
+          <div
+            className="flex gap-1 overflow-x-auto border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card px-5 pt-3 sm:px-6"
+          >
             <button
               type="button"
+              aria-pressed={tab === "fundamentals"}
+              aria-controls="event-fundamentals-panel"
               onClick={() => setTab("fundamentals")}
-              className={`border-b-2 px-3 py-3 text-sm font-semibold transition-colors ${
+              className={`min-h-11 shrink-0 border-b-2 px-3 py-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                 tab === "fundamentals"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1161,8 +1187,10 @@ export function EventForm({
             </button>
             <button
               type="button"
+              aria-pressed={tab === "tasks"}
+              aria-controls="event-tasks-panel"
               onClick={() => setTab("tasks")}
-              className={`border-b-2 px-3 py-3 text-sm font-semibold transition-colors ${
+              className={`min-h-11 shrink-0 border-b-2 px-3 py-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                 tab === "tasks"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1174,7 +1202,23 @@ export function EventForm({
 
           <CardContent>
             {tab === "fundamentals" ? (
-              <div className="grid gap-5">
+              <div
+                id="event-fundamentals-panel"
+                className="grid gap-5"
+              >
+                <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <CalendarDays aria-hidden className="size-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-display font-semibold">
+                      Event fundamentals
+                    </h2>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      Set the event identity, schedule, and banner.
+                    </p>
+                  </div>
+                </div>
                 <div className="grid gap-2">
                   <p className="text-sm font-semibold">Event banner</p>
                   <BannerUploader
@@ -1287,7 +1331,21 @@ export function EventForm({
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-5">
+              <div
+                id="event-tasks-panel"
+                className="grid gap-5"
+              >
+                <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <ListChecks aria-hidden className="size-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-display font-semibold">Task setup</h2>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      Organize the work into phases and assign initial owners.
+                    </p>
+                  </div>
+                </div>
                 <InlineAlert variant="info">
                   A phase with no tasks will not be saved. Add at least one task
                   to every phase you want to keep.
@@ -1301,7 +1359,7 @@ export function EventForm({
 
                 {phases.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed p-8 text-center">
-                    <ClipboardList className="mx-auto size-8 text-muted-foreground" />
+                    <TigerLogo size={40} className="mx-auto shrink-0 opacity-70 grayscale" />
                     <p className="mt-3 font-semibold">No phases yet</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Add a phase, then place its tasks into the backlog.
@@ -1310,8 +1368,8 @@ export function EventForm({
                 ) : (
                   <div className="grid gap-4">
                     {phases.map((phase) => (
-                      <section key={phase.id} className="rounded-2xl border">
-                        <div className="flex items-center gap-2 border-b bg-muted/40 p-3">
+                      <section key={phase.id} className="overflow-hidden rounded-2xl border bg-card">
+                        <div className="flex min-w-0 items-center gap-2 border-b bg-muted/40 p-3">
                           <Button
                             type="button"
                             variant="ghost"
@@ -1336,7 +1394,7 @@ export function EventForm({
                             onChange={(event) =>
                               updatePhaseName(phase.id, event.target.value)
                             }
-                            className="h-8 flex-1 border-transparent bg-transparent font-semibold shadow-none hover:border-border"
+                            className="h-11 min-w-0 flex-1 border-transparent bg-transparent font-semibold shadow-none hover:border-border md:h-8"
                           />
                           <Badge variant="neutral">
                             {phase.tasks.length} task
@@ -1344,8 +1402,9 @@ export function EventForm({
                           </Badge>
                           <Button
                             type="button"
-                            variant="destructive"
+                            variant="ghost"
                             size="icon-sm"
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
                             aria-label={`Remove ${phase.name}`}
                             onClick={() => requestRemovePhase(phase)}
                           >
@@ -1362,7 +1421,7 @@ export function EventForm({
                               return (
                                 <div
                                   key={task.id}
-                                  className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+                                  className="flex flex-col gap-3 rounded-xl border bg-card p-4 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
                                 >
                                   <div className="min-w-0">
                                     <p className="truncate font-semibold">
@@ -1379,9 +1438,7 @@ export function EventForm({
                                       </span>
                                       <span>{task.priority}</span>
                                       {task.persisted && (
-                                        <Badge variant="neutral">
-                                          {task.status}
-                                        </Badge>
+                                        <TaskStatusBadge status={task.status} />
                                       )}
                                       {task.dueDate && (
                                         <span className="inline-flex items-center gap-1">
@@ -1411,8 +1468,9 @@ export function EventForm({
                                     </Button>
                                     <Button
                                       type="button"
-                                      variant="destructive"
+                                      variant="ghost"
                                       size="icon-sm"
+                                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
                                       aria-label={`Remove ${task.title}`}
                                       title={
                                         task.status === "To Do"
@@ -1477,8 +1535,11 @@ export function EventForm({
           </CardContent>
         </Card>
 
-        <Card className="h-fit lg:sticky lg:top-8">
-          <CardHeader>
+        <Card className="h-fit overflow-hidden border-border/70 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7.5rem)] lg:overflow-y-auto">
+          <CardHeader className="border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
+            <p className="text-[11px] font-bold tracking-wide text-accent-foreground uppercase">
+              Event summary
+            </p>
             <CardTitle>{name.trim() || "Untitled Event"}</CardTitle>
             <p className="text-xs text-muted-foreground">
               {datesSet ? `${startDate} – ${endDate}` : "Dates not set"}
@@ -1512,8 +1573,13 @@ export function EventForm({
 
             <Button
               type="button"
-              variant="outline"
+              variant={
+                initialEvent?.status === "Active" ? "default" : "outline"
+              }
               size="lg"
+              className={
+                initialEvent?.status === "Active" ? "order-1" : "order-2"
+              }
               disabled={status === "saving"}
               onClick={() => handleSave(false)}
             >
@@ -1527,13 +1593,24 @@ export function EventForm({
               <Button
                 type="button"
                 size="lg"
+                className="order-1"
                 disabled={status === "saving" || !readyToLaunch}
                 onClick={() => handleSave(true)}
               >
                 {status === "saving" ? "Saving…" : "Launch Event"}
               </Button>
             )}
-            <p className="text-xs text-muted-foreground">
+            <Link
+              href="/home"
+              className={buttonVariants({
+                variant: "outline",
+                size: "lg",
+                className: "order-3 w-full",
+              })}
+            >
+              Cancel
+            </Link>
+            <p className="order-4 text-xs text-muted-foreground">
               {initialEvent
                 ? "Every successful save advances the event version so concurrent edits cannot overwrite each other."
                 : "Launch requires valid dates and at least one task. Drafts may be saved without tasks."}
@@ -1548,22 +1625,39 @@ export function EventForm({
           if (!open) setTaskEditor(null);
         }}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {taskEditor?.taskId ? "Edit task" : "Add task"}
-            </DialogTitle>
-            <DialogDescription>
-              Leave assignees empty to send this task to the Backlog.
-            </DialogDescription>
+        <DialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:p-0 max-w-3xl">
+          <DialogHeader className="border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-popover p-5 pr-12 sm:p-6 sm:pr-14">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ClipboardList aria-hidden className="size-5" />
+              </span>
+              <div className="grid gap-1.5">
+                <DialogTitle>
+                  {taskEditor?.taskId ? "Edit task" : "Add task"}
+                </DialogTitle>
+                <DialogDescription>
+                  Leave assignees empty to send this task to the Backlog.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
           {taskEditor && (
-            <div className="grid gap-4">
+            <div
+              ref={taskDialogScrollRef}
+              className="grid min-h-0 min-w-0 gap-5 overflow-y-auto p-5 sm:p-6"
+            >
+              <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
+                <SectionHeading
+                  icon={<FileText aria-hidden />}
+                  title="Details"
+                  description="Describe the work and how it should be handled."
+                />
               <FormField label="Task title">
                 {(control) => (
                   <Input
                     {...control}
+                    data-task-field="title"
                     autoFocus
                     maxLength={200}
                     value={taskEditor.draft.title}
@@ -1594,62 +1688,14 @@ export function EventForm({
               </FormField>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Committee">
-                  {(control) => (
-                    <Select
-                      items={committeeItems}
-                      value={taskEditor.draft.committeeId || null}
-                      onValueChange={(value) =>
-                        updateTaskDraft({
-                          committeeId: value ?? "",
-                        })
-                      }
-                    >
-                      <SelectTrigger {...control}>
-                        <SelectValue placeholder="Select a committee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {committeeItems.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </FormField>
-
                 <FormField label="Type">
                   {(control) => (
-                    <Select
-                      items={taskTypes}
+                    <TaskTypeToggle
+                      id={control.id}
+                      aria-describedby={control["aria-describedby"]}
                       value={taskEditor.draft.taskType}
                       onValueChange={(value) =>
-                        value && updateTaskDraft({ taskType: value })
-                      }
-                    >
-                      <SelectTrigger {...control}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {taskTypes.map((item) => (
-                          <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </FormField>
-
-                <FormField label="Due date" hint="Optional">
-                  {(control) => (
-                    <Input
-                      {...control}
-                      type="date"
-                      value={taskEditor.draft.dueDate}
-                      onChange={(event) =>
-                        updateTaskDraft({ dueDate: event.target.value })
+                        updateTaskDraft({ taskType: value })
                       }
                     />
                   )}
@@ -1678,6 +1724,26 @@ export function EventForm({
                   )}
                 </FormField>
               </div>
+              </section>
+
+              <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
+                <SectionHeading
+                  icon={<CalendarDays aria-hidden />}
+                  title="When"
+                  description="Set the deadline and any live-duty schedule."
+                />
+                <FormField label="Due date" hint="Optional">
+                  {(control) => (
+                    <Input
+                      {...control}
+                      type="date"
+                      value={taskEditor.draft.dueDate}
+                      onChange={(event) =>
+                        updateTaskDraft({ dueDate: event.target.value })
+                      }
+                    />
+                  )}
+                </FormField>
 
               {taskEditor.draft.taskType === "LiveOperation" && (
                 <div className="grid gap-4 rounded-xl border border-primary/30 bg-muted p-4">
@@ -1690,6 +1756,7 @@ export function EventForm({
                       {(control) => (
                         <Input
                           {...control}
+                          data-task-field="call-date"
                           type="date"
                           value={taskEditor.draft.callDate}
                           onChange={(event) =>
@@ -1702,6 +1769,7 @@ export function EventForm({
                       {(control) => (
                         <Input
                           {...control}
+                          data-task-field="call-time"
                           type="time"
                           value={taskEditor.draft.callTime}
                           onChange={(event) =>
@@ -1714,6 +1782,7 @@ export function EventForm({
                       {(control) => (
                         <Input
                           {...control}
+                          data-task-field="end-time"
                           type="time"
                           min={taskEditor.draft.callTime || undefined}
                           value={taskEditor.draft.endTime}
@@ -1726,8 +1795,40 @@ export function EventForm({
                   </div>
                 </div>
               )}
+              </section>
 
-              <fieldset className="grid gap-2 rounded-xl border p-3">
+              <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
+                <SectionHeading
+                  icon={<Users aria-hidden />}
+                  title="Who"
+                  description="Choose the owning committee and initial assignees."
+                />
+                <FormField label="Committee">
+                  {(control) => (
+                    <Select
+                      items={committeeItems}
+                      value={taskEditor.draft.committeeId || null}
+                      onValueChange={(value) =>
+                        updateTaskDraft({
+                          committeeId: value ?? "",
+                        })
+                      }
+                    >
+                      <SelectTrigger {...control} data-task-field="committee">
+                        <SelectValue placeholder="Select a committee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {committeeItems.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+
+              <fieldset className="grid min-w-0 gap-3 rounded-xl border bg-muted/20 p-4">
                 <legend className="px-1 text-sm font-semibold">
                   Assignees
                 </legend>
@@ -1778,7 +1879,7 @@ export function EventForm({
                   />
                 </div>
 
-                <div className="grid max-h-72 gap-3 overflow-y-auto rounded-xl bg-muted/30 p-2">
+                <div className="grid max-h-64 gap-3 overflow-y-auto rounded-xl border bg-card p-2">
                   {!selectedCommitteeHasActiveMembers && (
                     <p className="px-2 py-1 text-xs text-muted-foreground">
                       No active members in this committee. You can still assign
@@ -1831,27 +1932,30 @@ export function EventForm({
                     )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Tasks are unassigned by default and stay in the Backlog until
-                  someone claims or is assigned to them.
+                  {taskEditor.draft.assigneeIds.length} selected. Tasks are
+                  unassigned by default and stay in the Backlog until someone
+                  claims or is assigned to them.
                 </p>
               </fieldset>
-
-              {taskEditorError && <InlineAlert>{taskEditorError}</InlineAlert>}
+              </section>
             </div>
           )}
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setTaskEditor(null)}
-            >
-              Cancel
-            </Button>
-            <Button type="button" onClick={saveTask}>
-              {taskEditor?.taskId ? "Save changes" : "Add task"}
-            </Button>
-          </DialogFooter>
+          <div className="grid gap-3 border-t border-border/70 bg-popover p-4 sm:px-6">
+            {taskEditorError && <InlineAlert>{taskEditorError}</InlineAlert>}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTaskEditor(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="button" onClick={saveTask}>
+                {taskEditor?.taskId ? "Save changes" : "Add task"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1915,6 +2019,92 @@ export function EventForm({
   );
 }
 
+function SectionHeading({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 border-b border-border/70 pb-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary [&_svg]:size-4">
+        {icon}
+      </span>
+      <div>
+        <h3 className="font-display font-semibold">{title}</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function TaskTypeToggle({
+  id,
+  value,
+  onValueChange,
+  "aria-describedby": describedBy,
+}: {
+  id: string;
+  value: TaskType;
+  onValueChange: (value: TaskType) => void;
+  "aria-describedby"?: string;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-describedby={describedBy}
+      className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 focus-within:ring-3 focus-within:ring-ring/50"
+    >
+      {taskTypes.map((option, index) => {
+        const selected = option.value === value;
+        const optionId = index === 0 ? id : `${id}-${option.value}`;
+
+        return (
+          <label
+            key={option.value}
+            htmlFor={optionId}
+            className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 text-center text-sm font-semibold ${
+              selected
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <input
+              id={optionId}
+              type="radio"
+              name={`${id}-task-type`}
+              value={option.value}
+              checked={selected}
+              onChange={() => onValueChange(option.value)}
+              className="sr-only"
+            />
+            {option.label}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function TaskStatusBadge({ status }: { status: TaskStatus }) {
+  const Icon =
+    status === "Completed"
+      ? CheckCircle2
+      : status === "In Progress"
+        ? Clock3
+        : Circle;
+
+  return (
+    <Badge variant="neutral">
+      <Icon aria-hidden />
+      {status}
+    </Badge>
+  );
+}
+
 function SummaryCheck({
   done,
   children,
@@ -1926,10 +2116,14 @@ function SummaryCheck({
     <div className="flex items-center gap-2">
       <span
         aria-hidden
-        className={`size-4 shrink-0 rounded-full border-2 ${
-          done ? "border-primary bg-primary" : "border-border"
+        className={`flex size-4 shrink-0 items-center justify-center rounded-full border-2 ${
+          done
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border"
         }`}
-      />
+      >
+        {done ? <Check className="size-2.5" /> : null}
+      </span>
       <span>{children}</span>
     </div>
   );
@@ -1955,18 +2149,23 @@ function AssigneeGroup({
       </p>
       {assignees.map((assignee) => {
         const inputId = `assignee-${assignee.id}`;
+        const selected = selectedIds.includes(assignee.id);
         return (
           <label
             key={assignee.id}
             htmlFor={inputId}
-            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-muted"
+            className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-2 outline-none transition-colors focus-within:ring-3 focus-within:ring-ring/50 ${
+              selected
+                ? "border-primary/40 bg-primary/10"
+                : "border-transparent hover:bg-muted"
+            }`}
           >
             <input
               id={inputId}
               type="checkbox"
-              checked={selectedIds.includes(assignee.id)}
+              checked={selected}
               onChange={(event) => onToggle(assignee.id, event.target.checked)}
-              className="size-4 accent-primary"
+              className="size-5 shrink-0 accent-primary"
             />
             <UserAvatar
               name={assignee.full_name}
@@ -1980,7 +2179,7 @@ function AssigneeGroup({
                 assignee.activeTaskCount,
               )}
             </span>
-            <span className="shrink-0 text-xs text-muted-foreground">
+            <span className="max-w-28 shrink-0 truncate text-xs text-muted-foreground">
               {assignee.committee_id
                 ? (committeeNames.get(assignee.committee_id) ??
                   "Unknown committee")
