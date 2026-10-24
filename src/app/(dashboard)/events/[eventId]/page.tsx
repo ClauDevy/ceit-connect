@@ -101,15 +101,17 @@ export default async function EventBoardPage({
   if (!event) redirect("/home");
 
   return (
-    <Suspense fallback={<EventBoardSkeleton />}>
-      <BoardData
-        event={event}
-        viewer={{
-          id: user.id,
-          role: profile.role,
-          committeeId: profile.committee_id,
-        }}
-      />
-    </Suspense>
+    <div className="w-full min-w-0">
+      <Suspense fallback={<EventBoardSkeleton />}>
+        <BoardData
+          event={event}
+          viewer={{
+            id: user.id,
+            role: profile.role,
+            committeeId: profile.committee_id,
+          }}
+        />
+      </Suspense>
+    </div>
   );
 }
