@@ -7,8 +7,8 @@ import {
   useInfiniteQuery,
 } from "@tanstack/react-query";
 import { LoaderCircle, RefreshCw, TriangleAlert } from "lucide-react";
-import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";
+import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -225,7 +225,11 @@ function HelpWantedContents({
           {tasks.map((task) => {
             const busy = busyTaskId === task.out_id;
             return (
-              <Card key={task.out_id} className="p-0">
+              <Card key={task.out_id} className="relative p-0">
+                <StretchedLink
+                  href={`/tasks/${task.out_id}`}
+                  label={`Open ${task.out_title}`}
+                />
                 <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -238,12 +242,7 @@ function HelpWantedContents({
                         Wanted
                       </span>
                     </div>
-                    <Link
-                      href={`/tasks/${task.out_id}`}
-                      className="rounded-sm text-sm font-semibold hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {task.out_title}
-                    </Link>
+                    <p className="text-sm font-semibold">{task.out_title}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {task.out_event_name} · {task.out_committee_name} ·{" "}
                       {task.out_phase?.trim() || "Unphased"}
@@ -258,7 +257,7 @@ function HelpWantedContents({
                     <Button
                       type="button"
                       variant="outline"
-                      className="shrink-0"
+                      className="relative z-20 shrink-0"
                       disabled={busyTaskId !== null}
                       onClick={() => void withdraw(task.out_id)}
                     >
@@ -271,7 +270,7 @@ function HelpWantedContents({
                     <Button
                       type="button"
                       variant="outline"
-                      className="shrink-0"
+                      className="relative z-20 shrink-0"
                       disabled={busyTaskId !== null}
                       onClick={() => void volunteer(task.out_id)}
                     >

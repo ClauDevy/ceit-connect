@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
+import { preventSearchFormSubmission } from "@/lib/search";
 import {
   confidentialityViewerIds,
   MAX_TASK_ALLOWED_VIEWERS,
@@ -294,8 +295,10 @@ export function TaskEditControls({
               />
               <Input
                 id="dependency-search"
+                type="search"
                 value={dependencySearch}
                 onChange={(event) => setDependencySearch(event.target.value)}
+                onKeyDown={preventSearchFormSubmission}
                 placeholder="Search tasks"
                 className="pl-9"
               />
@@ -384,8 +387,10 @@ export function TaskEditControls({
               />
               <Input
                 id="viewer-search"
+                type="search"
                 value={viewerSearch}
                 onChange={(event) => setViewerSearch(event.target.value)}
+                onKeyDown={preventSearchFormSubmission}
                 placeholder="Search people"
                 className="pl-9"
               />

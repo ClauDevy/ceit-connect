@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react"
 import Cropper from "react-easy-crop"
 import { Button } from "@/components/ui/button"
-import type { CropArea } from "@/lib/image"
+import { minimumContainZoom, type CropArea, type ImageSize } from "@/lib/image"
 
 type AvatarCropperProps = {
   imageSrc: string
@@ -15,9 +15,19 @@ type AvatarCropperProps = {
 export function AvatarCropper({ imageSrc, saving, onSave, onCancel }: AvatarCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
+  const [minZoom, setMinZoom] = useState(1)
   const [area, setArea] = useState<CropArea | null>(null)
+  const [mediaSize, setMediaSize] = useState<ImageSize | null>(null)
+  const [cropSize, setCropSize] = useState<ImageSize | null>(null)
 
   const onCropComplete = useCallback((_: CropArea, pixels: CropArea) => setArea(pixels), [])
+
+  const applyContainZoom = useCallback((media: ImageSize, viewport: ImageSize) => {
+    const nextMinZoom = minimumContainZoom(media, viewport)
+    setMinZoom(nextMinZoom)
+    setZoom(nextMinZoom)
+    setCrop({ x: 0, y: 0 })
+  }, [])
 
   return (
     <div className="grid gap-4">
@@ -26,10 +36,20 @@ export function AvatarCropper({ imageSrc, saving, onSave, onCancel }: AvatarCrop
           image={imageSrc}
           crop={crop}
           zoom={zoom}
+          minZoom={minZoom}
           aspect={1}
+          restrictPosition={false}
           onCropChange={setCrop}
           onZoomChange={setZoom}
           onCropComplete={onCropComplete}
+          onMediaLoaded={(nextMediaSize) => {
+            setMediaSize(nextMediaSize)
+            if (cropSize) applyContainZoom(nextMediaSize, cropSize)
+          }}
+          onCropSizeChange={(nextCropSize) => {
+            setCropSize(nextCropSize)
+            if (mediaSize) applyContainZoom(mediaSize, nextCropSize)
+          }}
         />
       </div>
 
@@ -37,7 +57,7 @@ export function AvatarCropper({ imageSrc, saving, onSave, onCancel }: AvatarCrop
         Zoom
         <input
           type="range"
-          min={1}
+          min={minZoom}
           max={3}
           step={0.1}
           value={zoom}

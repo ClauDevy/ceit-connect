@@ -9,7 +9,7 @@ import {
   LoaderCircle,
   LockKeyhole,
 } from "lucide-react";
-import Link from "next/link";
+import { StretchedLink } from "@/components/shared/stretched-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,12 +29,13 @@ import {
 } from "@/lib/events/board";
 import type { MovePermission } from "@/lib/events/board-move";
 import { isClaimableBacklogTask } from "@/lib/tasks/backup";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
 const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
-  timeZone: "Asia/Manila",
+  timeZone: APP_TIME_ZONE.iana,
 });
 
 function priorityVariant(priority: BoardPriority) {
@@ -121,12 +122,18 @@ function CardBody({
   return (
     <Card
       className={cn(
-        "p-0 transition-[transform,opacity,box-shadow]",
+        "relative p-0 transition-[transform,opacity,box-shadow]",
         !overlay && "hover:-translate-y-0.5 hover:shadow-sm",
         task.status === "Completed" && !task.is_masked && "opacity-70",
         overlay && "cursor-grabbing scale-[1.02] opacity-90 shadow-xl",
       )}
     >
+      {!overlay ? (
+        <StretchedLink
+          href={`/tasks/${task.id}`}
+          label={`Open ${task.title}`}
+        />
+      ) : null}
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           {!task.is_masked && task.effective_priority ? (
@@ -145,7 +152,7 @@ function CardBody({
             </Badge>
           )}
 
-          <div className="flex items-center gap-1">
+          <div className="relative z-20 flex items-center gap-1">
             {task.status === "Completed" && !task.is_masked ? (
               <Check
                 className="size-4 text-emerald-600"
@@ -186,23 +193,17 @@ function CardBody({
           </div>
         </div>
 
-        <Link
-          href={`/tasks/${task.id}`}
-          aria-label={`Open ${task.title}`}
-          className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        <p
+          className={cn(
+            "text-sm leading-snug font-semibold",
+            backlog && "line-clamp-2",
+            task.status === "Completed" &&
+              !task.is_masked &&
+              "line-through decoration-muted-foreground",
+          )}
         >
-          <p
-            className={cn(
-              "text-sm leading-snug font-semibold",
-              backlog && "line-clamp-2",
-              task.status === "Completed" &&
-                !task.is_masked &&
-                "line-through decoration-muted-foreground",
-            )}
-          >
-            {task.title}
-          </p>
-        </Link>
+          {task.title}
+        </p>
 
         {backlog && !task.is_masked ? (
           <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
@@ -221,7 +222,7 @@ function CardBody({
         {backlog && isClaimableBacklogTask(task) && onClaim ? (
           <Button
             type="button"
-            className="w-full"
+            className="relative z-20 w-full"
             disabled={busy || claimBusy}
             onClick={() => onClaim(task)}
           >
@@ -251,38 +252,40 @@ function CardBody({
         ) : null}
 
         {canMove ? (
-          <Select
-            value={task.status}
-            disabled={busy}
-            onValueChange={(value) => {
-              if (
-                value &&
-                BOARD_STATUSES.includes(value as BoardStatus) &&
-                value !== task.status
-              ) {
-                onMoveStatus?.(task, value as BoardStatus);
-              }
-            }}
-          >
-            <SelectTrigger
-              className="h-9 w-full text-xs"
-              aria-label={`Move ${task.title} to another status`}
+          <div className="relative z-20">
+            <Select
+              value={task.status}
+              disabled={busy}
+              onValueChange={(value) => {
+                if (
+                  value &&
+                  BOARD_STATUSES.includes(value as BoardStatus) &&
+                  value !== task.status
+                ) {
+                  onMoveStatus?.(task, value as BoardStatus);
+                }
+              }}
             >
-              <span className="text-muted-foreground">Move to</span>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {BOARD_STATUSES.map((status) => (
-                <SelectItem
-                  key={status}
-                  value={status}
-                  disabled={status === task.status}
-                >
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              <SelectTrigger
+                className="h-9 w-full text-xs"
+                aria-label={`Move ${task.title} to another status`}
+              >
+                <span className="text-muted-foreground">Move to</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BOARD_STATUSES.map((status) => (
+                  <SelectItem
+                    key={status}
+                    value={status}
+                    disabled={status === task.status}
+                  >
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         ) : null}
       </CardContent>
     </Card>

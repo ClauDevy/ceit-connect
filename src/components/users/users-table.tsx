@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { MembersCards } from "@/components/users/members-cards"
 import { MembersTable } from "@/components/users/members-table"
 import { useToggleMemberActive } from "@/components/users/use-toggle-member-active"
+import { preventSearchFormSubmission } from "@/lib/search"
 import type { Committee, Member } from "@/lib/types"
 
 type UsersTableProps = {
@@ -60,6 +61,7 @@ export function UsersTable({ members: initialMembers, committees, currentUserId 
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={preventSearchFormSubmission}
             placeholder="Search name, email, committee…"
             aria-label="Search members"
           />

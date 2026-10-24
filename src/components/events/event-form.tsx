@@ -46,9 +46,14 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { uploadEventBanner } from "@/lib/event-banner";
+import {
+  parseImportedDueDate,
+  toTaskPayload,
+} from "@/lib/events/form";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
+import { preventSearchFormSubmission } from "@/lib/search";
 import { formatWorkloadLabel } from "@/lib/tasks/workload";
-import { APP_TIME_ZONE } from "@/lib/timezone";
+import { splitAppTimestamp } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
 
 type AssigneeOption = {
@@ -178,39 +183,8 @@ const taskTypes: { value: TaskType; label: string }[] = [
   { value: "LiveOperation", label: "Live Operation" },
 ];
 
-const appDateTime = new Intl.DateTimeFormat("en-CA", {
-  timeZone: APP_TIME_ZONE.iana,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
 function makeId() {
   return crypto.randomUUID();
-}
-
-function toTimestamp(date: string, time: string) {
-  if (!date || !time) return null;
-  return new Date(`${date}T${time}:00${APP_TIME_ZONE.utcOffset}`).toISOString();
-}
-
-function splitTimestamp(value: string | null) {
-  if (!value) return { date: "", time: "" };
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-
-  const parts = new Map(
-    appDateTime.formatToParts(parsed).map((part) => [part.type, part.value]),
-  );
-
-  return {
-    date: `${parts.get("year")}-${parts.get("month")}-${parts.get("day")}`,
-    time: `${parts.get("hour")}:${parts.get("minute")}`,
-  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -256,9 +230,9 @@ function parseImportedTasks(value: unknown): ParsedImportedTasks | null {
       return null;
     }
 
-    const due = splitTimestamp(dueDate);
-    const call = splitTimestamp(callTime);
-    const end = splitTimestamp(endTime);
+    const due = parseImportedDueDate(dueDate);
+    const call = splitAppTimestamp(callTime);
+    const end = splitAppTimestamp(endTime);
     if (!due || !call || !end) return null;
 
     if (
@@ -323,27 +297,6 @@ function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
     collapsed: false,
     tasks: phaseTasks,
   }));
-}
-
-function toTaskPayload(phaseName: string, task: TaskDraft) {
-  return {
-    title: task.title,
-    description: task.description || null,
-    phase: phaseName.trim(),
-    committee_id: task.committeeId,
-    task_type: task.taskType,
-    due_date: task.dueDate || null,
-    call_time:
-      task.taskType === "LiveOperation"
-        ? toTimestamp(task.callDate, task.callTime)
-        : null,
-    end_time:
-      task.taskType === "LiveOperation"
-        ? toTimestamp(task.callDate, task.endTime)
-        : null,
-    priority: task.priority,
-    assignee_ids: task.assigneeIds,
-  };
 }
 
 export function EventForm({
@@ -415,12 +368,7 @@ export function EventForm({
       new Map(
         (initialEvent?.tasks ?? []).map((task) => [
           task.id,
-          JSON.stringify(
-            toTaskPayload(task.phase, {
-              ...task,
-              persisted: true,
-            }),
-          ),
+          JSON.stringify(toTaskPayload(task.phase, task)),
         ]),
       ),
     [initialEvent],
@@ -1078,8 +1026,10 @@ export function EventForm({
                   <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     aria-label="Search Archived events"
+                    type="search"
                     value={templateSearch}
                     onChange={(event) => setTemplateSearch(event.target.value)}
+                    onKeyDown={preventSearchFormSubmission}
                     placeholder="Search past events…"
                     className="pl-9"
                   />
@@ -1819,8 +1769,10 @@ export function EventForm({
                   <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     aria-label="Search assignees"
+                    type="search"
                     value={assigneeSearch}
                     onChange={(event) => setAssigneeSearch(event.target.value)}
+                    onKeyDown={preventSearchFormSubmission}
                     placeholder="Search members…"
                     className="pl-9"
                   />

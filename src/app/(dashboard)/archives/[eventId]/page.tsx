@@ -4,12 +4,14 @@ import { redirect } from "next/navigation";
 import { EventBanner } from "@/components/events/event-banner";
 import { PageHeader } from "@/components/shared/page-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type ArchivedEvent = {
   id: string;
@@ -64,7 +66,7 @@ const taskDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
-  timeZone: "Asia/Manila",
+  timeZone: APP_TIME_ZONE.iana,
 });
 
 function formatEventDate(date: string) {
@@ -259,13 +261,11 @@ export default async function ArchivedEventPage({
                 new Set([...task.primary_assignees, ...task.assist_assignees]),
               );
               return (
-                <Link
-                  key={task.id}
-                  href={`/tasks/${task.id}`}
-                  aria-label={`Open ${content?.title ?? "Task details unavailable"}`}
-                  className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <Card>
+                <Card key={task.id} className="group relative">
+                  <StretchedLink
+                    href={`/tasks/${task.id}`}
+                    label={`Open ${content?.title ?? "Task details unavailable"}`}
+                  />
                     <CardHeader className="sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div className="min-w-0">
                         <CardTitle>
@@ -334,8 +334,7 @@ export default async function ArchivedEventPage({
                         </div>
                       ) : null}
                     </CardContent>
-                  </Card>
-                </Link>
+                </Card>
               );
             })}
           </div>

@@ -12,7 +12,7 @@ function SelectTrigger({ className, children, ...props }: SelectPrimitive.Trigge
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 text-left text-sm outline-none transition-[color,box-shadow,border-color] hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 data-[placeholder]:text-muted-foreground dark:bg-input/30",
+        "flex h-10 min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 text-left text-sm outline-none transition-[color,box-shadow,border-color] hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 data-[placeholder]:text-muted-foreground md:min-h-0 dark:bg-input/30",
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "flex cursor-default items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm outline-none select-none data-[highlighted]:bg-muted data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50",
+        "flex min-h-11 cursor-default items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm outline-none select-none data-[highlighted]:bg-muted data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50 md:min-h-0",
         className
       )}
       {...props}

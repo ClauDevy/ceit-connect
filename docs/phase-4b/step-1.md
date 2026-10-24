@@ -1,6 +1,6 @@
 # Step 1: UI bug fixes and cleanup
 
-**Status:** In progress (Parts A and B implemented locally) | **Branch:** `fix/ui-bugs` | **Reasoning level:** Medium
+**Status:** Implemented locally (Parts A, B, and C) | **Branch:** `fix/ui-bugs` | **Reasoning level:** Medium
 
 ## Goal
 
@@ -40,6 +40,27 @@ The implementation batch must re-run a repository search, but the current eight 
 
 Local filtering and debounced server searches use different query paths, but all eight must retain the same mounted input and focus across loading, placeholder data, focus refetch, visible-only polling, and idle time. Search fields inside forms must never submit the surrounding form from typing or Enter unless that exact behavior is explicitly intended and tested.
 
+### Navigating card/row inventory
+
+Every item below uses the same stretched-link overlay: one real link covers a `relative` card/row, while independent controls are sibling elements above the overlay.
+
+1. Home Active event card → `/events/[eventId]`; sibling Edit link and Admin Archive button.
+2. Home Draft event row → `/events/[eventId]/edit`; no sibling control.
+3. Archives event card → `/archives/[eventId]`; no sibling control.
+4. Archived-event task card → `/tasks/[taskId]`; no sibling control.
+5. Event-board task card → `/tasks/[taskId]`; sibling phone Complete button, desktop drag handle, optional Claim Task button, and Move-to-status select.
+6. My Tasks row → `/tasks/[taskId]`; no sibling control.
+7. Help Wanted row → `/tasks/[taskId]`; sibling Volunteer or Withdraw button.
+8. Your Work Drive-link row → its validated external Drive URL; sibling Preview and optional Remove controls.
+
+### Route loading-state inventory
+
+1. `src/app/(dashboard)/loading.tsx` — dashboard-page fallback.
+2. `src/app/(dashboard)/home/loading.tsx` — event cards and Draft section.
+3. `src/app/(dashboard)/settings/loading.tsx` — Profile, Profile photo, and Password sections.
+4. `src/app/(dashboard)/tasks/[taskId]/loading.tsx` — task header, main cards, and side controls.
+5. `src/app/(dashboard)/users/loading.tsx` — search/count controls plus desktop table and phone cards.
+
 ### Required lint baseline
 
 `npm run lint` was run before this plan was written on 2026-10-24 (through `npm.cmd` because this Windows PowerShell policy blocks the `npm.ps1` shim). It completed with zero errors and exactly three warnings:
@@ -48,7 +69,7 @@ Local filtering and debounced server searches use different query paths, but all
 - `src/components/auth/reset-password-flow.tsx:66:7` — `@next/next/no-location-assign-relative-destination` for `window.location.href = "/home"`.
 - `src/lib/supabase/middleware.ts:34:13` — `@typescript-eslint/no-unused-vars` because `user` is assigned but never used.
 
-The separate development-only warning was the raw `<script dangerouslySetInnerHTML>` in `src/app/layout.tsx`. Part B replaces it with the installed Next.js 16-supported inline `next/script`, with a stable `id` and `beforeInteractive` directly in the root layout, while preserving the pre-hydration theme behavior.
+The separate development-only warning was the raw theme script under `<body>` in `src/app/layout.tsx`. Part B initially replaced it with an identified inline `next/script` using `beforeInteractive`. A production-HTML review then showed that Next.js 16.3.4 queued that inline child through `self.__next_s` after `</head>`, despite the component documentation describing `beforeInteractive` scripts as head-injected. The bootstrap therefore uses an identified direct inline script in the root `<head>`: it remains synchronous and parser-blocking before body content without restoring the former placement warning.
 
 The pre-Part-B manifest declared the external packages `cn` and `p`. Separate searches for double- and single-quoted ESM/CommonJS imports find no use of either package; 28 imports use the local `@/lib/utils` helper. Part B removes only the unused manifest and lockfile entries.
 

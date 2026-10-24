@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function TaskDetailSkeleton() {
   return (
-    <div className="space-y-5" aria-label="Loading task details">
+    <div className="space-y-5" role="status" aria-label="Loading task details">
       <Skeleton className="h-5 w-40" />
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2">
@@ -49,6 +49,7 @@ export function TaskDetailSkeleton() {
           </Card>
         </div>
       </div>
+      <span className="sr-only">Loading task details…</span>
     </div>
   );
 }
