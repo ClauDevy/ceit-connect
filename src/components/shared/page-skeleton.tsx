@@ -4,12 +4,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 /** Matches <PageHeader> so the layout doesn't jump when real content arrives. */
 export function PageHeaderSkeleton({ withAction = false }: { withAction?: boolean }) {
   return (
-    <div className="mb-6 flex items-start justify-between gap-4 md:mb-8">
+    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:mb-8">
       <div className="grid gap-2">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72 max-w-full" />
       </div>
-      {withAction && <Skeleton className="h-10 w-32 shrink-0 rounded-xl" />}
+      {withAction && <Skeleton className="h-11 w-36 shrink-0 rounded-md md:h-9" />}
     </div>
   )
 }

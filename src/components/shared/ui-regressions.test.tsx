@@ -35,6 +35,15 @@ vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: (props: React.ComponentProps<"div">) => <div {...props} />,
 }));
 
+vi.mock("@/components/shared/page-skeleton", () => ({
+  PageHeaderSkeleton: ({ withAction }: { withAction?: boolean }) => (
+    <div>
+      <div className="h-8 w-48" />
+      {withAction ? <div className="h-11 w-36 md:h-9" /> : null}
+    </div>
+  ),
+}));
+
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
@@ -99,6 +108,7 @@ describe("Part C markup regressions", () => {
 
     expect(dashboard).toContain('aria-label="Loading dashboard page"');
     expect(home).toContain("aspect-video");
+    expect(home).toContain("w-36");
     expect(settings).toContain('data-skeleton="settings-photo"');
     expect(task).toContain('aria-label="Loading task details"');
     expect(users).toContain('data-skeleton="users-roster"');

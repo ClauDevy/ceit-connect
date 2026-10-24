@@ -25,7 +25,7 @@ export function ThemeToggle({ variant = "icon", collapsed, className }: ThemeTog
         onClick={toggleTheme}
         aria-label={`Switch to ${dark ? "light" : "dark"} mode`}
         className={cn(
-          "flex size-9 items-center justify-center rounded-full border bg-background text-secondary-foreground outline-none transition-colors hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50",
+          "flex size-11 items-center justify-center rounded-full border bg-background text-secondary-foreground outline-none transition-colors hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50 md:size-9",
           className
         )}
       >
