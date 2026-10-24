@@ -30,15 +30,10 @@ export async function updateSession(request: NextRequest) {
 
   // Refreshes the session if expired. Required for Server Components,
   // which can't set cookies themselves.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // TODO once login page exists: redirect unauthenticated users away
-  // from (dashboard) routes here, e.g.:
-  // if (!user && request.nextUrl.pathname.startsWith("/home")) {
-  //   return NextResponse.redirect(new URL("/login", request.url));
-  // }
+  const { error } = await supabase.auth.getUser();
+  if (error && error.name !== "AuthSessionMissingError") {
+    console.error("Failed to refresh the Supabase session:", error);
+  }
 
   return supabaseResponse;
 }

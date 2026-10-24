@@ -29,9 +29,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={cn("h-full antialiased font-sans", body.variable, display.variable)}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script
+          id="ceit-theme-init"
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+      </body>
     </html>
   );
 }

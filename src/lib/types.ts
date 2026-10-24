@@ -33,5 +33,6 @@ export interface Member {
   email: string;
   role: string;
   committee_id: string | null;
+  avatar_url: string | null;
   is_active: boolean;
 }

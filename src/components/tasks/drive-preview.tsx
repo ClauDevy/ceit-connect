@@ -22,10 +22,10 @@ export function DrivePreview({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
       {parsed.previewUrl ? (
         <iframe
-          className="aspect-[16/10] w-full rounded-xl border border-border bg-muted"
+          className="block aspect-[16/10] w-full max-w-full rounded-xl border border-border bg-muted"
           src={parsed.previewUrl}
           title={title}
           sandbox="allow-same-origin allow-scripts allow-popups"
@@ -34,8 +34,8 @@ export function DrivePreview({
         />
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <p className="min-w-0 break-words text-xs text-muted-foreground">
           {parsed.previewUrl
             ? "Preview unavailable? Check the file's sharing settings."
             : "Preview unavailable for folders. Open it in Google Drive instead."}
@@ -43,6 +43,7 @@ export function DrivePreview({
         <Button
           variant="outline"
           size="sm"
+          className="max-w-full"
           nativeButton={false}
           render={
             <a

@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
+import { preventSearchFormSubmission } from "@/lib/search";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   countCodePoints,
@@ -238,6 +239,7 @@ function MentionPicker({
         />
         <Input
           id={inputId}
+          type="search"
           value={search}
           className="pl-9"
           placeholder="Search people to mention"
@@ -247,6 +249,7 @@ function MentionPicker({
           aria-controls={`${inputId}-results`}
           onFocus={() => setOpen(true)}
           onClick={() => setOpen(true)}
+          onKeyDown={preventSearchFormSubmission}
           onChange={(event) => {
             setOpen(true);
             setSearch(
@@ -804,7 +807,7 @@ export function TaskComments({
                         ) : null}
                         {!isArchived &&
                         (comment.out_can_edit || comment.out_can_delete) ? (
-                          <div className="mt-2 flex flex-wrap gap-1">
+                          <div className="mt-2 flex flex-wrap items-center justify-end gap-1">
                             {comment.out_can_edit ? (
                               <Button
                                 type="button"

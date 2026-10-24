@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { APP_TIME_ZONE } from "@/lib/timezone";
+import { splitAppTimestamp } from "@/lib/timezone";
 import {
   isTaskAssigneeWorkload,
   toEventAssigneeOption,
@@ -36,31 +36,6 @@ type EditableTaskMetadata = {
   end_time: string | null;
   primary_assignees: string[];
 };
-
-const appDateTime = new Intl.DateTimeFormat("en-CA", {
-  timeZone: APP_TIME_ZONE.iana,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
-function splitTimestamp(value: string | null) {
-  if (!value) return { date: "", time: "" };
-
-  const parts = new Map(
-    appDateTime
-      .formatToParts(new Date(value))
-      .map((part) => [part.type, part.value]),
-  );
-
-  return {
-    date: `${parts.get("year")}-${parts.get("month")}-${parts.get("day")}`,
-    time: `${parts.get("hour")}:${parts.get("minute")}`,
-  };
-}
 
 function LoadError() {
   return (
@@ -188,8 +163,8 @@ export default async function EditEventPage({
   const initialTasks: InitialEventTask[] = (tasksResult.data ?? []).map(
     (task) => {
       const details = taskDetails.get(task.id);
-      const call = splitTimestamp(task.call_time);
-      const end = splitTimestamp(task.end_time);
+      const call = splitAppTimestamp(task.call_time) ?? { date: "", time: "" };
+      const end = splitAppTimestamp(task.end_time) ?? { date: "", time: "" };
 
       return {
         id: task.id,

@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 function EventCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-2xl border bg-card" aria-hidden>
-      <Skeleton className="h-20 rounded-none sm:h-24" />
+      <Skeleton className="aspect-video w-full rounded-none" />
       <div className="space-y-3 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-4">
           <Skeleton className="h-6 w-2/3" />
@@ -30,6 +30,10 @@ export default function HomeLoading() {
       <div className="grid gap-5 md:grid-cols-2">
         <EventCardSkeleton />
         <EventCardSkeleton />
+      </div>
+      <div className="mt-8 space-y-3">
+        <Skeleton className="h-7 w-32" />
+        <Skeleton className="h-20 w-full rounded-2xl border" />
       </div>
       <span className="sr-only">Loading events…</span>
     </div>
