@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SetPasswordForm } from "@/components/settings/set-password-form";
 import { AvatarUploader } from "@/components/settings/avatar-uploader";
+import { FullNameForm } from "@/components/settings/full-name-form";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -23,6 +24,13 @@ export default async function SettingsPage() {
       />
 
       <div className="grid max-w-xl gap-5">
+        <SettingsSection
+          title="Profile"
+          description="Update the name shown across the council workspace."
+        >
+          <FullNameForm currentName={profile?.full_name ?? ""} />
+        </SettingsSection>
+
         <SettingsSection
           title="Profile photo"
           description="Shown next to your name across the council workspace."

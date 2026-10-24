@@ -2,6 +2,11 @@
 
 **Run on DEV only. Choose Run without RLS in the pop-up.**
 
+> **Obsolete after Phase 4B Batch 0:** the catalog assertion containing
+> `co_admin_update_own_committee_members` records the former four-policy
+> state. Keep its historical result count unchanged; use
+> `docs/phase-4b/step-0-tests.md` for the current `users` policy catalog.
+
 Apply `20261017120000_read_only_task_detail.sql` to Dev through the owner's
 normal process before running these tests. Each test below is one
 self-contained SQL Editor paste with its own `auth.users`, profile, event, and

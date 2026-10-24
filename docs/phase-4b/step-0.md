@@ -1,6 +1,6 @@
 # Step 0: Users authorization fix
 
-**Status:** Planned | **Branch:** `fix/users-authz` | **Reasoning level:** High (security-critical migration, route guards, and tests)
+**Status:** Implemented and verified locally; not applied to Dev or Prod | **Branch:** `fix/users-authz` | **Reasoning level:** High (security-critical migration, route guards, and tests)
 
 ## Goal
 
@@ -20,7 +20,7 @@ Remove the broad direct Co-Admin `UPDATE` path on `users`, preserve safe own-pro
 - The tracked `co_admin_update_own_committee_members` policy allows a Co-Admin to update same-committee profile rows directly. Its `WITH CHECK` blocks promotion to Admin but still permits changes to other security-relevant columns and can affect another Co-Admin.
 - `src/app/api/invite/route.ts` performs server-only invitation work and uses the service-role client, but Batch 0 must ensure an active Admin is re-verified before that client is constructed or used.
 - `src/app/(dashboard)/users/page.tsx` is Admin-only in intent but must use `getActiveProfileForRoles(["Admin"])` itself because layout redirects do not guard pages rendered in parallel.
-- Settings and avatar flows already provide own-profile behavior that must keep working without restoring a general `users` update policy.
+- Before Batch 0, Settings had no full-name editor or name-saving path. It only read `full_name` for avatar initials. Batch 0 adds the first minimal full-name editor through the narrow RPC; the existing avatar and password flows remain separate.
 
 ## Scope: in / out
 
@@ -38,6 +38,10 @@ Create a new security-critical migration. Do not edit an applied migration.
 - The RPC and grants must not accept or change `role`, `committee_id`, `is_active`, profile or Auth email authority, `password_set` or other password state, `avatar_url`, `anonymized_at`, or any later anonymization/security marker. Revoke broad table/column update authority that could bypass the fixed writer; do not add another same-committee update policy.
 - Keep Admin and self-read behavior needed by the current application, without treating the Admin policy as authority for later officer transitions.
 - Update the future Phase 4B catalog allowlist for the exact final policies, grants, functions, and signatures.
+
+The migration is `20261024120000_users_authorization_fix.sql`. It revokes direct `UPDATE` on `public.users` from `PUBLIC`, `anon`, and `authenticated`; drops `co_admin_update_own_committee_members`; and creates only `update_own_profile(text)`. The function is postgres-owned, `VOLATILE SECURITY DEFINER`, fixed to an empty search path, executable only by `authenticated`, and updates only the active caller's `full_name`.
+
+The shared name contract rejects U+0000–U+001F, U+007F–U+009F, U+2028, and U+2029. It trims the explicit allowed edge set U+0020, U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000, and U+FEFF, then requires 1–100 Unicode code points. Authorization (`CCP01`) runs before validation (`CCP02`), and the RPC rejects raw input over 1,000 code points before its per-character control scan.
 
 ## Guards that must remain true
 
@@ -61,10 +65,12 @@ Create a new security-critical migration. Do not edit an applied migration.
 - Re-run the users-policy and inactive/profile-less portions of `docs/PHASE-4-STEP-1A-TESTS.md`, `docs/PHASE-4-STEP-2-TESTS.md`, and the Step 10 gate where their assertions remain applicable.
 - Preserve existing Settings/avatar regression coverage and the invite rollback/error contract.
 - Add the final objects to the future Phase 4B catalog without rewriting historical Phase 4 result counts.
+- The former policy is hard-coded in Phase 4 Step 2 TEST 5 and the catalog tests in Steps 3 and 4. Each historical document now marks that assertion obsolete after Batch 0 and points here; its historical result count is unchanged.
+- Step 10A's historical `57 / 8 / 11 / 20 / 0` query does not include `users`, and none of its 11 policies are `users` policies. A direct Batch 0 expansion would be `58 / 9 / 14 / 20 / 0`: one new function, one added reviewed table, the three remaining `users` policies, no new trigger, and no overload. Later Phase 4B batches will establish the final authoritative counts.
 
 ## Test deliverable
 
-Create `docs/phase-4b/step-0-tests.md` when the batch lands. Include one independently rollback-safe Dev SQL paste ending in the required intentional `TEST RESULTS` exception, plus route/page tests.
+`docs/phase-4b/step-0-tests.md` contains one independently rollback-safe Dev SQL paste ending in the required intentional `TEST RESULTS` exception, plus route/page tests. It emits exactly 32 result lines; its eight protected-field forgery checks are one aggregated result line.
 
 Cover active Admin, inactive Admin, Co-Admin, Member, profile-less, and unauthenticated callers; direct updates against self and same/other-committee targets; attempted changes to every protected field; safe approved display-only own-profile editing; page-level guard behavior; service-role guard ordering; malformed invite bodies; checked Supabase failures; and unchanged Admin invite success.
 
@@ -85,6 +91,15 @@ No Co-Admin has direct `UPDATE` access to another `users` row or a broad same-co
 ## Open questions for the owner
 
 None.
+
+## Current writer inventory
+
+- Settings full-name changes now use the caller-session `update_own_profile(text)` RPC. No name-saving path existed before Batch 0.
+- Avatar object upload/removal uses the caller's Storage session; `/api/update-avatar` writes `avatar_url` with `createServiceRoleClient()`.
+- `/api/set-password` and `/api/complete-reset` write `password_set` with `createServiceRoleClient()`.
+- `/api/toggle-user-active` performs Deactivate/Reactivate with `createServiceRoleClient()`.
+- `/api/invite` inserts the invited profile with `createServiceRoleClient()` and checks rollback deletion if insertion fails.
+- No application or Vitest path uses caller-session `.from("users").update(...)`; repository searches covered every `users` table call, user mutation, RPC call, and tracked users grant/policy.
 
 ## Docs to update when this lands
 
