@@ -112,10 +112,10 @@
 
     <!-- Desktop topbar -->
     <div class="hidden md:flex items-center justify-end gap-3 px-6 md:px-10 pt-6">
-      <button id="notif-btn" class="relative w-9 h-9 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-night-muted hover:text-council transition-colors">
+      <a href="notifications.html" aria-label="Notifications" class="relative w-9 h-9 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-night-muted hover:text-council transition-colors">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 3 1 4.5 2 6H4c1-1.5 2-3 2-6Z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>
         <span class="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-rose-500 border border-card dark:border-night-card"></span>
-      </button>
+      </a>
       <div class="flex items-center gap-2.5 pl-1">
         <div class="w-9 h-9 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-sm shrink-0">JC</div>
         <div class="leading-tight hidden lg:block">
@@ -369,36 +369,6 @@
 <!-- MOBILE BOTTOM NAV -->
 
 
-<!-- ROLE MODAL -->
-<div id="role-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
-  <div class="modal-panel bg-card dark:bg-night-card rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-300/60 dark:border-white/10">
-      <p class="font-display font-semibold text-base">Change User Role</p>
-      <button data-close-role class="text-slate-400 hover:text-council transition-colors"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-    </div>
-    <div class="p-5 max-h-[75vh] overflow-y-auto">
-      <div class="flex items-center gap-3 rounded-xl bg-slate-100 dark:bg-white/5 p-3 mb-5">
-        <span id="role-modal-avatar" class="w-10 h-10 rounded-full bg-council-wash text-council-dark font-display font-semibold flex items-center justify-center text-sm shrink-0">JC</span>
-        <div class="leading-tight">
-          <p class="text-[10px] uppercase tracking-wide font-bold text-slate-400 dark:text-night-muted/70">Selected User</p>
-          <p id="role-modal-name" class="text-sm font-semibold">Juan Cruz</p>
-          <p id="role-modal-email" class="text-[11px] text-slate-500 dark:text-night-muted">juan.cruz@cvsu.edu.ph</p>
-        </div>
-      </div>
-
-      <label class="text-xs font-semibold text-slate-600 dark:text-night-muted block mb-1.5">Select New Committee</label>
-      <select id="role-modal-committee" class="select-styled w-full rounded-lg border border-slate-300 dark:border-white/15 bg-paper dark:bg-night-bg px-3.5 py-2.5 text-sm mb-5 focus:outline-none focus:ring-2 focus:ring-council/40"></select>
-
-      <p class="text-xs font-semibold text-slate-600 dark:text-night-muted mb-2">Select New Role</p>
-      <div id="role-modal-cards" class="flex flex-col gap-2.5"></div>
-    </div>
-    <div class="flex items-center justify-end gap-2.5 px-5 py-4 border-t border-slate-300/60 dark:border-white/10">
-      <button data-close-role class="rounded-xl border border-slate-300 dark:border-white/15 text-sm font-semibold px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
-      <button id="role-modal-update-btn" class="rounded-xl bg-ink dark:bg-council-dark text-white font-semibold text-sm px-4 py-2.5 hover:bg-council-dark transition-colors disabled:opacity-40" disabled>Update Role</button>
-    </div>
-  </div>
-</div>
-
 <!-- DEACTIVATE MODAL -->
 <div id="deactivate-modal-overlay" class="modal-overlay hidden-modal fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
   <div class="modal-panel bg-card dark:bg-night-card rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
@@ -425,7 +395,7 @@
 
 <!-- TOAST -->
 <div id="toast" class="toast toast-hidden fixed bottom-20 md:bottom-5 right-5 left-5 sm:left-auto z-50 flex items-center gap-2.5 rounded-xl bg-ink dark:bg-night-card border border-white/10 text-white px-4 py-3 shadow-xl text-sm">
-  <svg id="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-emerald-400"><path d="M20 6 9 17l-5-5"/></svg>
+  <svg id="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 feedback-success"><path d="M20 6 9 17l-5-5"/></svg>
   <span id="toast-text">Saved</span>
 </div>
 
@@ -451,7 +421,8 @@
     sidebar.classList.toggle('collapsed');
     sidebarToggleIcon.style.transform = sidebar.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
   });
-  document.getElementById('bottom-nav-more').addEventListener('click', function (e) {
+  var bottomNavMore = document.getElementById('bottom-nav-more');
+  if (bottomNavMore) bottomNavMore.addEventListener('click', function (e) {
     e.preventDefault();
     showToast('Event Archives & Settings are one tap away from Home → Menu');
   });
@@ -463,8 +434,8 @@
     tone = tone || 'success';
     toastText.textContent = msg;
     toastIcon.innerHTML = tone === 'error' ? '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>' : '<path d="M20 6 9 17l-5-5"/>';
-    toastIcon.classList.toggle('text-emerald-400', tone !== 'error');
-    toastIcon.classList.toggle('text-red-400', tone === 'error');
+    toastIcon.classList.toggle('feedback-success', tone !== 'error');
+    toastIcon.classList.toggle('feedback-danger', tone === 'error');
     toast.classList.remove('toast-hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toast.classList.add('toast-hidden'); }, 3400);
@@ -489,6 +460,7 @@
     { key:'Co-Admin', desc:'Authorized to create new events and monitor assigned committee members and operations.', icon:'<path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.6 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8Z"/>' },
     { key:'Member', desc:'View events, tasks, and historical archives with permissions to execute assigned tasks and comment.', icon:'<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-7 8-7s8 3 8 7"/>' }
   ];
+  var INVITATION_ROLES = ROLES.filter(function (role) { return role.key === 'Member'; });
   var ROLE_TONE = {
     'Admin': 'bg-ink text-white dark:bg-council-dark',
     'Co-Admin': 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
@@ -511,13 +483,52 @@
     { id:13, name:'Leo Ramirez', email:'leo.ramirez@cvsu.edu.ph', committee:'CARA', role:'Member', status:'active', last:'4m ago' }
   ];
   var nextId = 100;
+  var INVITATION_STORAGE_KEY = 'ceitPendingInvitations';
+
+  function normalizeEmail(email) { return email.trim().toLowerCase(); }
+  function readStoredInvitations() {
+    try {
+      var stored = JSON.parse(localStorage.getItem(INVITATION_STORAGE_KEY) || '[]');
+      return Array.isArray(stored) ? stored : [];
+    }
+    catch (error) { return []; }
+  }
+  function invitationIsPending(invitation) {
+    return !!invitation && typeof invitation.email === 'string' && invitation.status === 'pending' && (!invitation.expiresAt || Date.parse(invitation.expiresAt) > Date.now());
+  }
+  readStoredInvitations().filter(invitationIsPending).forEach(function (invitation) {
+    if (!users.some(function (user) { return normalizeEmail(user.email) === normalizeEmail(invitation.email); })) {
+      users.unshift({ id: nextId++, name: invitation.name, email: invitation.email, committee: invitation.committee, role: 'Member', status: 'pending', inviteExpiresAt: invitation.expiresAt, last: 'Invited just now' });
+    }
+  });
+
+  function createPendingInvitation(invitation) {
+    var commit = function () {
+      var stored = readStoredInvitations();
+      var duplicateInDirectory = users.some(function (user) {
+        return user.status === 'pending' && (!user.inviteExpiresAt || Date.parse(user.inviteExpiresAt) > Date.now()) && normalizeEmail(user.email) === invitation.email;
+      });
+      var duplicateInStorage = stored.some(function (record) {
+        return invitationIsPending(record) && normalizeEmail(record.email) === invitation.email;
+      });
+      if (duplicateInDirectory || duplicateInStorage) return false;
+      stored.push(invitation);
+      try { localStorage.setItem(INVITATION_STORAGE_KEY, JSON.stringify(stored)); }
+      catch (error) { return false; }
+      return true;
+    };
+    if (navigator.locks && navigator.locks.request) {
+      return navigator.locks.request('ceit-pending-invitations', commit);
+    }
+    return Promise.resolve(commit());
+  }
 
   var state = { search:'', roles:new Set(), statuses:new Set(), committee:'', page:1 };
   var PAGE_SIZE = 5;
   var openMenuId = null;
 
   // ---- populate committee selects ----
-  [document.getElementById('committee-filter'), document.getElementById('invite-committee'), document.getElementById('role-modal-committee')].forEach(function (sel, idx) {
+  [document.getElementById('committee-filter'), document.getElementById('invite-committee')].forEach(function (sel) {
     COMMITTEES.forEach(function (c) {
       var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
     });
@@ -541,17 +552,17 @@
   }
   function statusTag(status, withLabel) {
     var map = {
-      active:      { dot:'bg-emerald-500 live-dot', text:'text-emerald-600 dark:text-emerald-400', label:'Active' },
-      offline:     { dot:'bg-slate-400', text:'text-slate-500 dark:text-night-muted', label:'Offline' },
-      pending:     { dot:'bg-amber-500 live-dot', text:'text-amber-600 dark:text-amber-400', label:'Pending Invite' },
-      deactivated: { dot:'bg-rose-500', text:'text-rose-500', label:'Deactivated' }
+      active:      { dot:'feedback-success-dot live-dot', text:'feedback-success', label:'Active' },
+      offline:     { dot:'feedback-neutral-dot', text:'feedback-neutral', label:'Offline' },
+      pending:     { dot:'feedback-warning-dot live-dot', text:'feedback-warning', label:'Pending Invite' },
+      deactivated: { dot:'feedback-danger-dot', text:'feedback-danger', label:'Deactivated' }
     };
     var m = map[status];
     return '<span class="inline-flex items-center gap-1.5 ' + m.text + '"><span class="w-2 h-2 rounded-full ' + m.dot + '"></span>' + (withLabel === false ? '' : '<span class="text-[12px] font-medium">' + m.label + '</span>') + '</span>';
   }
 
-  function buildRoleCardsHTML(name, selected) {
-    return ROLES.map(function (r) {
+  function buildRoleCardsHTML(name, selected, availableRoles) {
+    return (availableRoles || ROLES).map(function (r) {
       var checked = r.key === selected ? 'checked' : '';
       return (
         '<label class="role-card cursor-pointer">' +
@@ -630,7 +641,6 @@
   function rowMenuHTML(u) {
     var items = [];
     items.push({ act:'copy', label:'Copy Email', icon:'<rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>' });
-    items.push({ act:'role', label:'Change Role', icon:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>' });
     if (u.status === 'pending') items.push({ act:'resend', label:'Resend Invite', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>' });
     if (u.status === 'active' || u.status === 'offline') items.push({ act:'deactivate', label:'Deactivate Roster', icon:'<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>', danger:true });
     if (u.status === 'deactivated') items.push({ act:'reactivate', label:'Reactivate Account', icon:'<path d="M3 12a9 9 0 1 0 2.6-6.35M3 4v5h5"/>', ok:true });
@@ -744,7 +754,6 @@
     var user = users.find(function (u) { return u.id === uid; });
     closeAllMenus();
     if (act === 'copy') { if (navigator.clipboard) navigator.clipboard.writeText(user.email).catch(function () {}); showToast('Email copied'); }
-    else if (act === 'role') openRoleModal(user);
     else if (act === 'resend') showToast('Invite resent to ' + user.email);
     else if (act === 'deactivate') openDeactivateModal(user);
     else if (act === 'reactivate') { user.status = 'offline'; user.last = 'Reactivated just now'; render(); showToast(user.name + ' reactivated — they can sign in again.'); }
@@ -801,41 +810,6 @@
   document.getElementById('reset-filters-btn').addEventListener('click', function () { resetFilters(); showToast('Filters reset'); });
   document.getElementById('empty-reset-btn').addEventListener('click', function () { resetFilters(); showToast('Filters reset'); });
 
-  // ================= Role modal =================
-  var roleModalOverlay = document.getElementById('role-modal-overlay');
-  var roleModalUserId = null;
-  function openRoleModal(user) {
-    roleModalUserId = user.id;
-    document.getElementById('role-modal-avatar').textContent = initials(user.name);
-    document.getElementById('role-modal-name').textContent = user.name;
-    document.getElementById('role-modal-email').textContent = user.email;
-    document.getElementById('role-modal-committee').value = user.committee;
-    document.getElementById('role-modal-cards').innerHTML = buildRoleCardsHTML('modal-role', user.role);
-    document.getElementById('role-modal-update-btn').disabled = true;
-    bindRoleModalChangeWatchers(user);
-    roleModalOverlay.classList.remove('hidden-modal');
-  }
-  function bindRoleModalChangeWatchers(user) {
-    function check() {
-      var newRole = document.querySelector('input[name="modal-role"]:checked').value;
-      var newCommittee = document.getElementById('role-modal-committee').value;
-      document.getElementById('role-modal-update-btn').disabled = (newRole === user.role && newCommittee === user.committee);
-    }
-    document.querySelectorAll('input[name="modal-role"]').forEach(function (r) { r.addEventListener('change', check); });
-    document.getElementById('role-modal-committee').addEventListener('change', check);
-  }
-  document.querySelectorAll('[data-close-role]').forEach(function (b) { b.addEventListener('click', function () { roleModalOverlay.classList.add('hidden-modal'); }); });
-  roleModalOverlay.addEventListener('click', function (e) { if (e.target === roleModalOverlay) roleModalOverlay.classList.add('hidden-modal'); });
-  document.getElementById('role-modal-update-btn').addEventListener('click', function () {
-    if (this.disabled) return;
-    var user = users.find(function (u) { return u.id === roleModalUserId; });
-    user.role = document.querySelector('input[name="modal-role"]:checked').value;
-    user.committee = document.getElementById('role-modal-committee').value;
-    roleModalOverlay.classList.add('hidden-modal');
-    render();
-    showToast('Role updated for ' + user.name);
-  });
-
   // ================= Deactivate modal =================
   var deactivateModalOverlay = document.getElementById('deactivate-modal-overlay');
   var deactivateUserId = null;
@@ -855,7 +829,7 @@
   });
 
   // ================= Invite form =================
-  document.getElementById('invite-role-cards').innerHTML = buildRoleCardsHTML('invite-role', '');
+  document.getElementById('invite-role-cards').innerHTML = buildRoleCardsHTML('invite-role', '', INVITATION_ROLES);
   function resetInviteForm() {
     document.getElementById('invite-name').value = '';
     document.getElementById('invite-email').value = '';
@@ -875,16 +849,41 @@
     function setInvalid(id, bad) { document.getElementById(id).classList.toggle('field-invalid', bad); if (bad) valid = false; }
     setInvalid('field-name', !name);
     setInvalid('field-email', !EMAIL_RE.test(email));
-    setInvalid('field-role', !role);
+    setInvalid('field-role', !INVITATION_ROLES.some(function (allowed) { return allowed.key === role; }));
     setInvalid('field-committee', !committee);
 
     if (!valid) { showToast('Please fix the highlighted fields', 'error'); return; }
 
-    users.unshift({ id: nextId++, name: name, email: email, committee: committee, role: role, status: 'pending', last: 'Invited just now' });
-    state.page = 1;
+    if (!INVITATION_ROLES.some(function (allowed) { return allowed.key === role; })) {
+      showToast('Only member invitations are allowed', 'error');
+      return;
+    }
+    var normalizedEmail = normalizeEmail(email);
+    var invite = { name: name, email: normalizedEmail, committee: committee, status: 'pending', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() };
+    var submitButton = document.getElementById('invite-submit-btn');
+    submitButton.disabled = true;
+    createPendingInvitation(invite).then(function (created) {
+      submitButton.disabled = false;
+      if (!created) { showToast('This person already has a pending invitation', 'error'); return; }
+      users.unshift({ id: nextId++, name: name, email: normalizedEmail, committee: committee, role: role, status: 'pending', inviteExpiresAt: invite.expiresAt, last: 'Invited just now' });
+      state.page = 1;
+      render();
+      showToast('Invite sent to ' + normalizedEmail + ' — link expires in 48 hours');
+      showView(viewDirectory);
+    }).catch(function () {
+      submitButton.disabled = false;
+      showToast('Could not safely save the invitation. Please try again.', 'error');
+    });
+  });
+
+  window.addEventListener('storage', function (event) {
+    if (event.key !== INVITATION_STORAGE_KEY) return;
+    readStoredInvitations().filter(invitationIsPending).forEach(function (invitation) {
+      if (!users.some(function (user) { return normalizeEmail(user.email) === normalizeEmail(invitation.email); })) {
+        users.unshift({ id: nextId++, name: invitation.name, email: invitation.email, committee: invitation.committee, role: 'Member', status: 'pending', inviteExpiresAt: invitation.expiresAt, last: 'Invited just now' });
+      }
+    });
     render();
-    showToast('Invite sent to ' + email + ' — link expires in 48 hours');
-    showView(viewDirectory);
   });
 
   render();
@@ -923,5 +922,6 @@
   })();
 </script>
 
+<script src="app-footer.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # CEIT Connect Design System
 
-**Status:** Owner approval required before Phase 4B Batch 2 starts.
+**Status:** Approved by the owner.
 
 This guide turns the existing tokens, shared components, and approved prototype direction into one implementation contract. It applies to Batch 2 and later UI batches; it does not change permissions, readers, or database behavior.
 
@@ -14,6 +14,7 @@ This guide turns the existing tokens, shared components, and approved prototype 
 
 - Desktop has a persistent labeled sidebar. Every navigation icon has a visible text label in the expanded state, with a clear semantic active state. Collapsing may retain icon tooltips and accessible names.
 - Desktop has a top-right identity cluster containing the theme toggle, avatar, full name, and role. The sidebar is navigation, not the only place identity is shown.
+- Desktop and phone top headers use a subtle semantic tint, soft bottom boundary, and restrained backdrop blur when content scrolls beneath them. Their sticky offsets and layer order must not cover focused content, dialogs, or page-level sticky panels.
 - On phones, use the prototype pattern: sticky compact top bar, theme toggle and avatar, plus the existing bottom navigation and More sheet. Tapping the avatar opens a menu showing the user's full name, role, **Settings**, and **Sign out**. The main content must clear both bars and safe-area insets.
 - Center the main content column with `mx-auto w-full max-w-6xl`; narrower forms and reading surfaces may use a smaller semantic max width. Kanban may use the full available content width.
 - Home is events only. Do not add dashboard statistics, task summaries, notifications, or Phase 5 surfaces.
@@ -22,10 +23,15 @@ This guide turns the existing tokens, shared components, and approved prototype 
 
 - Use `bg-background` for the page, `bg-card text-card-foreground` for raised surfaces, `border-border` for boundaries, and `bg-muted` or `bg-secondary` for quiet grouped regions.
 - Keep page structure consistent: `PageHeader`, optional actions, then content. Cards use the shared `Card`; empty results use `EmptyState`; tables use the shared responsive `Table` or the established phone-card equivalent.
+- Give cards and section headers a polished but restrained hierarchy with semantic-token icon badges, soft `border` boundaries, consistent spacing, and optional subtle `primary`/`muted` tints or gradients. Do not use raw colors, entrance animation, or shield/paw backgrounds for this treatment.
+- Settings uses a centered narrow content column (about `max-w-4xl`) with no more than two equal-width card columns. Profile, Profile photo, and Password remain independent cards and stack before their fields become cramped.
 - Orange (`primary`) buttons are reserved for the single primary action in a local decision area, such as Create, Save, Launch, or Confirm. Use `outline`, `secondary`, or `ghost` for navigation and supporting actions, and `destructive` only for destructive actions. Do not make every action orange.
 - Icon-only buttons require an accessible name and tooltip/title where the meaning is not visible. Every form label must match an input `id` through `htmlFor`.
 - A navigating card or row uses the whole box as its link target. Never nest a button or another interactive control inside a link; place independent actions as accessible siblings.
 - Per-item destructive actions such as Archive, Deactivate, Remove, and Delete live in menus and require confirmation. Bulk actions and typed-confirmation flows remain buttons that open their confirmation dialog.
+- On Active Home event cards, Edit and Archive live in one per-item menu that renders only when the viewer has an available action; its trigger stays separate from the stretched card link. Draft cards instead show a visible supporting Edit button because Drafts have no other per-card action.
+- Home Draft events remain visually compact and distinct from Active cards: dashed boundary, small banner thumbnail, visible Draft badge, “Not launched” metadata, and a single-column list. Badge and Edit must wrap without overlap at every width.
+- Long form dialogs may pin their header and action footer around one internal scroll region. Validation remains visible beside the actions, and an invalid submit focuses or reveals the first problem without changing validation rules.
 
 ## Contrast and states
 

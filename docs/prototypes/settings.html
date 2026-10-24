@@ -101,18 +101,24 @@
     <!-- Mobile topbar -->
     <div class="md:hidden sticky top-0 z-20 flex items-center justify-between bg-card/95 dark:bg-night-card/95 backdrop-blur border-b border-slate-300/70 dark:border-white/10 px-4 py-3">
       <div class="flex items-center gap-2">
-        <svg width="26" height="26" viewBox="0 0 100 100" class="shrink-0"><ellipse cx="50" cy="52" rx="34" ry="26" fill="#EC6608"/><ellipse cx="50" cy="60" rx="21" ry="16" fill="#FFF8F0"/><ellipse cx="30" cy="26" rx="9" ry="8" fill="#EC6608"/><ellipse cx="70" cy="26" rx="9" ry="8" fill="#EC6608"/></svg>
-        <p class="font-display font-semibold text-[15px]">CEIT Connect</p>
+        <a href="index.html">
+          <svg width="26" height="26" viewBox="0 0 100 100" class="shrink-0"><ellipse cx="50" cy="52" rx="34" ry="26" fill="#EC6608"/><ellipse cx="50" cy="60" rx="21" ry="16" fill="#FFF8F0"/><ellipse cx="30" cy="26" rx="9" ry="8" fill="#EC6608"/><ellipse cx="70" cy="26" rx="9" ry="8" fill="#EC6608"/></svg>
+        </a>
+        <p class="font-display font-semibold text-[15px]">
+          <a href="index.html">
+            CEIT Connect
+          </a>
+        </p>
       </div>
       <div id="topbar-avatar-mobile" class="w-8 h-8 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-xs overflow-hidden">JC</div>
     </div>
 
     <!-- Desktop topbar -->
     <div class="hidden md:flex items-center justify-end gap-4 px-8 lg:px-10 pt-6">
-      <button class="relative w-10 h-10 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted hover:text-council transition-colors">
+      <a href="notifications.html" aria-label="Notifications" class="relative w-10 h-10 rounded-full bg-card dark:bg-night-card border border-slate-300/70 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-night-muted hover:text-council transition-colors">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crit border-2 border-paper dark:border-night-bg"></span>
-      </button>
+      </a>
       <div class="flex items-center gap-2.5">
         <div id="topbar-avatar" class="w-9 h-9 rounded-full bg-council text-white font-display font-semibold flex items-center justify-center text-xs shrink-0 overflow-hidden">JC</div>
         <div class="leading-tight">
@@ -743,5 +749,6 @@
   })();
 </script>
 
+<script src="app-footer.js"></script>
 </body>
 </html>
