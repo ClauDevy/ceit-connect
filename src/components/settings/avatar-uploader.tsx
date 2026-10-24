@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import imageCompression from "browser-image-compression"
 import { Button } from "@/components/ui/button"
+import { InlineAlert } from "@/components/ui/inline-alert"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { AvatarCropper } from "@/components/settings/avatar-cropper"
 import { createClient } from "@/lib/supabase/client"
@@ -23,6 +24,7 @@ export function AvatarUploader({
   const [imageSrc, setImageSrc] = useState<string | null>(null)
   const [status, setStatus] = useState<"idle" | "saving" | "removing" | "error">("idle")
   const [error, setError] = useState("")
+  const [cleanupWarning, setCleanupWarning] = useState("")
   const [preview, setPreview] = useState(currentAvatarUrl)
   const fileInput = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -51,6 +53,7 @@ export function AvatarUploader({
     if (!imageSrc) return
     setStatus("saving")
     setError("")
+    setCleanupWarning("")
 
     try {
       const croppedBlob = await getCroppedBlob(imageSrc, area)
@@ -75,26 +78,27 @@ export function AvatarUploader({
         return
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(path)
-
-      const freshUrl = `${publicUrl}?t=${Date.now()}`
-
       const res = await fetch("/api/update-avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl: freshUrl }),
+        body: JSON.stringify({ action: "save" }),
       })
 
+      const data = await res.json().catch(() => ({}))
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
         setError(data.error ?? "Failed to save avatar")
         setStatus("error")
         return
       }
 
-      setPreview(freshUrl)
+      if (typeof data.avatarUrl !== "string") {
+        setError("The saved photo response was invalid. Refresh and try again.")
+        setStatus("error")
+        return
+      }
+
+      setPreview(data.avatarUrl)
       closeCropper()
       setStatus("idle")
       router.refresh()
@@ -107,28 +111,28 @@ export function AvatarUploader({
   async function handleRemove() {
     setStatus("removing")
     setError("")
+    setCleanupWarning("")
 
     try {
-      const supabase = createClient()
-      const path = `${userId}/avatar.webp`
-
-      // Best-effort delete from Storage — if it's already gone, that's fine.
-      await supabase.storage.from("avatars").remove([path])
-
+      // The route clears the database first, then performs retry-safe cleanup.
       const res = await fetch("/api/update-avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl: null }),
+        body: JSON.stringify({ action: "remove" }),
       })
 
+      const data = await res.json().catch(() => ({}))
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
         setError(data.error ?? "Failed to remove avatar")
         setStatus("error")
         return
       }
 
       setPreview(null)
+      if (data.cleanupPending === true && typeof data.warning === "string") {
+        setCleanupWarning(data.warning)
+      }
       setStatus("idle")
       router.refresh()
     } catch {
@@ -159,6 +163,15 @@ export function AvatarUploader({
               {status === "removing" ? "Removing…" : "Remove"}
             </Button>
           )}
+          {!preview && cleanupWarning && (
+            <Button
+              variant="outline"
+              disabled={status === "removing"}
+              onClick={handleRemove}
+            >
+              {status === "removing" ? "Retrying…" : "Retry photo cleanup"}
+            </Button>
+          )}
           <input
             ref={fileInput}
             type="file"
@@ -178,6 +191,8 @@ export function AvatarUploader({
           {error}
         </p>
       )}
+
+      {cleanupWarning && <InlineAlert variant="info">{cleanupWarning}</InlineAlert>}
 
       {imageSrc && (
         <AvatarCropper
