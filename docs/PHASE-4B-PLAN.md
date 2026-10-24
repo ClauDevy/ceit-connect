@@ -89,7 +89,7 @@ See `docs/PROGRESS.md` for the canonical project-wide open-items list.
 Parked here only: custom domain and Resend, weekly manual Supabase backups, calendar view
 (optional, after Phase 5), and task Realtime (unplanned).
 
-Team confirmations still needed: `allowed_viewers`, backup and volunteers, and late sharing.
+Historical Phase 4 note: the team confirmations for `allowed_viewers`, backup and volunteers, and late sharing were resolved as part of the completed, live Phase 4 work; they are not open Phase 4B decisions.
 
 ## Phase 5 (after Phase 4B batches 0 through 14)
 Notifications (bell, Discord webhooks, Resend for critical only), Executive Dashboard, polish.

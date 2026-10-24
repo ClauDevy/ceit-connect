@@ -102,6 +102,8 @@ Existing rows at a boundary are counted authoritatively in the database. UI coun
 
 Add one tracked security-critical migration for the deny-by-default leave table, narrow functions, approved cap enforcement, and only the volunteer/assignment/event writers that require replacement. Preserve fixed empty search paths, caller derivation, exact grants, no overloads, authorization-before-sensitive errors, exact affected-row checks, and established task/event locking and retry behavior.
 
+Every volunteer-accept, officer auto-helper, leave-request approval, immediate-leave, or other Step 13 writer that changes `primary_assignees` or `assist_assignees` must use Step 10's shared per-user advisory lock contract: lock every affected unique user id in sorted order before taking any task or event row lock, then re-read authoritative assignment and eligibility state.
+
 ## Batch 15 dependency pointer
 
 Batch 15's notification work consumes only the final, approved Step 13 outcomes and actor/recipient rules. Step 13 does not send notifications. When Batch 15 is planned, it must reference the settled leave-request transitions, officer auto-helper outcome, requester cancellation, and leadership approve/deny events without adding a second writer or broadening access to confidential task/request data.

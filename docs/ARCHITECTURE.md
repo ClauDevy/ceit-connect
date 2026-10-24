@@ -60,7 +60,7 @@ Hiding a nav icon is UX polish, not security. Every UI role check must have a ma
 - **Assist system:** "Request Backup" flags a task with an orange "Help Wanted" badge, visible council-wide. Any member can "Volunteer"; the creator accepts, adding the volunteer to `assist_assignees` and granting edit rights.
 - **Dependencies:** if Task B depends on Task A, B shows a lock icon and "Start Task" is disabled until A is Completed.
 - **Confidential tasks:** RLS is row-level and cannot show a masked title while hiding the description, so a `SECURITY DEFINER` function `get_task(p_task_id)` returns either the real data or a masked "Confidential Task" row. Real content is visible to: Admin; Co-Admin of the same committee; primary assignees; assist assignees; and anyone in `allowed_viewers`. The function's own `can_view` logic is the security boundary — keep it simple and never build it from user-supplied text. **The board must always call `get_task`, never a raw select, wherever confidentiality matters.**
-- **Status updates:** desktop drag-and-drop (dnd-kit, optimistic updates); mobile circular tap-checkbox → Completed. No drag-to-delete; deletion is a confirmed button on the task page, restricted to Admins/creators.
+- **Status updates:** desktop drag-and-drop (dnd-kit, optimistic updates); mobile circular tap-checkbox → Completed. No drag-to-delete; deletion is a confirmed button on the task page, restricted to active Admins and Co-Admins with real task access. Task creators receive no special deletion right.
 - **Priorities:** default Medium; auto-escalates to High 24 hours before due; Critical (flashing red) once overdue.
 - **Comments:** per-task thread via react-mentions; `@mention` targets one user; "Heads Up" blasts all assignees.
 
@@ -86,7 +86,8 @@ Supabase free tier has no automated backups. A designated Technical Lead exports
 | 1 | Database, security, RLS | Done |
 | 2 | Auth, image pipeline, offboarding | Done |
 | 3 | Event engine, drafts, relative scheduling, archives | Done |
-| 4 | Task engine, Kanban, dependencies, confidentiality UI | **Next** |
+| 4 | Task engine, Kanban, dependencies, confidentiality UI | Done |
+| 4B | Pre-Phase-5 authorization, account, task-rule, and UI changes | Planned |
 | 5 | Notifications, dashboard wiring, ops handover | Not started |
 
 **Phase 3 gate checks:** auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link renders an inline preview and plain text falls back to a link; active Admins and Co-Admins can see and edit any Draft, while a Member cannot see a Draft even via direct URL; a Co-Admin can launch any Draft but cannot change Active back to Draft or archive one; an Archived event cannot be updated or un-archived.

@@ -25,7 +25,7 @@ Year-end handover is either: return the old Co-Admin head to Member and appoint 
 
 ### Cap setting
 
-- Add a new `public.app_settings` singleton table with `enforce_officer_role_caps boolean not null default false`.
+- Add a new `public.app_settings` singleton table with a fixed singleton key, enforced by a primary key plus a check constraint that permits only that key, and `enforce_officer_role_caps boolean not null default false`. The migration inserts exactly one row for the fixed key.
 - RLS is enabled. `anon` and `authenticated` receive no table grants and no policy that exposes the row. The value is read only inside the officer functions.
 - The exact switch is `public.app_settings.enforce_officer_role_caps`. It is `false` in Dev and Prod during Phase 4B testing.
 - When false, any number of Admins and Co-Admins may exist for testing. All authorization, transition validation, and never-zero protection still apply.
@@ -67,7 +67,7 @@ Every officer function must:
 
 1. derive and re-verify the active caller and exact permitted operation;
 2. take the same transaction-level advisory lock before reading settings, reservations, active-role counts, or targets;
-3. read `public.app_settings.enforce_officer_role_caps` internally;
+3. read `public.app_settings.enforce_officer_role_caps` internally from the exact fixed singleton key and fail closed unless exactly one row is found;
 4. lock affected rows in deterministic UUID order;
 5. re-read target roles, committees, active states, and invite states;
 6. enforce never-zero protection unconditionally and upper caps only when the setting is true and the operation adds/activates a seat;
@@ -113,6 +113,7 @@ No current code path may depend on selecting an arbitrary first Co-Admin row.
 - Pending invites reserve seats only when caps are on and are released exactly once by cancellation, expiry handling if later approved, or successful activation.
 - An account over the future limit remains usable after caps turn on; only additive invites, appointments, and activations are rejected.
 - Runtime-validate every batch item and reject more than 10 before sending email. Check every Supabase result.
+- `public.app_settings` has exactly the seeded fixed-key row: alternate keys and duplicate singleton rows are rejected, and officer functions fail closed if the row is missing or malformed.
 
 ## Security and concurrency risks
 
@@ -123,6 +124,7 @@ No current code path may depend on selecting an arbitrary first Co-Admin row.
 - Service-role routes bypass RLS and therefore re-verify the caller before constructing or using the service-role client.
 - Creating Auth invitations before durable reservation/finalization can consume SMTP/Resend budget and leave a partial account. Validate first, send sequentially, clean up only a newly created unaccepted attempt, and expose the exact partial result.
 - An automatic retry can duplicate mail, reservations, or accounts. Retry is explicit, idempotent, per person, and based on authoritative Auth/database state.
+- A singleton table without a fixed checked primary key can accumulate ambiguous settings rows. Pin the key, seed one row transactionally, deny client writes, and require every reader to reject a missing or non-unique result.
 
 ## Earlier test docs and service-role callsites to re-run or audit
 
@@ -144,6 +146,8 @@ With caps **on**, exercise the same six operations. Prove the two-Admin and one-
 
 Cover all six operations, no generic transition RPC, active/inactive/profile-less callers, raw-write denial, Admin-to-Admin prohibitions, committee validation, unaccepted invite cancellation, one-account history, batches of 0/1/10/11, partial email failure, and service-role guard order.
 
+Catalog and invariant tests must prove the fixed singleton-key primary key and check constraint, exactly one seeded row, duplicate-key rejection, invalid-key rejection, the expected setting value, fail-closed officer readers, and no `anon` or `authenticated` table privileges or policies.
+
 Concurrency cases include competing invites, appointments, and activations for the same final seat; two step-down attempts; return-to-Member versus appointment; Member move versus appointment; cancellation versus activation; and same/different-committee operations. Run the applicable cases with caps off and caps on. Assert no zero-Admin state, partial transition, duplicate reservation, wrong committee, double-released seat, or deadlock.
 
 Email-route cases cover 0/1/10/11 entries, normalized duplicates, other auth-email traffic near the approximately 30/hour SMTP limit, the 100/day Resend limit (**rebuilt, please verify**), provider rate-limit responses, failure before send, Auth-success/database-failure, database-reservation/Auth-failure, cleanup success/failure, explicit retry, and a later retry after the original invitation has already succeeded. Assert sequential sending and honest sent/failed/unsent/cleanup-pending results.
@@ -154,6 +158,7 @@ Email-route cases cover 0/1/10/11 entries, normalized duplicates, other auth-ema
 - Exercise all six operations as an active Admin, including both handover paths and Admin self-step-down.
 - Attempt every operation as Co-Admin, Member, inactive Admin, and profile-less user; all fail without leaking invite/target state.
 - Test caps off with extra test officers, then caps on at each boundary, including existing over-limit accounts.
+- Verify both cap modes read the same fixed `app_settings` singleton row, and confirm invalid or missing singleton state fails closed rather than silently disabling enforcement.
 - Verify the `President` lookup row remains and every Admin profile created or appointed has `committee_id = null`.
 - Verify rate-limit and partial failures never leave buttons stuck or cause retry storms.
 - In both cap modes, explicitly repeat move Member and cancel unaccepted invite alongside the other four operations; confirm cancellation releases only its reservation and Member moves never consume an officer seat.

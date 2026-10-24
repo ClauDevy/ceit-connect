@@ -13,7 +13,7 @@ The stable run order for this group is **13, 13c, 13d, 13b**. Phase completion r
 ### `docs/PHASE-4B-PLAN.md` — Updates and audit resolutions
 
 - When every task in a phase is Completed, the phase tab shows a check and strikethrough, is collapsed by default, and is read-only.
-- Read-only means no moves, edits, assignment changes, comments, link changes, or Edit Event writes. Members can still open the phase’s tasks to read them.
+- Read-only means no moves, task edits, assignment changes, comments, link changes, or task mutations submitted through Edit Event. Edit Event may still save event metadata when it submits no task mutation for a completed phase. Members can still open the phase’s tasks to read them.
 - Completion is derived from all tasks in the event+phase; there is no phases table and no stored completion flag.
 - One Reopen RPC moves one chosen task to `In Progress`.
 - Reopen callers are any active Admin or the active Co-Admin whose id equals `events.created_by`. If that Co-Admin is inactive, only Admins may reopen.
