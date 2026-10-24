@@ -37,6 +37,7 @@ export function AvatarMenu({ user }: { user: CurrentUser }) {
           {/* Keep the form mounted until the browser starts the native POST navigation. */}
           <DropdownMenuItem
             render={<button type="submit" />}
+            nativeButton
             closeOnClick={false}
           >
             <LogOut aria-hidden className="size-4" />

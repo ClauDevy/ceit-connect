@@ -22,6 +22,7 @@
 - The avatar menu receives only the existing safe `CurrentUser` fields and renders full name, role, avatar, Settings, and Sign out. It does not receive or render email or another profile field.
 - Phone Sign out remains a native `<form method="post" action="/auth/signout">`. The Base UI menu item renders the submit `<button>` itself, so there is no nested button or other nested interactive element.
 - The Sign out item uses `closeOnClick={false}` so Base UI does not unmount the form before the browser starts its native POST navigation. Successful navigation to the existing sign-out route closes the menu with the page transition.
+- CodeRabbit follow-up: the rendered submit button now sets Base UI 1.8.0's `nativeButton` prop. The installed `Menu.Item` and `useButton` sources confirm Enter is left to the browser's native button activation, while composite-menu Space dispatches one click on keydown and prevents the native keyup duplicate. Mouse/touch still use the button's native click; Escape, outside dismissal, and trigger focus return remain owned by the unchanged menu root and `FloatingFocusManager`.
 - The desktop sidebar still uses `useSidebarCollapsed()`, including its existing local-storage key and expanded server snapshot, so the current choice remains remembered and the default stays expanded.
 - Home retains its existing `requireUser()`, leadership lookup, RLS-scoped event query, event ordering, incomplete-task counts, links, and role conditions.
 
@@ -35,6 +36,7 @@ These checks require real authenticated browser sessions and are not claimed com
 - [ ] In both light and dark themes, verify the sidebar, desktop theme/avatar/full-name/role cluster, phone header, avatar menu, cards, badges, borders, muted text, primary/supporting/destructive buttons, skeletons, and focus rings have readable contrast.
 - [ ] On a phone, open the avatar menu by tap and keyboard. Verify full name, role, Settings, and Sign out; verify no email or other profile field appears.
 - [ ] From the phone avatar menu, activate **Sign out** by tap and keyboard. Confirm the existing native `POST /auth/signout` completes, the user reaches `/login`, the session is cleared, and the menu closes through navigation without cancelling the submit or producing a nested-interactive console/accessibility warning.
+- [ ] Repeat keyboard Sign out separately with Enter and Space while watching the Network panel. Confirm each key produces exactly one `POST /auth/signout`, with no duplicate request.
 - [ ] Verify Escape and outside press dismiss the avatar menu, focus returns to the avatar trigger, arrow-key navigation works, and Settings navigates successfully.
 - [ ] Open the phone More sheet for all three roles and confirm every item expected by `navForRole()` remains present. Confirm the duplicate identity/sign-out block is gone and navigation still dismisses the sheet.
 - [ ] Measure phone theme, avatar, menu actions, bottom tabs, and More controls; each target must be at least 44 by 44 CSS pixels.
