@@ -84,7 +84,9 @@ describe("Part C markup regressions", () => {
 
     expect(markup).toContain("max-w-full");
     expect(markup).toContain("overflow-hidden");
-    expect(markup).toContain("aspect-[16/10]");
+    expect(markup).toContain("aspect-[3/4]");
+    expect(markup).toContain("sm:aspect-[16/10]");
+    expect(markup).toContain("Preview unavailable?");
     expect(markup).toContain("Open link");
   });
 

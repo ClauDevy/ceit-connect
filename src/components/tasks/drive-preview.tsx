@@ -25,7 +25,7 @@ export function DrivePreview({
     <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
       {parsed.previewUrl ? (
         <iframe
-          className="block aspect-[16/10] w-full max-w-full rounded-xl border border-border bg-muted"
+          className="block aspect-[3/4] w-full max-w-full rounded-xl border border-border bg-muted sm:aspect-[16/10]"
           src={parsed.previewUrl}
           title={title}
           sandbox="allow-same-origin allow-scripts allow-popups"
