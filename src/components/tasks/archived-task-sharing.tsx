@@ -84,7 +84,9 @@ export function ArchivedTaskSharing({
       const { data, error } = await request;
       if (error) throw error;
       if (!Array.isArray(data) || !data.every(isArchivedTaskShareControl)) {
-        throw new Error("The archive-sharing reader returned an invalid response.");
+        throw new Error(
+          "The archive-sharing reader returned an invalid response.",
+        );
       }
       return data;
     },
@@ -168,9 +170,7 @@ export function ArchivedTaskSharing({
         await refreshTaskSurface();
       }
       if (action === "revoke") setRevokeTarget(null);
-      setActionError(
-        getArchivedTaskShareErrorMessage(error, action),
-      );
+      setActionError(getArchivedTaskShareErrorMessage(error, action));
     } finally {
       mutationInFlight.current = false;
       setBusyAction(null);
@@ -179,12 +179,12 @@ export function ArchivedTaskSharing({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
         <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
           <LockKeyhole className="size-4" aria-hidden /> Additional viewers
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 pt-4">
+      <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
         {viewers.length > 0 ? (
           <div className="space-y-2.5">
             {viewers.map((viewer) => {

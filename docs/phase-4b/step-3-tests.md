@@ -1,7 +1,7 @@
 # Step 3 tests: UI redesign pages
 
 **Branch:** `feature/ui-redesign-pages`
-**Status:** Part A automated gate passed locally; Parts B-D and real-browser checks pending
+**Status:** Parts A-B automated gate passed locally; Parts C-D and real-browser checks pending
 **Database impact:** None. No SQL, migration, RLS, grant, reader, writer, or Supabase command is part of this batch.
 
 ## Automated gate by part
@@ -18,9 +18,28 @@
 - `git diff --exit-code HEAD -- src/components/ui/segmented-control.tsx src/components/auth/sign-in-panel.tsx` passed with no output. The sign-in segmented control and its caller therefore retain the exact tracked markup, native keyboard behavior, and sizes; the event task-type radio segments are local to `event-form.tsx`.
 - On this Windows machine the package scripts were invoked through `npm.cmd` because PowerShell blocks `npm.ps1`; the package scripts themselves are unchanged.
 
-### Parts B-D
+### Part B - Tasks workspace and task detail
+
+- `npm test` - passed: 27 files, 267 tests. No test file or assertion changed.
+- `npm run build` - passed with Next.js 16.3.4; TypeScript and all 23 generated routes completed successfully.
+- `npm run lint` - passed with zero reported errors or warnings.
+- `git diff --check` - passed; Git reported only the repository's Windows LF-to-CRLF working-copy notices.
+- `git diff --exit-code HEAD -- src/components/ui/segmented-control.tsx src/components/auth/sign-in-panel.tsx` passed with no output.
+- Visual follow-up 1 reran the same gate successfully: 27 files / 267 tests, the Next.js 16.3.4 production build with all 23 routes, zero-warning lint, and `git diff --check`. No test file or assertion changed.
+- Follow-up inspection confirms the lifted status/sort state preserves selections across My Tasks → Help Wanted → My Tasks switches; the query key, RPC argument builder, validators, active-only polling, pagination offsets, and 50-row page size are unchanged. Help Wanted mounts no new filter or sort control.
+
+### Parts C-D
 
 Pending. Add each part's exact command results only after that part is implemented and verified.
+
+## Preserved contracts inspected in Part B
+
+- Workspace retains its page-level signed-in and active-role guards, parallel initial RPCs, exact reader arguments, runtime validators, filters, sorts, focus/visibility-aware 15-second polling, retries, mutations, refetches, and existing 50-row/Load more behavior.
+- Task detail retains its page-level guards, UUID validation, `get_task_detail` confidential masking, work-link/edit-control/backup/workload readers, fixed polling behavior, and all existing mutation RPC names and arguments.
+- Task Delete renders only from `can_delete`, comment Delete only from `out_can_delete`, and work-link Remove only from `can_remove`; no menu trigger mounts when its menu would have no authorized action.
+- Task and comment deletion keep their existing confirmation, busy lock, safe error, payload, and refresh/navigation paths. Comment Edit remains separately capability-driven and aligned beside the delete-only menu.
+- Work-link Remove uses the unchanged `remove_task_work_link` call and `p_link_id` payload. Its new confirmation closes only after successful removal, stays open with the existing mapped safe error after failure, blocks duplicate confirmation while pending, and performs no mutation on Cancel.
+- The assignee picker receives the same existing control rows and workload map only when edit controls exist. No hidden picker, protected-row preload, reader, data shape, or assignment payload changed.
 
 ## Preserved contracts inspected in Part A
 
@@ -33,13 +52,13 @@ Pending. Add each part's exact command results only after that part is implement
 
 ## Destructive-action matrix
 
-| Surface | Capability source | Placement and confirmation | Contract to preserve | Status |
-|---|---|---|---|---|
-| Home Archive | Existing server-derived Admin condition plus loaded incomplete count | Per-event menu, then existing confirmation | Same event id, incomplete count, exact event version, busy state, safe errors, redirect, and refresh | Part A implemented; browser check pending |
-| User Deactivate | Existing User Management row/self conditions | Per-user menu, then existing confirmation | Same endpoint, payload, pending lock, safe errors, and local roster update | Part D pending |
-| Task Delete | `can_delete` from the edit-controls reader | Task menu, then existing confirmation | Same RPC, payload, busy state, safe errors, and authoritative refresh | Part B pending |
-| Comment Delete | `out_can_delete` from the comment reader | Per-comment menu, then existing confirmation; Edit remains separate | Same writer, comment id, busy state, safe errors, and thread refresh | Part B pending |
-| Work-link Remove | `can_remove` from the work-link reader | Per-link menu, then new simple **Remove this link?** confirmation | Owner-approved behavior addition: Cancel performs no mutation; Remove invokes the unchanged removal call once; keep the existing busy lock and safe errors | Part B pending |
+| Surface          | Capability source                                                    | Placement and confirmation                                          | Contract to preserve                                                                                                                                       | Status                                    |
+| ---------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Home Archive     | Existing server-derived Admin condition plus loaded incomplete count | Per-event menu, then existing confirmation                          | Same event id, incomplete count, exact event version, busy state, safe errors, redirect, and refresh                                                       | Part A implemented; browser check pending |
+| User Deactivate  | Existing User Management row/self conditions                         | Per-user menu, then existing confirmation                           | Same endpoint, payload, pending lock, safe errors, and local roster update                                                                                 | Part D pending                            |
+| Task Delete      | `can_delete` from the edit-controls reader                           | Task menu, then existing confirmation                               | Same RPC, payload, busy state, safe errors, and authoritative refresh                                                                                      | Part B implemented; browser check pending |
+| Comment Delete   | `out_can_delete` from the comment reader                             | Per-comment menu, then existing confirmation; Edit remains separate | Same writer, comment id, busy state, safe errors, and thread refresh                                                                                       | Part B implemented; browser check pending |
+| Work-link Remove | `can_remove` from the work-link reader                               | Per-link menu, then new simple **Remove this link?** confirmation   | Owner-approved behavior addition: Cancel performs no mutation; Remove invokes the unchanged removal call once; keep the existing busy lock and safe errors | Part B implemented; browser check pending |
 
 The following stay direct controls: Reactivate, Leave Task, profile-photo Remove, bulk actions, and typed-confirmation actions. Removal of task/phase rows inside Create/Edit Event remains form-state UI and does not gain a new menu or confirmation.
 
@@ -104,7 +123,7 @@ These checks require real authenticated browser sessions and are not claimed com
 
 ### Part B - Tasks workspace and task detail
 
-- [ ] Pending implementation. Verify tabs, keyboard tab movement, filters, sorts, counts, actions, loading/error/empty states, polling, and current 50-row behavior.
+- [ ] In the browser, verify tabs, keyboard tab movement, My Tasks-only filters/sorts, persisted selections across tab switches, counts, actions, compact divided rows, loading/error/empty states, polling, and current 50-row behavior.
 - [ ] Verify real, masked, unavailable, and Archived task states; task assignment, dependencies, confidentiality, backup, volunteers, archive sharing, comments, links, and Leave Task retain current permissions.
 - [ ] Verify task Delete, comment Delete, and work-link Remove against the destructive-action matrix, including work-link Cancel/no-op and exactly one removal on confirmation.
 

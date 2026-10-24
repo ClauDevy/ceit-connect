@@ -3,12 +3,14 @@
 import { type FormEvent, useId, useRef, useState } from "react";
 import {
   ChevronDown,
+  Ellipsis,
   Link2,
   LoaderCircle,
   Plus,
   Trash2,
 } from "lucide-react";
 import { DrivePreview } from "@/components/tasks/drive-preview";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { StretchedExternalLink } from "@/components/shared/stretched-link";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +21,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { defaultDriveLinkName, parseGoogleDriveLink } from "@/lib/google-drive";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +60,7 @@ export function YourWorkCard({
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<WorkLink | null>(null);
   const [openPreviewId, setOpenPreviewId] = useState<string | null>(null);
   const addInFlight = useRef(false);
   const removeInFlight = useRef(false);
@@ -102,6 +111,7 @@ export function YourWorkCard({
     try {
       await onRemoveLink(linkId);
       setOpenPreviewId((current) => (current === linkId ? null : current));
+      setRemoveTarget(null);
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -116,13 +126,13 @@ export function YourWorkCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Your Work</CardTitle>
+      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
+        <CardTitle className="text-[15px]">Your Work</CardTitle>
         <CardDescription>
           Google Drive links stay in Drive; nothing uploads to CEIT Connect.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
         {isAssignee ? (
           <form className="space-y-3" onSubmit={handleSubmit}>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.55fr)_auto]">
@@ -231,24 +241,39 @@ export function YourWorkCard({
                           </Button>
                         ) : null}
                         {link.can_remove && onRemoveLink ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="relative z-20"
-                            aria-label={`Remove ${displayName}`}
-                            disabled={removingId !== null}
-                            onClick={() => void handleRemove(link.id)}
-                          >
-                            {removingId === link.id ? (
-                              <LoaderCircle
-                                aria-hidden="true"
-                                className="animate-spin"
-                              />
-                            ) : (
-                              <Trash2 aria-hidden="true" />
-                            )}
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              aria-label={`More actions for ${displayName}`}
+                              disabled={removingId !== null}
+                              className="relative z-20 inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none sm:size-9"
+                            >
+                              {removingId === link.id ? (
+                                <LoaderCircle
+                                  aria-hidden="true"
+                                  className="size-4 animate-spin"
+                                />
+                              ) : (
+                                <Ellipsis
+                                  aria-hidden="true"
+                                  className="size-5"
+                                />
+                              )}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              aria-label={`Actions for ${displayName}`}
+                            >
+                              <DropdownMenuItem
+                                className="text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+                                onClick={() => {
+                                  setError(null);
+                                  setRemoveTarget(link);
+                                }}
+                              >
+                                <Trash2 aria-hidden="true" className="size-4" />
+                                Remove link
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         ) : null}
                       </>
                     ) : null}
@@ -279,6 +304,24 @@ export function YourWorkCard({
           </p>
         ) : null}
       </CardContent>
+      <ConfirmDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRemoveTarget(null);
+            setError(null);
+          }
+        }}
+        title="Remove this link?"
+        description="This removes the link from the task. The file stays in Google Drive."
+        confirmLabel="Remove link"
+        destructive
+        loading={removingId !== null}
+        error={removeTarget ? error : null}
+        onConfirm={() => {
+          if (removeTarget) void handleRemove(removeTarget.id);
+        }}
+      />
     </Card>
   );
 }

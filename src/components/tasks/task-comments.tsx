@@ -11,6 +11,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AtSign,
+  Ellipsis,
   MessageSquare,
   Pencil,
   RefreshCw,
@@ -25,6 +26,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { preventSearchFormSubmission } from "@/lib/search";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -509,10 +516,7 @@ export function TaskComments({
       const current =
         queryClient.getQueryData<TaskCommentThreadCache>(newestQueryKey);
       return {
-        comments: replaceTaskCommentNewestPage(
-          current?.comments ?? [],
-          data,
-        ),
+        comments: replaceTaskCommentNewestPage(current?.comments ?? [], data),
         hasMore: current?.olderPagingStarted
           ? current.hasMore
           : (data[0]?.out_has_more ?? false),
@@ -690,13 +694,13 @@ export function TaskComments({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
+        <CardTitle className="flex items-center gap-2 text-[15px]">
           <MessageSquare className="size-5" aria-hidden /> Collaboration &amp;
           Activity
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5 pt-4">
+      <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
         {displayedThreadError ? (
           <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
             <span>{displayedThreadError}</span>
@@ -823,18 +827,27 @@ export function TaskComments({
                               </Button>
                             ) : null}
                             {comment.out_can_delete ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                disabled={commentsBusy}
-                                onClick={() => {
-                                  setActionError(null);
-                                  setDeleteTarget(comment);
-                                }}
-                              >
-                                <Trash2 aria-hidden /> Delete
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  aria-label={`More actions for ${comment.out_author_full_name}'s comment`}
+                                  disabled={commentsBusy}
+                                  className="inline-flex size-11 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none sm:size-9"
+                                >
+                                  <Ellipsis aria-hidden className="size-5" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent aria-label="Comment actions">
+                                  <DropdownMenuItem
+                                    className="text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+                                    onClick={() => {
+                                      setActionError(null);
+                                      setDeleteTarget(comment);
+                                    }}
+                                  >
+                                    <Trash2 aria-hidden className="size-4" />
+                                    Delete comment
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             ) : null}
                           </div>
                         ) : null}

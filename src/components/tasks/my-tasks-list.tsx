@@ -7,20 +7,19 @@ import {
   QueryClientProvider,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { LoaderCircle, RefreshCw, TriangleAlert } from "lucide-react";
+import {
+  ChevronRight,
+  LoaderCircle,
+  RefreshCw,
+  TriangleAlert,
+} from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   MY_TASKS_PAGE_SIZE,
   dedupeMyTasks,
@@ -28,8 +27,6 @@ import {
   getMyTasksErrorMessage,
   getMyTasksRpcArgs,
   isMyTask,
-  isMyTasksSort,
-  isMyTasksStatus,
   type MyTask,
   type MyTasksSort,
   type MyTasksStatus,
@@ -39,19 +36,6 @@ import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const POLL_INTERVAL_MS = 15_000;
 
-const statusItems = [
-  { value: "all", label: "All statuses" },
-  { value: "To Do", label: "To Do" },
-  { value: "In Progress", label: "In Progress" },
-  { value: "Completed", label: "Completed" },
-];
-
-const sortItems = [
-  { value: "deadline", label: "Deadline" },
-  { value: "priority", label: "Priority" },
-  { value: "event", label: "Event" },
-];
-
 const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -59,16 +43,11 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: APP_TIME_ZONE.iana,
 });
 
-function priorityVariant(priority: MyTask["out_effective_priority"]) {
-  if (priority === "Critical") return "destructive" as const;
-  if (priority === "High") return "outline" as const;
-  return "neutral" as const;
-}
-
-function assignmentLabel(task: MyTask) {
-  if (task.out_is_primary && task.out_is_assist) return "Primary and assist";
-  if (task.out_is_primary) return "Primary assignment";
-  return "Assist assignment";
+function priorityAccent(priority: MyTask["out_effective_priority"]) {
+  if (priority === "Critical") return "border-l-destructive";
+  if (priority === "High") return "border-l-primary";
+  if (priority === "Medium") return "border-l-secondary-foreground";
+  return "border-l-muted-foreground";
 }
 
 function sortDescription(sort: MyTasksSort) {
@@ -82,15 +61,17 @@ type LoadedState = { count: number; hasNextPage: boolean };
 function MyTasksContents({
   initialTasks,
   active,
+  status,
+  sort,
   onLoadedStateChange,
 }: {
   initialTasks?: MyTask[];
   active: boolean;
+  status: MyTasksStatus;
+  sort: MyTasksSort;
   onLoadedStateChange?: (state: LoadedState) => void;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [status, setStatus] = useState<MyTasksStatus>(null);
-  const [sort, setSort] = useState<MyTasksSort>("deadline");
   const canUseInitialTasks = status === null && sort === "deadline";
 
   const query = useInfiniteQuery({
@@ -145,88 +126,47 @@ function MyTasksContents({
 
   if (query.isPending) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-        <LoaderCircle className="animate-spin" aria-hidden /> Loading your
-        tasks…
-      </div>
+      <Card
+        className="overflow-hidden"
+        role="status"
+        aria-label="Loading your tasks"
+      >
+        <div className="divide-y" aria-hidden>
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="space-y-2.5 px-4 py-3.5 sm:px-5">
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only">Loading your tasks…</span>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4" aria-busy={query.isPlaceholderData}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          {query.isPlaceholderData ? (
-            <span
-              role="status"
-              aria-live="polite"
-              className="inline-flex items-center gap-1.5"
-            >
-              <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-              Updating…
-            </span>
-          ) : (
-            <>
-              {sortDescription(sort)} · {tasks.length} loaded
-            </>
-          )}
-        </p>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
-          <div className="space-y-1">
-            <label
-              htmlFor="my-tasks-status"
-              className="block text-xs font-medium text-muted-foreground"
-            >
-              Status
-            </label>
-            <Select
-              items={statusItems}
-              value={status ?? "all"}
-              onValueChange={(value) => {
-                if (value === "all") setStatus(null);
-                else if (isMyTasksStatus(value)) setStatus(value);
-              }}
-            >
-              <SelectTrigger id="my-tasks-status" className="min-w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label
-              htmlFor="my-tasks-sort"
-              className="block text-xs font-medium text-muted-foreground"
-            >
-              Sort
-            </label>
-            <Select
-              items={sortItems}
-              value={sort}
-              onValueChange={(value) => {
-                if (isMyTasksSort(value)) setSort(value);
-              }}
-            >
-              <SelectTrigger id="my-tasks-sort" className="min-w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {sortItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-3" aria-busy={query.isPlaceholderData}>
+      <p className="text-xs text-muted-foreground">
+        {query.isPlaceholderData ? (
+          <span
+            role="status"
+            aria-live="polite"
+            className="inline-flex items-center gap-1.5"
+          >
+            <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+            Updating…
+          </span>
+        ) : (
+          <>
+            {tasks.length} {tasks.length === 1 ? "task" : "tasks"} loaded ·{" "}
+            {sortDescription(sort).toLowerCase()}
+          </>
+        )}
+      </p>
 
       {query.error ? (
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
@@ -248,7 +188,7 @@ function MyTasksContents({
       ) : null}
 
       {query.data === undefined ? null : tasks.length === 0 ? (
-        <Card>
+        <Card className="border-dashed">
           <EmptyState
             title={status ? "No tasks match this status" : "No tasks assigned"}
             description={
@@ -259,45 +199,50 @@ function MyTasksContents({
           />
         </Card>
       ) : (
-        <div className="space-y-3">
-          {tasks.map((task) => (
-            <Card key={task.out_id} className="relative p-0">
-              <StretchedLink
-                href={`/tasks/${task.out_id}`}
-                label={`Open ${task.out_title}`}
-              />
-              <CardContent className="p-4">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{task.out_status}</Badge>
-                  <Badge variant={priorityVariant(task.out_effective_priority)}>
-                    {task.out_effective_priority}
-                  </Badge>
-                  {task.out_request_backup ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                      <TriangleAlert className="size-3.5" aria-hidden /> Help
-                      Wanted
-                    </span>
-                  ) : null}
-                </div>
-                <p className="text-sm font-semibold">{task.out_title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {task.out_event_name} · {task.out_committee_name} ·{" "}
-                  {task.out_phase?.trim() || "Unphased"}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span>{assignmentLabel(task)}</span>
-                  <span>
-                    {task.out_status === "Completed"
-                      ? "Completed"
-                      : task.out_due_date
-                        ? `Due ${dueDateFormatter.format(new Date(task.out_due_date))}`
-                        : "No deadline"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="overflow-hidden p-0">
+          <div className="divide-y">
+            {tasks.map((task) => (
+              <div
+                key={task.out_id}
+                className={`group relative border-l-4 ${priorityAccent(task.out_effective_priority)} transition-colors duration-150 hover:bg-muted/40 focus-within:bg-muted/40 motion-reduce:transition-none`}
+              >
+                <StretchedLink
+                  href={`/tasks/${task.out_id}`}
+                  label={`Open ${task.out_title}`}
+                />
+                <CardContent className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <Badge variant="outline">{task.out_status}</Badge>
+                      <p className="min-w-0 text-sm font-semibold sm:text-base">
+                        {task.out_title}
+                      </p>
+                      {task.out_request_backup ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                          <TriangleAlert className="size-3.5" aria-hidden />{" "}
+                          Help Wanted
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      {task.out_effective_priority} · {task.out_event_name} ·{" "}
+                      {task.out_committee_name} ·{" "}
+                      {task.out_status === "Completed"
+                        ? "Completed"
+                        : task.out_due_date
+                          ? `Due ${dueDateFormatter.format(new Date(task.out_due_date))}`
+                          : "No deadline"}
+                    </p>
+                  </div>
+                  <ChevronRight
+                    className="size-4 shrink-0 text-muted-foreground transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-foreground motion-reduce:transition-none"
+                    aria-hidden
+                  />
+                </CardContent>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {query.hasNextPage ? (
@@ -322,10 +267,14 @@ function MyTasksContents({
 export function MyTasksList({
   initialTasks,
   active,
+  status,
+  sort,
   onLoadedStateChange,
 }: {
   initialTasks?: MyTask[];
   active: boolean;
+  status: MyTasksStatus;
+  sort: MyTasksSort;
   onLoadedStateChange?: (state: LoadedState) => void;
 }) {
   const [queryClient] = useState(
@@ -340,6 +289,8 @@ export function MyTasksList({
       <MyTasksContents
         initialTasks={initialTasks}
         active={active}
+        status={status}
+        sort={sort}
         onLoadedStateChange={onLoadedStateChange}
       />
     </QueryClientProvider>

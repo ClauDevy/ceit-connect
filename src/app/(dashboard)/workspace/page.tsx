@@ -7,11 +7,7 @@ import {
   isHelpWantedTask,
   type HelpWantedTask,
 } from "@/lib/tasks/backup";
-import {
-  getMyTasksRpcArgs,
-  isMyTask,
-  type MyTask,
-} from "@/lib/tasks/my-tasks";
+import { getMyTasksRpcArgs, isMyTask, type MyTask } from "@/lib/tasks/my-tasks";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function WorkspacePage() {
@@ -57,10 +53,10 @@ export default async function WorkspacePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:space-y-7">
       <PageHeader
-        title="Tasks"
-        description="Manage your assigned work and find tasks that need an extra pair of hands."
+        title="Workspace"
+        description="Everything assigned to you, and everywhere the council needs a hand."
       />
       <WorkspaceTasks
         initialMyTasks={initialMyTasks}

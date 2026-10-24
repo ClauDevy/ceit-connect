@@ -73,8 +73,10 @@ export function TaskEditControls({
   );
   const viewerChoices = useMemo(() => {
     const choices = new Map<string, TaskEditViewer>();
-    for (const viewer of controls.allowed_viewers) choices.set(viewer.id, viewer);
-    for (const viewer of controls.viewer_options) choices.set(viewer.id, viewer);
+    for (const viewer of controls.allowed_viewers)
+      choices.set(viewer.id, viewer);
+    for (const viewer of controls.viewer_options)
+      choices.set(viewer.id, viewer);
     return [...choices.values()].filter((viewer) =>
       viewerName(viewer)
         .toLocaleLowerCase()
@@ -90,7 +92,9 @@ export function TaskEditControls({
       setDependencyOpen(false);
     } catch (error) {
       setDependencyError(
-        error instanceof Error ? error.message : "The dependency could not be saved.",
+        error instanceof Error
+          ? error.message
+          : "The dependency could not be saved.",
       );
     } finally {
       setSavingDependency(false);
@@ -151,9 +155,7 @@ export function TaskEditControls({
   }
 
   function openViewerDialog() {
-    setSelectedViewerIds(
-      controls.allowed_viewers.map((viewer) => viewer.id),
-    );
+    setSelectedViewerIds(controls.allowed_viewers.map((viewer) => viewer.id));
     setViewerSearch("");
     setConfidentialityError(null);
     setViewerOpen(true);
@@ -163,12 +165,12 @@ export function TaskEditControls({
     <>
       {controls.can_set_dependency ? (
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
             <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
               <Link2 className="size-4" aria-hidden /> Dependency
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 pt-4">
+          <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
             <div>
               <p className="text-sm font-medium">
                 {controls.depends_on_task_id
@@ -181,7 +183,9 @@ export function TaskEditControls({
                 </p>
               ) : null}
             </div>
-            {dependencyError ? <InlineAlert>{dependencyError}</InlineAlert> : null}
+            {dependencyError ? (
+              <InlineAlert>{dependencyError}</InlineAlert>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -198,12 +202,12 @@ export function TaskEditControls({
 
       {controls.can_set_confidentiality && controls.is_confidential !== null ? (
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
             <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
               <LockKeyhole className="size-4" aria-hidden /> Confidential
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 pt-4">
+          <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <label
@@ -213,7 +217,8 @@ export function TaskEditControls({
                   Mask this task
                 </label>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Only leadership, assignees, and selected viewers get full access.
+                  Only leadership, assignees, and selected viewers get full
+                  access.
                 </p>
               </div>
               <input
@@ -346,7 +351,9 @@ export function TaskEditControls({
                 );
               })}
             </div>
-            {dependencyError ? <InlineAlert>{dependencyError}</InlineAlert> : null}
+            {dependencyError ? (
+              <InlineAlert>{dependencyError}</InlineAlert>
+            ) : null}
           </div>
           <DialogFooter>
             <Button
@@ -434,7 +441,9 @@ export function TaskEditControls({
                       <Check className="size-4 text-primary" aria-hidden />
                     ) : null}
                     {!isActiveOption ? (
-                      <span className="text-xs text-muted-foreground">Inactive</span>
+                      <span className="text-xs text-muted-foreground">
+                        Inactive
+                      </span>
                     ) : null}
                   </label>
                 );
