@@ -57,6 +57,9 @@ task with work links and comments, and one separate event that can be archived.
   default tab, Help Wanted is second, status filtering and Deadline/Priority/Event
   sorting affect only My Tasks, badges remain stable while loading, and Load more
   does not duplicate or skip rows when more than 50 are available.
+  **Batch 3P note:** re-run this with the current fetch-21/show-20 contract and
+  the focused exact-boundary tests in `docs/phase-4b/step-3p-tests.md`; the
+  historical Phase 4 result above remains recorded and is not weakened.
 
 ### Claude HAAAA — Co-Admin
 

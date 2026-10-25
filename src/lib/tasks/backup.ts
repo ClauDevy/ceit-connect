@@ -1,6 +1,14 @@
 import type { BoardPriority, BoardStatus } from "@/lib/events/board";
+import { LIST_FETCH_LIMIT, LIST_PAGE_SIZE } from "@/lib/list-paging";
 
-export const HELP_WANTED_PAGE_SIZE = 50;
+export const HELP_WANTED_PAGE_SIZE = LIST_PAGE_SIZE;
+
+export function getHelpWantedRpcArgs(offset: number) {
+  return {
+    p_limit: LIST_FETCH_LIMIT,
+    p_offset: offset,
+  };
+}
 
 export const TASK_BACKUP_ACTIONS = [
   "claim",
@@ -68,7 +76,9 @@ function isNullableString(value: unknown): value is string | null {
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
 }
 
 function isTaskVolunteer(value: unknown): value is TaskVolunteer {
@@ -107,9 +117,7 @@ export function isHelpWantedTask(value: unknown): value is HelpWantedTask {
     typeof row.out_event_id === "string" &&
     typeof row.out_event_name === "string" &&
     isNullableString(row.out_phase) &&
-    ["To Do", "In Progress", "Completed"].includes(
-      row.out_status as string,
-    ) &&
+    ["To Do", "In Progress", "Completed"].includes(row.out_status as string) &&
     ["Low", "Medium", "High", "Critical"].includes(
       row.out_effective_priority as string,
     ) &&
@@ -153,15 +161,12 @@ export function isWithdrawVolunteerResult(value: unknown) {
   if (!value || typeof value !== "object") return false;
   const row = value as Record<string, unknown>;
   return (
-    typeof row.out_task_id === "string" &&
-    typeof row.out_user_id === "string"
+    typeof row.out_task_id === "string" && typeof row.out_user_id === "string"
   );
 }
 
 export type AcceptVolunteerOutcome =
-  | "accepted"
-  | "inactive_removed"
-  | "already_assigned_removed";
+  "accepted" | "inactive_removed" | "already_assigned_removed";
 
 export type AcceptVolunteerResult = {
   out_task_id: string;
