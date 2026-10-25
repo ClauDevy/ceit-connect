@@ -1,4 +1,3 @@
-import type { AnimationEventHandler } from "react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { MemberAction } from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
@@ -12,8 +11,10 @@ type MembersListProps = {
   currentUserId: string;
   pendingId: string | null;
   onToggle: (member: Member) => void;
-  getEntranceClassName?: (id: string) => string | undefined;
-  onAnimationEnd?: AnimationEventHandler<HTMLElement>;
+  getRevealProps?: (id: string) => {
+    "data-motion-reveal-id": string;
+    ref: (node: HTMLElement | null) => void;
+  };
 };
 
 export function MembersCards({
@@ -22,25 +23,18 @@ export function MembersCards({
   currentUserId,
   pendingId,
   onToggle,
-  getEntranceClassName,
-  onAnimationEnd,
+  getRevealProps,
 }: MembersListProps) {
   return (
     <ul className="divide-y">
       {members.map((member) => (
         <li
           key={member.id}
+          {...getRevealProps?.(member.id)}
           aria-busy={pendingId === member.id}
           className={cn(
             "motion-card-interaction grid min-w-0 gap-3 p-3.5 hover:bg-primary/5 focus-within:bg-primary/5 sm:p-4",
-            getEntranceClassName?.(member.id),
           )}
-          onAnimationEnd={
-            getEntranceClassName?.(member.id) ? onAnimationEnd : undefined
-          }
-          data-motion-entrance-id={
-            getEntranceClassName?.(member.id) ? member.id : undefined
-          }
         >
           <div className="flex min-w-0 items-start gap-3">
             <UserAvatar

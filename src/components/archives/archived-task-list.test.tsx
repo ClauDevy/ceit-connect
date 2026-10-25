@@ -27,13 +27,10 @@ vi.mock("@/components/ui/card", () => ({
 vi.mock("@/lib/timezone", () => ({
   APP_TIME_ZONE: { iana: "Asia/Manila" },
 }));
-vi.mock("@/lib/motion", () => ({
-  selectEntranceIds: <T,>(items: readonly T[], getId: (item: T) => string) =>
-    new Set(items.slice(0, 20).map(getId)),
-  getEntranceClassName: (
-    capture: { ids: ReadonlySet<string> },
-    id: string,
-  ) => capture.ids.has(id) ? "motion-list-item-enter motion-list-delay-0" : undefined,
+vi.mock("@/components/shared/motion", () => ({
+  useListReveal: () => ({
+    getRevealProps: (id: string) => ({ "data-motion-reveal-id": id }),
+  }),
 }));
 vi.mock("@/lib/utils", () => ({
   cn: (...values: Array<string | false | undefined>) =>
@@ -119,7 +116,7 @@ describe("archived task phase groups", () => {
     expect(html).not.toContain("Secret assignee");
   });
 
-  it("animates only the first 20 displayed tasks across phase groups", () => {
+  it("registers every displayed task by stable id across phase groups", () => {
     const tasks = [
       ...Array.from({ length: 12 }, (_, index) =>
         task(`phase-a-${index + 1}`, "Phase A"),
@@ -143,7 +140,7 @@ describe("archived task phase groups", () => {
       />,
     );
 
-    expect(html.match(/motion-list-item-enter/g)).toHaveLength(20);
-    expect(html).toMatch(/phase-b-8[^]*motion-list-item-enter|motion-list-item-enter[^]*phase-b-8/);
+    expect(html.match(/data-motion-reveal-id=/g)).toHaveLength(21);
+    expect(html).toContain('data-motion-reveal-id="phase-b-9"');
   });
 });

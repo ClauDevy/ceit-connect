@@ -5,7 +5,7 @@ import { Archive, CalendarDays, ChevronRight, RefreshCw } from "lucide-react";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
-import { useInitialListEntrance } from "@/components/shared/motion";
+import { useListReveal } from "@/components/shared/motion";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,7 +78,7 @@ export function ArchiveEventList({
     singularLabel: "event",
     pluralLabel: "events",
   });
-  const entrance = useInitialListEntrance({
+  const reveal = useListReveal({
     initialItems: initialPage?.items ?? [],
     items: paging.items,
     settled: paging.settled,
@@ -142,18 +142,10 @@ export function ArchiveEventList({
         {paging.items.map((event) => (
           <Card
             key={event.id}
+            {...reveal.getRevealProps(event.id)}
             className={cn(
               "motion-card-interaction group relative overflow-hidden hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50",
-              entrance.getEntranceClassName(event.id),
             )}
-            onAnimationEnd={
-              entrance.isEntranceItem(event.id)
-                ? entrance.onAnimationEnd
-                : undefined
-            }
-            data-motion-entrance-id={
-              entrance.isEntranceItem(event.id) ? event.id : undefined
-            }
           >
             <StretchedLink
               href={`/archives/${event.id}`}

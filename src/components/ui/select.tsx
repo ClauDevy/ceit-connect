@@ -36,7 +36,7 @@ function SelectContent({ className, children, ...props }: SelectPrimitive.Popup.
         <SelectPrimitive.Popup
           data-slot="select-content"
           className={cn(
-            "max-h-72 min-w-[var(--anchor-width)] overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg outline-none transition-[opacity,scale] duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] data-[ending-style]:scale-[0.94] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.94] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[starting-style]:opacity-100",
+            "max-h-72 min-w-[var(--anchor-width)] overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg outline-none transition-[opacity,scale] duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] data-[ending-style]:duration-[var(--motion-exit-duration)] data-[ending-style]:scale-[0.94] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.94] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[starting-style]:opacity-100",
             className
           )}
           {...props}
@@ -53,7 +53,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "flex min-h-11 cursor-default items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm outline-none select-none data-[highlighted]:bg-muted data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50 md:min-h-0",
+        "flex min-h-11 cursor-default items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm outline-none transition-colors duration-[var(--motion-hover-duration)] select-none data-[highlighted]:bg-muted data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50 motion-reduce:transition-none md:min-h-0",
         className
       )}
       {...props}

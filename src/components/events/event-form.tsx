@@ -24,6 +24,12 @@ import {
   X,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import {
+  Collapse,
+  MotionPresence,
+  SectionEnter,
+  TabPanel,
+} from "@/components/shared/motion";
 import { PageHeader } from "@/components/shared/page-header";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -58,8 +64,10 @@ import {
 } from "@/lib/events/form";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
 import { preventSearchFormSubmission } from "@/lib/search";
+import { SUCCESS_ANIMATION_NAME } from "@/lib/motion";
 import { splitAppTimestamp } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type AssigneeOption = {
   id: string;
@@ -315,6 +323,7 @@ export function EventForm({
 }: EventFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"fundamentals" | "tasks">("fundamentals");
+  const [tabMotionKey, setTabMotionKey] = useState(0);
   const [name, setName] = useState(initialEvent?.name ?? "");
   const [description, setDescription] = useState(
     initialEvent?.description ?? "",
@@ -335,6 +344,7 @@ export function EventForm({
   const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
   const [newPhaseName, setNewPhaseName] = useState("");
   const [taskEditor, setTaskEditor] = useState<TaskEditor | null>(null);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [taskEditorError, setTaskEditorError] = useState("");
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [phaseToRemove, setPhaseToRemove] = useState<PhaseDraft | null>(null);
@@ -343,6 +353,8 @@ export function EventForm({
   const [templateMode, setTemplateMode] = useState<"scratch" | "archive">(
     "scratch",
   );
+  const [templateMotionKey, setTemplateMotionKey] = useState(0);
+  const [savedTaskId, setSavedTaskId] = useState<string | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateStatus, setTemplateStatus] = useState<"idle" | "loading">(
     "idle",
@@ -492,6 +504,18 @@ export function EventForm({
     : 0;
   const selectAllVisibleExceedsLimit =
     !allVisibleAssigneesSelected && selectedWithAllVisibleCount > 100;
+
+  function selectFormTab(nextTab: "fundamentals" | "tasks") {
+    if (nextTab === tab) return;
+    setTab(nextTab);
+    setTabMotionKey((current) => current + 1);
+  }
+
+  function selectTemplateMode(nextMode: "scratch" | "archive") {
+    if (nextMode === templateMode) return;
+    setTemplateMode(nextMode);
+    setTemplateMotionKey((current) => current + 1);
+  }
 
   async function importTemplate(template: ArchivedEventTemplate) {
     if (!startDate) {
@@ -672,6 +696,7 @@ export function EventForm({
         assigneeIds: [],
       },
     });
+    setTaskDialogOpen(true);
   }
 
   function openEditTask(phaseId: string, task: TaskDraft) {
@@ -693,6 +718,14 @@ export function EventForm({
         assigneeIds: task.assigneeIds,
       },
     });
+    setTaskDialogOpen(true);
+  }
+
+  function closeTaskDialog() {
+    setTaskDialogOpen(false);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setTaskEditor(null);
+    }
   }
 
   function updateTaskDraft(updates: Partial<TaskEditor["draft"]>) {
@@ -812,7 +845,8 @@ export function EventForm({
         };
       }),
     );
-    setTaskEditor(null);
+    setSavedTaskId(savedTask.id);
+    closeTaskDialog();
     setTaskEditorError("");
     setError("");
   }
@@ -1012,11 +1046,12 @@ export function EventForm({
         }
       />
 
-      {bannerNotice && showBannerNotice ? (
-        <InlineAlert className="mb-4">{bannerNotice}</InlineAlert>
-      ) : null}
+      <MotionPresence open={Boolean(bannerNotice && showBannerNotice)}>
+        {bannerNotice ? <InlineAlert className="mb-4">{bannerNotice}</InlineAlert> : null}
+      </MotionPresence>
 
       {!initialEvent && (
+        <SectionEnter>
         <Card className="mb-6 overflow-hidden border-border/70">
           <CardHeader className="border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
             <CardTitle>Choose a starting point</CardTitle>
@@ -1030,7 +1065,7 @@ export function EventForm({
               <button
                 type="button"
                 aria-pressed={templateMode === "scratch"}
-                onClick={() => setTemplateMode("scratch")}
+                onClick={() => selectTemplateMode("scratch")}
                 className={`relative flex min-h-20 items-start gap-3 rounded-2xl border-2 p-4 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                   templateMode === "scratch"
                     ? "border-primary bg-primary/10"
@@ -1057,7 +1092,7 @@ export function EventForm({
               <button
                 type="button"
                 aria-pressed={templateMode === "archive"}
-                onClick={() => setTemplateMode("archive")}
+                onClick={() => selectTemplateMode("archive")}
                 className={`relative flex min-h-20 items-start gap-3 rounded-2xl border-2 p-4 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                   templateMode === "archive"
                     ? "border-primary bg-primary/10"
@@ -1084,7 +1119,10 @@ export function EventForm({
             </div>
 
             {templateMode === "archive" && (
-              <div className="grid gap-3 rounded-2xl border bg-muted/30 p-4">
+              <TabPanel
+                motionKey={templateMotionKey}
+                className="grid gap-3 rounded-2xl border bg-muted/30 p-4"
+              >
                 <div>
                   <p className="text-sm font-semibold">
                     Choose an Archived event
@@ -1146,7 +1184,7 @@ export function EventForm({
 
                   {archivedTemplates.length === 0 && (
                     <div className="grid justify-items-center gap-2 rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
-                      <TigerLogo size={36} className="shrink-0 opacity-70 grayscale" />
+                      <TigerLogo size={36} className="motion-empty-breathe shrink-0 opacity-70 grayscale" />
                       <p>No Archived events are available yet.</p>
                     </div>
                   )}
@@ -1159,11 +1197,11 @@ export function EventForm({
                 </div>
 
                 {templateError && <InlineAlert>{templateError}</InlineAlert>}
-              </div>
+              </TabPanel>
             )}
 
-            {templateSummary && (
-              <InlineAlert variant="info">
+            <MotionPresence open={templateSummary !== null}>
+              {templateSummary ? <InlineAlert variant="info">
                 <div className="grid gap-2">
                   <p>
                     {templateSummary.applied
@@ -1216,10 +1254,11 @@ export function EventForm({
                     </div>
                   )}
                 </div>
-              </InlineAlert>
-            )}
+              </InlineAlert> : null}
+            </MotionPresence>
           </CardContent>
         </Card>
+        </SectionEnter>
       )}
 
       <div className="grid min-w-0 gap-6 lg:items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -1231,7 +1270,7 @@ export function EventForm({
               type="button"
               aria-pressed={tab === "fundamentals"}
               aria-controls="event-fundamentals-panel"
-              onClick={() => setTab("fundamentals")}
+              onClick={() => selectFormTab("fundamentals")}
               className={`min-h-11 shrink-0 border-b-2 px-3 py-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                 tab === "fundamentals"
                   ? "border-primary text-primary"
@@ -1244,7 +1283,7 @@ export function EventForm({
               type="button"
               aria-pressed={tab === "tasks"}
               aria-controls="event-tasks-panel"
-              onClick={() => setTab("tasks")}
+              onClick={() => selectFormTab("tasks")}
               className={`min-h-11 shrink-0 border-b-2 px-3 py-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 ${
                 tab === "tasks"
                   ? "border-primary text-primary"
@@ -1257,11 +1296,12 @@ export function EventForm({
 
           <CardContent>
             {tab === "fundamentals" ? (
-              <div
+              <TabPanel
+                motionKey={tabMotionKey}
                 id="event-fundamentals-panel"
                 className="grid gap-5"
               >
-                <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
+                <SectionEnter index={0} className="flex items-start gap-3 rounded-xl border border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <CalendarDays aria-hidden className="size-5" />
                   </span>
@@ -1273,8 +1313,8 @@ export function EventForm({
                       Set the event identity, schedule, and banner.
                     </p>
                   </div>
-                </div>
-                <div className="grid gap-2">
+                </SectionEnter>
+                <SectionEnter index={1} className="grid gap-2">
                   <p className="text-sm font-semibold">Event banner</p>
                   <BannerUploader
                     eventName={name}
@@ -1289,7 +1329,7 @@ export function EventForm({
                       setShowBannerNotice(false);
                     }}
                   />
-                </div>
+                </SectionEnter>
 
                 <FormField label="Event name">
                   {(control) => (
@@ -1336,8 +1376,8 @@ export function EventForm({
                   </FormField>
                 </div>
 
-                {tasksOutsideDateRange.length > 0 && (
-                  <InlineAlert variant="info">
+                <MotionPresence open={tasksOutsideDateRange.length > 0}>
+                  {tasksOutsideDateRange.length > 0 ? <InlineAlert variant="info">
                     <div className="grid gap-1">
                       <p>
                         These task due dates fall outside the new event range.
@@ -1351,8 +1391,8 @@ export function EventForm({
                         ))}
                       </ul>
                     </div>
-                  </InlineAlert>
-                )}
+                  </InlineAlert> : null}
+                </MotionPresence>
 
                 <FormField
                   label="Description"
@@ -1370,7 +1410,7 @@ export function EventForm({
                       value={description}
                       onChange={(event) => setDescription(event.target.value)}
                       placeholder="What is this event, and why does it matter?"
-                      className="w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 dark:bg-input/30"
+                      className="w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm outline-none transition-[color,box-shadow,border-color] duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] placeholder:text-muted-foreground hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 motion-reduce:transition-none dark:bg-input/30"
                     />
                   )}
                 </FormField>
@@ -1379,14 +1419,15 @@ export function EventForm({
                   type="button"
                   variant="link"
                   className="w-fit px-0"
-                  onClick={() => setTab("tasks")}
+                  onClick={() => selectFormTab("tasks")}
                 >
                   Continue to Task Setup
                   <ChevronRight />
                 </Button>
-              </div>
+              </TabPanel>
             ) : (
-              <div
+              <TabPanel
+                motionKey={tabMotionKey}
                 id="event-tasks-panel"
                 className="grid gap-5"
               >
@@ -1414,7 +1455,7 @@ export function EventForm({
 
                 {phases.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed p-8 text-center">
-                    <TigerLogo size={40} className="mx-auto shrink-0 opacity-70 grayscale" />
+                    <TigerLogo size={40} className="motion-empty-breathe mx-auto shrink-0 opacity-70 grayscale" />
                     <p className="mt-3 font-semibold">No phases yet</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Add a phase, then place its tasks into the backlog.
@@ -1436,11 +1477,12 @@ export function EventForm({
                             }
                             onClick={() => togglePhase(phase.id)}
                           >
-                            {phase.collapsed ? (
-                              <ChevronRight />
-                            ) : (
-                              <ChevronDown />
-                            )}
+                            <ChevronDown
+                              className={cn(
+                                "transition-transform duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none",
+                                phase.collapsed && "-rotate-90",
+                              )}
+                            />
                           </Button>
                           <Input
                             aria-label="Phase name"
@@ -1467,7 +1509,7 @@ export function EventForm({
                           </Button>
                         </div>
 
-                        {!phase.collapsed && (
+                        <Collapse open={!phase.collapsed}>
                           <div className="grid gap-3 p-3">
                             {phase.tasks.map((task) => {
                               const committee = committees.find(
@@ -1476,7 +1518,20 @@ export function EventForm({
                               return (
                                 <div
                                   key={task.id}
-                                  className="flex flex-col gap-3 rounded-xl border bg-card p-4 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
+                                  className={cn(
+                                    "flex flex-col gap-3 rounded-xl border bg-card p-4 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between",
+                                    savedTaskId === task.id &&
+                                      "motion-success-enter outline-2 outline-primary/40",
+                                  )}
+                                  onAnimationEnd={(event) => {
+                                    if (
+                                      event.target === event.currentTarget &&
+                                      event.animationName ===
+                                        SUCCESS_ANIMATION_NAME
+                                    ) {
+                                      setSavedTaskId(null);
+                                    }
+                                  }}
                                 >
                                   <div className="min-w-0">
                                     <p className="truncate font-semibold">
@@ -1560,7 +1615,7 @@ export function EventForm({
                               Add task
                             </Button>
                           </div>
-                        )}
+                        </Collapse>
                       </section>
                     ))}
                   </div>
@@ -1585,7 +1640,7 @@ export function EventForm({
                     Add phase
                   </Button>
                 </div>
-              </div>
+              </TabPanel>
             )}
           </CardContent>
         </Card>
@@ -1675,12 +1730,28 @@ export function EventForm({
       </div>
 
       <Dialog
-        open={taskEditor !== null}
+        open={taskDialogOpen}
         onOpenChange={(open) => {
-          if (!open) setTaskEditor(null);
+          if (!open) closeTaskDialog();
         }}
       >
-        <DialogContent className="max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:p-0">
+        <DialogContent
+          className={cn(
+            "max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:p-0",
+            !taskDialogOpen && "pointer-events-none",
+          )}
+          aria-hidden={!taskDialogOpen || undefined}
+          inert={!taskDialogOpen ? true : undefined}
+          onTransitionEnd={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              event.propertyName === "opacity" &&
+              !taskDialogOpen
+            ) {
+              setTaskEditor(null);
+            }
+          }}
+        >
           <DialogHeader className="shrink-0 border-b border-border/70 px-4 py-3.5 pr-12 sm:px-5 sm:py-4 sm:pr-14">
             <DialogTitle>
               {taskEditor?.taskId ? "Edit task" : "Add task"}
@@ -1695,7 +1766,7 @@ export function EventForm({
               ref={taskDialogScrollRef}
               className="grid min-h-0 min-w-0 gap-5 overflow-y-auto px-4 py-5 sm:px-5"
             >
-              <section className="grid gap-4 border-b border-border/70 pb-5">
+              <SectionEnter as="section" index={0} className="grid gap-4 border-b border-border/70 pb-5">
                 <SectionHeading
                   icon={<FileText aria-hidden />}
                   title="Details"
@@ -1729,7 +1800,7 @@ export function EventForm({
                     onChange={(event) =>
                       updateTaskDraft({ description: event.target.value })
                     }
-                    className="w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 dark:bg-input/30"
+                    className="w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm outline-none transition-[color,box-shadow,border-color] duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] placeholder:text-muted-foreground hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 motion-reduce:transition-none dark:bg-input/30"
                   />
                 )}
               </FormField>
@@ -1776,9 +1847,9 @@ export function EventForm({
                   )}
                 </FormField>
               </div>
-              </section>
+              </SectionEnter>
 
-              <section className="grid gap-4 border-b border-border/70 pb-5">
+              <SectionEnter as="section" index={1} className="grid gap-4 border-b border-border/70 pb-5">
                 <SectionHeading
                   icon={<CalendarDays aria-hidden />}
                   title="When"
@@ -1796,8 +1867,8 @@ export function EventForm({
                   )}
                 </FormField>
 
-              {taskEditor.draft.taskType === "LiveOperation" && (
-                <div className="grid gap-4 rounded-xl border border-primary/30 bg-primary/5 p-3.5">
+              <MotionPresence open={taskEditor.draft.taskType === "LiveOperation"}>
+                {taskEditor.draft.taskType === "LiveOperation" ? <div className="grid gap-4 rounded-xl border border-primary/30 bg-primary/5 p-3.5">
                   <InlineAlert variant="info">
                     This is a live duty — don&apos;t start before Call Time, and
                     be physically ready at that moment.
@@ -1844,11 +1915,11 @@ export function EventForm({
                       )}
                     </FormField>
                   </div>
-                </div>
-              )}
-              </section>
+                </div> : null}
+              </MotionPresence>
+              </SectionEnter>
 
-              <section className="grid gap-4">
+              <SectionEnter as="section" index={2} className="grid gap-4">
                 <SectionHeading
                   icon={<Users aria-hidden />}
                   title="Who"
@@ -1999,18 +2070,20 @@ export function EventForm({
                   claims or is assigned to them.
                 </p>
               </fieldset>
-              </section>
+              </SectionEnter>
             </div>
           )}
 
           <div className="grid shrink-0 gap-3 border-t border-border/70 bg-popover p-4 sm:px-5">
-            {taskEditorError && <InlineAlert>{taskEditorError}</InlineAlert>}
+            <MotionPresence open={Boolean(taskEditorError)}>
+              {taskEditorError ? <InlineAlert>{taskEditorError}</InlineAlert> : null}
+            </MotionPresence>
             <DialogFooter className="grid grid-cols-2 sm:flex">
               <Button
                 type="button"
                 variant="outline"
                 className="w-full sm:w-auto"
-                onClick={() => setTaskEditor(null)}
+                onClick={closeTaskDialog}
               >
                 Cancel
               </Button>

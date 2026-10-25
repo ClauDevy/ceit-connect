@@ -18,7 +18,7 @@ export default async function SettingsPage() {
     .single();
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
+    <div className="motion-content-ready mx-auto w-full max-w-4xl">
       <PageHeader
         title="Settings"
         description="Your profile photo and sign-in options."
@@ -26,6 +26,7 @@ export default async function SettingsPage() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <SettingsSection
+          motionIndex={0}
           title="Profile"
           description="Update the name shown across the council workspace."
           icon={<UserRound aria-hidden />}
@@ -34,6 +35,7 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
+          motionIndex={1}
           title="Profile photo"
           description="Shown next to your name across the council workspace."
           icon={<ImageIcon aria-hidden />}
@@ -46,6 +48,7 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
+          motionIndex={2}
           title="Password"
           icon={<KeyRound aria-hidden />}
           description={

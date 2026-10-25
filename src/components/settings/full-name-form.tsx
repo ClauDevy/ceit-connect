@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -79,12 +80,13 @@ export function FullNameForm({ currentName }: { currentName: string }) {
           aria-live="polite"
           className={
             message
-              ? "text-sm font-medium text-accent-foreground"
+              ? "motion-success-enter inline-flex items-center gap-1.5 text-sm font-medium text-accent-foreground"
               : unchanged
                 ? "text-xs text-muted-foreground"
                 : "text-xs font-semibold text-accent-foreground"
           }
         >
+          {message ? <CheckCircle2 className="size-4" aria-hidden /> : null}
           {message || (unchanged ? "No unsaved changes." : "Unsaved changes")}
         </p>
         <Button

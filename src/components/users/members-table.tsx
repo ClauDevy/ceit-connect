@@ -1,4 +1,3 @@
-import type { AnimationEventHandler } from "react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { MemberAction } from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
@@ -20,8 +19,10 @@ type MembersListProps = {
   currentUserId: string;
   pendingId: string | null;
   onToggle: (member: Member) => void;
-  getEntranceClassName?: (id: string) => string | undefined;
-  onAnimationEnd?: AnimationEventHandler<HTMLElement>;
+  getRevealProps?: (id: string) => {
+    "data-motion-reveal-id": string;
+    ref: (node: HTMLElement | null) => void;
+  };
 };
 
 export function MembersTable({
@@ -30,8 +31,7 @@ export function MembersTable({
   currentUserId,
   pendingId,
   onToggle,
-  getEntranceClassName,
-  onAnimationEnd,
+  getRevealProps,
 }: MembersListProps) {
   return (
     <Table className="min-w-[42rem]">
@@ -50,17 +50,11 @@ export function MembersTable({
         {members.map((member) => (
           <TableRow
             key={member.id}
+            {...getRevealProps?.(member.id)}
             aria-busy={pendingId === member.id}
             className={cn(
               "motion-card-interaction focus-within:bg-primary/5",
-              getEntranceClassName?.(member.id),
             )}
-            onAnimationEnd={
-              getEntranceClassName?.(member.id) ? onAnimationEnd : undefined
-            }
-            data-motion-entrance-id={
-              getEntranceClassName?.(member.id) ? member.id : undefined
-            }
           >
             <TableCell className="min-w-0 py-3 pl-5">
               <div className="flex min-w-0 items-center gap-3">

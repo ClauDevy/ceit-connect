@@ -69,6 +69,7 @@ After the function exists, drop the permissive `activity_log_select` policy and 
 
 - `/activity-log` guards itself with `requireUser()` and `getActiveProfileForRoles(['Admin', 'Co-Admin'])`; Members, inactive users, and profile-less callers are redirected or denied even if the layout also guards navigation.
 - Desktop uses a responsive activity table; phones use readable cards. Both use the same server response, ordering, filters, masking, and loaded set.
+- Activity Log must use the shared Batch 5 motion kit for stable-ID row reveal, user-selected filter panels, loading/content handoff, and reduced motion; it must add both an automated contract row and a manual browser row without exposing masked data during any transition.
 - Search covers only safe normalized actor name, action label, real task title, real event name, and real committee name. Masked fields never enter the searchable document, so search cannot act as a confidential-content oracle.
 - Action filters are the three stored values only. Committee filtering applies to real entries using the stored/live committee id; masked entries are included only when the chosen filter can be applied without revealing their hidden committee. Otherwise they remain absent from that filtered result without exposing a count distinction beyond the result itself.
 - Date inputs use Philippine calendar dates. Newest is the default; Oldest is the only alternate sort.
