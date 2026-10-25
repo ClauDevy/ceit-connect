@@ -1,6 +1,6 @@
 # Step 3: UI redesign pages
 
-**Status:** Parts A-B implemented and verified locally; Parts C-D pending | **Branch:** `feature/ui-redesign-pages` | **Reasoning level:** Medium
+**Status:** Parts A-C implemented and verified locally; Part D pending | **Branch:** `feature/ui-redesign-pages` | **Reasoning level:** Medium
 
 ## Goal
 
@@ -99,7 +99,10 @@ All named pages match the approved design system at phone and desktop widths in 
 - **Part B visual follow-up 1 is implemented and verified locally.** The workspace follows the prototype's compact one-card/divided-row treatment with semantic priority accents, inline My Tasks-only filters, direct count lines, and hover/focus/pressed feedback; Help Wanted keeps only its existing count and actions. Lifting the filter UI state preserves its previous persistence across hidden tab panels, while all query values, validators, polling, and 50-row requests remain unchanged. Task detail replaces the large boxed header with a responsive badge/title/meta/action header and tightens the existing cards without changing any capability or data contract.
 - The shared `ConfirmDialog` needed no follow-up change. Part B originally added its optional `error` prop so a failed confirmed work-link removal can keep the dialog open and display the existing safe error with `role="alert"`; previously callers could show only title, description, and actions. With no error passed, the conditional renders nothing, so spacing and behavior remain unchanged for the other seven consumers. Prototype stat cards and task-row assignee avatars were intentionally skipped because adding them needs a reader/data-shape change.
 - Follow-up 1 verification passes all 267 Vitest tests across 27 files, the Next.js 16.3.4 production build with all 23 routes, lint with zero errors or warnings, and `git diff --check`. No automated test file or assertion changed.
-- Parts C-D have not started. For Parts C-D, no database, migration, RLS, grant, Supabase CLI, deployment, commit, or push work was performed.
+- **Part C is implemented and verified locally.** The event board now combines the owner-approved side-by-side 16:9 hero, correct token-driven progress ring, compact phase/filter controls, tighter lanes and task cards, terse dashed empty states, and a compact responsive Backlog Sheet. The shared priority badge and semantic light/dark tokens make Critical, High, Medium, and Low recognizable on every existing display and selection surface without changing their values or calculation.
+- Part C follows the prototype's card density, lane gaps/headings/counts, priority hierarchy, compact empty states, and narrow right-side Backlog presentation. It deliberately keeps the app's existing assignee data, confidential shells, dependency restrictions, Move and Claim controls, accessible Sheet focus return/Escape behavior, fully loaded board, and phone stacked lanes; prototype-only statistics, extra avatars, mobile swipe/collapse, and new actions were omitted because they require new data or later-batch behavior.
+- The reader, data shape, polling, permission checks, Admin-only committee filter, all-role priority filter, dnd-kit positioning, writers and RPC payloads are unchanged. Decorative card-entry and drawer-panel transitions are removed while interaction feedback remains approximately 150ms and reduced-motion safe. No C2-B automated test file or assertion changed.
+- Part C local verification passes all 274 Vitest tests across 29 files, the Next.js 16.3.4 production build with all 23 routes, lint with zero errors or warnings, and `git diff --check`. Part D has not started; no database, migration, RLS, grant, Supabase CLI, deployment, commit, or push work was performed for C2-B.
 
 ## Docs to update when this lands
 

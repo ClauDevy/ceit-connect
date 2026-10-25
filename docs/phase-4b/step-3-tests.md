@@ -1,7 +1,7 @@
 # Step 3 tests: UI redesign pages
 
 **Branch:** `feature/ui-redesign-pages`
-**Status:** Parts A-B automated gate passed locally; Parts C-D and real-browser checks pending
+**Status:** Parts A-C automated gate passed locally; Part D and real-browser checks pending
 **Database impact:** None. No SQL, migration, RLS, grant, reader, writer, or Supabase command is part of this batch.
 
 ## Automated gate by part
@@ -28,9 +28,25 @@
 - Visual follow-up 1 reran the same gate successfully: 27 files / 267 tests, the Next.js 16.3.4 production build with all 23 routes, zero-warning lint, and `git diff --check`. No test file or assertion changed.
 - Follow-up inspection confirms the lifted status/sort state preserves selections across My Tasks → Help Wanted → My Tasks switches; the query key, RPC argument builder, validators, active-only polling, pagination offsets, and 50-row page size are unchanged. Help Wanted mounts no new filter or sort control.
 
-### Parts C-D
+### Part C - Event board
 
-Pending. Add each part's exact command results only after that part is implemented and verified.
+- `npm test` - passed: 29 files, 274 tests. C2-B changed no test file or existing assertion.
+- `npm run build` - passed with Next.js 16.3.4; TypeScript and all 23 generated routes completed successfully.
+- `npm run lint` - passed with zero reported errors or warnings.
+- `git diff --check` - passed; Git reported only Windows LF-to-CRLF working-copy notices.
+- The progress-ring and shared-priority tests from the earlier Part C stages remain in the passing suite.
+
+### Part D
+
+Pending. Add its exact command results only after implementation and verification.
+
+## Preserved contracts inspected in Part C
+
+- `list_event_board_tasks`, its arguments and response validation, the fully loaded query, polling/focus behavior, and the event-page reader are unchanged.
+- Confidential shells retain their existing title masking, lock treatment, assignee hiding, link target, and lack of unauthorized Move/Claim controls.
+- dnd-kit sensors, sortable transforms, movement permissions, neighbor hints, optimistic state, Undo, Move controls, phone completion control, dependency restrictions, Claim writer, safe errors, and authoritative invalidation are unchanged.
+- Priority filtering remains available to every role; committee filtering and its mounted controls remain Admin-only. Priority values, effective-priority calculation, ordering, and saved form values are unchanged.
+- The Backlog remains an accessible Sheet with Escape dismissal and focus return to its trigger. No new action, hidden control, paging, mobile swipe/collapse behavior, reader, writer, RPC payload, permission, RLS, polling, or data shape was added.
 
 ## Preserved contracts inspected in Part B
 
@@ -129,8 +145,12 @@ These checks require real authenticated browser sessions and are not claimed com
 
 ### Part C - Event board
 
-- [ ] Pending implementation. Verify real/masked cards, filters, phases, lanes, full-board loading, desktop pointer/keyboard drag, Member movement, leadership reorder, Undo, polling/focus pause, safe errors, and authoritative ordering after refresh.
-- [ ] Confirm phone Move controls remain unchanged and no Batch 6 swipe/collapse behavior appears.
+- [ ] As Claudee, Claude HAAAA, and tv, check the board at desktop and phone widths in both light and dark themes. Verify the event hero with and without a banner, the tiger placeholder, compact phases/filters/lanes/cards, loading/error/empty states, and no horizontal overflow.
+- [ ] Verify the progress ring at exactly 0%, 50%, and 100% in both themes: no progress dot at 0%, the correct orange arc at 50% and full arc at 100%, with the existing percentage and “N of M tasks completed” calculations unchanged.
+- [ ] Verify real and masked cards, Priority filtering for all three roles, and committee-filter visibility for Admin only. Confirm the committee panel remains inside the phone viewport and both filters dismiss and return focus predictably.
+- [ ] Verify desktop pointer and keyboard drag, Member movement, leadership reorder, Move controls, phone completion control, dependency locks, Claim, Undo, polling/focus pause, safe errors, and authoritative ordering after refresh. Confirm no Batch 6 swipe/collapse behavior appears.
+- [ ] Open and close Backlog by pointer, keyboard, Escape, outside interaction, and its close button. Confirm focus returns to Backlog, the drawer stays viewport-contained, Claim and masking remain capability-driven, and no decorative card-entry cascade appears.
+- [ ] Check Critical, High, Medium, and Low chips in both themes on My Tasks, Help Wanted, task detail, board cards, Backlog cards, board Priority options, Create/Edit Event summaries and selectors, and archived event task cards. Confirm every chip keeps a readable text label and the event-form selector retains its value, accessible name, and keyboard behavior.
 
 ### Part D - Archives and User Management
 
@@ -160,5 +180,26 @@ These checks require real authenticated browser sessions and are not claimed com
 - `docs/phase-4b/step-3.md`
 - `docs/phase-4b/step-3-tests.md`
 - `docs/PROGRESS.md`
+
+## Part C changed files
+
+- `src/app/globals.css`
+- `src/app/(dashboard)/events/[eventId]/page.tsx`
+- `src/app/(dashboard)/archives/[eventId]/page.tsx` (priority badge line only)
+- `src/components/events/event-board.tsx`
+- `src/components/events/event-board-skeleton.tsx`
+- `src/components/events/event-board-progress-ring.tsx`
+- `src/components/events/event-board-progress-ring.test.tsx`
+- `src/components/events/event-board-task-card.tsx`
+- `src/components/events/event-form.tsx`
+- `src/components/shared/priority-badge.tsx`
+- `src/components/shared/priority-badge.test.tsx`
+- `src/components/tasks/my-tasks-list.tsx`
+- `src/components/tasks/help-wanted-list.tsx`
+- `src/components/tasks/task-detail.tsx`
+- `docs/DESIGN-SYSTEM.md`
+- `docs/PROGRESS.md`
+- `docs/phase-4b/step-3.md`
+- `docs/phase-4b/step-3-tests.md`
 
 No deployment, commit, push, database operation, or Supabase operation is claimed.
