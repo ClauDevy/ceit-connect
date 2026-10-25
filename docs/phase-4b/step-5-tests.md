@@ -21,6 +21,7 @@
 - Reduced-motion-safe skeleton, loading, route/list, progress, overlay, interaction, theme, navigation, avatar, badge, control, Undo, and tiger contracts.
 - Existing board move, paging, form, and UI regressions remain applicable.
 - Final focused run: **5 files, 30 tests passed**. The full run has **37 passing files / 264 passing assertions** and the same two unrelated pre-existing collection failures: `load-more-control.test.tsx` reaches `load-more-control.tsx:4` and cannot resolve `@/components/ui/button`; `backup.test.ts` reaches `backup.ts:2` and cannot resolve `@/lib/list-paging`. Neither failing import is in a Batch 5 test edit. `npm run lint` passed with zero errors or warnings. `npm run build` passed on Next.js 16.3.4, including TypeScript and all 23 generated routes.
+- CodeRabbit follow-up focused run: **4 files, 69 tests passed**, including malformed/encoded hash decoding and static crop-close/Drive-preview lifecycle contracts. Lint and the 23-route production build pass.
 - The production CSS contains `cc-route-enter`, `cc-list-item-enter`, `cc-progress-fill`, `cc-progress-ring`, the capped delay class, the interaction class, and the reduced-motion media rule. Its minified variables are `.3s`, `.22s`, and `.7s`.
 
 ## Browser checklist — all pending owner
@@ -70,6 +71,10 @@ getComputedStyle(document.querySelector(".motion-route-enter")).animationName //
 During initial display, inspect a list item (`cc-list-item-enter`), fill (`cc-progress-fill`), and ring (`cc-progress-ring`). Their computed durations should be 0.3 s, 0.7 s, and 0.7 s respectively.
 
 For scroll reveal, inspect a below-fold row before and after entry. `data-motion-pending` may appear only after hydration and an observer callback reports it offscreen; it must be removed at reveal. Focus the row, use browser Find, and navigate to an in-page hash while it is pending; each must reveal it immediately. Disable `IntersectionObserver` before reload and confirm every row and progress value remains visible in its final state.
+
+- **Pending — owner:** With reduced motion enabled, save a cropped banner, then reopen Adjust crop and confirm a fresh working cropper appears.
+- **Pending — owner:** Load or change to a malformed hash such as `#%E0%A4%A`, confirm the page stays usable with no reveal/error, then verify a valid encoded target hash reveals its row.
+- **Pending — owner:** In Your Work, confirm DevTools Network shows no Drive embed request before Preview is first opened; after opening, closing, and reopening that link, confirm its mounted preview is retained inside the inert, `aria-hidden` collapsed region.
 
 ## Static-only checks and owner browser responsibility
 
