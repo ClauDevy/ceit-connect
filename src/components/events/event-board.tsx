@@ -52,6 +52,7 @@ import {
   EventBoardTaskCard,
   SortableEventBoardTaskCard,
 } from "@/components/events/event-board-task-card";
+import { getPriorityDotClass } from "@/components/shared/priority-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -133,9 +134,11 @@ function PriorityChoices({
   onToggle: (priority: BoardPriority) => void;
 }) {
   return (
-    <div className="space-y-3">
-      <p className="font-display text-sm font-semibold">Filter by priority</p>
-      <div className="grid grid-cols-2 gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:block sm:space-y-3">
+      <p className="shrink-0 font-display text-sm font-semibold">
+        Filter by priority
+      </p>
+      <div className="grid min-h-0 grid-cols-2 gap-2 overflow-y-auto overscroll-contain sm:overflow-visible">
         {BOARD_PRIORITIES.map((priority) => {
           const active = selected.has(priority);
           return (
@@ -150,7 +153,13 @@ function PriorityChoices({
               aria-pressed={active}
               onClick={() => onToggle(priority)}
             >
-              {priority}
+              <span className="flex items-center gap-2">
+                <span
+                  className={`size-2 rounded-full ${getPriorityDotClass(priority)}`}
+                  aria-hidden="true"
+                />
+                {priority}
+              </span>
               {active ? <Check aria-hidden /> : null}
             </Button>
           );
@@ -179,7 +188,7 @@ function BoardLaneDropZone({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-24 space-y-3 rounded-xl transition-colors",
+        "min-h-20 space-y-3 rounded-xl transition-colors duration-150 motion-reduce:transition-none",
         isOver && !disabled && "bg-primary/5 ring-2 ring-primary/30",
       )}
     >
@@ -663,40 +672,52 @@ function BoardContents({
     <div className="space-y-6">
       <Link
         href="/home"
-        className={buttonVariants({ variant: "ghost", size: "sm" })}
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "sm" }),
+          "transition-colors duration-150 active:bg-muted motion-reduce:transition-none",
+        )}
       >
         <ArrowLeft aria-hidden /> Home
       </Link>
 
       <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xs">
-        <EventBanner
-          src={event.banner_url}
-          alt={`${event.name} banner`}
-          className="h-28 w-full [&>img]:object-contain sm:h-36"
-        />
-        <div className="flex items-end justify-between gap-4 px-5 py-5 sm:px-7 sm:py-6">
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-              <h1 className="min-w-0 break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                {event.name}
-              </h1>
-              <Badge variant="outline">Active</Badge>
-            </div>
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <CalendarDays className="size-4 shrink-0" aria-hidden />
-              {formatEventDateRange(event)}
-            </p>
-            {event.description ? (
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                {event.description}
+        <div className="flex flex-col md:flex-row">
+          <EventBanner
+            src={event.banner_url}
+            alt={`${event.name} banner`}
+            className="aspect-video w-full md:w-[clamp(20rem,35vw,26.25rem)] md:shrink-0"
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5 md:flex-row md:items-center">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1 className="min-w-0 break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {event.name}
+                </h1>
+                <Badge
+                  variant="outline"
+                  className="border-primary/60 bg-primary/10"
+                >
+                  Active
+                </Badge>
+              </div>
+              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CalendarDays className="size-4 shrink-0" aria-hidden />
+                {formatEventDateRange(event)}
               </p>
-            ) : null}
-            <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-              {completed} of {formatTaskCount(tasks.length)} completed
-            </p>
+              {event.description ? (
+                <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                  {event.description}
+                </p>
+              ) : null}
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
+                {completed} of {formatTaskCount(tasks.length)} completed
+              </p>
+            </div>
+            <div className="self-end md:self-auto">
+              <EventBoardProgressRing percentage={completion} />
+            </div>
           </div>
-          <EventBoardProgressRing percentage={completion} />
         </div>
       </section>
 
@@ -768,18 +789,13 @@ function BoardContents({
         </div>
       </div>
 
-      <div className="flex w-full min-w-0 items-center gap-2">
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-2",
-            isAdmin ? "md:w-[30rem] md:flex-none" : "sm:max-w-sm",
-          )}
-        >
-          <div className="relative min-w-0 flex-1">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
+          <div className="relative max-w-full">
             <Button
               ref={priorityTriggerRef}
               variant="outline"
-              className="h-11 w-full min-w-0 justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+              className="h-11 w-auto max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
               aria-haspopup="dialog"
               aria-expanded={priorityOpen}
               aria-controls="priority-filter-panel"
@@ -790,14 +806,11 @@ function BoardContents({
               }
             >
               <Filter aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-left">
+              <span className="min-w-0 max-w-44 truncate text-left">
                 {priorityButtonLabel}
               </span>
-            <ChevronDown
-              className={cn(
-                "ml-auto",
-                priorityOpen && "rotate-180",
-              )}
+              <ChevronDown
+                className={cn("ml-auto", priorityOpen && "rotate-180")}
                 aria-hidden
               />
             </Button>
@@ -816,14 +829,14 @@ function BoardContents({
                   role="dialog"
                   aria-label="Priority filter"
                   className={cn(
-                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-full sm:min-w-[14rem] sm:max-w-[calc(100vw-1rem)]",
+                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] flex-col overflow-hidden rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:block sm:max-h-none sm:w-72 sm:max-w-[calc(100vw-1rem)] sm:overflow-visible",
                   )}
                 >
                   <PriorityChoices
                     selected={selectedPriorities}
                     onToggle={togglePriority}
                   />
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-4 flex shrink-0 items-center justify-between gap-3">
                     {selectedPriorities.size > 0 ? (
                       <Button
                         variant="link"
@@ -848,11 +861,11 @@ function BoardContents({
           </div>
 
           {isAdmin ? (
-            <div className="relative min-w-0 flex-1">
+            <div className="relative max-w-full">
               <Button
                 ref={committeeTriggerRef}
                 variant="outline"
-                className="h-11 w-full min-w-0 justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+                className="h-11 w-auto max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
                 aria-haspopup="listbox"
                 aria-expanded={committeeOpen}
                 aria-controls="committee-filter-panel"
@@ -862,14 +875,11 @@ function BoardContents({
                   committeeOpen ? closeCommitteeFilter() : openCommitteeFilter()
                 }
               >
-                <span className="min-w-0 flex-1 truncate text-left">
+                <span className="min-w-0 max-w-52 truncate text-left">
                   {committeeButtonLabel}
                 </span>
-              <ChevronDown
-                className={cn(
-                  "ml-auto",
-                  committeeOpen && "rotate-180",
-                )}
+                <ChevronDown
+                  className={cn("ml-auto", committeeOpen && "rotate-180")}
                   aria-hidden
                 />
               </Button>
@@ -881,10 +891,10 @@ function BoardContents({
                   aria-label="Committee filter"
                   aria-activedescendant={`committee-filter-option-${committeeActiveIndex}`}
                   className={cn(
-                    "absolute top-full right-0 z-50 mt-2 w-full min-w-[14rem] max-w-[calc(100vw-1rem)] rounded-2xl border bg-popover p-2 shadow-2xl sm:right-auto sm:left-0",
+                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] flex-col overflow-hidden rounded-2xl border bg-popover p-2 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:block sm:max-h-none sm:w-72 sm:max-w-[calc(100vw-1rem)] sm:overflow-visible",
                   )}
                 >
-                  <div className="max-h-60 space-y-1 overflow-y-auto overscroll-contain">
+                  <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain sm:max-h-60">
                     {committeeOptions.map((committee, index) => {
                       const selected = committee.id === committeeId;
                       return (
@@ -926,7 +936,7 @@ function BoardContents({
           id="event-board-backlog-button"
           ref={backlogButtonRef}
           variant="outline"
-          className="h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10 md:ml-auto"
+          className="ml-auto h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10"
           aria-label={`Open Backlog, ${formatTaskCount(backlogTasks.length)}`}
           onClick={() => setBacklogOpen(true)}
         >
@@ -1002,9 +1012,10 @@ function BoardContents({
                 return (
                   <section
                     key={status}
+                    className="min-w-0"
                     aria-labelledby={`lane-${status.replaceAll(" ", "-")}`}
                   >
-                    <div className="mb-3.5 flex items-center gap-2 px-0.5">
+                    <div className="mb-3 flex items-center gap-2 px-0.5">
                       <span
                         className={cn(
                           "size-2 rounded-full",
@@ -1019,7 +1030,7 @@ function BoardContents({
                       >
                         {status}
                       </h2>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs leading-none text-muted-foreground">
                         {laneTasks.length}
                       </span>
                     </div>
@@ -1049,7 +1060,7 @@ function BoardContents({
                           );
                         })}
                         {laneTasks.length === 0 ? (
-                          <div className="rounded-xl border-2 border-dashed p-4 text-center text-xs text-muted-foreground">
+                          <div className="grid min-h-16 place-items-center rounded-xl border-2 border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
                             {selectedPriorities.size > 0
                               ? "No tasks match this filter."
                               : "No tasks yet"}
@@ -1079,9 +1090,9 @@ function BoardContents({
           aria-labelledby="event-board-backlog-title"
           aria-describedby="event-board-backlog-description"
           finalFocus={backlogButtonRef}
-          className="group flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] data-[ending-style]:translate-y-full data-[ending-style]:opacity-0 data-[starting-style]:translate-y-full data-[starting-style]:opacity-0 data-[ending-style]:duration-200 data-[ending-style]:ease-in motion-reduce:transition-opacity motion-reduce:duration-[120ms] motion-reduce:data-[ending-style]:translate-y-0 motion-reduce:data-[starting-style]:translate-y-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-full md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-full md:data-[starting-style]:translate-y-0 motion-reduce:md:data-[ending-style]:translate-x-0 motion-reduce:md:data-[starting-style]:translate-x-0"
+          className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 transition-none data-[ending-style]:translate-y-0 data-[starting-style]:translate-y-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-0 md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-0 md:data-[starting-style]:translate-y-0"
         >
-          <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-5 py-4">
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-4 py-3.5">
             <div className="min-w-0 flex-1">
               <SheetTitle
                 id="event-board-backlog-title"
@@ -1090,7 +1101,7 @@ function BoardContents({
                 Task Backlog
               </SheetTitle>
               <SheetDescription id="event-board-backlog-description" className="text-xs">
-                Unassigned tasks · read only
+                Unassigned tasks
               </SheetDescription>
             </div>
             <Badge variant="neutral" className="shrink-0 px-2">
@@ -1101,7 +1112,7 @@ function BoardContents({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-11 sm:size-8"
+                  className="size-11 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:size-8"
                   aria-label="Close backlog"
                 />
               }
@@ -1109,30 +1120,19 @@ function BoardContents({
               <X aria-hidden />
             </SheetClose>
           </div>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-            {backlogTasks.map((task, index) => (
-              <div
+          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            {backlogTasks.map((task) => (
+              <EventBoardTaskCard
                 key={task.id}
-                className={cn(
-                  "transition-[opacity,transform] duration-200 ease-out group-data-[starting-style]:translate-y-2 group-data-[starting-style]:opacity-0 motion-reduce:transition-opacity motion-reduce:duration-[120ms] motion-reduce:delay-0 motion-reduce:group-data-[starting-style]:translate-y-0",
-                  index === 1 && "delay-[30ms]",
-                  index === 2 && "delay-[60ms]",
-                  index === 3 && "delay-[90ms]",
-                  index === 4 && "delay-[120ms]",
-                  index === 5 && "delay-[150ms]",
-                )}
-              >
-                <EventBoardTaskCard
-                  task={task}
-                  backlog
-                  busy={boardBusy}
-                  claimBusy={claimingTaskId === task.id}
-                  onClaim={handleClaim}
-                />
-              </div>
+                task={task}
+                backlog
+                busy={boardBusy}
+                claimBusy={claimingTaskId === task.id}
+                onClaim={handleClaim}
+              />
             ))}
             {backlogTasks.length === 0 ? (
-              <p className="rounded-xl border-2 border-dashed p-5 text-center text-sm text-muted-foreground">
+              <p className="rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                 {selectedPriorities.size > 0
                   ? "No unassigned tasks match this filter."
                   : "No unassigned tasks."}

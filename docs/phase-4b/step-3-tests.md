@@ -1,7 +1,7 @@
 # Step 3 tests: UI redesign pages
 
 **Branch:** `feature/ui-redesign-pages`
-**Status:** Parts A-B automated gate passed locally; Parts C-D and real-browser checks pending
+**Status:** Parts A-C automated gate passed locally; Part D and real-browser checks pending
 **Database impact:** None. No SQL, migration, RLS, grant, reader, writer, or Supabase command is part of this batch.
 
 ## Automated gate by part
@@ -28,9 +28,33 @@
 - Visual follow-up 1 reran the same gate successfully: 27 files / 267 tests, the Next.js 16.3.4 production build with all 23 routes, zero-warning lint, and `git diff --check`. No test file or assertion changed.
 - Follow-up inspection confirms the lifted status/sort state preserves selections across My Tasks → Help Wanted → My Tasks switches; the query key, RPC argument builder, validators, active-only polling, pagination offsets, and 50-row page size are unchanged. Help Wanted mounts no new filter or sort control.
 
-### Parts C-D
+### Part C - Event board
 
-Pending. Add each part's exact command results only after that part is implemented and verified.
+- `npm test` - passed: 29 files, 274 tests. C2-B changed no test file or existing assertion.
+- `npm run build` - passed with Next.js 16.3.4; TypeScript and all 23 generated routes completed successfully.
+- `npm run lint` - passed with zero reported errors or warnings.
+- `git diff --check` - passed; Git reported only Windows LF-to-CRLF working-copy notices.
+- The progress-ring and shared-priority tests from the earlier Part C stages remain in the passing suite.
+
+### Create/Edit task-dialog follow-up - Stages 0-2
+
+- `npm test` - passed: 29 files, 274 tests. No test file or existing assertion changed.
+- `npm run build` - passed with Next.js 16.3.4; TypeScript and all 23 generated routes completed successfully.
+- `npm run lint` - passed with zero reported errors or warnings.
+- `git diff --check` - passed; Git reported only Windows LF-to-CRLF working-copy notices.
+- No reader, writer, RPC payload, permission, RLS, validation, polling, data shape, migration, or Supabase operation changed. Batch 3H is documentation-only in this follow-up.
+
+### Part D
+
+Pending. Add its exact command results only after implementation and verification.
+
+## Preserved contracts inspected in Part C
+
+- `list_event_board_tasks`, its arguments and response validation, the fully loaded query, polling/focus behavior, and the event-page reader are unchanged.
+- Confidential shells retain their existing title masking, lock treatment, assignee hiding, link target, and lack of unauthorized Move/Claim controls.
+- dnd-kit sensors, sortable transforms, movement permissions, neighbor hints, optimistic state, Undo, Move controls, phone completion control, dependency restrictions, Claim writer, safe errors, and authoritative invalidation are unchanged.
+- Priority filtering remains available to every role; committee filtering and its mounted controls remain Admin-only. Priority values, effective-priority calculation, ordering, and saved form values are unchanged.
+- The Backlog remains an accessible Sheet with Escape dismissal and focus return to its trigger. No new action, hidden control, paging, mobile swipe/collapse behavior, reader, writer, RPC payload, permission, RLS, polling, or data shape was added.
 
 ## Preserved contracts inspected in Part B
 
@@ -111,10 +135,13 @@ These checks require real authenticated browser sessions and are not claimed com
 - [ ] Confirm Create shows Launch Event clearly as the primary summary action with Save Draft supporting and Cancel quiet below; Edit keeps its status badge in the header and places Cancel below its summary save/launch actions.
 - [ ] Confirm summary Cancel is an outline action. With the desktop shell header stuck in place, tab to every form field and confirm neither focused fields nor the summary are covered; the summary starts below the header and stays within the viewport.
 - [ ] Open the task editor on a phone and desktop. Confirm all fields, Live Operation controls, footer actions, and the assignee picker stay inside the viewport.
-- [ ] Confirm the task editor has visible Details, When, and Who groups, an icon-badge header, one internal scroll region, and an always-reachable footer at short phone heights and with the virtual keyboard open.
+- [ ] Confirm the task editor has visible compact Details, When, and Who groups, a simple non-duplicative header, one internal scroll region, and an always-reachable footer at short phone heights and with the virtual keyboard open.
 - [ ] Operate the local Deliverable/Live Operation radio segments by pointer, Tab, and arrow keys. Confirm the selected state uses shape/text as well as color, every target is at least 44px, switching types preserves the existing conditional fields and handlers, and the sign-in segmented control remains unchanged.
 - [ ] Submit with an empty title, missing committee, incomplete live schedule, and end time before call time. Confirm the unchanged safe error stays visible above the pinned actions and the first problem is focused and scrolled into view.
 - [ ] In the assignee picker, confirm selected rows are clear without relying only on color, selected-committee members remain first, other committees remain separate, search behavior is unchanged, and inactive retained assignees reveal no profile data.
+- [ ] With 0, 1, 2, and many visible assignee rows, confirm bulk controls appear only at 2 or more. Verify `Select all shown (n)` is a real keyboard-operable checkbox, exposes checked/unchecked/mixed states, keeps focus after repeated Space presses, and updates all visible rows together without changing filtered-out selections.
+- [ ] With hidden retained selections, verify the select-all calculation counts unique hidden and visible ids toward 100. Confirm selection is disabled only when adding all visible rows would exceed 100, the limit explanation is visible and exposed to assistive technology, `Clear shown` still works, and individual selection/server validation are unchanged.
+- [ ] Confirm each active row shows its existing avatar and name, the existing active-task count as the muted second line, and its existing committee as a chip; no email, role, or newly fetched profile field appears.
 - [ ] Confirm changing task committee preserves selections, Co-Admin task committee options remain scoped, and no protected picker request or data appears for an unauthorized user.
 - [ ] Add, edit, and remove form-state phases/tasks and confirm existing restrictions and confirmation behavior are unchanged. Save and reload to verify the same payload behavior.
 - [ ] Confirm phase/task trash controls are quiet until hover or keyboard focus, existing disabled removal remains clear, task-row hover does not imply a new action, and persisted status chips contain both an icon and status text.
@@ -129,8 +156,12 @@ These checks require real authenticated browser sessions and are not claimed com
 
 ### Part C - Event board
 
-- [ ] Pending implementation. Verify real/masked cards, filters, phases, lanes, full-board loading, desktop pointer/keyboard drag, Member movement, leadership reorder, Undo, polling/focus pause, safe errors, and authoritative ordering after refresh.
-- [ ] Confirm phone Move controls remain unchanged and no Batch 6 swipe/collapse behavior appears.
+- [ ] As Claudee, Claude HAAAA, and tv, check the board at desktop and phone widths in both light and dark themes. Verify the event hero with and without a banner, the tiger placeholder, compact phases/filters/lanes/cards, loading/error/empty states, and no horizontal overflow.
+- [ ] Verify the progress ring at exactly 0%, 50%, and 100% in both themes: no progress dot at 0%, the correct orange arc at 50% and full arc at 100%, with the existing percentage and “N of M tasks completed” calculations unchanged.
+- [ ] Verify real and masked cards, Priority filtering for all three roles, and committee-filter visibility for Admin only. On a short phone viewport, confirm both option lists scroll internally with their first options reachable; at `sm` and wider, confirm their prior heights remain. Confirm both filters dismiss and return focus predictably.
+- [ ] Verify desktop pointer and keyboard drag, Member movement, leadership reorder, Move controls, phone completion control, dependency locks, Claim, Undo, polling/focus pause, safe errors, and authoritative ordering after refresh. Confirm no Batch 6 swipe/collapse behavior appears.
+- [ ] Open and close Backlog by pointer, keyboard, Escape, outside interaction, and its close button. Confirm focus returns to Backlog, the drawer stays viewport-contained, Claim and masking remain capability-driven, and no decorative card-entry cascade appears.
+- [ ] Check Critical, High, Medium, and Low chips in both themes on My Tasks, Help Wanted, task detail, board cards, Backlog cards, board Priority options, Create/Edit Event summaries and selectors, and archived event task cards. Confirm every chip keeps a readable text label and the event-form selector retains its value, accessible name, and keyboard behavior.
 
 ### Part D - Archives and User Management
 
@@ -160,5 +191,26 @@ These checks require real authenticated browser sessions and are not claimed com
 - `docs/phase-4b/step-3.md`
 - `docs/phase-4b/step-3-tests.md`
 - `docs/PROGRESS.md`
+
+## Part C changed files
+
+- `src/app/globals.css`
+- `src/app/(dashboard)/events/[eventId]/page.tsx`
+- `src/app/(dashboard)/archives/[eventId]/page.tsx` (priority badge line only)
+- `src/components/events/event-board.tsx`
+- `src/components/events/event-board-skeleton.tsx`
+- `src/components/events/event-board-progress-ring.tsx`
+- `src/components/events/event-board-progress-ring.test.tsx`
+- `src/components/events/event-board-task-card.tsx`
+- `src/components/events/event-form.tsx`
+- `src/components/shared/priority-badge.tsx`
+- `src/components/shared/priority-badge.test.tsx`
+- `src/components/tasks/my-tasks-list.tsx`
+- `src/components/tasks/help-wanted-list.tsx`
+- `src/components/tasks/task-detail.tsx`
+- `docs/DESIGN-SYSTEM.md`
+- `docs/PROGRESS.md`
+- `docs/phase-4b/step-3.md`
+- `docs/phase-4b/step-3-tests.md`
 
 No deployment, commit, push, database operation, or Supabase operation is claimed.

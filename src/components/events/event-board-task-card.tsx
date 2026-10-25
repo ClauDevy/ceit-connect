@@ -10,6 +10,7 @@ import {
   LockKeyhole,
 } from "lucide-react";
 import { StretchedLink } from "@/components/shared/stretched-link";
+import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,6 @@ import {
 } from "@/components/ui/select";
 import {
   BOARD_STATUSES,
-  type BoardPriority,
   type BoardStatus,
   type BoardTask,
 } from "@/lib/events/board";
@@ -37,12 +37,6 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: APP_TIME_ZONE.iana,
 });
-
-function priorityVariant(priority: BoardPriority) {
-  if (priority === "Critical") return "destructive" as const;
-  if (priority === "High") return "outline" as const;
-  return "neutral" as const;
-}
 
 function TaskAssignees({ task }: { task: BoardTask }) {
   const assignees = [
@@ -64,7 +58,7 @@ function TaskAssignees({ task }: { task: BoardTask }) {
   if (assignees.length === 0) return null;
 
   return (
-    <div className="flex -space-x-2" aria-label="Assignees">
+    <div className="flex -space-x-1.5" aria-label="Assignees">
       {assignees.slice(0, 3).map((assignee) => {
         const name = assignee.full_name ?? "Former member";
         return (
@@ -73,12 +67,12 @@ function TaskAssignees({ task }: { task: BoardTask }) {
             name={name}
             src={assignee.avatar_url}
             size="sm"
-            className="size-7 border-2 border-card text-[10px]"
+            className="size-6 border-2 border-card text-[9px]"
           />
         );
       })}
       {assignees.length > 3 ? (
-        <span className="z-10 inline-flex size-7 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold">
+        <span className="z-10 inline-flex size-6 items-center justify-center rounded-full border-2 border-card bg-muted text-[9px] font-semibold">
           +{assignees.length - 3}
         </span>
       ) : null}
@@ -122,8 +116,8 @@ function CardBody({
   return (
     <Card
       className={cn(
-        "relative p-0 transition-[transform,opacity,box-shadow]",
-        !overlay && "hover:-translate-y-0.5 hover:shadow-sm",
+        "relative p-0 transition-[background-color,border-color] duration-150 motion-reduce:transition-none",
+        !overlay && "hover:border-primary/40 focus-within:border-primary/40",
         task.status === "Completed" && !task.is_masked && "opacity-70",
         overlay && "cursor-grabbing scale-[1.02] opacity-90 shadow-xl",
       )}
@@ -132,20 +126,16 @@ function CardBody({
         <StretchedLink
           href={`/tasks/${task.id}`}
           label={`Open ${task.title}`}
+          className="transition-colors duration-150 hover:bg-muted/40 active:bg-muted/60 motion-reduce:transition-none"
         />
       ) : null}
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
+      <CardContent className="space-y-2.5 p-3.5">
+        <div className="flex items-start justify-between gap-2.5">
           {!task.is_masked && task.effective_priority ? (
-            <Badge
-              variant={priorityVariant(task.effective_priority)}
-              className={cn(backlog && "gap-1.5 px-2 text-xs")}
-            >
-              {backlog ? (
-                <span className="size-1.5 rounded-full bg-current" aria-hidden />
-              ) : null}
-              {task.effective_priority}
-            </Badge>
+            <PriorityBadge
+              priority={task.effective_priority}
+              className={cn(backlog && "px-2 text-xs")}
+            />
           ) : (
             <Badge variant="neutral">
               <LockKeyhole aria-hidden /> Confidential
@@ -164,7 +154,7 @@ function CardBody({
                 type="button"
                 variant="ghost"
                 size="icon-lg"
-                className="rounded-full border-2 border-border md:hidden"
+                className="rounded-full border-2 border-border transition-colors duration-150 active:bg-muted motion-reduce:transition-none md:hidden"
                 aria-label={`Mark ${task.title} Completed`}
                 disabled={busy}
                 onClick={() => onMoveStatus?.(task, "Completed")}
@@ -181,7 +171,7 @@ function CardBody({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="hidden cursor-grab touch-none md:inline-flex active:cursor-grabbing"
+                className="hidden cursor-grab touch-none transition-colors duration-150 active:cursor-grabbing active:bg-muted motion-reduce:transition-none md:inline-flex"
                 aria-label={`Drag ${task.title}`}
                 disabled={busy}
                 {...dragAttributes}
@@ -222,7 +212,7 @@ function CardBody({
         {backlog && isClaimableBacklogTask(task) && onClaim ? (
           <Button
             type="button"
-            className="relative z-20 w-full"
+            className="relative z-20 w-full transition-colors duration-150 active:bg-primary/70 motion-reduce:transition-none"
             disabled={busy || claimBusy}
             onClick={() => onClaim(task)}
           >
@@ -237,7 +227,7 @@ function CardBody({
         ) : null}
 
         {!backlog || showBacklogFooter ? (
-          <div className="flex min-h-7 items-center justify-between gap-3">
+          <div className="flex min-h-6 items-center justify-between gap-3">
             <TaskAssignees task={task} />
             <span className="text-xs text-muted-foreground">
               {task.is_masked
@@ -267,7 +257,7 @@ function CardBody({
               }}
             >
               <SelectTrigger
-                className="h-9 w-full text-xs"
+                className="h-11 w-full text-xs transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-9"
                 aria-label={`Move ${task.title} to another status`}
               >
                 <span className="text-muted-foreground">Move to</span>

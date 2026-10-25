@@ -40,6 +40,13 @@ This guide turns the existing tokens, shared components, and approved prototype 
 - Borders and focus rings must remain visible against their surface in light and dark mode. Use the shared focus-visible ring. Disabled controls remain legible and cannot receive pointer actions.
 - Validate every changed surface in both themes; do not assume a light-mode opacity or border works in dark mode.
 
+### Task priority
+
+- Render task priority through the shared `PriorityBadge` and its accent/dot helpers. Every chip keeps the visible priority label, so color is never the only signal.
+- Priority colors are semantic tokens with separate readable text, soft-background, and border values for both themes: Critical is red, High is orange, Medium is blue, and Low is green. Medium deliberately follows the event-board prototype's blue treatment instead of the workspace prototype's grey legend.
+- Use the shared left accent only where a compact task row already has a priority edge. Use the shared dot for priority filters and legends; do not recreate priority colors in feature markup.
+- Display the effective priority supplied by the current reader when that is what the surface already uses. Styling must not recompute priority or change sorting, filtering, or saved values.
+
 ## Loading, empty, and error states
 
 - Use the shared `Skeleton` and page-specific skeletons. Skeleton geometry should match the final layout closely enough to avoid large jumps, use semantic surface colors, remain `aria-hidden`, and animate only through `motion-safe`.
