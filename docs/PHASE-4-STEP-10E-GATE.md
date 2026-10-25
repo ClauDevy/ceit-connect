@@ -262,6 +262,11 @@ every paste row to its named file.
 | 10C | Three pastes; `18 / 16 / 16` result lines | Passed on Dev (owner-confirmed) |
 | 10D | Three pastes; `12 / 14 / 14` result lines | Passed on Dev (owner-confirmed) |
 
+The `57 / 8 / 11 / 20 / 0` 10A result above is preserved as the historical
+Phase 4 gate. Batch 0 later added `update_own_profile(text)`, and Batch 3H adds
+only `list_home_event_progress(uuid[])`; the current source inventory therefore
+expects `59 / 8 / 11 / 20 / 0` after the owner applies both migrations to Dev.
+
 ### Optional final legacy session — Phase 3 regression pastes
 
 Test files: [`PHASE-3-HARDENING-TESTS.md`](PHASE-3-HARDENING-TESTS.md),

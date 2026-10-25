@@ -64,7 +64,7 @@ Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12
 3. `feature/ui-redesign-pages` - look and layout only for Tasks, event board, task page, assignee picker,
    Archives, User Management, Settings, and Create Event. Paging is not part of this batch.
 3P. List paging - Home, Archives, My Tasks, and Help Wanted use 20 items plus Load more by fetching 21 and showing 20; fix false Load more. Kanban remains fully loaded.
-3H. `feature/home-event-progress` - after 3P, add a lightweight safe per-event reader so Home event cards can show current phase, progress percentage, open backup requests, and backlog counts while preserving RLS, Draft visibility, and confidential masking. Needs a tracked migration, SQL tests, and High reasoning. Resolve what "current phase" means before implementation. See `docs/phase-4b/step-3h.md`.
+3H. `feature/home-event-progress` - after 3P, add a lightweight safe per-event reader so Home Active event cards can show current phase, progress percentage, open backup requests visible to the caller, and backlog counts while preserving RLS, Draft visibility, and confidential masking. Current phase is the first incomplete canonical phase in the board's first-seen `sort_order, id` order; completed Unphased tasks count toward an all-complete Home label without changing 13b's no-lock rule. Needs a tracked migration, SQL tests, and High reasoning. See `docs/phase-4b/step-3h.md`.
 4. `feature/branding` - runs after batch 13b and before batch 14; add the council shield background
    (scattered, faint, fixed placement), login page treatment, light-mode version, and favicon. Needs a clean shield SVG.
 5. `feature/motion-polish` - restrained interaction, page-route, form, card, and first-20-list-item transitions; reduced-motion fallback, measurable phone budget, and no new animation library.
@@ -107,8 +107,10 @@ Notifications (bell, Discord webhooks, Resend for critical only), Executive Dash
   Activity Log paging is in batch 12, and Kanban stays fully loaded.
 - Home event progress belongs to Batch 3H after 3P. It uses a lightweight safe per-event reader for
   current phase, progress percentage, open backup-request count, and backlog count; the reader must
-  preserve RLS, Draft visibility, and confidential masking. The owner must define "current phase"
-  before the High-reasoning migration and SQL tests are designed.
+  preserve RLS, Draft visibility, and confidential masking. Current phase is the first canonical
+  phase containing an incomplete task in the board's first-seen `sort_order, id` order. `Unphased`
+  takes its natural first-seen position; completed Unphased tasks count toward `All phases complete`
+  on Home but never cause Batch 13b's write lock.
 - Phase completion (`feature/phase-completion`): when every task in a named phase is Completed, the phase
   tab shows a check and strikethrough, is collapsed by default, and is read-only (no moves, edits,
   assignment changes, comments, link changes, or task mutations from Edit Event). Edit Event may still save event metadata when it submits no completed-phase task mutation. The `Unphased` bucket never completes or locks. Members can still open its tasks
@@ -141,7 +143,7 @@ Notifications (bell, Discord webhooks, Resend for critical only), Executive Dash
 - Event deletion (batch 13d): one Admin-only management page covers Draft and Archived events with a year filter. Single deletion types the event name; bulk deletion types `DELETE <count> EVENTS`. Active deletion is blocked; activity_log keeps the task UUID without a foreign key.
 - Phase completion (batch 13b): completion is derived for named phases only. A completed phase blocks every task/child mutation, while metadata-only Edit Event saves remain allowed. `Unphased` never completes or locks. Reopen moves one chosen task to In Progress and is callable by any active Admin or the active Co-Admin whose id equals events.created_by; if that Co-Admin is inactive, Admins only.
 - Paging (batch 3P): 20 items plus "Load more" for linear lists only (fetch 21, show 20). Kanban board stays fully loaded. Home, Archives, My Tasks, Help Wanted in 3P; Users in 7; Activity Log in 12.
-- Home event progress (batch 3H): after 3P, add a migration-backed, SQL-tested safe per-event reader for current phase, progress percentage, open backup requests, and backlog counts. Preserve RLS, Draft visibility, and confidential masking; define "current phase" with the owner before implementation.
+- Home event progress (batch 3H): after 3P, add a migration-backed, SQL-tested safe per-event reader for current phase, progress percentage, caller-visible open backup requests, and backlog counts. Current phase follows the board's first-seen canonical phase order and skips completed buckets; completed Unphased tasks participate in the Home all-complete label without changing 13b's no-lock rule. Preserve RLS, Draft visibility, and confidential masking.
 - Activity Log (batch 12): list_activity_log() RPC masks confidential content; raw SELECT on activity_log is revoked.
 - Catalog: add a new authoritative Phase 4B catalog test after 13b and expand the Step 10 allowlists; old exact counts are historical.
 - Batch 14 must enable `public.app_settings.enforce_officer_role_caps` through a tracked migration before final release and verify Step 1's package/lint/root-script cleanup remains complete.
