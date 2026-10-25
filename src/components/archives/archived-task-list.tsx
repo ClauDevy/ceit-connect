@@ -35,6 +35,7 @@ export type ArchivedTaskGroup = {
 };
 
 const NO_PHASE = "No phase";
+const MASKED_TASK_TITLE = "🔒 Confidential Task";
 
 const taskDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -45,6 +46,7 @@ const taskDateFormatter = new Intl.DateTimeFormat("en-US", {
 
 export function groupArchivedTasksByPhase(
   tasks: ArchivedTask[],
+  taskContent: ReadonlyMap<string, ArchivedTaskContent> = new Map(),
 ): ArchivedTaskGroup[] {
   // Match the board's first-seen named-phase order. The archive keeps its
   // existing created_at task order, while the owner-approved No phase bucket
@@ -53,7 +55,10 @@ export function groupArchivedTasksByPhase(
   const noPhaseTasks: ArchivedTask[] = [];
 
   for (const task of tasks) {
-    const phase = task.phase?.trim();
+    const content = taskContent.get(task.id);
+    const isMasked =
+      content?.title === MASKED_TASK_TITLE && content.description === null;
+    const phase = isMasked ? undefined : task.phase?.trim();
     if (!phase) {
       noPhaseTasks.push(task);
       continue;
@@ -94,7 +99,7 @@ export function ArchivedTaskList({
   assignees: ReadonlyMap<string, ArchivedAssignee>;
   assigneesUnavailable: boolean;
 }) {
-  const groups = groupArchivedTasksByPhase(tasks);
+  const groups = groupArchivedTasksByPhase(tasks, taskContent);
 
   return (
     <div className="grid gap-7">
@@ -102,7 +107,10 @@ export function ArchivedTaskList({
         const headingId = `archived-phase-${groupIndex}`;
 
         return (
-          <section key={`${groupIndex}-${group.phase}`} aria-labelledby={headingId}>
+          <section
+            key={`${groupIndex}-${group.phase}`}
+            aria-labelledby={headingId}
+          >
             <div className="mb-2.5 flex min-w-0 items-baseline gap-2 border-b pb-2">
               <h3
                 id={headingId}
