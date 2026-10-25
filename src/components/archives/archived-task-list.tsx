@@ -4,7 +4,9 @@ import { StretchedLink } from "@/components/shared/stretched-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { getEntranceClassName, selectEntranceIds } from "@/lib/motion";
 import { APP_TIME_ZONE } from "@/lib/timezone";
+import { cn } from "@/lib/utils";
 
 export type ArchivedTask = {
   id: string;
@@ -100,6 +102,11 @@ export function ArchivedTaskList({
   assigneesUnavailable: boolean;
 }) {
   const groups = groupArchivedTasksByPhase(tasks, taskContent);
+  const entranceIds = selectEntranceIds(
+    groups.flatMap((group) => group.tasks),
+    (task) => task.id,
+  );
+  const entranceCapture = { phase: "playing" as const, ids: entranceIds };
 
   return (
     <div className="grid gap-7">
@@ -137,12 +144,15 @@ export function ArchivedTaskList({
                 return (
                   <Card
                     key={task.id}
-                    className="group relative overflow-hidden rounded-xl transition-[background-color,border-color] duration-150 hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50 motion-reduce:transition-none"
+                    className={cn(
+                      "motion-card-interaction group relative overflow-hidden rounded-xl hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50",
+                      getEntranceClassName(entranceCapture, task.id),
+                    )}
                   >
                     <StretchedLink
                       href={`/tasks/${task.id}`}
                       label={`Open ${content?.title ?? "Task details unavailable"}`}
-                      className="transition-colors duration-150 active:bg-muted/60 motion-reduce:transition-none"
+                      className="transition-colors duration-[var(--motion-interaction-duration)] active:bg-muted/60 motion-reduce:transition-none"
                     />
                     <div className="grid gap-3 p-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:p-4">
                       <div className="min-w-0">
@@ -216,7 +226,7 @@ export function ArchivedTaskList({
                       </div>
 
                       <ChevronRight
-                        className="hidden size-4 text-muted-foreground transition-colors duration-150 group-hover:text-foreground motion-reduce:transition-none sm:block"
+                        className="motion-arrow hidden size-4 text-muted-foreground group-hover:text-foreground sm:block"
                         aria-hidden
                       />
                     </div>

@@ -34,7 +34,7 @@ export function TaskBackupToggle({
       onClick={() => void onToggle(!state.out_request_backup)}
     >
       {busyAction === "toggle-backup" ? (
-        <LoaderCircle className="animate-spin" aria-hidden />
+        <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
       ) : (
         <TriangleAlert aria-hidden />
       )}
@@ -91,7 +91,7 @@ export function TaskBackupRequestedCard({
                       onClick={() => void onAccept(volunteer.id)}
                     >
                       {accepting ? (
-                        <LoaderCircle className="animate-spin" aria-hidden />
+                        <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
                       ) : null}
                       Accept
                     </Button>
@@ -116,7 +116,7 @@ export function TaskBackupRequestedCard({
               onClick={() => void onWithdraw()}
             >
               {busyAction === "withdraw" ? (
-                <LoaderCircle className="animate-spin" aria-hidden />
+                <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
               ) : null}
               Withdraw offer
             </Button>
@@ -131,7 +131,7 @@ export function TaskBackupRequestedCard({
             onClick={() => void onVolunteer()}
           >
             {busyAction === "volunteer" ? (
-              <LoaderCircle className="animate-spin" aria-hidden />
+              <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
             ) : null}
             Volunteer to help
           </Button>

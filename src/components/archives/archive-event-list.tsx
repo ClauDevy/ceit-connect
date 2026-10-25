@@ -5,6 +5,7 @@ import { Archive, CalendarDays, ChevronRight, RefreshCw } from "lucide-react";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
+import { useInitialListEntrance } from "@/components/shared/motion";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/events/list-paging";
 import { LIST_FETCH_LIMIT, type OffsetListPage } from "@/lib/list-paging";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
@@ -76,6 +78,13 @@ export function ArchiveEventList({
     singularLabel: "event",
     pluralLabel: "events",
   });
+  const entrance = useInitialListEntrance({
+    initialItems: initialPage?.items ?? [],
+    items: paging.items,
+    settled: paging.settled,
+    error: paging.error,
+    getId: (event: ArchivedEvent) => event.id,
+  });
 
   if (paging.isInitialLoading) {
     return (
@@ -133,12 +142,23 @@ export function ArchiveEventList({
         {paging.items.map((event) => (
           <Card
             key={event.id}
-            className="group relative overflow-hidden transition-[background-color,border-color] duration-150 hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50 motion-reduce:transition-none"
+            className={cn(
+              "motion-card-interaction group relative overflow-hidden hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50",
+              entrance.getEntranceClassName(event.id),
+            )}
+            onAnimationEnd={
+              entrance.isEntranceItem(event.id)
+                ? entrance.onAnimationEnd
+                : undefined
+            }
+            data-motion-entrance-id={
+              entrance.isEntranceItem(event.id) ? event.id : undefined
+            }
           >
             <StretchedLink
               href={`/archives/${event.id}`}
               label={`View ${event.name} archive`}
-              className="transition-colors duration-150 active:bg-muted/60 motion-reduce:transition-none"
+              className="transition-colors duration-[var(--motion-interaction-duration)] active:bg-muted/60 motion-reduce:transition-none"
             />
             <div className="flex flex-col sm:flex-row">
               <EventBanner
@@ -173,7 +193,7 @@ export function ArchiveEventList({
                   ) : null}
                 </div>
                 <ChevronRight
-                  className="mt-1 size-4 shrink-0 text-muted-foreground transition-colors duration-150 group-hover:text-foreground motion-reduce:transition-none sm:mt-0"
+                  className="motion-arrow mt-1 size-4 shrink-0 text-muted-foreground group-hover:text-foreground sm:mt-0"
                   aria-hidden
                 />
               </CardContent>

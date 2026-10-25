@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { IconInput } from "@/components/ui/icon-input";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { useInitialListEntrance } from "@/components/shared/motion";
 import { MembersCards } from "@/components/users/members-cards";
 import { MembersTable } from "@/components/users/members-table";
 import { useToggleMemberActive } from "@/components/users/use-toggle-member-active";
@@ -45,6 +46,12 @@ export function UsersTable({
       ].some((field) => field.toLowerCase().includes(q)),
     );
   }, [members, committees, query]);
+  const entrance = useInitialListEntrance({
+    initialItems: initialMembers,
+    items: visible,
+    settled: true,
+    getId: (member: Member) => member.id,
+  });
 
   const reactivating = target ? !target.is_active : false;
 
@@ -65,6 +72,8 @@ export function UsersTable({
     currentUserId,
     pendingId,
     onToggle: askToToggle,
+    getEntranceClassName: entrance.getEntranceClassName,
+    onAnimationEnd: entrance.onAnimationEnd,
   };
 
   return (

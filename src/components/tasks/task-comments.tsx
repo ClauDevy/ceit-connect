@@ -390,7 +390,7 @@ function CommentForm({
             Boolean(validationError) ||
             bodyLength > MAX_TASK_COMMENT_CODE_POINTS
           }
-          className="w-full resize-y rounded-xl border border-input bg-card px-3.5 py-3 text-sm outline-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30"
+          className="w-full resize-y rounded-xl border border-input bg-card px-3.5 py-3 text-sm outline-none transition-[color,box-shadow,border-color] duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] placeholder:text-muted-foreground hover:border-primary/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 motion-reduce:transition-none dark:bg-input/30"
           placeholder="Write a plain-text update…"
           onChange={(event) => {
             setBody(event.target.value);

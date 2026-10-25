@@ -34,7 +34,7 @@ export function HomeEventProgressSummary({
           aria-valuenow={progress.percentage}
         >
           <div
-            className="h-full rounded-full bg-primary"
+            className="motion-progress-fill h-full rounded-full bg-primary"
             style={{ width: `${progress.percentage}%` }}
           />
         </div>

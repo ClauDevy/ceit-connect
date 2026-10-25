@@ -68,6 +68,7 @@ describe("LoadMoreControl", () => {
     }
     expect(ready).toContain("Load more");
     expect(loading).toContain("Loading more...");
+    expect(loading).toContain("motion-safe:animate-spin");
     expect(loading).toContain("disabled");
     expect(retry).toContain("Retry");
     expect(final).toContain("All items loaded");
