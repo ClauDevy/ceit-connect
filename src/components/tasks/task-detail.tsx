@@ -338,7 +338,7 @@ function RealTask({
         </InlineAlert>
       ) : null}
 
-      <header className="space-y-3">
+      <header>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -367,10 +367,12 @@ function RealTask({
             </div>
           ) : null}
         </div>
-        <div className="empty:hidden" aria-live="polite" aria-atomic="true">
-          {backup.error ? <InlineAlert>{backup.error}</InlineAlert> : null}
+        <div aria-live="polite" aria-atomic="true">
+          {backup.error ? (
+            <InlineAlert className="mt-3">{backup.error}</InlineAlert>
+          ) : null}
           {backup.notice ? (
-            <p role="status" className="text-sm text-muted-foreground">
+            <p role="status" className="mt-3 text-sm text-muted-foreground">
               {backup.notice}
             </p>
           ) : null}
