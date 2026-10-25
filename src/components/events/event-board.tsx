@@ -186,7 +186,7 @@ function BoardLaneDropZone({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-24 space-y-3 rounded-xl transition-colors",
+        "min-h-20 space-y-3 rounded-xl transition-colors duration-150 motion-reduce:transition-none",
         isOver && !disabled && "bg-primary/5 ring-2 ring-primary/30",
       )}
     >
@@ -889,7 +889,7 @@ function BoardContents({
                   aria-label="Committee filter"
                   aria-activedescendant={`committee-filter-option-${committeeActiveIndex}`}
                   className={cn(
-                    "absolute top-full right-0 z-50 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-2xl border bg-popover p-2 shadow-2xl sm:right-auto sm:left-0",
+                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 rounded-2xl border bg-popover p-2 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-72 sm:max-w-[calc(100vw-1rem)]",
                   )}
                 >
                   <div className="max-h-60 space-y-1 overflow-y-auto overscroll-contain">
@@ -1010,9 +1010,10 @@ function BoardContents({
                 return (
                   <section
                     key={status}
+                    className="min-w-0"
                     aria-labelledby={`lane-${status.replaceAll(" ", "-")}`}
                   >
-                    <div className="mb-3.5 flex items-center gap-2 px-0.5">
+                    <div className="mb-3 flex items-center gap-2 px-0.5">
                       <span
                         className={cn(
                           "size-2 rounded-full",
@@ -1027,7 +1028,7 @@ function BoardContents({
                       >
                         {status}
                       </h2>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs leading-none text-muted-foreground">
                         {laneTasks.length}
                       </span>
                     </div>
@@ -1057,7 +1058,7 @@ function BoardContents({
                           );
                         })}
                         {laneTasks.length === 0 ? (
-                          <div className="rounded-xl border-2 border-dashed p-4 text-center text-xs text-muted-foreground">
+                          <div className="grid min-h-16 place-items-center rounded-xl border-2 border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
                             {selectedPriorities.size > 0
                               ? "No tasks match this filter."
                               : "No tasks yet"}
@@ -1087,9 +1088,9 @@ function BoardContents({
           aria-labelledby="event-board-backlog-title"
           aria-describedby="event-board-backlog-description"
           finalFocus={backlogButtonRef}
-          className="group flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] data-[ending-style]:translate-y-full data-[ending-style]:opacity-0 data-[starting-style]:translate-y-full data-[starting-style]:opacity-0 data-[ending-style]:duration-200 data-[ending-style]:ease-in motion-reduce:transition-opacity motion-reduce:duration-[120ms] motion-reduce:data-[ending-style]:translate-y-0 motion-reduce:data-[starting-style]:translate-y-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-full md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-full md:data-[starting-style]:translate-y-0 motion-reduce:md:data-[ending-style]:translate-x-0 motion-reduce:md:data-[starting-style]:translate-x-0"
+          className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 transition-none data-[ending-style]:translate-y-0 data-[starting-style]:translate-y-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-0 md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-0 md:data-[starting-style]:translate-y-0"
         >
-          <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-5 py-4">
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-4 py-3.5">
             <div className="min-w-0 flex-1">
               <SheetTitle
                 id="event-board-backlog-title"
@@ -1098,7 +1099,7 @@ function BoardContents({
                 Task Backlog
               </SheetTitle>
               <SheetDescription id="event-board-backlog-description" className="text-xs">
-                Unassigned tasks · read only
+                Unassigned tasks
               </SheetDescription>
             </div>
             <Badge variant="neutral" className="shrink-0 px-2">
@@ -1109,7 +1110,7 @@ function BoardContents({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-11 sm:size-8"
+                  className="size-11 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:size-8"
                   aria-label="Close backlog"
                 />
               }
@@ -1117,30 +1118,19 @@ function BoardContents({
               <X aria-hidden />
             </SheetClose>
           </div>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-            {backlogTasks.map((task, index) => (
-              <div
+          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            {backlogTasks.map((task) => (
+              <EventBoardTaskCard
                 key={task.id}
-                className={cn(
-                  "transition-[opacity,transform] duration-200 ease-out group-data-[starting-style]:translate-y-2 group-data-[starting-style]:opacity-0 motion-reduce:transition-opacity motion-reduce:duration-[120ms] motion-reduce:delay-0 motion-reduce:group-data-[starting-style]:translate-y-0",
-                  index === 1 && "delay-[30ms]",
-                  index === 2 && "delay-[60ms]",
-                  index === 3 && "delay-[90ms]",
-                  index === 4 && "delay-[120ms]",
-                  index === 5 && "delay-[150ms]",
-                )}
-              >
-                <EventBoardTaskCard
-                  task={task}
-                  backlog
-                  busy={boardBusy}
-                  claimBusy={claimingTaskId === task.id}
-                  onClaim={handleClaim}
-                />
-              </div>
+                task={task}
+                backlog
+                busy={boardBusy}
+                claimBusy={claimingTaskId === task.id}
+                onClaim={handleClaim}
+              />
             ))}
             {backlogTasks.length === 0 ? (
-              <p className="rounded-xl border-2 border-dashed p-5 text-center text-sm text-muted-foreground">
+              <p className="rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                 {selectedPriorities.size > 0
                   ? "No unassigned tasks match this filter."
                   : "No unassigned tasks."}
