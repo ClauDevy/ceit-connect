@@ -11,9 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { HELP_WANTED_PAGE_SIZE, type HelpWantedTask } from "@/lib/tasks/backup";
+import type { OffsetListPage } from "@/lib/list-paging";
+import type { HelpWantedTask } from "@/lib/tasks/backup";
 import {
-  MY_TASKS_PAGE_SIZE,
   formatLoadedTaskCount,
   getLoadedMyTasksCount,
   isMyTasksSort,
@@ -41,22 +41,22 @@ const sortItems = [
 ];
 
 export function WorkspaceTasks({
-  initialMyTasks,
-  initialHelpWantedTasks,
+  initialMyTasksPage,
+  initialHelpWantedPage,
 }: {
-  initialMyTasks?: MyTask[];
-  initialHelpWantedTasks?: HelpWantedTask[];
+  initialMyTasksPage?: OffsetListPage<MyTask>;
+  initialHelpWantedPage?: OffsetListPage<HelpWantedTask>;
 }) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("mine");
   const [status, setStatus] = useState<MyTasksStatus>(null);
   const [sort, setSort] = useState<MyTasksSort>("deadline");
   const [myTasksState, setMyTasksState] = useState<LoadedState>(() => ({
-    count: getLoadedMyTasksCount(initialMyTasks ?? []),
-    hasNextPage: initialMyTasks?.length === MY_TASKS_PAGE_SIZE,
+    count: getLoadedMyTasksCount(initialMyTasksPage?.items ?? []),
+    hasNextPage: initialMyTasksPage?.hasMore ?? false,
   }));
   const [helpWantedState, setHelpWantedState] = useState<LoadedState>(() => ({
-    count: initialHelpWantedTasks?.length ?? 0,
-    hasNextPage: initialHelpWantedTasks?.length === HELP_WANTED_PAGE_SIZE,
+    count: initialHelpWantedPage?.items.length ?? 0,
+    hasNextPage: initialHelpWantedPage?.hasMore ?? false,
   }));
   const myTasksTabRef = useRef<HTMLButtonElement>(null);
   const helpWantedTabRef = useRef<HTMLButtonElement>(null);
@@ -231,7 +231,7 @@ export function WorkspaceTasks({
         className="space-y-3 focus-visible:outline-none"
       >
         <MyTasksList
-          initialTasks={initialMyTasks}
+          initialPage={initialMyTasksPage}
           active={activeTab === "mine"}
           status={status}
           sort={sort}
@@ -247,7 +247,7 @@ export function WorkspaceTasks({
         className="space-y-3 focus-visible:outline-none"
       >
         <HelpWantedList
-          initialTasks={initialHelpWantedTasks}
+          initialPage={initialHelpWantedPage}
           active={activeTab === "help"}
           onLoadedStateChange={updateHelpWantedState}
         />

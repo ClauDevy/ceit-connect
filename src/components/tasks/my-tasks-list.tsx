@@ -1,12 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  keepPreviousData,
-  QueryClient,
-  QueryClientProvider,
-  useInfiniteQuery,
-} from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   ChevronRight,
   LoaderCircle,
@@ -14,6 +8,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
+import { LoadMoreControl } from "@/components/shared/load-more-control";
 import {
   getPriorityAccentClass,
   PriorityBadge,
@@ -24,9 +19,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
+import type { OffsetListPage } from "@/lib/list-paging";
 import {
-  MY_TASKS_PAGE_SIZE,
-  dedupeMyTasks,
   getLoadedMyTasksCount,
   getMyTasksErrorMessage,
   getMyTasksRpcArgs,
@@ -56,13 +51,13 @@ function sortDescription(sort: MyTasksSort) {
 type LoadedState = { count: number; hasNextPage: boolean };
 
 function MyTasksContents({
-  initialTasks,
+  initialPage,
   active,
   status,
   sort,
   onLoadedStateChange,
 }: {
-  initialTasks?: MyTask[];
+  initialPage?: OffsetListPage<MyTask>;
   active: boolean;
   status: MyTasksStatus;
   sort: MyTasksSort;
@@ -70,13 +65,11 @@ function MyTasksContents({
 }) {
   const supabase = useMemo(() => createClient(), []);
   const canUseInitialTasks = status === null && sort === "deadline";
-
-  const query = useInfiniteQuery({
-    queryKey: ["my-tasks", status, sort],
-    queryFn: async ({ pageParam, signal }) => {
+  const fetchPage = useCallback(
+    async (offset: number, signal: AbortSignal) => {
       let request = supabase.rpc(
         "list_my_tasks",
-        getMyTasksRpcArgs(status, sort, pageParam),
+        getMyTasksRpcArgs(status, sort, offset),
       );
       request = request.abortSignal(signal);
       const { data, error } = await request;
@@ -86,42 +79,41 @@ function MyTasksContents({
       }
       return data;
     },
-    initialPageParam: 0,
-    initialData:
-      initialTasks === undefined || !canUseInitialTasks
-        ? undefined
-        : { pages: [initialTasks], pageParams: [0] },
-    placeholderData: keepPreviousData,
-    getNextPageParam: (lastPage, _pages, lastPageParam) =>
-      lastPage.length === MY_TASKS_PAGE_SIZE
-        ? lastPageParam + MY_TASKS_PAGE_SIZE
-        : undefined,
-    enabled: active,
-    refetchOnWindowFocus: active,
-    refetchInterval: active ? POLL_INTERVAL_MS : false,
-    refetchIntervalInBackground: false,
+    [sort, status, supabase],
+  );
+
+  const paging = useOffsetListPaging({
+    active,
+    fetchPage,
+    getId: (task: MyTask) => task.out_id,
+    identity: `my-tasks:${status ?? "all"}:${sort}`,
+    initialPage: canUseInitialTasks ? initialPage : undefined,
+    pollIntervalMs: POLL_INTERVAL_MS,
+    singularLabel: "task",
+    pluralLabel: "tasks",
   });
 
-  const tasks = useMemo(
-    () => dedupeMyTasks(query.data?.pages ?? []),
-    [query.data],
-  );
+  const tasks = paging.items;
   const loadedCount = getLoadedMyTasksCount(tasks);
-  const hasNextPage = query.hasNextPage === true;
+  const hasNextPage = paging.hasMore;
+  const hideTaskList =
+    !paging.settled || (paging.error !== null && tasks.length === 0);
 
   useEffect(() => {
-    if (status !== null || query.isPending || query.isPlaceholderData) return;
+    if (!active || status !== null || !paging.settled || paging.isRefreshing)
+      return;
     onLoadedStateChange?.({ count: loadedCount, hasNextPage });
   }, [
     hasNextPage,
+    active,
     loadedCount,
     onLoadedStateChange,
-    query.isPending,
-    query.isPlaceholderData,
+    paging.isRefreshing,
+    paging.settled,
     status,
   ]);
 
-  if (query.isPending) {
+  if (paging.isInitialLoading) {
     return (
       <Card
         className="overflow-hidden"
@@ -146,9 +138,9 @@ function MyTasksContents({
   }
 
   return (
-    <div className="space-y-3" aria-busy={query.isPlaceholderData}>
+    <div className="space-y-3" aria-busy={paging.isRefreshing}>
       <p className="text-xs text-muted-foreground">
-        {query.isPlaceholderData ? (
+        {paging.isRefreshing ? (
           <span
             role="status"
             aria-live="polite"
@@ -165,11 +157,11 @@ function MyTasksContents({
         )}
       </p>
 
-      {query.error ? (
+      {paging.error && paging.failedMode !== "append" ? (
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
           <span>
-            {getMyTasksErrorMessage(query.error)}
-            {query.data === undefined
+            {getMyTasksErrorMessage(paging.error)}
+            {tasks.length === 0
               ? ""
               : " The last successful result is still shown."}
           </span>
@@ -177,14 +169,14 @@ function MyTasksContents({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => void query.refetch()}
+            onClick={() => void paging.retry()}
           >
             <RefreshCw aria-hidden /> Retry
           </Button>
         </InlineAlert>
       ) : null}
 
-      {query.data === undefined ? null : tasks.length === 0 ? (
+      {hideTaskList ? null : tasks.length === 0 ? (
         <Card className="border-dashed">
           <EmptyState
             title={status ? "No tasks match this status" : "No tasks assigned"}
@@ -242,54 +234,44 @@ function MyTasksContents({
         </Card>
       )}
 
-      {query.hasNextPage ? (
-        <div className="flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={query.isFetchingNextPage || query.isPlaceholderData}
-            onClick={() => void query.fetchNextPage()}
-          >
-            {query.isFetchingNextPage ? (
-              <LoaderCircle className="animate-spin" aria-hidden />
-            ) : null}
-            Load more
-          </Button>
-        </div>
-      ) : null}
+      <LoadMoreControl
+        announcement={paging.announcement}
+        disabled={paging.isRefreshing}
+        errorMessage={
+          paging.error && paging.failedMode === "append"
+            ? `${getMyTasksErrorMessage(paging.error)} The loaded tasks are still shown.`
+            : undefined
+        }
+        hasLoadedMore={paging.hasLoadedMore}
+        hasMore={paging.hasMore}
+        isLoading={paging.isLoadingMore}
+        onLoadMore={() => void paging.loadMore()}
+        onRetry={() => void paging.retry()}
+      />
     </div>
   );
 }
 
 export function MyTasksList({
-  initialTasks,
+  initialPage,
   active,
   status,
   sort,
   onLoadedStateChange,
 }: {
-  initialTasks?: MyTask[];
+  initialPage?: OffsetListPage<MyTask>;
   active: boolean;
   status: MyTasksStatus;
   sort: MyTasksSort;
   onLoadedStateChange?: (state: LoadedState) => void;
 }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: { queries: { retry: 1 } },
-      }),
-  );
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <MyTasksContents
-        initialTasks={initialTasks}
-        active={active}
-        status={status}
-        sort={sort}
-        onLoadedStateChange={onLoadedStateChange}
-      />
-    </QueryClientProvider>
+    <MyTasksContents
+      initialPage={initialPage}
+      active={active}
+      status={status}
+      sort={sort}
+      onLoadedStateChange={onLoadedStateChange}
+    />
   );
 }

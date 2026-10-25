@@ -4,8 +4,9 @@ import {
   type BoardPriority,
   type BoardStatus,
 } from "../events/board";
+import { LIST_FETCH_LIMIT, LIST_PAGE_SIZE } from "../list-paging";
 
-export const MY_TASKS_PAGE_SIZE = 50;
+export const MY_TASKS_PAGE_SIZE = LIST_PAGE_SIZE;
 
 export const MY_TASKS_SORTS = ["deadline", "priority", "event"] as const;
 
@@ -44,9 +45,7 @@ export function isMyTask(value: unknown): value is MyTask {
     typeof row.out_event_name === "string" &&
     isNullableString(row.out_phase) &&
     BOARD_STATUSES.includes(row.out_status as BoardStatus) &&
-    BOARD_PRIORITIES.includes(
-      row.out_effective_priority as BoardPriority,
-    ) &&
+    BOARD_PRIORITIES.includes(row.out_effective_priority as BoardPriority) &&
     isNullableString(row.out_due_date) &&
     typeof row.out_committee_id === "string" &&
     typeof row.out_committee_name === "string" &&
@@ -72,7 +71,7 @@ export function getMyTasksRpcArgs(
   return {
     p_status: status,
     p_sort: sort,
-    p_limit: MY_TASKS_PAGE_SIZE,
+    p_limit: LIST_FETCH_LIMIT,
     p_offset: offset,
   };
 }
