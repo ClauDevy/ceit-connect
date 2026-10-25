@@ -21,7 +21,7 @@ export function AvatarMenu({ user }: { user: CurrentUser }) {
         aria-label="Open account menu"
         className="grid size-11 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <UserAvatar name={user.name} src={user.avatarUrl} size="sm" />
+        <UserAvatar name={user.name} src={user.avatarUrl} size="sm" className="motion-avatar" />
       </DropdownMenuTrigger>
       <DropdownMenuContent aria-label="Account menu">
         <div className="min-w-0 px-3 py-2">

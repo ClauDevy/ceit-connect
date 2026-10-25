@@ -100,7 +100,7 @@ export function WorkspaceTasks({
             aria-controls="my-tasks-panel"
             tabIndex={activeTab === "mine" ? 0 : -1}
             className={cn(
-              "flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold outline-none transition-colors duration-150 active:translate-y-px focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none sm:px-3.5",
+              "flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold outline-none transition-colors duration-150 active:translate-y-px focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none motion-reduce:active:translate-y-0 sm:px-3.5",
               activeTab === "mine"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
@@ -133,7 +133,7 @@ export function WorkspaceTasks({
             aria-controls="help-wanted-panel"
             tabIndex={activeTab === "help" ? 0 : -1}
             className={cn(
-              "flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold outline-none transition-colors duration-150 active:translate-y-px focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none sm:px-3.5",
+              "flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold outline-none transition-colors duration-150 active:translate-y-px focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none motion-reduce:active:translate-y-0 sm:px-3.5",
               activeTab === "help"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",

@@ -22,7 +22,7 @@ function DropdownMenuContent({
       >
         <MenuPrimitive.Popup
           className={cn(
-            "w-[min(18rem,calc(100vw-2rem))] origin-[var(--transform-origin)] rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl outline-none transition-[opacity,transform] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 motion-reduce:transition-none",
+            "w-[min(18rem,calc(100vw-2rem))] origin-[var(--transform-origin)] rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl outline-none transition-[opacity,scale] duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] data-[ending-style]:scale-[0.94] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.94] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[starting-style]:opacity-100",
             className
           )}
           {...props}

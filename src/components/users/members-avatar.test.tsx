@@ -15,12 +15,16 @@ vi.mock("@/components/ui/badge", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 vi.mock("@/components/ui/table", () => ({
-  Table: ({ children }: { children: React.ReactNode }) => <table>{children}</table>,
-  TableBody: ({ children }: { children: React.ReactNode }) => <tbody>{children}</tbody>,
-  TableCell: ({ children }: { children: React.ReactNode }) => <td>{children}</td>,
-  TableHead: ({ children }: { children: React.ReactNode }) => <th>{children}</th>,
-  TableHeader: ({ children }: { children: React.ReactNode }) => <thead>{children}</thead>,
-  TableRow: ({ children }: { children: React.ReactNode }) => <tr>{children}</tr>,
+  Table: ({ children, ...props }: React.ComponentProps<"table">) => <table {...props}>{children}</table>,
+  TableBody: ({ children, ...props }: React.ComponentProps<"tbody">) => <tbody {...props}>{children}</tbody>,
+  TableCell: ({ children, ...props }: React.ComponentProps<"td">) => <td {...props}>{children}</td>,
+  TableHead: ({ children, ...props }: React.ComponentProps<"th">) => <th {...props}>{children}</th>,
+  TableHeader: ({ children, ...props }: React.ComponentProps<"thead">) => <thead {...props}>{children}</thead>,
+  TableRow: ({ children, ...props }: React.ComponentProps<"tr">) => <tr {...props}>{children}</tr>,
+}));
+vi.mock("@/lib/utils", () => ({
+  cn: (...values: Array<string | false | undefined>) =>
+    values.filter(Boolean).join(" "),
 }));
 
 import { MembersCards } from "./members-cards";
@@ -58,5 +62,34 @@ describe("User Management avatar markup", () => {
     expect(html).toContain(
       'data-avatar-src="https://storage.example/member-1/avatar.webp?v=updated"',
     );
+  });
+
+  it("limits both roster presentations to the same first 20 eligible ids", () => {
+    const members = Array.from({ length: 21 }, (_, index) => ({
+      ...member,
+      id: `member-${index + 1}`,
+      full_name: `Member ${index + 1}`,
+      email: `member-${index + 1}@example.edu`,
+    }));
+    const motionProps = {
+      ...props,
+      members,
+      getEntranceClassName: (id: string) =>
+        Number(id.split("-")[1]) <= 20
+          ? "motion-list-item-enter motion-list-delay-0"
+          : undefined,
+      onAnimationEnd: vi.fn(),
+    };
+
+    expect(
+      renderToStaticMarkup(<MembersTable {...motionProps} />).match(
+        /motion-list-item-enter/g,
+      ),
+    ).toHaveLength(20);
+    expect(
+      renderToStaticMarkup(<MembersCards {...motionProps} />).match(
+        /motion-list-item-enter/g,
+      ),
+    ).toHaveLength(20);
   });
 });

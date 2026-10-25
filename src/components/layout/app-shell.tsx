@@ -5,6 +5,7 @@ import { MobileNav } from "@/components/layout/mobile-nav"
 import { NavigationProgress } from "@/components/navigation/navigation-progress"
 import { NavigationProvider } from "@/components/navigation/navigation-provider"
 import { MobileTopbar } from "@/components/layout/mobile-topbar"
+import { RouteEntrance } from "@/components/shared/motion"
 import type { CurrentUser } from "@/lib/types"
 
 // Desktop/tablet: collapsible sidebar + content column.
@@ -19,7 +20,7 @@ export function AppShell({ user, children }: { user: CurrentUser; children: Reac
           <MobileTopbar user={user} />
           <DesktopHeader user={user} />
           <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 pb-28 sm:px-6 md:px-10 md:py-8 md:pb-8">
-            {children}
+            <RouteEntrance>{children}</RouteEntrance>
           </main>
         </div>
         <MobileNav user={user} />

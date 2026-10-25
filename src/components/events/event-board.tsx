@@ -1090,7 +1090,7 @@ function BoardContents({
           aria-labelledby="event-board-backlog-title"
           aria-describedby="event-board-backlog-description"
           finalFocus={backlogButtonRef}
-          className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 transition-none data-[ending-style]:translate-y-0 data-[starting-style]:translate-y-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-0 md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-0 md:data-[starting-style]:translate-y-0"
+          className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-full md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-full md:data-[starting-style]:translate-y-0 md:motion-reduce:data-[starting-style]:translate-x-0"
         >
           <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-4 py-3.5">
             <div className="min-w-0 flex-1">
@@ -1151,7 +1151,7 @@ function BoardContents({
           <div
             key={`${entry.taskId}-${entry.expiresAt}`}
             role="status"
-            className="flex items-center justify-between gap-3 rounded-xl border bg-popover px-4 py-3 text-sm shadow-lg"
+            className="motion-toast-enter flex items-center justify-between gap-3 rounded-xl border bg-popover px-4 py-3 text-sm shadow-lg"
           >
             <span className="min-w-0 truncate">
               Moved to {entry.toStatus}

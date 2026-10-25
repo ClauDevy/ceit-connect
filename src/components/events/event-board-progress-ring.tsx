@@ -30,11 +30,14 @@ export function EventBoardProgressRing({ percentage }: { percentage: number }) {
             cy="32"
             r={RADIUS}
             fill="none"
-            className="stroke-primary"
+            className="motion-progress-ring stroke-primary"
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={getProgressRingDashOffset(boundedPercentage)}
+            style={{
+              "--motion-ring-empty-offset": CIRCUMFERENCE,
+            } as CSSProperties}
           />
         ) : null}
       </svg>
@@ -44,3 +47,4 @@ export function EventBoardProgressRing({ percentage }: { percentage: number }) {
     </div>
   );
 }
+import type { CSSProperties } from "react";

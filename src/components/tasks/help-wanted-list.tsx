@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
+import { useInitialListEntrance } from "@/components/shared/motion";
 import {
   getPriorityAccentClass,
   PriorityBadge,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/tasks/backup";
 import { createClient } from "@/lib/supabase/client";
 import { APP_TIME_ZONE } from "@/lib/timezone";
+import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL_MS = 15_000;
 
@@ -85,6 +87,14 @@ function HelpWantedContents({
     pluralLabel: "tasks",
   });
   const tasks = paging.items;
+  const entrance = useInitialListEntrance({
+    initialItems: initialPage?.items,
+    items: tasks,
+    settled: paging.settled,
+    error: paging.error,
+    waitForSuccessfulData: true,
+    getId: (task: HelpWantedTask) => task.out_id,
+  });
 
   useEffect(() => {
     if (!active || !paging.settled || paging.isRefreshing) return;
@@ -246,11 +256,23 @@ function HelpWantedContents({
               return (
                 <div
                   key={task.out_id}
-                  className={`group relative border-l-4 ${getPriorityAccentClass(task.out_effective_priority)} transition-colors duration-150 hover:bg-muted/40 focus-within:bg-muted/40 motion-reduce:transition-none`}
+                  className={cn(
+                    `motion-card-interaction group relative border-l-4 ${getPriorityAccentClass(task.out_effective_priority)} hover:bg-muted/40 focus-within:bg-muted/40`,
+                    entrance.getEntranceClassName(task.out_id),
+                  )}
+                  onAnimationEnd={
+                    entrance.isEntranceItem(task.out_id)
+                      ? entrance.onAnimationEnd
+                      : undefined
+                  }
+                  data-motion-entrance-id={
+                    entrance.isEntranceItem(task.out_id) ? task.out_id : undefined
+                  }
                 >
                   <StretchedLink
                     href={`/tasks/${task.out_id}`}
                     label={`Open ${task.out_title}`}
+                    className="transition-colors duration-[var(--motion-interaction-duration)] active:bg-muted/60 motion-reduce:transition-none"
                   />
                   <CardContent className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
                     <div className="min-w-0 flex-1">
@@ -284,7 +306,7 @@ function HelpWantedContents({
                           >
                             {busy ? (
                               <LoaderCircle
-                                className="animate-spin"
+                                className="motion-safe:animate-spin"
                                 aria-hidden
                               />
                             ) : null}
@@ -302,7 +324,7 @@ function HelpWantedContents({
                           >
                             {busy ? (
                               <LoaderCircle
-                                className="animate-spin"
+                                className="motion-safe:animate-spin"
                                 aria-hidden
                               />
                             ) : null}
@@ -311,7 +333,7 @@ function HelpWantedContents({
                         </div>
                       ) : null}
                       <ChevronRight
-                        className="size-4 text-muted-foreground transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-foreground motion-reduce:transition-none"
+                        className="motion-arrow size-4 text-muted-foreground group-hover:text-foreground"
                         aria-hidden
                       />
                     </div>

@@ -40,7 +40,7 @@ export function LoadMoreControl({
             onClick={errorMessage ? onRetry : onLoadMore}
           >
             {isLoading ? (
-              <LoaderCircle className="animate-spin" aria-hidden />
+              <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
             ) : null}
             {isLoading
               ? "Loading more..."
