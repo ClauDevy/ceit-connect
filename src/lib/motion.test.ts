@@ -17,6 +17,7 @@ import {
   capturedPrefixIsStable,
   createEntranceCapture,
   createRevealRegistry,
+  decodeHashId,
   getEntranceClassName,
   getEntranceDelayMs,
   selectEntranceIds,
@@ -28,6 +29,11 @@ const items = (count: number, prefix = "item") =>
 const getId = (item: { id: string }) => item.id;
 
 describe("motion entrance policy", () => {
+  it("decodes valid hash IDs and safely skips malformed hashes", () => {
+    expect(decodeHashId("#work%20row")).toBe("work row");
+    expect(decodeHashId("#%E0%A4%A")).toBeNull();
+  });
+
   it("pins the approved timing and first-20 limit", () => {
     expect(ENTRANCE_DURATION_MS).toBe(300);
     expect(ENTRANCE_EASING).toBe("cubic-bezier(0.16, 1, 0.3, 1)");
@@ -67,7 +73,26 @@ describe("motion entrance policy", () => {
     expect(source).toContain("observer.current?.disconnect()");
     expect(source).toContain('document.addEventListener("focusin"');
     expect(source).toContain('document.addEventListener("beforematch"');
+    expect(source).toContain("const id = decodeHashId(window.location.hash)");
     expect(source).not.toMatch(/setTimeout|setInterval|requestAnimationFrame/);
+  });
+
+  it("keeps successful crop closes and lazy Drive previews lifecycle-safe", () => {
+    const cropper = readFileSync(
+      resolve(process.cwd(), "src/components/events/banner-cropper.tsx"),
+      "utf8",
+    );
+    const workCard = readFileSync(
+      resolve(process.cwd(), "src/components/tasks/your-work-card.tsx"),
+      "utf8",
+    );
+
+    expect(cropper).toContain("if (await onSave(area)) closeCropper()");
+    expect(cropper).toContain("if (processing) return");
+    expect(cropper).toContain("onCancel()");
+    expect(workCard).toContain("openedPreviewIds.has(link.id)");
+    expect(workCard).toContain("new Set(current).add(link.id)");
+    expect(workCard).toContain("<Collapse open={isPreviewOpen}>");
   });
 
   it("keeps the compiled source contracts for entrance and pressed movement", () => {

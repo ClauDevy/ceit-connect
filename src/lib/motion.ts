@@ -13,6 +13,17 @@ export const LIST_ENTRANCE_ANIMATION_NAME = "cc-list-item-enter";
 export const LIST_REVEAL_ANIMATION_NAME = "cc-list-item-reveal";
 export const SUCCESS_ANIMATION_NAME = "cc-success-enter";
 
+export function decodeHashId(hash: string) {
+  const encodedId = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (!encodedId) return null;
+
+  try {
+    return decodeURIComponent(encodedId);
+  } catch {
+    return null;
+  }
+}
+
 export function getEntranceDelayMs(index: number) {
   return Math.min(Math.max(index, 0), ENTRANCE_STAGGER_ITEM_LIMIT - 1) * ENTRANCE_STAGGER_MS;
 }
