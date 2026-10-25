@@ -49,17 +49,21 @@ export function BannerCropper({
     [],
   );
 
-  function requestClose() {
-    if (processing) return;
+  function closeCropper() {
     setOpen(false);
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       onCancel();
     }
   }
 
+  function requestClose() {
+    if (processing) return;
+    closeCropper();
+  }
+
   async function saveAndClose() {
     if (!area) return;
-    if (await onSave(area)) setOpen(false);
+    if (await onSave(area)) closeCropper();
   }
 
   return (
