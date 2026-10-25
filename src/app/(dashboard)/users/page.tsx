@@ -34,7 +34,7 @@ export default async function UsersPage() {
   }
 
   return (
-    <div>
+    <div className="motion-content-ready">
       <PageHeader
         title="User management"
         description="Invite council members, set their roles, and deactivate the roster at the end of the year."

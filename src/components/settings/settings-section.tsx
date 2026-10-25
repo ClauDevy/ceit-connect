@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { SectionEnter } from "@/components/shared/motion"
 
 type SettingsSectionProps = {
   title: string
@@ -8,6 +9,7 @@ type SettingsSectionProps = {
   icon?: React.ReactNode
   className?: string
   children: React.ReactNode
+  motionIndex?: number
 }
 
 export function SettingsSection({
@@ -16,8 +18,10 @@ export function SettingsSection({
   icon,
   className,
   children,
+  motionIndex = 0,
 }: SettingsSectionProps) {
   return (
+    <SectionEnter index={motionIndex}>
     <Card className={cn("overflow-hidden border-border/70", className)}>
       <CardHeader className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
         {icon ? (
@@ -34,5 +38,6 @@ export function SettingsSection({
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
+    </SectionEnter>
   )
 }

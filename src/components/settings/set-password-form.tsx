@@ -64,7 +64,7 @@ export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
 
   if (status === "done") {
     return (
-      <div className="flex items-start gap-3 rounded-xl bg-muted p-4 text-sm text-accent-foreground">
+      <div className="motion-success-enter flex items-start gap-3 rounded-xl bg-muted p-4 text-sm text-accent-foreground">
         <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
         {hasPassword
           ? "Password updated."

@@ -22,7 +22,7 @@ function DropdownMenuContent({
       >
         <MenuPrimitive.Popup
           className={cn(
-            "w-[min(18rem,calc(100vw-2rem))] origin-[var(--transform-origin)] rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl outline-none transition-[opacity,scale] duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] data-[ending-style]:scale-[0.94] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.94] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[starting-style]:opacity-100",
+            "w-[min(18rem,calc(100vw-2rem))] origin-[var(--transform-origin)] rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl outline-none transition-[opacity,scale] duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] data-[ending-style]:duration-[var(--motion-exit-duration)] data-[ending-style]:scale-[0.94] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.94] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[starting-style]:opacity-100",
             className
           )}
           {...props}
@@ -35,7 +35,7 @@ function DropdownMenuContent({
 }
 
 const itemClass =
-  "flex min-h-11 w-full cursor-default items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium outline-none select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+  "flex min-h-11 w-full cursor-default items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium outline-none transition-colors duration-[var(--motion-hover-duration)] select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground motion-reduce:transition-none"
 
 function DropdownMenuItem({ className, ...props }: MenuPrimitive.Item.Props) {
   return <MenuPrimitive.Item className={cn(itemClass, className)} {...props} />

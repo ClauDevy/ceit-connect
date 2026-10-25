@@ -63,9 +63,18 @@ This guide turns the existing tokens, shared components, and approved prototype 
 
 - Motion communicates state: short color/focus transitions, small disclosure movement, and restrained entry feedback. Avoid decorative movement that delays reading or interaction.
 - Honor `prefers-reduced-motion`. Use `motion-safe` utilities for animation and provide a stable no-motion state for every animated element.
-- Batch 5 motion uses a 300 ms route/list/overlay entrance, 220 ms interaction transitions, and 700 ms determinate-progress reveals. Entrances use opacity/transform only, except the owner-approved event-board SVG ring `stroke-dashoffset` reveal. List entrance is capped at the first 20 items across the whole list: 40 ms stagger for items 1–8 (0–280 ms), then the same 280 ms delay through item 20. Do not add an animation library.
+- Batch 5 motion uses 300 ms route/list/overlay entrances, 260 ms tab/section/small-disclosure motion, 220 ms interactions and exits, 200 ms table/menu background fades, and 700 ms determinate-progress reveals at 40% visibility. Entrances use opacity/transform except the SVG ring `stroke-dashoffset` and small grid-row collapse exceptions. Initially visible items 1–8 stagger 0–280 ms and initial items 9–20 share 280 ms; below-fold and Load-more rows reveal once on scroll without stagger. Do not add an animation library.
 - Desktop hover lift/nudges must be inside `@media (hover: hover)`. Reduced motion removes entrance, stagger, progress reveal, lift, scale, slide, rotation, looping, and breathing while preserving correct final values and visible states.
 - Preserve focus, scroll position, and readable content during loading. Never animate layout in a way that hides a control or causes accidental activation.
+
+### Motion kit and rules for new pages
+
+- Use `RouteEntrance` for the shared content slot; do not animate fixed navigation or add route exit motion.
+- Use `useVisibilityAnimation` for determinate progress and future chart bars, `useListReveal` for stable-ID rows, `TabPanel` for explicit user-selected panels, `SectionEnter` for quiet form/card groups, `Collapse` for small disclosures, and `MotionPresence` for safe custom-panel/conditional exits.
+- Visibility motion must be final-state-first. Do not hide before hydration or before a working observer reports an item offscreen; reveal focus, find-in-page/`beforematch`, and hash targets immediately; unobserve after reveal and disconnect on unmount.
+- Tab motion is driven only by user selection. Polling, refetch, filtering, sorting, search, Load more, optimistic state, Undo, settlement, and validation redirects do not replay it. Kanban cards and comment rows never receive entrance motion.
+- Closing snapshots are inert, `aria-hidden`, pointer-disabled, and non-submittable. Use Base UI ending styles or `transitionend`, never a timer; authorization removal and navigation may unmount immediately.
+- Every new Activity Log, Executive Dashboard, and notifications UI must use the kit, document its normal and reduced-motion result, and add an automated contract row plus a manual browser row.
 
 ## Mobile rules
 

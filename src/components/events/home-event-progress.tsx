@@ -1,4 +1,7 @@
+"use client";
+
 import { CircleHelp, ListTodo } from "lucide-react";
+import { useVisibilityAnimation } from "@/components/shared/motion";
 import type { HomeEventProgress } from "@/lib/events/list-paging";
 
 export function HomeEventProgressSummary({
@@ -8,6 +11,10 @@ export function HomeEventProgressSummary({
   eventName: string;
   progress: HomeEventProgress | null | undefined;
 }) {
+  const progressRevealRef = useVisibilityAnimation<HTMLDivElement>({
+    className: "motion-progress-fill",
+  });
+
   if (!progress) {
     return (
       <p className="border-t border-border/70 pt-3 text-xs text-muted-foreground">
@@ -34,7 +41,8 @@ export function HomeEventProgressSummary({
           aria-valuenow={progress.percentage}
         >
           <div
-            className="motion-progress-fill h-full rounded-full bg-primary"
+            ref={progressRevealRef}
+            className="h-full rounded-full bg-primary"
             style={{ width: `${progress.percentage}%` }}
           />
         </div>
