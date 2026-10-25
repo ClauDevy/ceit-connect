@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  HELP_WANTED_PAGE_SIZE,
   TASK_BACKUP_ACTIONS,
   TASK_BACKUP_ERROR_CODES,
   getAcceptVolunteerOutcomeMessage,
+  getHelpWantedRpcArgs,
   getTaskBackupErrorMessage,
   isAcceptVolunteerResult,
   isBackupToggleResult,
@@ -40,6 +42,16 @@ const helpTask = {
   out_has_volunteered: false,
   out_can_volunteer: true,
 };
+
+describe("Help Wanted query helpers", () => {
+  it("builds 21-row lookahead requests in 20-row offset steps", () => {
+    expect(HELP_WANTED_PAGE_SIZE).toBe(20);
+    expect(getHelpWantedRpcArgs(40)).toEqual({
+      p_limit: 21,
+      p_offset: 40,
+    });
+  });
+});
 
 describe("Step 8 response validators", () => {
   it("validates backup state and rejects inconsistent own-offer state", () => {

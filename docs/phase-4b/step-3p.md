@@ -1,6 +1,6 @@
 # Step 3P: List paging
 
-**Status:** Planned | **Branch:** `feature/list-paging` | **Reasoning level:** Medium
+**Status:** Implemented locally; owner gate pending | **Branch:** `feature/list-paging` | **Reasoning level:** Medium
 
 ## Goal
 
@@ -96,3 +96,11 @@ Each named linear list renders offset pages of 20 and shows Load more only when 
 
 - Mark Step 3P results in this file and `docs/PROGRESS.md` only after implementation and verification, without claiming Dev/Prod status until owner-confirmed.
 - Add `docs/phase-4b/step-3p-tests.md`; if a reader changes, update `docs/phase-4/step-10-database-review.md`, the relevant earlier SQL test docs, and Step 10 allowlists/catalog expectations.
+
+## Implementation result
+
+- All four lists now share the same client paging state machine: request 21, expose 20, advance offsets by 20, append with stable-id deduplication, and replace from page 1 after identity, tab, polling, or focus changes. A request token plus `AbortController` prevents an older Load more response from appending after replacement begins.
+- Home and Archives retain direct RLS-backed event queries and add only the required final `id` order plus an application range. Home still pages one combined result before rendering its Active and Draft sections; its Edit/Archive capabilities remain server-derived, and Admin incomplete-task counts are requested only for the 20 visible Active events.
+- `list_my_tasks` and `list_help_wanted_tasks` are unchanged. Their callers now request 21; the tracked readers still accept up to 100 and retain final `task_id ASC` ordering. No migration, policy, grant, table, reader, or Supabase change was made.
+- List reads retry once. Volunteer and withdraw writes are still invoked exactly once and never automatically retried. Only the active visible Workspace tab polls; mutations pause polling until the action finishes and the active list refreshes from page 1.
+- The owner requested that Codex not run the gate. Automated, build, lint, and manual verification therefore remain pending and are recorded in `step-3p-tests.md` without claiming Dev or Prod status.

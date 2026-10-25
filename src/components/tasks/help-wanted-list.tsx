@@ -1,11 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  QueryClient,
-  QueryClientProvider,
-  useInfiniteQuery,
-} from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronRight,
   LoaderCircle,
@@ -13,6 +8,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
+import { LoadMoreControl } from "@/components/shared/load-more-control";
 import {
   getPriorityAccentClass,
   PriorityBadge,
@@ -23,8 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
+import type { OffsetListPage } from "@/lib/list-paging";
 import {
-  HELP_WANTED_PAGE_SIZE,
+  getHelpWantedRpcArgs,
   getTaskBackupErrorMessage,
   isHelpWantedTask,
   isVolunteerTaskResult,
@@ -44,11 +42,11 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function HelpWantedContents({
-  initialTasks,
+  initialPage,
   active,
   onLoadedStateChange,
 }: {
-  initialTasks?: HelpWantedTask[];
+  initialPage?: OffsetListPage<HelpWantedTask>;
   active: boolean;
   onLoadedStateChange?: (state: {
     count: number;
@@ -59,14 +57,12 @@ function HelpWantedContents({
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
-
-  const query = useInfiniteQuery({
-    queryKey: ["help-wanted-tasks"],
-    queryFn: async ({ pageParam, signal }) => {
-      let request = supabase.rpc("list_help_wanted_tasks", {
-        p_limit: HELP_WANTED_PAGE_SIZE,
-        p_offset: pageParam,
-      });
+  const fetchPage = useCallback(
+    async (offset: number, signal: AbortSignal) => {
+      let request = supabase.rpc(
+        "list_help_wanted_tasks",
+        getHelpWantedRpcArgs(offset),
+      );
       request = request.abortSignal(signal);
       const { data, error } = await request;
       if (error) throw error;
@@ -75,35 +71,35 @@ function HelpWantedContents({
       }
       return data;
     },
-    initialPageParam: 0,
-    initialData:
-      initialTasks === undefined
-        ? undefined
-        : { pages: [initialTasks], pageParams: [0] },
-    getNextPageParam: (lastPage, _pages, lastPageParam) =>
-      lastPage.length === HELP_WANTED_PAGE_SIZE
-        ? lastPageParam + HELP_WANTED_PAGE_SIZE
-        : undefined,
-    enabled: active,
-    refetchOnWindowFocus: active,
-    refetchInterval: active ? POLL_INTERVAL_MS : false,
-    refetchIntervalInBackground: false,
+    [supabase],
+  );
+  const paging = useOffsetListPaging({
+    active,
+    fetchPage,
+    getId: (task: HelpWantedTask) => task.out_id,
+    identity: "help-wanted",
+    initialPage,
+    paused: busyTaskId !== null,
+    pollIntervalMs: POLL_INTERVAL_MS,
+    singularLabel: "task",
+    pluralLabel: "tasks",
   });
-
-  const tasks = useMemo(() => {
-    const byId = new Map<string, HelpWantedTask>();
-    for (const task of query.data?.pages.flat() ?? []) {
-      byId.set(task.out_id, task);
-    }
-    return [...byId.values()];
-  }, [query.data]);
+  const tasks = paging.items;
 
   useEffect(() => {
+    if (!active || !paging.settled || paging.isRefreshing) return;
     onLoadedStateChange?.({
       count: tasks.length,
-      hasNextPage: query.hasNextPage === true,
+      hasNextPage: paging.hasMore,
     });
-  }, [onLoadedStateChange, query.hasNextPage, tasks.length]);
+  }, [
+    onLoadedStateChange,
+    active,
+    paging.hasMore,
+    paging.isRefreshing,
+    paging.settled,
+    tasks.length,
+  ]);
 
   async function volunteer(taskId: string) {
     if (busyTaskId) return;
@@ -127,7 +123,7 @@ function HelpWantedContents({
       setActionError(getTaskBackupErrorMessage("volunteer", error));
     } finally {
       try {
-        await query.refetch();
+        await paging.refreshFromStart();
       } finally {
         setBusyTaskId(null);
       }
@@ -156,14 +152,14 @@ function HelpWantedContents({
       setActionError(getTaskBackupErrorMessage("withdraw", error));
     } finally {
       try {
-        await query.refetch();
+        await paging.refreshFromStart();
       } finally {
         setBusyTaskId(null);
       }
     }
   }
 
-  if (query.isPending) {
+  if (paging.isInitialLoading) {
     return (
       <Card
         className="overflow-hidden"
@@ -187,7 +183,7 @@ function HelpWantedContents({
     );
   }
 
-  if (query.error && query.data === undefined) {
+  if (paging.error && tasks.length === 0) {
     return (
       <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
         <span>Help Wanted tasks could not be loaded.</span>
@@ -195,7 +191,7 @@ function HelpWantedContents({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => void query.refetch()}
+          onClick={() => void paging.retry()}
         >
           <RefreshCw aria-hidden /> Retry
         </Button>
@@ -218,7 +214,7 @@ function HelpWantedContents({
         ) : null}
       </div>
 
-      {query.error ? (
+      {paging.error && paging.failedMode !== "append" ? (
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
           <span>
             Help Wanted tasks could not refresh. The last successful result is
@@ -228,14 +224,14 @@ function HelpWantedContents({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => void query.refetch()}
+            onClick={() => void paging.retry()}
           >
             <RefreshCw aria-hidden /> Retry
           </Button>
         </InlineAlert>
       ) : null}
 
-      {tasks.length === 0 ? (
+      {paging.settled && tasks.length === 0 ? (
         <Card className="border-dashed">
           <EmptyState
             title="No tasks need backup"
@@ -327,51 +323,41 @@ function HelpWantedContents({
         </Card>
       )}
 
-      {query.hasNextPage ? (
-        <div className="flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={query.isFetchingNextPage || busyTaskId !== null}
-            onClick={() => void query.fetchNextPage()}
-          >
-            {query.isFetchingNextPage ? (
-              <LoaderCircle className="animate-spin" aria-hidden />
-            ) : null}
-            Load more
-          </Button>
-        </div>
-      ) : null}
+      <LoadMoreControl
+        announcement={paging.announcement}
+        disabled={busyTaskId !== null || paging.isRefreshing}
+        errorMessage={
+          paging.failedMode === "append"
+            ? "More Help Wanted tasks could not be loaded. The loaded tasks are still shown."
+            : undefined
+        }
+        hasLoadedMore={paging.hasLoadedMore}
+        hasMore={paging.hasMore}
+        isLoading={paging.isLoadingMore}
+        onLoadMore={() => void paging.loadMore()}
+        onRetry={() => void paging.retry()}
+      />
     </div>
   );
 }
 
 export function HelpWantedList({
-  initialTasks,
+  initialPage,
   active = true,
   onLoadedStateChange,
 }: {
-  initialTasks?: HelpWantedTask[];
+  initialPage?: OffsetListPage<HelpWantedTask>;
   active?: boolean;
   onLoadedStateChange?: (state: {
     count: number;
     hasNextPage: boolean;
   }) => void;
 }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: { queries: { retry: 1 } },
-      }),
-  );
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <HelpWantedContents
-        initialTasks={initialTasks}
-        active={active}
-        onLoadedStateChange={onLoadedStateChange}
-      />
-    </QueryClientProvider>
+    <HelpWantedContents
+      initialPage={initialPage}
+      active={active}
+      onLoadedStateChange={onLoadedStateChange}
+    />
   );
 }
