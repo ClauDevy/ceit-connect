@@ -3,6 +3,12 @@ import { Plus } from "lucide-react";
 import { HomeEventList } from "@/components/events/home-event-list";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  getVisibleActiveEventIds,
+  HOME_EVENT_PROGRESS_RPC,
+  markHomeEventProgressUnavailable,
+  mergeHomeEventProgress,
+} from "@/lib/events/home-event-progress";
 import { HOME_EVENT_ORDER, type HomeEvent } from "@/lib/events/list-paging";
 import {
   LIST_FETCH_LIMIT,
@@ -42,6 +48,28 @@ export default async function HomePage() {
     console.error("Failed to load Home events:", eventsResult.error);
   } else {
     initialPage = normalizeLookaheadPage(eventsResult.data ?? [], 0);
+  }
+
+  if (initialPage) {
+    const activeEventIds = getVisibleActiveEventIds(initialPage.items);
+    if (activeEventIds.length > 0) {
+      try {
+        const { data, error } = await supabase.rpc(HOME_EVENT_PROGRESS_RPC, {
+          p_event_ids: activeEventIds,
+        });
+        if (error) throw error;
+        initialPage = {
+          ...initialPage,
+          items: mergeHomeEventProgress(initialPage.items, data),
+        };
+      } catch (error) {
+        console.error("Failed to load Home event progress:", error);
+        initialPage = {
+          ...initialPage,
+          items: markHomeEventProgressUnavailable(initialPage.items),
+        };
+      }
+    }
   }
 
   const canEdit = Boolean(leadershipProfile);

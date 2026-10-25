@@ -1,76 +1,46 @@
 # Step 3H: Home event progress
 
-**Status:** Planned | **Branch:** `feature/home-event-progress` | **Reasoning level:** High
+**Status:** Implemented locally; owner gate pending | **Branch:** `feature/home-event-progress` | **Reasoning level:** High
 
 ## Goal
 
-Give each Home event card a lightweight summary of its current phase, task progress percentage, open backup requests, and Backlog count through a safe per-event reader. The summary must respect the caller's existing event and task access, Draft visibility, and confidential masking.
+Give each Active Home event card a lightweight summary of its current phase, task progress percentage, open backup requests visible to the caller, and Backlog count through one safe batched reader. The implementation preserves event visibility, confidential masking, and Batch 3P paging.
 
-## Decisions
+## Final contract
 
-- Batch 3H runs after Batch 3P and before Batch 5.
-- The batch needs a new tracked migration and an independent SQL test paste.
-- Database and security work uses High reasoning.
-- The owner must define what **current phase** means before the reader contract or implementation is finalized.
+- `list_home_event_progress(uuid[])` accepts 1–20 event ids, derives the caller from `auth.uid()`, and returns aggregates only for caller-visible Active events. Draft, Archived, unknown, and inaccessible ids produce no row. Duplicate ids are de-duplicated while preserving first input order.
+- A null/empty/over-20 array or an array containing null raises `22023`. A missing, inactive, or profile-less caller raises `42501` before any event result is returned.
+- The function is `STABLE SECURITY DEFINER`, owned by `postgres`, has `search_path = ''`, has no overload, and is executable only by `authenticated`.
+- Current phase is the first canonical phase with at least one non-Completed task, using the board's first-seen order over tasks sorted by `sort_order, id`. Canonical phase identity is `coalesce(nullif(btrim(phase), ''), 'Unphased')` and comparisons are case-sensitive. `Unphased` therefore appears wherever its earliest task appears; it is not forced first or last.
+- If every task is Completed, the label is `All phases complete`. An event with no tasks has no phase label. A completed `Unphased` bucket contributes to the all-complete result but remains unlocked under Batch 13b; “never completes” in 13b is a write-freeze rule, not a Home-label exception.
+- Progress is `round(completed::numeric * 100 / total)` and is zero for a zero-task event. Every real or masked task contributes to total, completed, current-phase, and Backlog aggregates.
+- Backlog means `coalesce(cardinality(primary_assignees), 0) = 0 and status <> 'Completed'`, matching the board. Assist assignees do not remove a task from Backlog.
+- Open backup requests are incomplete tasks with `request_backup is true` for which `task_content_access_for_user(...) = 'real'`. The card says **Backup requests you can see**. A caller who receives only a masked shell intentionally sees a lower backup count; this prevents the backup state of confidential content from leaking.
+- Home passes only the Active ids in each visible 20-item page and skips the RPC when that page contains none. A progress read failure leaves the page usable and marks those Active summaries unavailable. Draft cards are unchanged.
 
-## Current state
+## Implementation
 
-- Home event cards use the existing RLS-scoped event query and do not receive phase, task-progress, backup-request, or Backlog aggregates.
-- The event board already has confidential-safe task presentation and a server-owned Backlog definition, but Home must not load the fully populated Kanban reader merely to render four small summary values.
-- Batch 3P owns Home paging and lands first; 3H must preserve its page boundaries, ordering, reset behavior, and lookahead contract.
+- Migration: `supabase/migrations/20261025120000_home_event_progress.sql`.
+- Server page enriches its first Batch 3P page with one RPC. Client Load more enriches each subsequent page before append, preserving the existing lookahead, ordering, de-duplication, reset, and cancellation behavior.
+- Active cards use one compact phase/progress/count block with semantic tokens. Existing priority/status chips and card actions are unchanged.
+- The reader does not return task ids, titles, descriptions, assignees, committee data, or per-task backup state. It does not replace or invoke `list_event_board_tasks()` and does not alter any table, policy, trigger, writer, or existing function.
 
-## Scope: in / out
+## Tests and inventory
 
-**In:** one lightweight safe per-event reader; current phase after the owner defines it; progress percentage; open backup-request count; Backlog count; Home card presentation; loading, empty, and safe failure states; a tracked migration; SQL security and result tests.
-
-**Out:** Kanban paging or behavior; task mutations; phase-completion rules; new Home filters or sorting; changing event visibility; exposing task titles, descriptions, assignees, or confidential content; dashboard statistics beyond the four approved values.
-
-## Database impact
-
-A new migration is required. During Batch 3H planning, define one fixed-shape, fixed-search-path reader that derives the caller from `auth.uid()` and returns only the approved aggregate fields for an event the caller may see. Do not edit an applied migration or overload an existing function.
-
-The final signature, owner, volatility, grants, and empty/error behavior must be specified after the owner resolves the current-phase definition and after the Home paging implementation from 3P is inspected.
-
-## Guards that must remain true
-
-- The reader returns no additional task content and cannot be used to infer confidential titles, descriptions, assignees, or hidden task membership.
-- Event access and Draft visibility remain no broader than the existing caller-visible Home event set.
-- Progress, backup, and Backlog definitions use authoritative server rules rather than client reconstruction.
-- Batch 3P paging, ordering, 21-row lookahead, deduplication, and reset behavior remain unchanged.
-- Home cards do not invoke the fully loaded Kanban reader.
-- No writer, mutation payload, task permission, RLS policy, polling contract, or board data shape changes.
-
-## Security risks
-
-- Aggregate counts can leak the existence or lifecycle of tasks the caller must not be able to infer. SQL tests must cover Admin, Co-Admin, Member, inactive, profile-less, Draft, Active, Archived, confidential, masked, and hidden paths.
-- A caller-supplied event id must never substitute for an authorization check. The reader must derive the caller and independently prove visibility.
-- Current-phase and percentage calculations must not reveal masked task content through labels or inconsistent totals.
-- Grants, function ownership, `search_path`, volatility, and overload counts require catalog assertions.
-
-## Test deliverable
-
-Create `docs/phase-4b/step-3h-tests.md` with one rollback-safe Dev SQL paste. Cover authorization and inactive/profile-less denial; Draft visibility; confidential real/masked/hidden cases; zero-task, all-Backlog, partial, and fully completed events; open versus closed backup requests; deterministic current-phase results; fixed output shape; grants and catalog properties; and absence of overloads.
-
-Add focused application tests for result validation, percentage/count rendering, safe reader failure, and preservation of Batch 3P paging behavior. Re-run the relevant event/task catalog and confidentiality regressions identified during implementation.
+- `docs/phase-4b/step-3h-tests.md` contains three independent rollback-safe Dev SQL pastes with expected result-line counts of 18, 19, and 20. Each has its own auth fixtures, impersonation, immediate deferred-constraint checks, and intentional final `TEST RESULTS` exception.
+- The third paste deletes its zero-task event's only task, reads the zero-task result, reinserts the task, then fires deferred constraints with `set constraints all immediate`. The existing guard is an `AFTER DELETE DEFERRABLE INITIALLY DEFERRED` constraint trigger, so no trigger is disabled or weakened.
+- Focused application tests cover row validation/merging, 20-id selection and Draft skipping, safe failure behavior, migration contract, exact numeric percentage arithmetic, card values, accessible progress, and unavailable state.
+- Batch 3H adds exactly one authenticated `SECURITY DEFINER` function. Batch 0 had already moved the post-Phase-4 source inventory from 57/35 to 58/36 functions/authenticated executables; 3H moves it to 59/37. Policy, trigger, and reviewed-table counts remain 11, 20, and 8; overload failures remain 0. The historical Phase 4 `57 / 8 / 11 / 20 / 0` record remains unchanged and is labeled historical.
 
 ## Manual checklist
 
-- Test Home as Admin, Co-Admin, and Member at phone and desktop widths in both themes.
-- Verify Draft, Active, and inaccessible events retain their existing visibility.
-- Compare every displayed percentage, Backlog count, and open backup count with authoritative event-board/task state.
-- Verify confidential tasks do not expose content or create role-dependent information leaks beyond the approved aggregate contract.
-- Verify Home paging, Load more, ordering, links, menus, loading, empty, and error states remain correct after 3P.
+- As Claudee (Admin), Claude HAAAA (Co-Admin), and tv (Member), test Home in light and dark themes at phone and desktop widths.
+- Confirm Active cards show the phase, integer progress, **Backup requests you can see**, and Backlog values; compare them with the same board state.
+- Confirm zero tasks has no phase, all-complete events say `All phases complete`, and mixed/case-sensitive/Unphased ordering follows the board.
+- Confirm Draft cards have no summary changes and inaccessible/Archived events do not gain visibility.
+- Confirm confidential tasks affect progress, Backlog, and phase without exposing content; confirm masked viewers do not receive their backup-request count.
+- Confirm loading geometry, unavailable summaries, initial failure, Load more failure/retry, links, menus, ordering, and focus remain usable.
 
-## Acceptance
+## Acceptance and release state
 
-Home event cards show the four approved summary values through one lightweight safe reader without loading Kanban data or widening access. The tracked migration and SQL tests prove RLS-equivalent event visibility, Draft handling, confidential safety, fixed shape, grants, and catalog properties. Batch 3P behavior and every existing mutation contract remain unchanged.
-
-## Open question for the owner
-
-- What exactly does **current phase** mean when phases are unphased, empty, partially complete, completed out of order, or have tasks progressing in more than one phase? This must be resolved before the reader contract is designed.
-
-## Docs to update when this lands
-
-- Add the final reader contract and migration order to `docs/DATABASE.md`.
-- Add implementation and verification results to this file and `docs/PROGRESS.md`.
-- Create `docs/phase-4b/step-3h-tests.md` and update any earlier catalog allowlists affected by the new function.
+The implementation is local only. No Supabase command was run, no remote migration was applied, and no Dev or Prod verification is claimed. The owner runs the documented gate and applies the migration separately.
