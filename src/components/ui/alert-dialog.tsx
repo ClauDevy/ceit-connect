@@ -9,11 +9,11 @@ const AlertDialog = AlertDialogPrimitive.Root
 function AlertDialogContent({ className, ...props }: AlertDialogPrimitive.Popup.Props) {
   return (
     <AlertDialogPrimitive.Portal>
-      <AlertDialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+      <AlertDialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:opacity-100" />
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 gap-5 rounded-2xl border bg-popover p-5 text-popover-foreground shadow-xl outline-none transition-[opacity,transform] duration-200 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 sm:p-6",
+          "fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 gap-5 rounded-2xl border bg-popover p-5 text-popover-foreground shadow-xl outline-none transition-[opacity,scale] duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] data-[ending-style]:scale-[0.94] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.94] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[starting-style]:opacity-100 sm:p-6",
           className
         )}
         {...props}

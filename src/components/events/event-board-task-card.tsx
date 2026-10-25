@@ -116,8 +116,8 @@ function CardBody({
   return (
     <Card
       className={cn(
-        "relative p-0 transition-[background-color,border-color] duration-150 motion-reduce:transition-none",
-        !overlay && "hover:border-primary/40 focus-within:border-primary/40",
+        "relative p-0",
+        !overlay && "motion-card-interaction hover:border-primary/40 focus-within:border-primary/40",
         task.status === "Completed" && !task.is_masked && "opacity-70",
         overlay && "cursor-grabbing scale-[1.02] opacity-90 shadow-xl",
       )}
@@ -154,13 +154,14 @@ function CardBody({
                 type="button"
                 variant="ghost"
                 size="icon-lg"
-                className="rounded-full border-2 border-border transition-colors duration-150 active:bg-muted motion-reduce:transition-none md:hidden"
+                className="motion-control-pop rounded-full border-2 border-border active:bg-muted md:hidden"
                 aria-label={`Mark ${task.title} Completed`}
+                aria-busy={busy}
                 disabled={busy}
                 onClick={() => onMoveStatus?.(task, "Completed")}
               >
                 {busy ? (
-                  <LoaderCircle className="animate-spin" aria-hidden />
+                  <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
                 ) : (
                   <span className="size-3 rounded-full" aria-hidden />
                 )}
@@ -218,7 +219,7 @@ function CardBody({
           >
             {claimBusy ? (
               <>
-                <LoaderCircle className="animate-spin" aria-hidden /> Claiming
+                <LoaderCircle className="motion-safe:animate-spin" aria-hidden /> Claiming
               </>
             ) : (
               "Claim Task"

@@ -32,7 +32,12 @@ vi.mock("@/components/ui/card", () => ({
 }));
 
 vi.mock("@/components/ui/skeleton", () => ({
-  Skeleton: (props: React.ComponentProps<"div">) => <div {...props} />,
+  Skeleton: ({ className, ...props }: React.ComponentProps<"div">) => (
+    <div
+      className={`rounded-lg bg-secondary motion-safe:animate-pulse ${className ?? ""}`}
+      {...props}
+    />
+  ),
 }));
 
 vi.mock("@/components/shared/page-skeleton", () => ({
@@ -112,5 +117,7 @@ describe("Part C markup regressions", () => {
     expect(settings).toContain('data-skeleton="settings-photo"');
     expect(task).toContain('aria-label="Loading task details"');
     expect(users).toContain('data-skeleton="users-roster"');
+    expect(home).toContain("motion-safe:animate-pulse");
+    expect(task).toContain("motion-safe:animate-pulse");
   });
 });

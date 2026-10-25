@@ -8,6 +8,7 @@ import { EventCardMenu } from "@/components/events/event-card-menu";
 import { HomeEventProgressSummary } from "@/components/events/home-event-progress";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
+import { useInitialListEntrance } from "@/components/shared/motion";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import {
   type OffsetListPage,
 } from "@/lib/list-paging";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
@@ -105,13 +107,24 @@ function ActiveEventCard({
   event,
   canEdit,
   canArchive,
+  entranceClassName,
+  onAnimationEnd,
 }: {
   event: HomeEvent;
   canEdit: boolean;
   canArchive: boolean;
+  entranceClassName?: string;
+  onAnimationEnd: ReturnType<typeof useInitialListEntrance<HomeEvent>>["onAnimationEnd"];
 }) {
   return (
-    <Card className="group relative isolate overflow-hidden border-border/70 hover:border-primary/40 hover:shadow-sm focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/30">
+    <Card
+      className={cn(
+        "motion-card-interaction group relative isolate overflow-hidden border-border/70 hover:border-primary/40 focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/30",
+        entranceClassName,
+      )}
+      onAnimationEnd={entranceClassName ? onAnimationEnd : undefined}
+      data-motion-entrance-id={entranceClassName ? event.id : undefined}
+    >
       <StretchedLink
         href={`/events/${event.id}`}
         label={`Open ${event.name}`}
@@ -152,7 +165,7 @@ function ActiveEventCard({
           progress={event.progress}
         />
         <div className="text-sm font-semibold text-primary group-hover:text-foreground group-focus-within:text-foreground">
-          View board <span aria-hidden>→</span>
+          View board <span className="motion-arrow inline-block" aria-hidden>→</span>
         </div>
       </CardContent>
     </Card>
@@ -162,13 +175,24 @@ function ActiveEventCard({
 function DraftEventCard({
   event,
   canEdit,
+  entranceClassName,
+  onAnimationEnd,
 }: {
   event: HomeEvent;
   canEdit: boolean;
+  entranceClassName?: string;
+  onAnimationEnd: ReturnType<typeof useInitialListEntrance<HomeEvent>>["onAnimationEnd"];
 }) {
   const lastEdited = formatLastEdited(event.updated_at);
   return (
-    <Card className="relative border-2 border-dashed bg-card/70">
+    <Card
+      className={cn(
+        "relative border-2 border-dashed bg-card/70",
+        entranceClassName,
+      )}
+      onAnimationEnd={entranceClassName ? onAnimationEnd : undefined}
+      data-motion-entrance-id={entranceClassName ? event.id : undefined}
+    >
       {canEdit ? (
         <StretchedLink
           href={`/events/${event.id}/edit`}
@@ -330,6 +354,14 @@ export function HomeEventList({
     pluralLabel: "events",
   });
   const { activeEvents, draftEvents } = splitHomeEvents(paging.items);
+  const initialSplit = splitHomeEvents(initialPage?.items ?? []);
+  const entrance = useInitialListEntrance({
+    initialItems: [...initialSplit.activeEvents, ...initialSplit.draftEvents],
+    items: [...activeEvents, ...draftEvents],
+    settled: paging.settled,
+    error: paging.error,
+    getId: (event: HomeEvent) => event.id,
+  });
   const hasCountWarning =
     canArchive &&
     activeEvents.some((event) => event.incompleteTaskCount === undefined);
@@ -419,6 +451,8 @@ export function HomeEventList({
                 event={event}
                 canEdit={canEdit}
                 canArchive={canArchive}
+                entranceClassName={entrance.getEntranceClassName(event.id)}
+                onAnimationEnd={entrance.onAnimationEnd}
               />
             ))}
           </div>
@@ -447,7 +481,13 @@ export function HomeEventList({
           </div>
           <div className="grid gap-4">
             {draftEvents.map((event) => (
-              <DraftEventCard key={event.id} event={event} canEdit={canEdit} />
+              <DraftEventCard
+                key={event.id}
+                event={event}
+                canEdit={canEdit}
+                entranceClassName={entrance.getEntranceClassName(event.id)}
+                onAnimationEnd={entrance.onAnimationEnd}
+              />
             ))}
           </div>
         </section>

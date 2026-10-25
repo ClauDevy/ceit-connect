@@ -63,7 +63,8 @@ This guide turns the existing tokens, shared components, and approved prototype 
 
 - Motion communicates state: short color/focus transitions, small disclosure movement, and restrained entry feedback. Avoid decorative movement that delays reading or interaction.
 - Honor `prefers-reduced-motion`. Use `motion-safe` utilities for animation and provide a stable no-motion state for every animated element.
-- Page-route, form, card, and list entrance motion must be restrained, use only opacity and transform, use one short fixed duration, and never animate more than the first 20 items of a list. Do not add an animation library.
+- Batch 5 motion uses a 300 ms route/list/overlay entrance, 220 ms interaction transitions, and 700 ms determinate-progress reveals. Entrances use opacity/transform only, except the owner-approved event-board SVG ring `stroke-dashoffset` reveal. List entrance is capped at the first 20 items across the whole list: 40 ms stagger for items 1–8 (0–280 ms), then the same 280 ms delay through item 20. Do not add an animation library.
+- Desktop hover lift/nudges must be inside `@media (hover: hover)`. Reduced motion removes entrance, stagger, progress reveal, lift, scale, slide, rotation, looping, and breathing while preserving correct final values and visible states.
 - Preserve focus, scroll position, and readable content during loading. Never animate layout in a way that hides a control or causes accidental activation.
 
 ## Mobile rules

@@ -27,6 +27,18 @@ vi.mock("@/components/ui/card", () => ({
 vi.mock("@/lib/timezone", () => ({
   APP_TIME_ZONE: { iana: "Asia/Manila" },
 }));
+vi.mock("@/lib/motion", () => ({
+  selectEntranceIds: <T,>(items: readonly T[], getId: (item: T) => string) =>
+    new Set(items.slice(0, 20).map(getId)),
+  getEntranceClassName: (
+    capture: { ids: ReadonlySet<string> },
+    id: string,
+  ) => capture.ids.has(id) ? "motion-list-item-enter motion-list-delay-0" : undefined,
+}));
+vi.mock("@/lib/utils", () => ({
+  cn: (...values: Array<string | false | undefined>) =>
+    values.filter(Boolean).join(" "),
+}));
 
 import {
   ArchivedTaskList,
@@ -105,5 +117,33 @@ describe("archived task phase groups", () => {
     expect(html).not.toContain("Secret phase");
     expect(html).not.toContain("Secret description");
     expect(html).not.toContain("Secret assignee");
+  });
+
+  it("animates only the first 20 displayed tasks across phase groups", () => {
+    const tasks = [
+      ...Array.from({ length: 12 }, (_, index) =>
+        task(`phase-a-${index + 1}`, "Phase A"),
+      ),
+      ...Array.from({ length: 9 }, (_, index) =>
+        task(`phase-b-${index + 1}`, "Phase B"),
+      ),
+    ];
+    const taskContent = new Map(
+      tasks.map((item) => [
+        item.id,
+        { id: item.id, title: item.id, description: null },
+      ]),
+    );
+    const html = renderToStaticMarkup(
+      <ArchivedTaskList
+        tasks={tasks}
+        taskContent={taskContent}
+        assignees={new Map()}
+        assigneesUnavailable={false}
+      />,
+    );
+
+    expect(html.match(/motion-list-item-enter/g)).toHaveLength(20);
+    expect(html).toMatch(/phase-b-8[^]*motion-list-item-enter|motion-list-item-enter[^]*phase-b-8/);
   });
 });

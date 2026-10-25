@@ -255,7 +255,7 @@ export function BannerUploader({
           onClick={() => fileInput.current?.click()}
         >
           {status === "saving" || status === "processing" ? (
-            <LoaderCircle className="animate-spin" aria-hidden />
+            <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
           ) : (
             <ImagePlus aria-hidden />
           )}
@@ -270,7 +270,7 @@ export function BannerUploader({
             onClick={pendingFile ? clearPending : removeSavedBanner}
           >
             {status === "removing" ? (
-              <LoaderCircle className="animate-spin" aria-hidden />
+              <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
             ) : (
               <Trash2 aria-hidden />
             )}

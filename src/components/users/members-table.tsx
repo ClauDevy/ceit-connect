@@ -1,3 +1,4 @@
+import type { AnimationEventHandler } from "react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { MemberAction } from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
@@ -11,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Member } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type MembersListProps = {
   members: Member[];
@@ -18,6 +20,8 @@ type MembersListProps = {
   currentUserId: string;
   pendingId: string | null;
   onToggle: (member: Member) => void;
+  getEntranceClassName?: (id: string) => string | undefined;
+  onAnimationEnd?: AnimationEventHandler<HTMLElement>;
 };
 
 export function MembersTable({
@@ -26,6 +30,8 @@ export function MembersTable({
   currentUserId,
   pendingId,
   onToggle,
+  getEntranceClassName,
+  onAnimationEnd,
 }: MembersListProps) {
   return (
     <Table className="min-w-[42rem]">
@@ -45,7 +51,16 @@ export function MembersTable({
           <TableRow
             key={member.id}
             aria-busy={pendingId === member.id}
-            className="transition-colors duration-150 focus-within:bg-primary/5 motion-reduce:transition-none"
+            className={cn(
+              "motion-card-interaction focus-within:bg-primary/5",
+              getEntranceClassName?.(member.id),
+            )}
+            onAnimationEnd={
+              getEntranceClassName?.(member.id) ? onAnimationEnd : undefined
+            }
+            data-motion-entrance-id={
+              getEntranceClassName?.(member.id) ? member.id : undefined
+            }
           >
             <TableCell className="min-w-0 py-3 pl-5">
               <div className="flex min-w-0 items-center gap-3">
@@ -53,6 +68,7 @@ export function MembersTable({
                   name={member.full_name}
                   src={member.avatar_url}
                   size="sm"
+                  className="motion-avatar"
                 />
                 <div className="min-w-0">
                   <p className="truncate font-medium">{member.full_name}</p>
