@@ -1,7 +1,7 @@
 # Step 3 tests: UI redesign pages
 
 **Branch:** `feature/ui-redesign-pages`
-**Status:** Parts A-C automated gate passed locally; Part D and real-browser checks pending
+**Status:** Parts A-C and D1 automated gates passed locally; D2 is implemented with its owner-run gate and real-browser checks pending
 **Database impact:** None. No SQL, migration, RLS, grant, reader, writer, or Supabase command is part of this batch.
 
 ## Automated gate by part
@@ -46,7 +46,17 @@
 
 ### Part D
 
-Pending. Add its exact command results only after implementation and verification.
+- **D1 Archives:** owner-verified and committed after `npm test` passed 30 files / 276 tests, the Next.js 16.3.4 production build completed all 23 routes, lint reported zero errors or warnings, and `git diff --check` passed with Windows line-ending notices only.
+- **D2 User Management:** implemented locally. Per owner instruction, Codex did not run `npm test`, `npm run build`, `npm run lint`, or `git diff --check`; add the owner's exact results after they run the gate.
+- D1 added `src/components/archives/archived-task-list.test.tsx` with two tests for first-seen named-phase order, within-phase order, `No phase` last, and suppression of a masked task's raw returned phase.
+- D2 added `src/components/users/member-actions.test.tsx` with three tests: Deactivate is menu-based for an active non-self row, Reactivate stays direct with no menu trigger, and the self row renders only `You` with no menu. No existing test file or assertion changed in Part D.
+
+## Preserved contracts inspected in Part D
+
+- Archives keeps the existing event query, task query and `created_at` ordering, per-task `get_task` content reads, archived-assignee reader, error handling, links, masking, priority/status presentation, and role guard. Phase grouping uses only existing task and `get_task` output; named groups follow first appearance in those ordered rows, while null/blank rows form the final `No phase` group.
+- A masked archived task is grouped under `No phase` even when its raw task row carries a phase. The grouping code recognizes the existing `get_task` masked-title sentinel, does not request an additional field, and does not render that phase.
+- `src/app/(dashboard)/users/page.tsx` is unchanged, preserving the Admin-only active-profile guard, exact committee/member selects, invite dialog, and safe page-load error. `UsersTable` keeps the same search fields, visible/total count, initial data, endpoint, request payload, confirmation state, busy lock, safe errors, and local roster update.
+- Deactivate renders only for the existing active, non-self row condition and now lives in a menu with the same confirmation. Inactive non-self rows keep direct Reactivate. The self row renders `You`; neither case mounts an empty menu trigger. No Remove action or new capability rule was added.
 
 ## Preserved contracts inspected in Part C
 
@@ -79,7 +89,7 @@ Pending. Add its exact command results only after implementation and verificatio
 | Surface          | Capability source                                                    | Placement and confirmation                                          | Contract to preserve                                                                                                                                       | Status                                    |
 | ---------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
 | Home Archive     | Existing server-derived Admin condition plus loaded incomplete count | Per-event menu, then existing confirmation                          | Same event id, incomplete count, exact event version, busy state, safe errors, redirect, and refresh                                                       | Part A implemented; browser check pending |
-| User Deactivate  | Existing User Management row/self conditions                         | Per-user menu, then existing confirmation                           | Same endpoint, payload, pending lock, safe errors, and local roster update                                                                                 | Part D pending                            |
+| User Deactivate  | Existing User Management active/non-self row conditions              | Per-user menu, then existing confirmation                           | Same endpoint, payload, pending lock, safe errors, and local roster update; Reactivate remains direct and self remains `You`                               | Part D2 implemented; owner gate pending   |
 | Task Delete      | `can_delete` from the edit-controls reader                           | Task menu, then existing confirmation                               | Same RPC, payload, busy state, safe errors, and authoritative refresh                                                                                      | Part B implemented; browser check pending |
 | Comment Delete   | `out_can_delete` from the comment reader                             | Per-comment menu, then existing confirmation; Edit remains separate | Same writer, comment id, busy state, safe errors, and thread refresh                                                                                       | Part B implemented; browser check pending |
 | Work-link Remove | `can_remove` from the work-link reader                               | Per-link menu, then new simple **Remove this link?** confirmation   | Owner-approved behavior addition: Cancel performs no mutation; Remove invokes the unchanged removal call once; keep the existing busy lock and safe errors | Part B implemented; browser check pending |
@@ -139,8 +149,8 @@ These checks require real authenticated browser sessions and are not claimed com
 - [ ] Operate the local Deliverable/Live Operation radio segments by pointer, Tab, and arrow keys. Confirm the selected state uses shape/text as well as color, every target is at least 44px, switching types preserves the existing conditional fields and handlers, and the sign-in segmented control remains unchanged.
 - [ ] Submit with an empty title, missing committee, incomplete live schedule, and end time before call time. Confirm the unchanged safe error stays visible above the pinned actions and the first problem is focused and scrolled into view.
 - [ ] In the assignee picker, confirm selected rows are clear without relying only on color, selected-committee members remain first, other committees remain separate, search behavior is unchanged, and inactive retained assignees reveal no profile data.
-- [ ] With 0, 1, 2, and many visible assignee rows, confirm bulk controls appear only at 2 or more. Verify `Select all shown (n)` is a real keyboard-operable checkbox, exposes checked/unchecked/mixed states, keeps focus after repeated Space presses, and updates all visible rows together without changing filtered-out selections.
-- [ ] With hidden retained selections, verify the select-all calculation counts unique hidden and visible ids toward 100. Confirm selection is disabled only when adding all visible rows would exceed 100, the limit explanation is visible and exposed to assistive technology, `Clear shown` still works, and individual selection/server validation are unchanged.
+- [ ] With 0, 1, 2, and many filtered selected-committee assignee rows, confirm bulk controls appear only at 2 or more. Verify `Select all shown (n)` is a real keyboard-operable checkbox, exposes checked/unchecked/mixed states, keeps focus after repeated Space presses, and updates only those selected-committee rows without changing filtered-out selections or visible other-committee rows.
+- [ ] With hidden retained selections, verify the select-all calculation counts unique hidden and filtered selected-committee ids toward 100. Confirm selection is disabled only when adding all bulk-eligible rows would exceed 100, the limit explanation is visible and exposed to assistive technology, `Clear shown` affects the same selected-committee scope, and individual selection/server validation are unchanged.
 - [ ] Confirm each active row shows its existing avatar and name, the existing active-task count as the muted second line, and its existing committee as a chip; no email, role, or newly fetched profile field appears.
 - [ ] Confirm changing task committee preserves selections, Co-Admin task committee options remain scoped, and no protected picker request or data appears for an unauthorized user.
 - [ ] Add, edit, and remove form-state phases/tasks and confirm existing restrictions and confirmation behavior are unchanged. Save and reload to verify the same payload behavior.
@@ -165,8 +175,8 @@ These checks require real authenticated browser sessions and are not claimed com
 
 ### Part D - Archives and User Management
 
-- [ ] Pending implementation. Verify `/archives` and `/archives/[eventId]` for real/masked task content, deactivated assignee display, links, comments, and Archived read-only behavior.
-- [ ] As Claudee, verify User Management search, current unpaged roster, invite flow, Deactivate menu/confirmation, direct Reactivate, self-row handling, busy state, and safe errors. Confirm the page remains inaccessible to Claude HAAAA and tv.
+- [ ] Verify `/archives` and `/archives/[eventId]` at desktop and phone widths in both themes: bounded 16:9 real/tiger banners, compact read-only notice, first-seen named phase order, counts, within-phase task order, `No phase` last, real/masked content, deactivated assignees, task links, and Archived read-only behavior.
+- [ ] As Claudee, verify the unchanged User Management search and visible/total count, current unpaged roster, invite flow, Deactivate menu/confirmation, direct Reactivate, self-row `You`, busy state, and safe errors. Confirm no empty action trigger appears and the page remains inaccessible to Claude HAAAA and tv.
 
 ## Earlier regression documents
 
@@ -213,4 +223,23 @@ These checks require real authenticated browser sessions and are not claimed com
 - `docs/phase-4b/step-3.md`
 - `docs/phase-4b/step-3-tests.md`
 
-No deployment, commit, push, database operation, or Supabase operation is claimed.
+## Part D changed files
+
+- `src/app/(dashboard)/archives/page.tsx`
+- `src/app/(dashboard)/archives/loading.tsx`
+- `src/app/(dashboard)/archives/[eventId]/page.tsx`
+- `src/app/(dashboard)/archives/[eventId]/loading.tsx`
+- `src/components/archives/archived-task-list.tsx`
+- `src/components/archives/archived-task-list.test.tsx`
+- `src/app/(dashboard)/users/loading.tsx`
+- `src/components/users/users-table.tsx`
+- `src/components/users/members-table.tsx`
+- `src/components/users/members-cards.tsx`
+- `src/components/users/member-actions.tsx`
+- `src/components/users/member-actions.test.tsx`
+- `src/components/users/member-status-badge.tsx`
+- `docs/PROGRESS.md`
+- `docs/phase-4b/step-3.md`
+- `docs/phase-4b/step-3-tests.md`
+
+D1 is owner-confirmed committed. No D2 deployment, commit, push, database operation, or Supabase operation is claimed.
