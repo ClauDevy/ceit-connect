@@ -43,12 +43,12 @@ export default async function ArchivesPage() {
   else initialPage = normalizeLookaheadPage(data ?? [], 0);
 
   return (
-    <>
+    <div className="motion-content-ready">
       <PageHeader
         title="Past Event Archives"
         description="Permanent, read-only records of past council events."
       />
       <ArchiveEventList initialPage={initialPage} />
-    </>
+    </div>
   );
 }

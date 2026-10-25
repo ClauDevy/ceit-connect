@@ -8,9 +8,15 @@ import {
   ENTRANCE_STAGGER_ITEM_LIMIT,
   ENTRANCE_STAGGER_MS,
   INTERACTION_DURATION_MS,
+  EXIT_DURATION_MS,
+  PANEL_DURATION_MS,
   PROGRESS_DURATION_MS,
+  PROGRESS_VISIBILITY_THRESHOLD,
+  SUCCESS_DURATION_MS,
+  claimReveal,
   capturedPrefixIsStable,
   createEntranceCapture,
+  createRevealRegistry,
   getEntranceClassName,
   getEntranceDelayMs,
   selectEntranceIds,
@@ -30,6 +36,38 @@ describe("motion entrance policy", () => {
     expect(ENTRANCE_STAGGER_MS).toBe(40);
     expect(INTERACTION_DURATION_MS).toBe(220);
     expect(PROGRESS_DURATION_MS).toBe(700);
+    expect(PANEL_DURATION_MS).toBe(260);
+    expect(EXIT_DURATION_MS).toBe(220);
+    expect(SUCCESS_DURATION_MS).toBe(400);
+    expect(PROGRESS_VISIBILITY_THRESHOLD).toBe(0.4);
+  });
+
+  it("claims each stable reveal id once across reorder, filtering, and later pages", () => {
+    const registry = createRevealRegistry(["already-seen"]);
+    expect(claimReveal(registry, "already-seen")).toBe(false);
+    expect(claimReveal(registry, "new-row")).toBe(true);
+    expect(claimReveal(registry, "new-row")).toBe(false);
+    expect(claimReveal(registry, "load-more-row")).toBe(true);
+    expect([...registry.revealedIds]).toEqual([
+      "already-seen",
+      "new-row",
+      "load-more-row",
+    ]);
+  });
+
+  it("keeps observer failure final-state-first and timer-free", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/components/shared/motion.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('typeof IntersectionObserver === "undefined"');
+    expect(source).toContain('node.setAttribute("data-motion-pending", "")');
+    expect(source).toContain('node.removeAttribute("data-motion-pending")');
+    expect(source).toContain("observer.current?.unobserve(node)");
+    expect(source).toContain("observer.current?.disconnect()");
+    expect(source).toContain('document.addEventListener("focusin"');
+    expect(source).toContain('document.addEventListener("beforematch"');
+    expect(source).not.toMatch(/setTimeout|setInterval|requestAnimationFrame/);
   });
 
   it("keeps the compiled source contracts for entrance and pressed movement", () => {
@@ -64,6 +102,7 @@ describe("motion entrance policy", () => {
     expect(getEntranceClassName(capture, "item-8")).toContain("motion-list-delay-7");
     expect(getEntranceClassName(capture, "item-20")).toContain("motion-list-delay-7");
     expect(getEntranceClassName(capture, "item-21")).toBeUndefined();
+    expect(capture.initialIds.has("item-21")).toBe(true);
   });
 
   it("keeps progress motion mount-only, final-state-first, and timer-free", () => {
@@ -74,9 +113,11 @@ describe("motion entrance policy", () => {
     expect(globals).toContain("--motion-progress-duration: 700ms");
     expect(globals).toContain("animation: cc-progress-fill var(--motion-progress-duration) ease-out backwards");
     expect(globals).toContain("animation: cc-progress-ring var(--motion-progress-duration) ease-out backwards");
-    expect(bar).toContain('className="motion-progress-fill');
+    expect(bar).toContain('className: "motion-progress-fill"');
+    expect(bar).toContain("useVisibilityAnimation<HTMLDivElement>");
     expect(bar).toContain('style={{ width: `${progress.percentage}%` }}');
-    expect(ring).toContain('className="motion-progress-ring');
+    expect(ring).toContain('className: "motion-progress-ring"');
+    expect(ring).toContain("useVisibilityAnimation<SVGCircleElement>");
     expect(ring).toContain("strokeDashoffset={getProgressRingDashOffset(boundedPercentage)}");
     expect(`${bar}\n${ring}`).not.toMatch(/setTimeout|requestAnimationFrame/);
     expect(`${bar}\n${ring}`).not.toMatch(/useEffect|useState|key=/);
@@ -90,6 +131,47 @@ describe("motion entrance policy", () => {
       );
       expect(source).toContain("transition-[opacity,scale]");
       expect(source).toContain("data-[starting-style]:scale-[0.94]");
+    }
+  });
+
+  it("pins tab, section, collapse, and inert closing-snapshot contracts", () => {
+    const globals = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+    const shared = readFileSync(resolve(process.cwd(), "src/components/shared/motion.tsx"), "utf8");
+    const workspace = readFileSync(resolve(process.cwd(), "src/components/tasks/workspace-tasks.tsx"), "utf8");
+    const eventForm = readFileSync(resolve(process.cwd(), "src/components/events/event-form.tsx"), "utf8");
+    const board = readFileSync(resolve(process.cwd(), "src/components/events/event-board.tsx"), "utf8");
+
+    expect(globals).toContain("--motion-panel-duration: 260ms");
+    expect(globals).toContain("--motion-exit-duration: 220ms");
+    expect(globals).toContain("grid-template-rows: 0fr");
+    expect(globals).toContain('.motion-collapse[data-open="true"] { grid-template-rows: 1fr; }');
+    expect(shared).toContain('inert={!open ? true : undefined}');
+    expect(shared).toContain('data-closing={closing ? "true" : "false"}');
+    expect(shared).toContain("event.target === event.currentTarget");
+    expect(workspace.match(/<TabPanel/g)).toHaveLength(2);
+    expect(workspace).toContain('inert={activeTab !== "mine" ? true : undefined}');
+    expect(workspace).toContain('inert={activeTab !== "help" ? true : undefined}');
+    expect(eventForm).toContain('setTab("fundamentals")');
+    expect(eventForm).toContain('setTab("tasks")');
+    expect(eventForm).toContain("selectFormTab");
+    expect(board).toContain("<TabPanel motionKey={phaseMotionKey} opacityOnly>");
+  });
+
+  it("uses Base UI ending styles for every shared popup close", () => {
+    for (const file of [
+      "dialog.tsx",
+      "alert-dialog.tsx",
+      "dropdown-menu.tsx",
+      "select.tsx",
+      "sheet.tsx",
+    ]) {
+      const source = readFileSync(
+        resolve(process.cwd(), `src/components/ui/${file}`),
+        "utf8",
+      );
+      expect(source).toContain(
+        "data-[ending-style]:duration-[var(--motion-exit-duration)]",
+      );
     }
   });
 
@@ -140,6 +222,7 @@ describe("motion entrance policy", () => {
     expect(captured.phase).toBe("playing");
     expect(captured.ids.has("real-20")).toBe(true);
     expect(captured.ids.has("real-21")).toBe(false);
+    expect(captured.initialIds.has("real-21")).toBe(true);
     expect(laterPage).toBe(captured);
   });
 

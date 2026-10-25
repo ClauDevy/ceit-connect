@@ -1,3 +1,8 @@
+"use client";
+
+import type { CSSProperties } from "react";
+import { useVisibilityAnimation } from "@/components/shared/motion";
+
 const RADIUS = 27;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -8,6 +13,9 @@ export function getProgressRingDashOffset(percentage: number) {
 
 export function EventBoardProgressRing({ percentage }: { percentage: number }) {
   const boundedPercentage = Math.min(100, Math.max(0, percentage));
+  const progressRevealRef = useVisibilityAnimation<SVGCircleElement>({
+    className: "motion-progress-ring",
+  });
 
   return (
     <div
@@ -26,11 +34,12 @@ export function EventBoardProgressRing({ percentage }: { percentage: number }) {
         />
         {boundedPercentage > 0 ? (
           <circle
+            ref={progressRevealRef}
             cx="32"
             cy="32"
             r={RADIUS}
             fill="none"
-            className="motion-progress-ring stroke-primary"
+            className="stroke-primary"
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
@@ -47,4 +56,3 @@ export function EventBoardProgressRing({ percentage }: { percentage: number }) {
     </div>
   );
 }
-import type { CSSProperties } from "react";

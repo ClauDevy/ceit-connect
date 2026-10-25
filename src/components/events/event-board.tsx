@@ -47,6 +47,7 @@ import {
 import Link from "next/link";
 import { EventBanner } from "@/components/events/event-banner";
 import { EventBoardProgressRing } from "@/components/events/event-board-progress-ring";
+import { MotionPresence, TabPanel } from "@/components/shared/motion";
 import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
 import {
   EventBoardTaskCard,
@@ -219,6 +220,7 @@ function BoardContents({
   const isAdmin = viewer.role === "Admin";
   const [committeeId, setCommitteeId] = useState<string | null>(null);
   const [activePhase, setActivePhase] = useState<string | null>(null);
+  const [phaseMotionKey, setPhaseMotionKey] = useState(0);
   const [selectedPriorities, setSelectedPriorities] = useState<
     Set<BoardPriority>
   >(() => new Set());
@@ -287,6 +289,12 @@ function BoardContents({
     activePhase && phases.includes(activePhase)
       ? activePhase
       : (phases[0] ?? null);
+
+  function selectPhase(phase: string) {
+    if (phase === selectedPhase) return;
+    setActivePhase(phase);
+    setPhaseMotionKey((current) => current + 1);
+  }
 
   const matchesPriority = (task: BoardTask) =>
     selectedPriorities.size === 0 ||
@@ -775,7 +783,7 @@ function BoardContents({
                     : "border-transparent text-muted-foreground",
                 )}
                 disabled={boardBusy}
-                onClick={() => setActivePhase(phase)}
+                onClick={() => selectPhase(phase)}
               >
                 <span className="flex min-w-0 items-center">
                   <span className="truncate">{phase}</span>
@@ -810,11 +818,14 @@ function BoardContents({
                 {priorityButtonLabel}
               </span>
               <ChevronDown
-                className={cn("ml-auto", priorityOpen && "rotate-180")}
+                className={cn(
+                  "ml-auto transition-transform duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none",
+                  priorityOpen && "rotate-180",
+                )}
                 aria-hidden
               />
             </Button>
-            {priorityOpen ? (
+            <MotionPresence open={priorityOpen}>
               <>
                 <button
                   ref={priorityOverlayRef}
@@ -857,7 +868,7 @@ function BoardContents({
                   </div>
                 </div>
               </>
-            ) : null}
+            </MotionPresence>
           </div>
 
           {isAdmin ? (
@@ -879,11 +890,14 @@ function BoardContents({
                   {committeeButtonLabel}
                 </span>
                 <ChevronDown
-                  className={cn("ml-auto", committeeOpen && "rotate-180")}
+                  className={cn(
+                    "ml-auto transition-transform duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none",
+                    committeeOpen && "rotate-180",
+                  )}
                   aria-hidden
                 />
               </Button>
-              {committeeOpen ? (
+              <MotionPresence open={committeeOpen}>
                 <div
                   id="committee-filter-panel"
                   ref={committeePanelRef}
@@ -927,7 +941,7 @@ function BoardContents({
                     })}
                   </div>
                 </div>
-              ) : null}
+              </MotionPresence>
             </div>
           ) : null}
         </div>
@@ -968,7 +982,8 @@ function BoardContents({
           </CardContent>
         </Card>
       ) : (
-        <>
+        <div className="motion-content-ready">
+        <TabPanel motionKey={phaseMotionKey} opacityOnly>
           {isUnfilteredBacklogOnlyPhase || isUnfilteredMixedPhase ? (
             <div
               role="status"
@@ -1080,7 +1095,8 @@ function BoardContents({
               ) : null}
             </DragOverlay>
           </DndContext>
-        </>
+        </TabPanel>
+        </div>
       )}
 
       <Sheet open={backlogOpen} onOpenChange={setBacklogOpen}>

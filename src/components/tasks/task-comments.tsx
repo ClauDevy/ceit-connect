@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { MotionPresence } from "@/components/shared/motion";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -268,7 +269,7 @@ function MentionPicker({
           }}
         />
 
-        {open ? (
+        <MotionPresence open={open}>
           <div
             id={`${inputId}-results`}
             role="listbox"
@@ -324,7 +325,7 @@ function MentionPicker({
               </p>
             )}
           </div>
-        ) : null}
+        </MotionPresence>
       </div>
     </div>
   );

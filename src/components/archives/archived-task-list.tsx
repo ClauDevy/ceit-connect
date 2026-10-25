@@ -1,10 +1,12 @@
+"use client";
+
 import { CalendarClock, ChevronRight } from "lucide-react";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { useListReveal } from "@/components/shared/motion";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { getEntranceClassName, selectEntranceIds } from "@/lib/motion";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 
@@ -102,11 +104,13 @@ export function ArchivedTaskList({
   assigneesUnavailable: boolean;
 }) {
   const groups = groupArchivedTasksByPhase(tasks, taskContent);
-  const entranceIds = selectEntranceIds(
-    groups.flatMap((group) => group.tasks),
-    (task) => task.id,
-  );
-  const entranceCapture = { phase: "playing" as const, ids: entranceIds };
+  const flattenedTasks = groups.flatMap((group) => group.tasks);
+  const reveal = useListReveal({
+    initialItems: flattenedTasks,
+    items: flattenedTasks,
+    settled: true,
+    getId: (task: ArchivedTask) => task.id,
+  });
 
   return (
     <div className="grid gap-7">
@@ -144,9 +148,9 @@ export function ArchivedTaskList({
                 return (
                   <Card
                     key={task.id}
+                    {...reveal.getRevealProps(task.id)}
                     className={cn(
                       "motion-card-interaction group relative overflow-hidden rounded-xl hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50",
-                      getEntranceClassName(entranceCapture, task.id),
                     )}
                   >
                     <StretchedLink
