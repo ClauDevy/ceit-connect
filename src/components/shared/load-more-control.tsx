@@ -24,12 +24,14 @@ export function LoadMoreControl({
   onRetry: () => void;
 }) {
   const showFinalState = hasLoadedMore && !hasMore && !errorMessage;
-  if (!hasMore && !showFinalState && !announcement) return null;
+  if (!hasMore && !showFinalState && !announcement && !errorMessage) {
+    return null;
+  }
 
   return (
     <div className="space-y-2">
       {errorMessage ? <InlineAlert>{errorMessage}</InlineAlert> : null}
-      {hasMore || showFinalState ? (
+      {hasMore || showFinalState || errorMessage ? (
         <div className="flex justify-center">
           <Button
             type="button"

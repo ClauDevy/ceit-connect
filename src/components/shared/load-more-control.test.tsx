@@ -74,4 +74,25 @@ describe("LoadMoreControl", () => {
     expect(final).toContain("1 more event loaded, 21 events loaded.");
     expect(final).toContain("disabled");
   });
+
+  it("shows a safe append error and Retry after has-more is cleared", () => {
+    const safeMessage =
+      "More tasks could not be loaded. The loaded tasks are still shown.";
+    const rawError = "PGRST999: internal database failure";
+    const markup = renderToStaticMarkup(
+      <LoadMoreControl
+        announcement=""
+        errorMessage={safeMessage}
+        hasLoadedMore={false}
+        hasMore={false}
+        isLoading={false}
+        onLoadMore={noop}
+        onRetry={noop}
+      />,
+    );
+
+    expect(markup).toContain(safeMessage);
+    expect(markup).toContain("Retry");
+    expect(markup).not.toContain(rawError);
+  });
 });

@@ -81,7 +81,7 @@ Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12
 13d. `feature/event-deletion` - one Admin-only Draft/Archived management page with a year filter; one event requires its name, bulk requires `DELETE <count> EVENTS`; Active deletion stays blocked and activity history keeps task UUIDs without a foreign key.
 14. `fix/hardening-gate` - revoke TRUNCATE/REFERENCES/TRIGGER from `authenticated` on events, tasks,
     notifications, and activity_log; tighten the Prod email domain; verify Step 1 cleanup and `/sandbox` removal; update catalogs/allowlists; enable officer caps before final release.
-    Docs-only note: record that Home calls only `requireUser()` and the non-Draft `events_select` policy lacks an active-profile check; Batch 3P does not change that code or policy.
+    Batch 14 must verify (a) whether deactivation invalidates all usable sessions and (b) whether the effective non-Draft `events_select` policy denies inactive callers. If either is unmet, Batch 14 schedules a tracked policy fix and a regression test; this is not documentation-only follow-up.
 15. `feature/dependencies-v2` - post-Phase-5 follow-up, outside the Phase 4B completion gate: normalized `task_dependencies`, multiple prerequisites, transitive auto-revert of every invalid dependent (including Completed) to the To Do lane tail, an activity entry with the initiating user and automatic-revert reason, and raw forward-status gate regression coverage.
 
 ## Open items

@@ -96,6 +96,8 @@ function MyTasksContents({
   const tasks = paging.items;
   const loadedCount = getLoadedMyTasksCount(tasks);
   const hasNextPage = paging.hasMore;
+  const hideTaskList =
+    !paging.settled || (paging.error !== null && tasks.length === 0);
 
   useEffect(() => {
     if (!active || status !== null || !paging.settled || paging.isRefreshing)
@@ -174,7 +176,7 @@ function MyTasksContents({
         </InlineAlert>
       ) : null}
 
-      {!paging.settled ? null : tasks.length === 0 ? (
+      {hideTaskList ? null : tasks.length === 0 ? (
         <Card className="border-dashed">
           <EmptyState
             title={status ? "No tasks match this status" : "No tasks assigned"}
