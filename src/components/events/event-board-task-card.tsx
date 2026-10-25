@@ -3,12 +3,7 @@
 import type { CSSProperties } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Check,
-  GripVertical,
-  LoaderCircle,
-  LockKeyhole,
-} from "lucide-react";
+import { Check, GripVertical, LoaderCircle, LockKeyhole } from "lucide-react";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -117,9 +112,11 @@ function CardBody({
     <Card
       className={cn(
         "relative p-0",
-        !overlay && "motion-card-interaction hover:border-primary/40 focus-within:border-primary/40",
+        !overlay &&
+          "motion-card-interaction hover:border-primary/40 focus-within:border-primary/40",
         task.status === "Completed" && !task.is_masked && "opacity-70",
-        overlay && "cursor-grabbing scale-[1.02] opacity-90 shadow-xl",
+        overlay &&
+          "cursor-grabbing scale-[1.02] opacity-90 shadow-xl motion-reduce:scale-100 motion-reduce:transition-none",
       )}
     >
       {!overlay ? (
@@ -154,32 +151,57 @@ function CardBody({
                 type="button"
                 variant="ghost"
                 size="icon-lg"
-                className="motion-control-pop rounded-full border-2 border-border active:bg-muted md:hidden"
+                className="motion-control-pop size-11 rounded-full border-2 border-border active:bg-muted md:hidden"
                 aria-label={`Mark ${task.title} Completed`}
                 aria-busy={busy}
                 disabled={busy}
                 onClick={() => onMoveStatus?.(task, "Completed")}
               >
                 {busy ? (
-                  <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
+                  <LoaderCircle
+                    className="motion-safe:animate-spin"
+                    aria-hidden
+                  />
                 ) : (
                   <span className="size-3 rounded-full" aria-hidden />
                 )}
               </Button>
             ) : null}
             {dragAttributes && dragListeners ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="hidden cursor-grab touch-none transition-colors duration-150 active:cursor-grabbing active:bg-muted motion-reduce:transition-none md:inline-flex"
-                aria-label={`Drag ${task.title}`}
-                disabled={busy}
-                {...dragAttributes}
-                {...dragListeners}
-              >
-                <GripVertical aria-hidden />
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="inline-flex size-11 cursor-grab touch-none select-none transition-colors duration-150 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:hidden"
+                  disabled={busy}
+                  {...dragAttributes}
+                  {...dragListeners}
+                  aria-label={`Drag ${task.title}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  <GripVertical aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="hidden cursor-grab touch-none select-none transition-colors duration-150 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:inline-flex"
+                  disabled={busy}
+                  {...dragAttributes}
+                  {...dragListeners}
+                  aria-label={`Drag ${task.title}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  <GripVertical aria-hidden />
+                </Button>
+              </>
             ) : null}
           </div>
         </div>
@@ -219,7 +241,11 @@ function CardBody({
           >
             {claimBusy ? (
               <>
-                <LoaderCircle className="motion-safe:animate-spin" aria-hidden /> Claiming
+                <LoaderCircle
+                  className="motion-safe:animate-spin"
+                  aria-hidden
+                />{" "}
+                Claiming
               </>
             ) : (
               "Claim Task"

@@ -12,6 +12,16 @@ export type BoardViewer = {
 
 export type MovePermission = "none" | "status" | "reorder";
 
+export type BoardOperationLock = { current: boolean };
+
+export type BoardDragSnapshot = {
+  taskId: string;
+  phase: string | null;
+  status: BoardStatus;
+  permission: MovePermission;
+  dataUpdatedAt: number;
+};
+
 export type NeighborHints = {
   previousNeighborId: string | null;
   nextNeighborId: string | null;
@@ -36,12 +46,7 @@ export type UndoEntry = {
 };
 
 export type MoveErrorKind =
-  | "stale"
-  | "permission"
-  | "dependency"
-  | "archived"
-  | "offline"
-  | "unknown";
+  "stale" | "permission" | "dependency" | "archived" | "offline" | "unknown";
 
 export type MoveErrorMessage = {
   kind: MoveErrorKind;
@@ -86,6 +91,33 @@ export function getMovePermission(
   return "none";
 }
 
+export function tryAcquireBoardOperation(lock: BoardOperationLock) {
+  if (lock.current) return false;
+  lock.current = true;
+  return true;
+}
+
+export function shouldCancelBoardDrag({
+  snapshot,
+  tasks,
+  viewer,
+  dataUpdatedAt,
+}: {
+  snapshot: BoardDragSnapshot;
+  tasks: readonly BoardTask[];
+  viewer: BoardViewer;
+  dataUpdatedAt: number;
+}) {
+  if (dataUpdatedAt !== snapshot.dataUpdatedAt) return true;
+  const task = tasks.find((candidate) => candidate.id === snapshot.taskId);
+  if (!task || task.is_masked || task.is_backlog) return true;
+  return (
+    task.phase !== snapshot.phase ||
+    task.status !== snapshot.status ||
+    getMovePermission(task, viewer) !== snapshot.permission
+  );
+}
+
 export function getBoardRefetchInterval(boardBusy: boolean) {
   return boardBusy ? false : BOARD_POLL_INTERVAL_MS;
 }
@@ -108,7 +140,10 @@ export function getNeighborHints(
   orderedTaskIds: readonly string[],
   insertionIndex: number,
 ): NeighborHints {
-  const safeIndex = Math.max(0, Math.min(insertionIndex, orderedTaskIds.length));
+  const safeIndex = Math.max(
+    0,
+    Math.min(insertionIndex, orderedTaskIds.length),
+  );
   return {
     previousNeighborId: safeIndex > 0 ? orderedTaskIds[safeIndex - 1] : null,
     nextNeighborId:
@@ -154,16 +189,21 @@ export function createDropMoveIntent({
   destinationStatus,
   overTaskId,
   permission,
+  appendToTail = false,
 }: {
   tasks: readonly BoardTask[];
   taskId: string;
   destinationStatus: BoardStatus;
   overTaskId: string | null;
   permission: MovePermission;
+  appendToTail?: boolean;
 }): MoveIntent | null {
   const task = tasks.find((candidate) => candidate.id === taskId);
   if (!task || task.is_backlog || permission === "none") return null;
   if (permission === "status") {
+    return createStatusMoveIntent(task, destinationStatus);
+  }
+  if (appendToTail) {
     return createStatusMoveIntent(task, destinationStatus);
   }
 
@@ -297,9 +337,7 @@ export function createUndoIntent(entry: UndoEntry): MoveIntent {
   };
 }
 
-export function mapMoveError(
-  error: unknown,
-): MoveErrorMessage {
+export function mapMoveError(error: unknown): MoveErrorMessage {
   const record =
     error && typeof error === "object"
       ? (error as Record<string, unknown>)
@@ -310,16 +348,21 @@ export function mapMoveError(
   if (code === "40001") {
     return {
       kind: "stale",
-      message: "The board changed before this move finished. It was refreshed; try again.",
+      message:
+        "The board changed before this move finished. It was refreshed; try again.",
     };
   }
   if (code === "42501") {
     return {
       kind: "permission",
-      message: "You no longer have permission to move this task. The board was refreshed.",
+      message:
+        "You no longer have permission to move this task. The board was refreshed.",
     };
   }
-  if (message === "Complete the prerequisite task before moving this task forward.") {
+  if (
+    message ===
+    "Complete the prerequisite task before moving this task forward."
+  ) {
     return { kind: "dependency", message };
   }
   if (message === "Tasks in Archived events are read-only.") {
@@ -346,7 +389,9 @@ export function undoReducer(state: UndoState, action: UndoAction): UndoState {
     return {
       ...state,
       entries: [
-        ...state.entries.filter((entry) => entry.taskId !== action.entry.taskId),
+        ...state.entries.filter(
+          (entry) => entry.taskId !== action.entry.taskId,
+        ),
         action.entry,
       ],
     };
@@ -356,7 +401,8 @@ export function undoReducer(state: UndoState, action: UndoAction): UndoState {
       ...state,
       entries: state.entries.filter(
         (entry) =>
-          entry.taskId !== action.taskId || entry.expiresAt !== action.expiresAt,
+          entry.taskId !== action.taskId ||
+          entry.expiresAt !== action.expiresAt,
       ),
     };
   }
