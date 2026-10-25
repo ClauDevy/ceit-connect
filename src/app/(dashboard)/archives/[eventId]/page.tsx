@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, LockKeyhole } from "lucide-react";
 import { redirect } from "next/navigation";
+import {
+  ArchivedTaskList,
+  type ArchivedAssignee,
+  type ArchivedTask,
+  type ArchivedTaskContent,
+} from "@/components/archives/archived-task-list";
 import { EventBanner } from "@/components/events/event-banner";
-import { PageHeader } from "@/components/shared/page-header";
-import { PriorityBadge } from "@/components/shared/priority-badge";
-import { UserAvatar } from "@/components/shared/user-avatar";
-import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type ArchivedEvent = {
   id: string;
@@ -21,29 +22,6 @@ type ArchivedEvent = {
   start_date: string;
   end_date: string | null;
   banner_url: string | null;
-};
-
-type ArchivedTask = {
-  id: string;
-  phase: string | null;
-  status: "To Do" | "In Progress" | "Completed";
-  priority: "Low" | "Medium" | "High" | "Critical";
-  task_type: "Deliverable" | "LiveOperation";
-  due_date: string | null;
-  primary_assignees: string[];
-  assist_assignees: string[];
-};
-
-type TaskContent = {
-  id: string;
-  title: string;
-  description: string | null;
-};
-
-type ArchivedAssignee = {
-  id: string;
-  full_name: string;
-  avatar_url: string | null;
 };
 
 function isArchivedAssignee(value: unknown): value is ArchivedAssignee {
@@ -61,13 +39,6 @@ const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
   timeZone: "UTC",
-});
-
-const taskDateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: APP_TIME_ZONE.iana,
 });
 
 function formatEventDate(date: string) {
@@ -156,7 +127,9 @@ export default async function ArchivedEventPage({
 
   const taskContentResults = await Promise.all(
     (tasks ?? []).map((task) =>
-      supabase.rpc("get_task", { p_task_id: task.id }).single<TaskContent>(),
+      supabase
+        .rpc("get_task", { p_task_id: task.id })
+        .single<ArchivedTaskContent>(),
     ),
   );
   const taskContentError = taskContentResults.find(
@@ -172,7 +145,7 @@ export default async function ArchivedEventPage({
     ),
   );
   const assigneesById = new Map(
-    (assignees ?? []).map((assignee) => [assignee.id, assignee] as const),
+    assignees.map((assignee) => [assignee.id, assignee] as const),
   );
 
   return (
@@ -189,35 +162,33 @@ export default async function ArchivedEventPage({
         Event Archives
       </Link>
 
-      <PageHeader
-        title={event.name}
-        description="Archived event record"
-        actions={<Badge variant="neutral">Archived</Badge>}
-      />
+      <div className="mb-4 flex items-start gap-2.5 rounded-xl border bg-muted/40 px-3.5 py-2.5">
+        <LockKeyhole
+          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
+        <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
+          <span className="font-semibold text-foreground">
+            Read-only record.
+          </span>{" "}
+          This event and its tasks are permanently frozen as they stood when
+          archived.
+        </p>
+      </div>
 
-      <Card className="mb-6 bg-muted/40">
-        <CardContent className="flex items-start gap-3">
-          <LockKeyhole
-            className="mt-0.5 size-5 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-          <div>
-            <p className="text-sm font-semibold">Read-only record</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              This event and its tasks are permanently frozen as they stood when
-              archived.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-8 max-w-3xl overflow-hidden">
+      <Card className="mb-8 grid max-w-5xl overflow-hidden md:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
         <EventBanner
           src={event.banner_url}
           alt={`${event.name} banner`}
-          className="aspect-video w-full"
+          className="aspect-video w-full self-center"
         />
-        <CardContent className="space-y-3">
+        <CardContent className="flex min-w-0 flex-col justify-center gap-3 p-4 sm:p-5 md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h1 className="min-w-0 font-display text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
+              {event.name}
+            </h1>
+            <Badge variant="neutral">Archived</Badge>
+          </div>
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>{formatEventDateRange(event)}</span>
@@ -234,8 +205,8 @@ export default async function ArchivedEventPage({
         </CardContent>
       </Card>
 
-      <section aria-labelledby="archived-tasks-heading">
-        <div className="mb-4 flex items-center justify-between gap-4">
+      <section aria-labelledby="archived-tasks-heading" className="max-w-5xl">
+        <div className="mb-4 flex items-baseline gap-2 border-b pb-2.5">
           <h2
             id="archived-tasks-heading"
             className="font-display text-lg font-semibold sm:text-xl"
@@ -255,93 +226,15 @@ export default async function ArchivedEventPage({
         ) : null}
 
         {tasks?.length ? (
-          <div className="grid gap-4">
-            {tasks.map((task) => {
-              const content = taskContent.get(task.id);
-              const assigneeIds = Array.from(
-                new Set([...task.primary_assignees, ...task.assist_assignees]),
-              );
-              return (
-                <Card key={task.id} className="group relative">
-                  <StretchedLink
-                    href={`/tasks/${task.id}`}
-                    label={`Open ${content?.title ?? "Task details unavailable"}`}
-                  />
-                    <CardHeader className="sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                      <div className="min-w-0">
-                        <CardTitle>
-                          {content?.title ?? "Task details unavailable"}
-                        </CardTitle>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {task.phase || "No phase"} ·{" "}
-                          {task.task_type === "LiveOperation"
-                            ? "Live Operation"
-                            : "Deliverable"}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">{task.status}</Badge>
-                        <PriorityBadge priority={task.priority} />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-4">
-                      {content?.description ? (
-                        <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                          {content.description}
-                        </p>
-                      ) : null}
-                      {task.due_date ? (
-                        <p className="text-xs text-muted-foreground">
-                          Due {taskDateFormatter.format(new Date(task.due_date))}
-                        </p>
-                      ) : null}
-                      {assigneeIds.length > 0 ? (
-                        <div>
-                          <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                            Assignees
-                          </p>
-                          {assigneesUnavailable ? (
-                            <p className="text-xs text-muted-foreground">
-                              Assignee names are unavailable.
-                            </p>
-                          ) : (
-                            <div className="flex flex-wrap gap-3">
-                              {assigneeIds.map((assigneeId) => {
-                                const assignee = assigneesById.get(assigneeId);
-                                const name =
-                                  assignee?.full_name ?? "Former member";
-
-                                return (
-                                  <span
-                                    key={assigneeId}
-                                    className="flex items-center gap-2 text-sm"
-                                  >
-                                    <UserAvatar
-                                      name={name}
-                                      src={assignee?.avatar_url}
-                                      size="sm"
-                                      className={
-                                        assignee
-                                          ? undefined
-                                          : "bg-muted text-muted-foreground"
-                                      }
-                                    />
-                                    <span>{name}</span>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          <ArchivedTaskList
+            tasks={tasks}
+            taskContent={taskContent}
+            assignees={assigneesById}
+            assigneesUnavailable={assigneesUnavailable}
+          />
         ) : !tasksError ? (
-          <Card>
-            <CardContent>
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 No tasks are visible to you in this archive.
               </p>
