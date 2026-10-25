@@ -52,6 +52,7 @@ import {
   EventBoardTaskCard,
   SortableEventBoardTaskCard,
 } from "@/components/events/event-board-task-card";
+import { getPriorityDotClass } from "@/components/shared/priority-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -150,7 +151,13 @@ function PriorityChoices({
               aria-pressed={active}
               onClick={() => onToggle(priority)}
             >
-              {priority}
+              <span className="flex items-center gap-2">
+                <span
+                  className={`size-2 rounded-full ${getPriorityDotClass(priority)}`}
+                  aria-hidden="true"
+                />
+                {priority}
+              </span>
               {active ? <Check aria-hidden /> : null}
             </Button>
           );
@@ -663,40 +670,52 @@ function BoardContents({
     <div className="space-y-6">
       <Link
         href="/home"
-        className={buttonVariants({ variant: "ghost", size: "sm" })}
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "sm" }),
+          "transition-colors duration-150 active:bg-muted motion-reduce:transition-none",
+        )}
       >
         <ArrowLeft aria-hidden /> Home
       </Link>
 
       <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xs">
-        <EventBanner
-          src={event.banner_url}
-          alt={`${event.name} banner`}
-          className="h-28 w-full [&>img]:object-contain sm:h-36"
-        />
-        <div className="flex items-end justify-between gap-4 px-5 py-5 sm:px-7 sm:py-6">
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-              <h1 className="min-w-0 break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                {event.name}
-              </h1>
-              <Badge variant="outline">Active</Badge>
-            </div>
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <CalendarDays className="size-4 shrink-0" aria-hidden />
-              {formatEventDateRange(event)}
-            </p>
-            {event.description ? (
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                {event.description}
+        <div className="flex flex-col md:flex-row">
+          <EventBanner
+            src={event.banner_url}
+            alt={`${event.name} banner`}
+            className="aspect-video w-full md:w-[clamp(20rem,35vw,26.25rem)] md:shrink-0"
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5 md:flex-row md:items-center">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1 className="min-w-0 break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {event.name}
+                </h1>
+                <Badge
+                  variant="outline"
+                  className="border-primary/60 bg-primary/10"
+                >
+                  Active
+                </Badge>
+              </div>
+              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CalendarDays className="size-4 shrink-0" aria-hidden />
+                {formatEventDateRange(event)}
               </p>
-            ) : null}
-            <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-              {completed} of {formatTaskCount(tasks.length)} completed
-            </p>
+              {event.description ? (
+                <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                  {event.description}
+                </p>
+              ) : null}
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
+                {completed} of {formatTaskCount(tasks.length)} completed
+              </p>
+            </div>
+            <div className="self-end md:self-auto">
+              <EventBoardProgressRing percentage={completion} />
+            </div>
           </div>
-          <EventBoardProgressRing percentage={completion} />
         </div>
       </section>
 
@@ -768,18 +787,13 @@ function BoardContents({
         </div>
       </div>
 
-      <div className="flex w-full min-w-0 items-center gap-2">
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-2",
-            isAdmin ? "md:w-[30rem] md:flex-none" : "sm:max-w-sm",
-          )}
-        >
-          <div className="relative min-w-0 flex-1">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
+          <div className="relative max-w-full">
             <Button
               ref={priorityTriggerRef}
               variant="outline"
-              className="h-11 w-full min-w-0 justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+              className="h-11 w-auto max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
               aria-haspopup="dialog"
               aria-expanded={priorityOpen}
               aria-controls="priority-filter-panel"
@@ -790,14 +804,11 @@ function BoardContents({
               }
             >
               <Filter aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-left">
+              <span className="min-w-0 max-w-44 truncate text-left">
                 {priorityButtonLabel}
               </span>
-            <ChevronDown
-              className={cn(
-                "ml-auto",
-                priorityOpen && "rotate-180",
-              )}
+              <ChevronDown
+                className={cn("ml-auto", priorityOpen && "rotate-180")}
                 aria-hidden
               />
             </Button>
@@ -816,7 +827,7 @@ function BoardContents({
                   role="dialog"
                   aria-label="Priority filter"
                   className={cn(
-                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-full sm:min-w-[14rem] sm:max-w-[calc(100vw-1rem)]",
+                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-72 sm:max-w-[calc(100vw-1rem)]",
                   )}
                 >
                   <PriorityChoices
@@ -848,11 +859,11 @@ function BoardContents({
           </div>
 
           {isAdmin ? (
-            <div className="relative min-w-0 flex-1">
+            <div className="relative max-w-full">
               <Button
                 ref={committeeTriggerRef}
                 variant="outline"
-                className="h-11 w-full min-w-0 justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+                className="h-11 w-auto max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
                 aria-haspopup="listbox"
                 aria-expanded={committeeOpen}
                 aria-controls="committee-filter-panel"
@@ -862,14 +873,11 @@ function BoardContents({
                   committeeOpen ? closeCommitteeFilter() : openCommitteeFilter()
                 }
               >
-                <span className="min-w-0 flex-1 truncate text-left">
+                <span className="min-w-0 max-w-52 truncate text-left">
                   {committeeButtonLabel}
                 </span>
-              <ChevronDown
-                className={cn(
-                  "ml-auto",
-                  committeeOpen && "rotate-180",
-                )}
+                <ChevronDown
+                  className={cn("ml-auto", committeeOpen && "rotate-180")}
                   aria-hidden
                 />
               </Button>
@@ -881,7 +889,7 @@ function BoardContents({
                   aria-label="Committee filter"
                   aria-activedescendant={`committee-filter-option-${committeeActiveIndex}`}
                   className={cn(
-                    "absolute top-full right-0 z-50 mt-2 w-full min-w-[14rem] max-w-[calc(100vw-1rem)] rounded-2xl border bg-popover p-2 shadow-2xl sm:right-auto sm:left-0",
+                    "absolute top-full right-0 z-50 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-2xl border bg-popover p-2 shadow-2xl sm:right-auto sm:left-0",
                   )}
                 >
                   <div className="max-h-60 space-y-1 overflow-y-auto overscroll-contain">
@@ -926,7 +934,7 @@ function BoardContents({
           id="event-board-backlog-button"
           ref={backlogButtonRef}
           variant="outline"
-          className="h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10 md:ml-auto"
+          className="ml-auto h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10"
           aria-label={`Open Backlog, ${formatTaskCount(backlogTasks.length)}`}
           onClick={() => setBacklogOpen(true)}
         >

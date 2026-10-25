@@ -10,6 +10,7 @@ import {
   LockKeyhole,
 } from "lucide-react";
 import { StretchedLink } from "@/components/shared/stretched-link";
+import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,6 @@ import {
 } from "@/components/ui/select";
 import {
   BOARD_STATUSES,
-  type BoardPriority,
   type BoardStatus,
   type BoardTask,
 } from "@/lib/events/board";
@@ -37,12 +37,6 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: APP_TIME_ZONE.iana,
 });
-
-function priorityVariant(priority: BoardPriority) {
-  if (priority === "Critical") return "destructive" as const;
-  if (priority === "High") return "outline" as const;
-  return "neutral" as const;
-}
 
 function TaskAssignees({ task }: { task: BoardTask }) {
   const assignees = [
@@ -137,15 +131,10 @@ function CardBody({
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           {!task.is_masked && task.effective_priority ? (
-            <Badge
-              variant={priorityVariant(task.effective_priority)}
-              className={cn(backlog && "gap-1.5 px-2 text-xs")}
-            >
-              {backlog ? (
-                <span className="size-1.5 rounded-full bg-current" aria-hidden />
-              ) : null}
-              {task.effective_priority}
-            </Badge>
+            <PriorityBadge
+              priority={task.effective_priority}
+              className={cn(backlog && "px-2 text-xs")}
+            />
           ) : (
             <Badge variant="neutral">
               <LockKeyhole aria-hidden /> Confidential

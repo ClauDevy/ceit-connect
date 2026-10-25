@@ -31,13 +31,14 @@ import {
   type NewWorkLink,
 } from "@/components/tasks/your-work-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { BoardAssignee, BoardPriority } from "@/lib/events/board";
+import type { BoardAssignee } from "@/lib/events/board";
 import {
   getTaskBackHref,
   isTaskDetail,
@@ -100,12 +101,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   timeZone: APP_TIME_ZONE.iana,
 });
-
-function priorityVariant(priority: BoardPriority) {
-  if (priority === "Critical") return "destructive" as const;
-  if (priority === "High") return "outline" as const;
-  return "neutral" as const;
-}
 
 function AssigneeList({
   label,
@@ -344,9 +339,10 @@ function RealTask({
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline">{task.status}</Badge>
               {task.effective_priority ? (
-                <Badge variant={priorityVariant(task.effective_priority)}>
-                  {task.effective_priority} priority
-                </Badge>
+                <PriorityBadge
+                  priority={task.effective_priority}
+                  suffix="priority"
+                />
               ) : null}
               <Badge variant="neutral">{taskTypeLabel}</Badge>
             </div>
