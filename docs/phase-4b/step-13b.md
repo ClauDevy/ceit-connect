@@ -28,6 +28,7 @@ The stable run order for this group is **13, 13c, 13d, 13b**. Phase completion r
 - Archived events remain under the stronger Archived freeze and cannot be reopened.
 - Completed-phase task and child mutations are blocked, including task mutations submitted through Edit Event. Edit Event may still change event metadata when it submits no mutation for a completed phase.
 - The canonical `Unphased` bucket never completes or locks.
+- Batch 3H's Home summary may display `All phases complete` when every task, including every `Unphased` task, is Completed. That display aggregate does not make `Unphased` complete for this batch and never activates the completed-phase freeze.
 
 ## Current state
 

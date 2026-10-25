@@ -12,6 +12,14 @@ function EventCardSkeleton() {
         </div>
         <Skeleton className="h-4 w-1/2" />
         <Skeleton className="h-4 w-full" />
+        <div className="grid gap-2 border-t border-border/70 pt-3">
+          <Skeleton className="h-3 w-32" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-1.5 flex-1 rounded-full" />
+            <Skeleton className="h-3 w-8" />
+          </div>
+          <Skeleton className="h-3 w-4/5" />
+        </div>
       </div>
     </div>
   );
