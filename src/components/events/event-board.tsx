@@ -134,9 +134,11 @@ function PriorityChoices({
   onToggle: (priority: BoardPriority) => void;
 }) {
   return (
-    <div className="space-y-3">
-      <p className="font-display text-sm font-semibold">Filter by priority</p>
-      <div className="grid grid-cols-2 gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:block sm:space-y-3">
+      <p className="shrink-0 font-display text-sm font-semibold">
+        Filter by priority
+      </p>
+      <div className="grid min-h-0 grid-cols-2 gap-2 overflow-y-auto overscroll-contain sm:overflow-visible">
         {BOARD_PRIORITIES.map((priority) => {
           const active = selected.has(priority);
           return (
@@ -827,14 +829,14 @@ function BoardContents({
                   role="dialog"
                   aria-label="Priority filter"
                   className={cn(
-                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-72 sm:max-w-[calc(100vw-1rem)]",
+                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] flex-col overflow-hidden rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:block sm:max-h-none sm:w-72 sm:max-w-[calc(100vw-1rem)] sm:overflow-visible",
                   )}
                 >
                   <PriorityChoices
                     selected={selectedPriorities}
                     onToggle={togglePriority}
                   />
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-4 flex shrink-0 items-center justify-between gap-3">
                     {selectedPriorities.size > 0 ? (
                       <Button
                         variant="link"
@@ -889,10 +891,10 @@ function BoardContents({
                   aria-label="Committee filter"
                   aria-activedescendant={`committee-filter-option-${committeeActiveIndex}`}
                   className={cn(
-                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 rounded-2xl border bg-popover p-2 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-72 sm:max-w-[calc(100vw-1rem)]",
+                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] flex-col overflow-hidden rounded-2xl border bg-popover p-2 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:block sm:max-h-none sm:w-72 sm:max-w-[calc(100vw-1rem)] sm:overflow-visible",
                   )}
                 >
-                  <div className="max-h-60 space-y-1 overflow-y-auto overscroll-contain">
+                  <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain sm:max-h-60">
                     {committeeOptions.map((committee, index) => {
                       const selected = committee.id === committeeId;
                       return (
