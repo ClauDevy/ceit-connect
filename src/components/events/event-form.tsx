@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  ClipboardList,
   Circle,
   Clock3,
   FileText,
@@ -59,7 +58,6 @@ import {
 } from "@/lib/events/form";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
 import { preventSearchFormSubmission } from "@/lib/search";
-import { formatWorkloadLabel } from "@/lib/tasks/workload";
 import { splitAppTimestamp } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
 
@@ -477,6 +475,26 @@ export function EventForm({
         (assigneeId) => !activeAssigneeIds.has(assigneeId),
       )
     : [];
+  const visibleAssignees = [
+    ...assigneeGroups.selected,
+    ...assigneeGroups.other,
+  ];
+  const visibleAssigneeIds = new Set(
+    visibleAssignees.map((assignee) => assignee.id),
+  );
+  const selectedVisibleAssigneeCount = taskEditor
+    ? visibleAssignees.filter((assignee) =>
+        taskEditor.draft.assigneeIds.includes(assignee.id),
+      ).length
+    : 0;
+  const allVisibleAssigneesSelected =
+    visibleAssignees.length > 0 &&
+    selectedVisibleAssigneeCount === visibleAssignees.length;
+  const selectedWithAllVisibleCount = taskEditor
+    ? new Set([...taskEditor.draft.assigneeIds, ...visibleAssigneeIds]).size
+    : 0;
+  const selectAllVisibleExceedsLimit =
+    !allVisibleAssigneesSelected && selectedWithAllVisibleCount > 100;
 
   async function importTemplate(template: ArchivedEventTemplate) {
     if (!startDate) {
@@ -686,6 +704,42 @@ export function EventForm({
         ? { ...current, draft: { ...current.draft, ...updates } }
         : current,
     );
+  }
+
+  function updateVisibleAssignees(checked: boolean) {
+    setTaskEditor((current) => {
+      if (!current) return current;
+
+      if (!checked) {
+        return {
+          ...current,
+          draft: {
+            ...current.draft,
+            assigneeIds: current.draft.assigneeIds.filter(
+              (assigneeId) => !visibleAssigneeIds.has(assigneeId),
+            ),
+          },
+        };
+      }
+
+      const uniqueIds = new Set(current.draft.assigneeIds);
+      visibleAssigneeIds.forEach((assigneeId) => uniqueIds.add(assigneeId));
+      if (uniqueIds.size > 100) return current;
+
+      const missingVisibleIds = [...visibleAssigneeIds].filter(
+        (assigneeId) => !current.draft.assigneeIds.includes(assigneeId),
+      );
+      return {
+        ...current,
+        draft: {
+          ...current.draft,
+          assigneeIds: [
+            ...current.draft.assigneeIds,
+            ...missingVisibleIds,
+          ],
+        },
+      };
+    });
   }
 
   function saveTask() {
@@ -1626,33 +1680,25 @@ export function EventForm({
           if (!open) setTaskEditor(null);
         }}
       >
-        <DialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:p-0 max-w-3xl">
-          <DialogHeader className="border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-popover p-5 pr-12 sm:p-6 sm:pr-14">
-            <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ClipboardList aria-hidden className="size-5" />
-              </span>
-              <div className="grid gap-1.5">
-                <DialogTitle>
-                  {taskEditor?.taskId ? "Edit task" : "Add task"}
-                </DialogTitle>
-                <DialogDescription>
-                  Leave assignees empty to send this task to the Backlog.
-                </DialogDescription>
-              </div>
-            </div>
+        <DialogContent className="max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:p-0">
+          <DialogHeader className="shrink-0 border-b border-border/70 px-4 py-3.5 pr-12 sm:px-5 sm:py-4 sm:pr-14">
+            <DialogTitle>
+              {taskEditor?.taskId ? "Edit task" : "Add task"}
+            </DialogTitle>
+            <DialogDescription>
+              Leave assignees empty to send this task to the Backlog.
+            </DialogDescription>
           </DialogHeader>
 
           {taskEditor && (
             <div
               ref={taskDialogScrollRef}
-              className="grid min-h-0 min-w-0 gap-5 overflow-y-auto p-5 sm:p-6"
+              className="grid min-h-0 min-w-0 gap-5 overflow-y-auto px-4 py-5 sm:px-5"
             >
-              <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
+              <section className="grid gap-4 border-b border-border/70 pb-5">
                 <SectionHeading
                   icon={<FileText aria-hidden />}
                   title="Details"
-                  description="Describe the work and how it should be handled."
                 />
               <FormField label="Task title">
                 {(control) => (
@@ -1732,11 +1778,10 @@ export function EventForm({
               </div>
               </section>
 
-              <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
+              <section className="grid gap-4 border-b border-border/70 pb-5">
                 <SectionHeading
                   icon={<CalendarDays aria-hidden />}
                   title="When"
-                  description="Set the deadline and any live-duty schedule."
                 />
                 <FormField label="Due date" hint="Optional">
                   {(control) => (
@@ -1752,7 +1797,7 @@ export function EventForm({
                 </FormField>
 
               {taskEditor.draft.taskType === "LiveOperation" && (
-                <div className="grid gap-4 rounded-xl border border-primary/30 bg-muted p-4">
+                <div className="grid gap-4 rounded-xl border border-primary/30 bg-primary/5 p-3.5">
                   <InlineAlert variant="info">
                     This is a live duty — don&apos;t start before Call Time, and
                     be physically ready at that moment.
@@ -1803,11 +1848,10 @@ export function EventForm({
               )}
               </section>
 
-              <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
+              <section className="grid gap-4">
                 <SectionHeading
                   icon={<Users aria-hidden />}
                   title="Who"
-                  description="Choose the owning committee and initial assignees."
                 />
                 <FormField label="Committee">
                   {(control) => (
@@ -1834,8 +1878,8 @@ export function EventForm({
                   )}
                 </FormField>
 
-              <fieldset className="grid min-w-0 gap-3 rounded-xl border bg-muted/20 p-4">
-                <legend className="px-1 text-sm font-semibold">
+              <fieldset className="grid min-w-0 gap-3">
+                <legend className="mb-1 text-sm font-semibold">
                   Assignees
                 </legend>
                 {inactiveAssigneeIds.length > 0 && (
@@ -1886,6 +1930,18 @@ export function EventForm({
                 </div>
 
                 <div className="grid max-h-64 gap-3 overflow-y-auto rounded-xl border bg-card p-2">
+                  {visibleAssignees.length >= 2 && (
+                    <AssigneeBulkControls
+                      visibleCount={visibleAssignees.length}
+                      selectedVisibleCount={selectedVisibleAssigneeCount}
+                      selectAllDisabled={selectAllVisibleExceedsLimit}
+                      onSelectAll={(checked) =>
+                        updateVisibleAssignees(checked)
+                      }
+                      onClear={() => updateVisibleAssignees(false)}
+                    />
+                  )}
+
                   {!selectedCommitteeHasActiveMembers && (
                     <p className="px-2 py-1 text-xs text-muted-foreground">
                       No active members in this committee. You can still assign
@@ -1947,17 +2003,22 @@ export function EventForm({
             </div>
           )}
 
-          <div className="grid gap-3 border-t border-border/70 bg-popover p-4 sm:px-6">
+          <div className="grid shrink-0 gap-3 border-t border-border/70 bg-popover p-4 sm:px-5">
             {taskEditorError && <InlineAlert>{taskEditorError}</InlineAlert>}
-            <DialogFooter>
+            <DialogFooter className="grid grid-cols-2 sm:flex">
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => setTaskEditor(null)}
               >
                 Cancel
               </Button>
-              <Button type="button" onClick={saveTask}>
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={saveTask}
+              >
                 {taskEditor?.taskId ? "Save changes" : "Add task"}
               </Button>
             </DialogFooter>
@@ -2028,21 +2089,16 @@ export function EventForm({
 function SectionHeading({
   icon,
   title,
-  description,
 }: {
   icon: React.ReactNode;
   title: string;
-  description: string;
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-border/70 pb-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary [&_svg]:size-4">
+    <div className="flex items-center gap-2.5">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary [&_svg]:size-3.5">
         {icon}
       </span>
-      <div>
-        <h3 className="font-display font-semibold">{title}</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      </div>
+      <h3 className="font-display text-sm font-semibold">{title}</h3>
     </div>
   );
 }
@@ -2066,7 +2122,7 @@ function TaskTypeToggle({
       role="radiogroup"
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
-      className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 focus-within:ring-3 focus-within:ring-ring/50"
+      className="grid grid-cols-2 gap-2 rounded-xl focus-within:ring-3 focus-within:ring-ring/50"
     >
       {taskTypes.map((option) => {
         const selected = option.value === value;
@@ -2076,10 +2132,10 @@ function TaskTypeToggle({
           <label
             key={option.value}
             htmlFor={optionId}
-            className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 text-center text-sm font-semibold ${
+            className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold transition-colors duration-150 active:bg-muted motion-reduce:transition-none ${
               selected
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:bg-muted hover:text-foreground"
             }`}
           >
             <input
@@ -2164,9 +2220,9 @@ function AssigneeGroup({
           <label
             key={assignee.id}
             htmlFor={inputId}
-            className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-2 outline-none transition-colors focus-within:ring-3 focus-within:ring-ring/50 ${
+            className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 outline-none transition-colors duration-150 focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none ${
               selected
-                ? "border-primary/40 bg-primary/10"
+                ? "border-primary/40 bg-primary/10 hover:bg-primary/15"
                 : "border-transparent hover:bg-muted"
             }`}
           >
@@ -2183,21 +2239,92 @@ function AssigneeGroup({
               size="sm"
               className="size-7 text-[10px]"
             />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">
-              {formatWorkloadLabel(
-                assignee.full_name,
-                assignee.activeTaskCount,
-              )}
+            <span className="grid min-w-0 flex-1 leading-tight">
+              <span className="truncate text-sm font-medium">
+                {assignee.full_name}
+              </span>
+              <span className="truncate text-xs text-muted-foreground">
+                {assignee.activeTaskCount} active{" "}
+                {assignee.activeTaskCount === 1 ? "task" : "tasks"}
+              </span>
             </span>
-            <span className="max-w-28 shrink-0 truncate text-xs text-muted-foreground">
+            <Badge
+              variant="neutral"
+              className="max-w-28 truncate px-2 py-0.5 text-[10px]"
+            >
               {assignee.committee_id
                 ? (committeeNames.get(assignee.committee_id) ??
                   "Unknown committee")
                 : "No committee"}
-            </span>
+            </Badge>
           </label>
         );
       })}
+    </div>
+  );
+}
+
+function AssigneeBulkControls({
+  visibleCount,
+  selectedVisibleCount,
+  selectAllDisabled,
+  onSelectAll,
+  onClear,
+}: {
+  visibleCount: number;
+  selectedVisibleCount: number;
+  selectAllDisabled: boolean;
+  onSelectAll: (checked: boolean) => void;
+  onClear: () => void;
+}) {
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  const allSelected = selectedVisibleCount === visibleCount;
+  const partlySelected = selectedVisibleCount > 0 && !allSelected;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = partlySelected;
+    }
+  }, [partlySelected]);
+
+  return (
+    <div className="sticky top-0 z-10 grid gap-1 border-b bg-card px-2 pb-2">
+      <div className="flex min-h-11 items-center justify-between gap-2">
+        <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1 text-xs font-semibold transition-colors duration-150 hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none has-disabled:cursor-not-allowed has-disabled:opacity-50">
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={allSelected}
+            aria-checked={partlySelected ? "mixed" : allSelected}
+            aria-describedby={
+              selectAllDisabled ? "assignee-select-all-limit" : undefined
+            }
+            disabled={selectAllDisabled}
+            onChange={(event) => onSelectAll(event.target.checked)}
+            className="size-5 shrink-0 accent-primary"
+          />
+          <span className="truncate">Select all shown ({visibleCount})</span>
+        </label>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={selectedVisibleCount === 0}
+          onClick={onClear}
+          className="shrink-0 transition-colors duration-150 active:bg-muted motion-reduce:transition-none"
+        >
+          Clear shown
+        </Button>
+      </div>
+      {selectAllDisabled && (
+        <p
+          id="assignee-select-all-limit"
+          className="text-xs text-muted-foreground"
+        >
+          You can select up to 100 assignees. Clear another selection before
+          selecting all shown.
+        </p>
+      )}
     </div>
   );
 }
