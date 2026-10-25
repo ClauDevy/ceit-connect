@@ -8,7 +8,7 @@ import { EventCardMenu } from "@/components/events/event-card-menu";
 import { HomeEventProgressSummary } from "@/components/events/home-event-progress";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
-import { useInitialListEntrance } from "@/components/shared/motion";
+import { useListReveal } from "@/components/shared/motion";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -103,27 +103,27 @@ function formatLastEdited(value: string | null | undefined) {
   };
 }
 
+type RevealProps = ReturnType<typeof useListReveal<HomeEvent>>["getRevealProps"] extends (
+  id: string,
+) => infer P ? P : never;
+
 function ActiveEventCard({
   event,
   canEdit,
   canArchive,
-  entranceClassName,
-  onAnimationEnd,
+  revealProps,
 }: {
   event: HomeEvent;
   canEdit: boolean;
   canArchive: boolean;
-  entranceClassName?: string;
-  onAnimationEnd: ReturnType<typeof useInitialListEntrance<HomeEvent>>["onAnimationEnd"];
+  revealProps: RevealProps;
 }) {
   return (
     <Card
+      {...revealProps}
       className={cn(
         "motion-card-interaction group relative isolate overflow-hidden border-border/70 hover:border-primary/40 focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/30",
-        entranceClassName,
       )}
-      onAnimationEnd={entranceClassName ? onAnimationEnd : undefined}
-      data-motion-entrance-id={entranceClassName ? event.id : undefined}
     >
       <StretchedLink
         href={`/events/${event.id}`}
@@ -175,23 +175,19 @@ function ActiveEventCard({
 function DraftEventCard({
   event,
   canEdit,
-  entranceClassName,
-  onAnimationEnd,
+  revealProps,
 }: {
   event: HomeEvent;
   canEdit: boolean;
-  entranceClassName?: string;
-  onAnimationEnd: ReturnType<typeof useInitialListEntrance<HomeEvent>>["onAnimationEnd"];
+  revealProps: RevealProps;
 }) {
   const lastEdited = formatLastEdited(event.updated_at);
   return (
     <Card
+      {...revealProps}
       className={cn(
         "relative border-2 border-dashed bg-card/70",
-        entranceClassName,
       )}
-      onAnimationEnd={entranceClassName ? onAnimationEnd : undefined}
-      data-motion-entrance-id={entranceClassName ? event.id : undefined}
     >
       {canEdit ? (
         <StretchedLink
@@ -355,7 +351,7 @@ export function HomeEventList({
   });
   const { activeEvents, draftEvents } = splitHomeEvents(paging.items);
   const initialSplit = splitHomeEvents(initialPage?.items ?? []);
-  const entrance = useInitialListEntrance({
+  const reveal = useListReveal({
     initialItems: [...initialSplit.activeEvents, ...initialSplit.draftEvents],
     items: [...activeEvents, ...draftEvents],
     settled: paging.settled,
@@ -451,8 +447,7 @@ export function HomeEventList({
                 event={event}
                 canEdit={canEdit}
                 canArchive={canArchive}
-                entranceClassName={entrance.getEntranceClassName(event.id)}
-                onAnimationEnd={entrance.onAnimationEnd}
+                revealProps={reveal.getRevealProps(event.id)}
               />
             ))}
           </div>
@@ -485,8 +480,7 @@ export function HomeEventList({
                 key={event.id}
                 event={event}
                 canEdit={canEdit}
-                entranceClassName={entrance.getEntranceClassName(event.id)}
-                onAnimationEnd={entrance.onAnimationEnd}
+                revealProps={reveal.getRevealProps(event.id)}
               />
             ))}
           </div>

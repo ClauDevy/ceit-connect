@@ -180,7 +180,7 @@ export function BannerUploader({
   }
 
   async function saveCrop(area: CropArea) {
-    if (!sourceUrl || !cropSourceFile) return;
+    if (!sourceUrl || !cropSourceFile) return false;
     setStatus("processing");
     setError("");
 
@@ -192,10 +192,10 @@ export function BannerUploader({
       const bannerFile = await prepareBannerFile(croppedFile);
       const sourceFile = cropSourceFile;
 
-      closeCropper();
       await storeBannerFile(bannerFile);
       setAdjustableSourceFile(sourceFile);
       setStatus("idle");
+      return true;
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -203,6 +203,7 @@ export function BannerUploader({
           : "Something went wrong processing the image.",
       );
       setStatus("idle");
+      return false;
     }
   }
 

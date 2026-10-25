@@ -23,6 +23,7 @@ import {
   type MyTasksStatus,
 } from "@/lib/tasks/my-tasks";
 import { cn } from "@/lib/utils";
+import { TabPanel } from "@/components/shared/motion";
 
 type WorkspaceTab = "mine" | "help";
 type LoadedState = { count: number; hasNextPage: boolean };
@@ -48,6 +49,7 @@ export function WorkspaceTasks({
   initialHelpWantedPage?: OffsetListPage<HelpWantedTask>;
 }) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("mine");
+  const [tabMotionKey, setTabMotionKey] = useState(0);
   const [status, setStatus] = useState<MyTasksStatus>(null);
   const [sort, setSort] = useState<MyTasksSort>("deadline");
   const [myTasksState, setMyTasksState] = useState<LoadedState>(() => ({
@@ -75,9 +77,15 @@ export function WorkspaceTasks({
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const nextTab = tab === "mine" ? "help" : "mine";
-    setActiveTab(nextTab);
+    selectTab(nextTab);
     if (nextTab === "mine") myTasksTabRef.current?.focus();
     else helpWantedTabRef.current?.focus();
+  }
+
+  function selectTab(nextTab: WorkspaceTab) {
+    if (nextTab === activeTab) return;
+    setActiveTab(nextTab);
+    setTabMotionKey((current) => current + 1);
   }
 
   return (
@@ -105,7 +113,7 @@ export function WorkspaceTasks({
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
-            onClick={() => setActiveTab("mine")}
+            onClick={() => selectTab("mine")}
             onKeyDown={(event) => handleTabKeyDown(event, "mine")}
           >
             <ListChecks className="size-4 shrink-0" aria-hidden />
@@ -138,7 +146,7 @@ export function WorkspaceTasks({
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
-            onClick={() => setActiveTab("help")}
+            onClick={() => selectTab("help")}
             onKeyDown={(event) => handleTabKeyDown(event, "help")}
           >
             <HandHelping className="size-4 shrink-0" aria-hidden />
@@ -223,11 +231,13 @@ export function WorkspaceTasks({
         ) : null}
       </div>
 
-      <div
+      <TabPanel
+        motionKey={activeTab === "mine" ? tabMotionKey : 0}
         id="my-tasks-panel"
         role="tabpanel"
         aria-labelledby="my-tasks-tab"
         hidden={activeTab !== "mine"}
+        inert={activeTab !== "mine" ? true : undefined}
         className="space-y-3 focus-visible:outline-none"
       >
         <MyTasksList
@@ -237,13 +247,15 @@ export function WorkspaceTasks({
           sort={sort}
           onLoadedStateChange={updateMyTasksState}
         />
-      </div>
+      </TabPanel>
 
-      <div
+      <TabPanel
+        motionKey={activeTab === "help" ? tabMotionKey : 0}
         id="help-wanted-panel"
         role="tabpanel"
         aria-labelledby="help-wanted-tab"
         hidden={activeTab !== "help"}
+        inert={activeTab !== "help" ? true : undefined}
         className="space-y-3 focus-visible:outline-none"
       >
         <HelpWantedList
@@ -251,7 +263,7 @@ export function WorkspaceTasks({
           active={activeTab === "help"}
           onLoadedStateChange={updateHelpWantedState}
         />
-      </div>
+      </TabPanel>
     </section>
   );
 }

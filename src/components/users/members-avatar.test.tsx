@@ -64,7 +64,7 @@ describe("User Management avatar markup", () => {
     );
   });
 
-  it("limits both roster presentations to the same first 20 eligible ids", () => {
+  it("uses the same stable reveal ids for both roster presentations", () => {
     const members = Array.from({ length: 21 }, (_, index) => ({
       ...member,
       id: `member-${index + 1}`,
@@ -74,22 +74,21 @@ describe("User Management avatar markup", () => {
     const motionProps = {
       ...props,
       members,
-      getEntranceClassName: (id: string) =>
-        Number(id.split("-")[1]) <= 20
-          ? "motion-list-item-enter motion-list-delay-0"
-          : undefined,
-      onAnimationEnd: vi.fn(),
+      getRevealProps: (id: string) => ({
+        "data-motion-reveal-id": id,
+        ref: () => undefined,
+      }),
     };
 
     expect(
       renderToStaticMarkup(<MembersTable {...motionProps} />).match(
-        /motion-list-item-enter/g,
+        /data-motion-reveal-id=/g,
       ),
-    ).toHaveLength(20);
+    ).toHaveLength(21);
     expect(
       renderToStaticMarkup(<MembersCards {...motionProps} />).match(
-        /motion-list-item-enter/g,
+        /data-motion-reveal-id=/g,
       ),
-    ).toHaveLength(20);
+    ).toHaveLength(21);
   });
 });

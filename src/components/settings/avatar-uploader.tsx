@@ -6,6 +6,7 @@ import imageCompression from "browser-image-compression"
 import { Button } from "@/components/ui/button"
 import { InlineAlert } from "@/components/ui/inline-alert"
 import { UserAvatar } from "@/components/shared/user-avatar"
+import { MotionPresence, SectionEnter } from "@/components/shared/motion"
 import { AvatarCropper } from "@/components/settings/avatar-cropper"
 import { nextAvatarCleanupWarning } from "@/lib/avatar"
 import { createClient } from "@/lib/supabase/client"
@@ -195,15 +196,18 @@ export function AvatarUploader({
         </div>
       </div>
 
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
+      <MotionPresence open={Boolean(error)}>
+        {error ? <p role="alert" className="text-sm text-destructive">
           {error}
-        </p>
-      )}
+        </p> : null}
+      </MotionPresence>
 
-      {cleanupWarning && <InlineAlert variant="info">{cleanupWarning}</InlineAlert>}
+      <MotionPresence open={Boolean(cleanupWarning)}>
+        {cleanupWarning ? <InlineAlert variant="info">{cleanupWarning}</InlineAlert> : null}
+      </MotionPresence>
 
-      {imageSrc && (
+      <MotionPresence open={Boolean(imageSrc)}>
+        {imageSrc ? <SectionEnter>
         <AvatarCropper
           key={imageSrc}
           imageSrc={imageSrc}
@@ -211,7 +215,8 @@ export function AvatarUploader({
           onSave={handleSave}
           onCancel={closeCropper}
         />
-      )}
+        </SectionEnter> : null}
+      </MotionPresence>
     </div>
   )
 }

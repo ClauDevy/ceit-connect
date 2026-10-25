@@ -97,7 +97,7 @@ export default async function HomePage() {
   }
 
   return (
-    <>
+    <div className="motion-content-ready">
       <PageHeader
         title="Home"
         description="Council events visible to you, ordered by their start date."
@@ -114,6 +114,6 @@ export default async function HomePage() {
         canEdit={canEdit}
         canArchive={canArchive}
       />
-    </>
+    </div>
   );
 }

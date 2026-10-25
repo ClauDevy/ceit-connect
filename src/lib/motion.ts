@@ -5,7 +5,13 @@ export const ENTRANCE_STAGGER_ITEM_LIMIT = 8;
 export const ENTRANCE_STAGGER_MS = 40;
 export const INTERACTION_DURATION_MS = 220;
 export const PROGRESS_DURATION_MS = 700;
+export const PANEL_DURATION_MS = 260;
+export const EXIT_DURATION_MS = 220;
+export const SUCCESS_DURATION_MS = 400;
+export const PROGRESS_VISIBILITY_THRESHOLD = 0.4;
 export const LIST_ENTRANCE_ANIMATION_NAME = "cc-list-item-enter";
+export const LIST_REVEAL_ANIMATION_NAME = "cc-list-item-reveal";
+export const SUCCESS_ANIMATION_NAME = "cc-success-enter";
 
 export function getEntranceDelayMs(index: number) {
   return Math.min(Math.max(index, 0), ENTRANCE_STAGGER_ITEM_LIMIT - 1) * ENTRANCE_STAGGER_MS;
@@ -29,7 +35,24 @@ export function capturedPrefixIsStable<T>(
 export type EntranceCapture = {
   phase: "waiting" | "playing" | "done";
   ids: ReadonlySet<string>;
+  initialIds: ReadonlySet<string>;
 };
+
+export type RevealRegistry = {
+  revealedIds: Set<string>;
+};
+
+export function createRevealRegistry(
+  revealedIds: Iterable<string> = [],
+): RevealRegistry {
+  return { revealedIds: new Set(revealedIds) };
+}
+
+export function claimReveal(registry: RevealRegistry, id: string) {
+  if (registry.revealedIds.has(id)) return false;
+  registry.revealedIds.add(id);
+  return true;
+}
 
 export function selectEntranceIds<T>(
   items: readonly T[],
@@ -57,12 +80,17 @@ export function createEntranceCapture<T>({
 }): EntranceCapture {
   if (initialItems !== undefined) {
     const ids = selectEntranceIds(initialItems, getId);
-    return { phase: ids.size > 0 ? "playing" : "done", ids };
+    return {
+      phase: ids.size > 0 ? "playing" : "done",
+      ids,
+      initialIds: new Set(initialItems.map(getId)),
+    };
   }
 
   return {
     phase: waitForSuccessfulData ? "waiting" : "done",
     ids: new Set<string>(),
+    initialIds: new Set<string>(),
   };
 }
 
@@ -84,11 +112,19 @@ export function settleEntranceCapture<T>({
   if (capture.phase !== "waiting" || !settled) return capture;
 
   if (error !== null && error !== undefined) {
-    return { phase: "done", ids: new Set<string>() };
+    return {
+      phase: "done",
+      ids: new Set<string>(),
+      initialIds: new Set<string>(),
+    };
   }
 
   if (isPlaceholderData) return capture;
 
   const ids = selectEntranceIds(items, getId);
-  return { phase: ids.size > 0 ? "playing" : "done", ids };
+  return {
+    phase: ids.size > 0 ? "playing" : "done",
+    ids,
+    initialIds: new Set(items.map(getId)),
+  };
 }

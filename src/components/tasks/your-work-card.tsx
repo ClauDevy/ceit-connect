@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { DrivePreview } from "@/components/tasks/drive-preview";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Collapse } from "@/components/shared/motion";
 import { StretchedExternalLink } from "@/components/shared/stretched-link";
 import { Button } from "@/components/ui/button";
 import {
@@ -279,16 +280,18 @@ export function YourWorkCard({
                       </>
                     ) : null}
                   </div>
-                  {isPreviewOpen && parsed?.previewUrl ? (
-                    <div
-                      id={`work-link-preview-${link.id}`}
-                      className="border-t border-border p-3.5"
-                    >
-                      <DrivePreview
-                        url={link.url}
-                        title={`${displayName} preview`}
-                      />
-                    </div>
+                  {parsed?.previewUrl ? (
+                    <Collapse open={isPreviewOpen}>
+                      <div
+                        id={`work-link-preview-${link.id}`}
+                        className="border-t border-border p-3.5"
+                      >
+                        <DrivePreview
+                          url={link.url}
+                          title={`${displayName} preview`}
+                        />
+                      </div>
+                    </Collapse>
                   ) : null}
                 </div>
               );

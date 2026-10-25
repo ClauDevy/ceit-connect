@@ -25,7 +25,7 @@ export function BannerCropper({
 }: {
   imageSrc: string;
   processing: boolean;
-  onSave: (area: CropArea) => void;
+  onSave: (area: CropArea) => Promise<boolean>;
   onCancel: () => void;
 }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -34,6 +34,7 @@ export function BannerCropper({
   const [area, setArea] = useState<CropArea | null>(null);
   const [mediaSize, setMediaSize] = useState<ImageSize | null>(null);
   const [cropSize, setCropSize] = useState<ImageSize | null>(null);
+  const [open, setOpen] = useState(true);
   const onCropComplete = useCallback(
     (_: CropArea, pixels: CropArea) => setArea(pixels),
     [],
@@ -48,9 +49,34 @@ export function BannerCropper({
     [],
   );
 
+  function requestClose() {
+    if (processing) return;
+    setOpen(false);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      onCancel();
+    }
+  }
+
+  async function saveAndClose() {
+    if (!area) return;
+    if (await onSave(area)) setOpen(false);
+  }
+
   return (
-    <Dialog open onOpenChange={(open) => !open && !processing && onCancel()}>
-      <DialogContent className="max-w-3xl" showCloseButton={!processing}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && requestClose()}>
+      <DialogContent
+        className={!open ? "pointer-events-none max-w-3xl" : "max-w-3xl"}
+        showCloseButton={!processing}
+        aria-hidden={!open || undefined}
+        inert={!open ? true : undefined}
+        onTransitionEnd={(event) => {
+          if (
+            event.target === event.currentTarget &&
+            event.propertyName === "opacity" &&
+            !open
+          ) onCancel();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Crop event banner</DialogTitle>
           <DialogDescription>
@@ -100,12 +126,12 @@ export function BannerCropper({
         </label>
 
         <DialogFooter>
-          <Button variant="outline" disabled={processing} onClick={onCancel}>
+          <Button variant="outline" disabled={processing} onClick={requestClose}>
             Cancel
           </Button>
           <Button
             disabled={processing || !area}
-            onClick={() => area && onSave(area)}
+            onClick={() => void saveAndClose()}
           >
             {processing ? "Processing…" : "Use banner"}
           </Button>

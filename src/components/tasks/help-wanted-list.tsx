@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
-import { useInitialListEntrance } from "@/components/shared/motion";
+import { useListReveal } from "@/components/shared/motion";
 import {
   getPriorityAccentClass,
   PriorityBadge,
@@ -87,7 +87,7 @@ function HelpWantedContents({
     pluralLabel: "tasks",
   });
   const tasks = paging.items;
-  const entrance = useInitialListEntrance({
+  const reveal = useListReveal({
     initialItems: initialPage?.items,
     items: tasks,
     settled: paging.settled,
@@ -256,18 +256,10 @@ function HelpWantedContents({
               return (
                 <div
                   key={task.out_id}
+                  {...reveal.getRevealProps(task.out_id)}
                   className={cn(
                     `motion-card-interaction group relative border-l-4 ${getPriorityAccentClass(task.out_effective_priority)} hover:bg-muted/40 focus-within:bg-muted/40`,
-                    entrance.getEntranceClassName(task.out_id),
                   )}
-                  onAnimationEnd={
-                    entrance.isEntranceItem(task.out_id)
-                      ? entrance.onAnimationEnd
-                      : undefined
-                  }
-                  data-motion-entrance-id={
-                    entrance.isEntranceItem(task.out_id) ? task.out_id : undefined
-                  }
                 >
                   <StretchedLink
                     href={`/tasks/${task.out_id}`}
