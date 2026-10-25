@@ -3,6 +3,7 @@ import { ArrowLeft, CalendarDays, LockKeyhole } from "lucide-react";
 import { redirect } from "next/navigation";
 import { EventBanner } from "@/components/events/event-banner";
 import { PageHeader } from "@/components/shared/page-header";
+import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
@@ -280,7 +281,7 @@ export default async function ArchivedEventPage({
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="outline">{task.status}</Badge>
-                        <Badge variant="neutral">{task.priority}</Badge>
+                        <PriorityBadge priority={task.priority} />
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3 pt-4">

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { PageHeader } from "@/components/shared/page-header";
+import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { TigerLogo } from "@/components/ui/tiger-logo";
 import { BannerUploader } from "@/components/events/banner-uploader";
@@ -1436,7 +1437,7 @@ export function EventForm({
                                           ? "Live Operation"
                                           : "Deliverable"}
                                       </span>
-                                      <span>{task.priority}</span>
+                                      <PriorityBadge priority={task.priority} />
                                       {task.persisted && (
                                         <TaskStatusBadge status={task.status} />
                                       )}
@@ -1712,12 +1713,16 @@ export function EventForm({
                       }
                     >
                       <SelectTrigger {...control}>
-                        <SelectValue />
+                        <SelectValue className="sr-only" />
+                        <PriorityBadge
+                          priority={taskEditor.draft.priority}
+                          aria-hidden="true"
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {priorities.map((priority) => (
                           <SelectItem key={priority} value={priority}>
-                            {priority}
+                            <PriorityBadge priority={priority} />
                           </SelectItem>
                         ))}
                       </SelectContent>
