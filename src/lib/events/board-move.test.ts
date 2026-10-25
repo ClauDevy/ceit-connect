@@ -13,6 +13,8 @@ import {
   getMovePermission,
   getNeighborHints,
   mapMoveError,
+  shouldCancelBoardDrag,
+  tryAcquireBoardOperation,
   undoReducer,
   type UndoState,
 } from "./board-move";
@@ -107,6 +109,42 @@ describe("board move permissions", () => {
         committeeId: "committee-a",
       }),
     ).toBe("none");
+  });
+});
+
+describe("board drag session guards", () => {
+  const viewer = {
+    id: "admin",
+    role: "Admin" as const,
+    committeeId: null,
+  };
+
+  it("acquires the shared operation lock at most once until it is released", () => {
+    const lock = { current: false };
+    expect(tryAcquireBoardOperation(lock)).toBe(true);
+    expect(tryAcquireBoardOperation(lock)).toBe(false);
+    lock.current = false;
+    expect(tryAcquireBoardOperation(lock)).toBe(true);
+  });
+
+  it("cancels a drag after a refetch or authoritative capability change", () => {
+    const original = task("a", "To Do");
+    const snapshot = {
+      taskId: original.id,
+      phase: original.phase,
+      status: original.status,
+      permission: "reorder" as const,
+      dataUpdatedAt: 10,
+    };
+    const shouldCancel = (tasks: BoardTask[], dataUpdatedAt = 10) =>
+      shouldCancelBoardDrag({ snapshot, tasks, viewer, dataUpdatedAt });
+
+    expect(shouldCancel([original])).toBe(false);
+    expect(shouldCancel([original], 11)).toBe(true);
+    expect(shouldCancel([])).toBe(true);
+    expect(shouldCancel([{ ...original, is_masked: true }])).toBe(true);
+    expect(shouldCancel([{ ...original, is_backlog: true }])).toBe(true);
+    expect(shouldCancel([{ ...original, status: "In Progress" }])).toBe(true);
   });
 });
 
@@ -270,6 +308,34 @@ describe("neighbor hints and optimistic placement", () => {
     ).toMatchObject({ previousNeighborId: null, nextNeighborId: null });
   });
 
+  it("makes a collapsed cross-lane leadership drop tail-only", () => {
+    const tasks = [task("a", "To Do"), task("b", "In Progress")];
+    expect(
+      createDropMoveIntent({
+        tasks,
+        taskId: "a",
+        destinationStatus: "In Progress",
+        overTaskId: null,
+        permission: "reorder",
+        appendToTail: true,
+      }),
+    ).toMatchObject({
+      destinationStatus: "In Progress",
+      previousNeighborId: null,
+      nextNeighborId: null,
+    });
+    expect(
+      createDropMoveIntent({
+        tasks,
+        taskId: "a",
+        destinationStatus: "To Do",
+        overTaskId: null,
+        permission: "reorder",
+        appendToTail: true,
+      }),
+    ).toBeNull();
+  });
+
   it("optimistically places between hints and at a destination tail", () => {
     const tasks = [
       task("a", "To Do"),
@@ -330,7 +396,8 @@ describe("move error mapping", () => {
       }),
     ).toEqual({
       kind: "dependency",
-      message: "Complete the prerequisite task before moving this task forward.",
+      message:
+        "Complete the prerequisite task before moving this task forward.",
     });
     expect(
       mapMoveError({
@@ -399,12 +466,12 @@ describe("Undo state machine", () => {
     expect(offered.entries).toEqual([entry]);
     const undoing = undoReducer(offered, { type: "undo-start", taskId: "a" });
     expect(undoing.undoingTaskId).toBe("a");
-    expect(
-      undoReducer(undoing, { type: "undo-success", taskId: "a" }),
-    ).toEqual({ entries: [], undoingTaskId: null });
-    expect(
-      undoReducer(undoing, { type: "undo-failure", taskId: "a" }),
-    ).toEqual({ entries: [], undoingTaskId: null });
+    expect(undoReducer(undoing, { type: "undo-success", taskId: "a" })).toEqual(
+      { entries: [], undoingTaskId: null },
+    );
+    expect(undoReducer(undoing, { type: "undo-failure", taskId: "a" })).toEqual(
+      { entries: [], undoingTaskId: null },
+    );
     expect(
       undoReducer(offered, {
         type: "expire",
