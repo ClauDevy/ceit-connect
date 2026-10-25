@@ -13,6 +13,10 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
+import {
+  getPriorityAccentClass,
+  PriorityBadge,
+} from "@/components/shared/priority-badge";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,13 +42,6 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   timeZone: APP_TIME_ZONE.iana,
 });
-
-function priorityAccent(priority: HelpWantedTask["out_effective_priority"]) {
-  if (priority === "Critical") return "border-l-destructive";
-  if (priority === "High") return "border-l-primary";
-  if (priority === "Medium") return "border-l-secondary-foreground";
-  return "border-l-muted-foreground";
-}
 
 function HelpWantedContents({
   initialTasks,
@@ -253,7 +250,7 @@ function HelpWantedContents({
               return (
                 <div
                   key={task.out_id}
-                  className={`group relative border-l-4 ${priorityAccent(task.out_effective_priority)} transition-colors duration-150 hover:bg-muted/40 focus-within:bg-muted/40 motion-reduce:transition-none`}
+                  className={`group relative border-l-4 ${getPriorityAccentClass(task.out_effective_priority)} transition-colors duration-150 hover:bg-muted/40 focus-within:bg-muted/40 motion-reduce:transition-none`}
                 >
                   <StretchedLink
                     href={`/tasks/${task.out_id}`}
@@ -270,10 +267,10 @@ function HelpWantedContents({
                           <TriangleAlert className="size-3.5" aria-hidden />{" "}
                           Help Wanted
                         </span>
+                        <PriorityBadge priority={task.out_effective_priority} />
                       </div>
                       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                        {task.out_effective_priority} · {task.out_event_name} ·{" "}
-                        {task.out_committee_name} ·{" "}
+                        {task.out_event_name} · {task.out_committee_name} ·{" "}
                         {task.out_due_date
                           ? `Due ${dueDateFormatter.format(new Date(task.out_due_date))}`
                           : "No deadline"}

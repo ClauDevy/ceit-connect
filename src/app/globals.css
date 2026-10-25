@@ -39,6 +39,18 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-priority-critical: var(--priority-critical);
+  --color-priority-critical-soft: var(--priority-critical-soft);
+  --color-priority-critical-border: var(--priority-critical-border);
+  --color-priority-high: var(--priority-high);
+  --color-priority-high-soft: var(--priority-high-soft);
+  --color-priority-high-border: var(--priority-high-border);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-medium-soft: var(--priority-medium-soft);
+  --color-priority-medium-border: var(--priority-medium-border);
+  --color-priority-low: var(--priority-low);
+  --color-priority-low-soft: var(--priority-low-soft);
+  --color-priority-low-border: var(--priority-low-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -103,6 +115,19 @@
   --input: oklch(0.869 0.020 252.9);
   --ring: oklch(0.667 0.186 45.9);          /* council DEFAULT, for focus rings */
 
+  --priority-critical: oklch(0.4 0.17 25);
+  --priority-critical-soft: oklch(0.96 0.025 25);
+  --priority-critical-border: oklch(0.76 0.09 25);
+  --priority-high: oklch(0.4 0.13 45);
+  --priority-high-soft: oklch(0.96 0.035 65);
+  --priority-high-border: oklch(0.76 0.09 55);
+  --priority-medium: oklch(0.4 0.13 255);
+  --priority-medium-soft: oklch(0.96 0.025 250);
+  --priority-medium-border: oklch(0.76 0.08 250);
+  --priority-low: oklch(0.37 0.11 150);
+  --priority-low-soft: oklch(0.96 0.025 145);
+  --priority-low-border: oklch(0.74 0.08 145);
+
   --chart-1: oklch(0.667 0.186 45.9);
   --chart-2: oklch(0.514 0.145 43.9);
   --chart-3: oklch(0.554 0.041 257.4);
@@ -142,6 +167,19 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.667 0.186 45.9);
+
+  --priority-critical: oklch(0.86 0.09 25);
+  --priority-critical-soft: oklch(0.29 0.045 25);
+  --priority-critical-border: oklch(0.56 0.1 25);
+  --priority-high: oklch(0.86 0.085 65);
+  --priority-high-soft: oklch(0.29 0.045 55);
+  --priority-high-border: oklch(0.56 0.1 55);
+  --priority-medium: oklch(0.86 0.08 250);
+  --priority-medium-soft: oklch(0.29 0.04 250);
+  --priority-medium-border: oklch(0.56 0.09 250);
+  --priority-low: oklch(0.86 0.075 145);
+  --priority-low-soft: oklch(0.29 0.04 145);
+  --priority-low-border: oklch(0.56 0.09 145);
 
   --chart-1: oklch(0.667 0.186 45.9);
   --chart-2: oklch(0.917 0.059 67.0);
