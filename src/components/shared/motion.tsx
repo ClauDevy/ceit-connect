@@ -20,6 +20,7 @@ import {
   capturedPrefixIsStable,
   createEntranceCapture,
   createRevealRegistry,
+  decodeHashId,
   getEntranceClassName,
   settleEntranceCapture,
   type EntranceCapture,
@@ -231,8 +232,9 @@ export function useListReveal<T>({
       if (node && id) revealNode(id, node, false);
     }
     function revealHashTarget() {
-      if (!window.location.hash) return;
-      const target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+      const id = decodeHashId(window.location.hash);
+      if (id === null) return;
+      const target = document.getElementById(id);
       target?.dispatchEvent(new Event("beforematch", { bubbles: true }));
     }
     document.addEventListener("focusin", revealEventTarget, true);

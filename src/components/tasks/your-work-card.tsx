@@ -63,6 +63,9 @@ export function YourWorkCard({
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<WorkLink | null>(null);
   const [openPreviewId, setOpenPreviewId] = useState<string | null>(null);
+  const [openedPreviewIds, setOpenedPreviewIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const addInFlight = useRef(false);
   const removeInFlight = useRef(false);
   const fieldId = useId();
@@ -112,6 +115,12 @@ export function YourWorkCard({
     try {
       await onRemoveLink(linkId);
       setOpenPreviewId((current) => (current === linkId ? null : current));
+      setOpenedPreviewIds((current) => {
+        if (!current.has(linkId)) return current;
+        const next = new Set(current);
+        next.delete(linkId);
+        return next;
+      });
       setRemoveTarget(null);
     } catch (caughtError) {
       setError(
@@ -227,9 +236,15 @@ export function YourWorkCard({
                             className="relative z-20"
                             aria-expanded={isPreviewOpen}
                             aria-controls={`work-link-preview-${link.id}`}
-                            onClick={() =>
-                              setOpenPreviewId(isPreviewOpen ? null : link.id)
-                            }
+                            onClick={() => {
+                              if (!isPreviewOpen) {
+                                setOpenedPreviewIds((current) => {
+                                  if (current.has(link.id)) return current;
+                                  return new Set(current).add(link.id);
+                                });
+                              }
+                              setOpenPreviewId(isPreviewOpen ? null : link.id);
+                            }}
                           >
                             Preview
                             <ChevronDown
@@ -286,10 +301,12 @@ export function YourWorkCard({
                         id={`work-link-preview-${link.id}`}
                         className="border-t border-border p-3.5"
                       >
-                        <DrivePreview
-                          url={link.url}
-                          title={`${displayName} preview`}
-                        />
+                        {openedPreviewIds.has(link.id) ? (
+                          <DrivePreview
+                            url={link.url}
+                            title={`${displayName} preview`}
+                          />
+                        ) : null}
                       </div>
                     </Collapse>
                   ) : null}
