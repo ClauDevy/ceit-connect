@@ -1,92 +1,109 @@
 # Step 6: Mobile board
 
-**Status:** Planned | **Branch:** `feature/mobile-board` | **Reasoning level:** Medium
+**Status:** Implemented locally | **Branch:** `feature/mobile-board` | **Reasoning level:** High
 
 ## Goal
 
-Improve only the event board's phone layout with native horizontal scroll-snap navigation and independently collapsible status columns. Keep task cards as real links, keep the complete Kanban loaded, and preserve every existing task-move control and permission rule.
+Give the fully loaded event board a phone-first horizontal scroll-snap layout, independent transient column collapse, and deliberate handle-only touch drag-and-drop. Preserve real task links, desktop drag, Move-to, circular Completed, Backlog, filters, masking, permissions, ordering, optimistic updates, rollback, and Undo.
 
-## Decisions
+## Owner decisions
 
-- Batch 6 is `feature/mobile-board`: swipeable columns on phones and independent column collapse.
-- Kanban stays fully loaded; list paging does not apply.
-- A swipe changes the viewed column only. It never changes task status.
-- Collapse state is component-local and resets on navigation or reload.
-- Task cards remain ordinary real links with standard tap, keyboard, open-in-new-tab, and browser-context behavior.
-- The existing Move-to control and circular Completed control keep their current behavior. Phone touch drag-and-drop is out of scope.
+- Phone touch drag-and-drop is in scope. A plain horizontal swipe only navigates columns and never changes task status.
+- Use a dedicated 44px phone handle, not card-wide drag or long-press. The handle is a sibling of the stretched task link and is the only element with `touch-action: none`, `user-select: none`, and `-webkit-touch-callout: none`.
+- Collapse is independent component-local state and resets on reload/navigation.
+- A collapsed lane remains a valid drop target. A cross-lane drop appends at its authoritative destination tail with null neighbor hints for every role; `move_task()` remains authoritative.
+- Batch 6 adds no completed-phase lock. Until Batch 13b lands, phone drag preserves today's desktop drag and Move-to behavior. Batch 13b owns the future read-only capability change.
 
-## Current state
+## Implementation
 
-- `src/components/events/event-board.tsx` renders the board, filters, Backlog, three status lanes, polling, drag-and-drop, optimistic moves, and Undo.
-- `src/components/events/event-board-task-card.tsx` renders real linked cards, capability-driven move controls, claim behavior, drag state, and the phone completion affordance.
-- The current board is fully loaded through `list_event_board_tasks`; no board paging is planned.
+### Phone strip and cue
 
-## Scope: in / out
+- One `overflow-x-auto` strip contains To Do, In Progress, and Completed as nearly full-width `snap-start` targets below `md`; desktop retains its three-column grid.
+- `IntersectionObserver`, rooted at the strip, selects the greatest visible ratio and breaks ties by distance to the strip center. It uses no timer.
+- The visible `Column n of 3 · Status` label, three shape-changing position marks, and neighbouring-lane edge peek provide a non-color-only cue.
+- The board reader remains one complete query with no paging or virtualization. Phase and priority selection filter the cached result; the Admin committee filter intentionally requests one complete committee-scoped result.
 
-**In:** phone horizontal scroll snap; clear column labels, counts, and position cues; independent transient column collapse; responsive loading/empty/error/masked states; real card links; and preservation of all current phone move controls.
+### Collapse and motion
 
-**Out:** desktop redesign; swipe-to-move; phone touch drag-and-drop; Kanban paging or virtualization; persisted collapse; replacement card-link behavior; new mutations, permissions, readers, or server actions.
+- Each header keeps its label and data-derived count plus a 44px phone expand/collapse button with `aria-expanded`, `aria-controls`, accessible naming, focus, hover, and pressed feedback.
+- Shared `MotionPresence` owns the whole card-stack disclosure. The closing snapshot is inert and `aria-hidden`, removal is driven by `transitionend`, and reduced motion reaches the final state immediately. Reopening provides one whole-region reveal; cards receive no individual entrance or stagger.
+- The shared grid-row `Collapse` is intentionally not used because a fully loaded lane may contain many cards and interpolating its full height would create avoidable layout work.
+- Collapse never changes the query, task arrays, filters, permissions, ordering, or counts.
 
-## Database impact
+### Touch drag
 
-None. This is responsive layout and transient client state over the existing board reader and `move_task()` writer.
+- The pinned dnd-kit `PointerSensor` already supports primary mouse, pen, and touch pointers; the existing 8px activation distance and KeyboardSensor remain. A second TouchSensor is not added because it would overlap the existing pointer activator.
+- Eligible cards render a separate 44px handle below `md`; the existing desktop handle and desktop pointer/keyboard paths remain. Handle clicks always prevent default and stop propagation, so tap/release and the click following a drag cannot activate the sibling link.
+- Ordinary card/link touch behavior remains native. Vertical scroll, horizontal strip swipe, link tap, and link context behavior outside the handle do not activate drag.
+- dnd-kit's built-in scrollable-ancestor auto-scroll moves the phone strip near its edges. Scroll snapping is suspended only during drag and restored on every terminal path.
+- The existing DragOverlay is the preview and existing droppable ring is the visible target. Script-driven overlay drop animation and preview scale are removed under reduced motion.
 
-## Mobile layout behavior
+## Move path and duplicate guard
 
-- One horizontal scroll container holds To Do, In Progress, and Completed as snap targets.
-- Each column retains its visible label and count plus a non-color-only cue that more columns are available.
-- Each column has an accessible expand/collapse control. Collapse changes no task, count, filter, or permission.
-- Vertical card scrolling, horizontal column swiping, card links, and sibling action controls do not trap or activate one another.
-- Cards remain real links; independent buttons are accessible siblings and meet the 44px phone-target rule.
+Touch, desktop pointer, and keyboard drops share `handleDragEnd()`, `createDropMoveIntent()`, `submitMove()`, and the unchanged `move_task()` call and payload. The existing optimistic cache update, rollback, safe feedback, settlement invalidation/refetch, and client-only Undo bar are unchanged.
 
-## Guards that must remain true
+The same synchronous `boardBusyRef` used by mutations is acquired while a drag is active. This pauses the 15-second polling interval and focus refetch, blocks a second operation, and is released without a timer on cancel/no-op drop or transferred immediately into the mutation lock on a valid drop. A successful refetch that was already settling when pickup began cancels the drag conservatively.
 
-- Filters, phases, Backlog classification, masking, counts, and lane ordering operate on the complete result.
-- Only the existing Move-to and circular Completed controls mutate status through `move_task()`.
-- Desktop pointer and keyboard drag-and-drop remain unchanged.
-- Off-screen and collapsed content receives the same masking and capability checks as visible content.
-- Phase-completion behavior delivered later by Batch 13b remains authoritative.
+One gesture can submit at most once: dnd-kit has one terminal end/cancel path, the drag snapshot is cleared before intent creation, and `tryAcquireBoardOperation()` rejects any second same-tick drag, Move-to, Completed, Claim, or Undo submission through settlement.
 
-## Security risks
+## Cancellation contract
 
-> **Rebuilt, please verify:** this short risk section was reconstructed from the current board implementation and session requirements because the exact earlier prose was not available in Git.
+No move is submitted and snapping is restored for:
 
-- Collapsing or moving a column off-screen must not change which cards were fetched, weaken masking, or retain newly forbidden content after an authoritative refresh.
-- Gesture and action separation must not turn one tap, keypress, or retry into both navigation and a task mutation. Existing pending/busy guards continue to prevent duplicate status submissions.
-- Counts and position cues are derived from the same complete authorized dataset as the cards; they must not reveal hidden tasks or be computed from a partial client page.
+- outside/invalid drop;
+- Escape, dnd abort, `pointercancel`, or lost pointer;
+- hidden/background tab, `visibilitychange`, or `pagehide`;
+- resize or orientation change;
+- phase, priority, committee, or collapse change;
+- component unmount; and
+- any authoritative query update during drag, including task removal, masking, Backlog conversion, phase/status change, or permission loss.
 
-## Earlier test docs to re-run or update
+Custom cancellation remounts the DndContext so stale sensor state cannot later finish a move. `handleDragEnd()` also revalidates the snapshot, current task, current permission, target status, and query update marker before creating an intent.
 
-- Re-run `docs/PHASE-4-STEP-6-TESTS.md`, board masking/lifecycle coverage, and the relevant Step 10E phone checks.
-- Re-run the Phase 4B Step 3 event-board visual checklist after it lands. SQL tests remain unchanged.
+## Security and permission matrix
 
-## Test deliverable
+UI capability hiding is supplementary. `move_task()` independently rechecks the active profile, role, committee ownership, Draft/Active lifecycle, stored phase/status freshness, dependency direction, Member tail-only rules, neighbor boundaries, and task existence.
 
-Create `docs/phase-4b/step-6-tests.md` when the batch lands. Cover real-phone scroll snap, gestures versus links/actions, cues/counts, collapse/reset, loading/empty/error/masked states, both move controls, permission matrices, desktop regression, and full-board loading.
+| Case | Handle and result |
+| --- | --- |
+| Active Admin, unfiltered, real lane card | Reorder or status change |
+| Active owning Co-Admin, unfiltered, real lane card | Reorder or status change |
+| Active assigned Member, real lane card | Status change only; destination tail |
+| Other Co-Admin or unassigned Member | No handle; RPC also denies |
+| Masked shell or Backlog card | No handle |
+| Admin committee filter active | Drag disabled because safe neighbor ordering needs the complete unfiltered lane; Move-to remains |
+| Incomplete prerequisite | Handle follows ordinary permission; invalid forward move rolls back with existing dependency feedback, backward move remains valid |
+| Collapsed destination | Cross-lane move uses null hints and appends at the server-authoritative tail |
+| Inactive/profile-less/unavailable lifecycle | No authorized board move; RPC denies independently |
+| Completed named phase before Batch 13b | Exactly the same capability and result as current desktop drag and Move-to |
 
-> **Rebuilt, please verify:** the duplicate-submission and complete-dataset cases below were reconstructed from the current board reader/writer contract because the exact earlier prose was not available in Git.
+## Dataset and count rules
 
-Explicitly prove that one activation produces at most one status submission; success, rejection, offline failure, Undo, polling, and focus refetch do not duplicate the mutation. Load a dataset large enough to span every lane and prove the board uses the complete result with no paging, every authorized task appears exactly once, no task card is duplicated during snap/collapse/refetch, lane ordering is unchanged, and counts match the full authorized dataset.
+- Fully loaded means the complete authorized result for the current reader query, not every phase rendered at once and not committees excluded by the Admin committee filter.
+- Lane counts are the current phase's assigned cards after current priority and server committee filtering. Backlog retains its independent count.
+- Masked rows remain opaque and continue through the same phase/status grouping without exposing protected priority, committee, due date, or assignees.
+- Across phase navigation, every returned task belongs to exactly one appropriate lane or Backlog surface. Collapse, swipe position, drag cancellation, polling, and focus settlement do not duplicate or remove cards.
+- Existing `sort_order, id` reader ordering and complete-lane neighbor calculations remain unchanged.
 
-## Manual checklist
+## Tests
 
-- At phone width in both themes, swipe through all three columns and verify predictable snap positions, cues, labels/counts, and no page overflow outside the board.
-- Collapse/expand columns independently, change phase and filters, then reload; data remains correct and collapse resets.
-- Verify vertical scrolling, horizontal swiping, ordinary card navigation, browser link behavior, phase tabs, filters, and Backlog do not conflict.
-- Test all three roles, masked cards, successful moves, Undo, stale state, dependency rejection, read-only states, offline failure, polling, and focus refetch.
-- With a complete multi-lane dataset, verify no paging controls or page-sized truncation, no missing or duplicate cards, stable lane order, and counts equal to the rendered authorized cards before and after collapse, filters, polling, and refetch.
-- Rapidly activate each move control and simulate slow/offline responses; confirm exactly one submission and one final card placement.
-- At desktop width, verify drag-and-drop, Move-to, lane layout, Backlog, filters, and task links are unchanged.
+- Pure tests cover active-column selection/ties, collapse independence, filtered lane partitioning, shared operation locking, authoritative drag cancellation, and collapsed-lane tail intents.
+- Static source contracts cover handle/link separation, handle-only touch suppression, refetch pausing, MotionPresence/reduced motion, all snap-restoration listeners and cleanup, and the mounted collapsed drop target.
+- Existing permission, neighbor, optimistic placement, polling, safe error, and Undo tests remain and are extended rather than replaced.
+- `docs/phase-4b/step-6-tests.md` records automated results and the required Android Chrome/iOS Safari checklist.
+- Phase 4 Step 6 reader/RPC SQL remains unchanged. No migration or Supabase command belongs to this batch.
 
 ## Acceptance
 
-Phone users navigate the fully loaded columns through horizontal scroll snap and independently collapse them until reload. Cards remain real links, swiping never moves a task, existing move controls remain authoritative, desktop drag-and-drop is unchanged, and both themes pass the mobile checks.
+On phones, users can swipe among three clearly identified snap columns, collapse each independently, and deliberately drag eligible cards from a dedicated handle with edge auto-scroll and a preview. A swipe never moves a task. Collapsed destinations append through the same authoritative writer. Every cancellation path restores snapping and submits nothing; one gesture submits at most once. Real links and fallback controls remain available, desktop behavior is preserved, and the board remains fully loaded and confidential-safe.
 
-## Open questions for the owner
+## Open questions
 
 None.
 
-## Docs to update when this lands
+## Docs updated with this batch
 
-- Mark Step 6 results in this file and `docs/PROGRESS.md` only after implementation and verification.
-- Add `docs/phase-4b/step-6-tests.md` after implementation.
+- `docs/PHASE-4B-PLAN.md`
+- `docs/PROGRESS.md`
+- `docs/phase-4b/step-6-tests.md`
+- One future regression note in `docs/phase-4b/step-13b.md`

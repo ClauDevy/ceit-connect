@@ -203,6 +203,8 @@ The new authoritative Phase 4B catalog is created after Batch 13b and records th
 
 Create `docs/phase-4b/step-13b-tests.md` when the batch lands. Include independently rollback-safe Dev SQL pastes ending in the intentional `TEST RESULTS` exception, focused derived-state/UI tests, and a three-role manual checklist.
 
+Regression: extend Batch 6's phone-board check so an authoritative completed-phase refresh cancels active touch drag, removes its handle/move controls, and matches desktop drag and Move-to read-only capability without changing Batch 6's gesture design.
+
 Cover zero/one/many tasks; final-task completion; mixed status; canonical whitespace/null and case-sensitive keys; `Unphased` never completing; mixed committees; Draft/Active/Archived; every role and inactive/profile-less caller; real/masked/hidden tasks; raw INSERT/UPDATE/DELETE; every normal task writer; every mutable child writer; Edit Event metadata-only success plus task add/edit/delete/rename denial; source/destination phase checks; stale completion; simultaneous final completions; Reopen authorization and exact one-task move; inactive/former event creator; lane-tail/rank exhaustion; activity attribution; Batch 13d cascade; and direct attempts to forge the Reopen exception.
 
 Assert exact helper/guard/RPC signatures, owners, volatility, security mode, search paths, grants, no overloads, trigger attachment/order/enablement, canonical expression, lock order, current direct-task-writer sets, owner-branch column union, reset/helper callers, completed-phase normal-writer block list, and unchanged archive/task/content RLS.
