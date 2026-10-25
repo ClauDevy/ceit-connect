@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { LIST_FETCH_LIMIT } from "../list-paging";
 import {
   MY_TASKS_PAGE_SIZE,
   dedupeMyTasks,
@@ -37,20 +38,19 @@ describe("My Tasks response validation", () => {
     expect(isMyTask({ ...task, out_title: undefined })).toBe(false);
     expect(isMyTask({ ...task, out_is_primary: "yes" })).toBe(false);
     expect(isMyTask({ ...task, out_status: "Blocked" })).toBe(false);
-    expect(isMyTask({ ...task, out_effective_priority: "Urgent" })).toBe(
-      false,
-    );
+    expect(isMyTask({ ...task, out_effective_priority: "Urgent" })).toBe(false);
   });
 });
 
 describe("My Tasks query helpers", () => {
-  it("builds named 50-row RPC arguments and preserves All as null", () => {
-    expect(getMyTasksRpcArgs(null, "deadline", 100)).toEqual({
+  it("builds named 21-row RPC arguments and preserves All as null", () => {
+    expect(getMyTasksRpcArgs(null, "deadline", 20)).toEqual({
       p_status: null,
       p_sort: "deadline",
-      p_limit: MY_TASKS_PAGE_SIZE,
-      p_offset: 100,
+      p_limit: LIST_FETCH_LIMIT,
+      p_offset: 20,
     });
+    expect(MY_TASKS_PAGE_SIZE).toBe(20);
   });
 
   it("accepts only the database status and sort values", () => {
@@ -102,9 +102,9 @@ describe("safe My Tasks errors", () => {
 
   for (const [code, message] of Object.entries(expected)) {
     it(`maps ${code} without exposing database text`, () => {
-      expect(getMyTasksErrorMessage({ code, message: "private SQL text" })).toBe(
-        message,
-      );
+      expect(
+        getMyTasksErrorMessage({ code, message: "private SQL text" }),
+      ).toBe(message);
     });
   }
 

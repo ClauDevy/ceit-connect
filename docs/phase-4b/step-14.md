@@ -162,6 +162,7 @@ Never print, copy into docs, or commit any other environment variable value or s
   - expanding Phase 4 Step 10 allowlists/catalog references and adding the final Phase 4B gate evidence;
   - reconciling the stale Drive-preview demo/test wording at `docs/PHASE-3-PLAN.md:58` after `/sandbox` is removed, while preserving Phase 3 as historical completed work;
   - correcting the volunteer-accept authorization summary at `docs/ARCHITECTURE.md:60` against the final live rule; this mismatch is intentionally recorded here rather than edited before Batch 14;
+  - document that Home calls only `requireUser()` and the non-Draft `events_select` policy lacks an active-profile check; this is a Batch 14 docs-only follow-up, not a Batch 3P code or policy change;
   - preserving the parked custom domain, Resend, backup, calendar, and Realtime items unless the owner separately changes them.
 
 Any other stale, contradictory, or desirable documentation cleanup discovered during the batch is listed for the owner and is not edited without approval.
