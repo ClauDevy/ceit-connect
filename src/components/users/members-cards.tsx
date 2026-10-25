@@ -1,8 +1,10 @@
+import type { AnimationEventHandler } from "react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { MemberAction } from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { Member } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type MembersListProps = {
   members: Member[];
@@ -10,6 +12,8 @@ type MembersListProps = {
   currentUserId: string;
   pendingId: string | null;
   onToggle: (member: Member) => void;
+  getEntranceClassName?: (id: string) => string | undefined;
+  onAnimationEnd?: AnimationEventHandler<HTMLElement>;
 };
 
 export function MembersCards({
@@ -18,6 +22,8 @@ export function MembersCards({
   currentUserId,
   pendingId,
   onToggle,
+  getEntranceClassName,
+  onAnimationEnd,
 }: MembersListProps) {
   return (
     <ul className="divide-y">
@@ -25,13 +31,23 @@ export function MembersCards({
         <li
           key={member.id}
           aria-busy={pendingId === member.id}
-          className="grid min-w-0 gap-3 p-3.5 transition-colors duration-150 hover:bg-primary/5 focus-within:bg-primary/5 motion-reduce:transition-none sm:p-4"
+          className={cn(
+            "motion-card-interaction grid min-w-0 gap-3 p-3.5 hover:bg-primary/5 focus-within:bg-primary/5 sm:p-4",
+            getEntranceClassName?.(member.id),
+          )}
+          onAnimationEnd={
+            getEntranceClassName?.(member.id) ? onAnimationEnd : undefined
+          }
+          data-motion-entrance-id={
+            getEntranceClassName?.(member.id) ? member.id : undefined
+          }
         >
           <div className="flex min-w-0 items-start gap-3">
             <UserAvatar
               name={member.full_name}
               src={member.avatar_url}
               size="md"
+              className="motion-avatar"
             />
             <div className="min-w-0 flex-1 pt-0.5">
               <p className="truncate font-semibold leading-tight">

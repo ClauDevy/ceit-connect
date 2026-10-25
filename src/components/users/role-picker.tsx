@@ -26,7 +26,7 @@ export function RolePicker({ value, onChange }: RolePickerProps) {
             />
             <span
               className={cn(
-                "block h-full rounded-xl border px-3 py-2.5 transition-colors",
+                "block h-full rounded-xl border px-3 py-2.5 transition-[color,background-color,border-color,box-shadow] duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none",
                 "hover:border-primary/60 peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50",
                 value === option.value ? "border-primary bg-muted" : "bg-card"
               )}

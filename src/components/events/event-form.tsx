@@ -1133,7 +1133,10 @@ export function EventForm({
                         onClick={() => requestTemplateImport(template)}
                       >
                         {templateStatus === "loading" ? (
-                          <LoaderCircle className="animate-spin" />
+                          <>
+                            <LoaderCircle className="motion-safe:animate-spin" aria-hidden />
+                            Importing…
+                          </>
                         ) : (
                           "Use"
                         )}
@@ -2129,7 +2132,7 @@ function TaskTypeToggle({
           <label
             key={option.value}
             htmlFor={optionId}
-            className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold transition-colors duration-150 active:bg-muted motion-reduce:transition-none ${
+            className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold transition-colors duration-[var(--motion-interaction-duration)] active:bg-muted motion-reduce:transition-none ${
               selected
                 ? "border-primary bg-primary/10 text-foreground"
                 : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:bg-muted hover:text-foreground"
@@ -2217,7 +2220,7 @@ function AssigneeGroup({
           <label
             key={assignee.id}
             htmlFor={inputId}
-            className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 outline-none transition-colors duration-150 focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none ${
+            className={`motion-control-trigger flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 outline-none transition-colors duration-[var(--motion-interaction-duration)] focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none ${
               selected
                 ? "border-primary/40 bg-primary/10 hover:bg-primary/15"
                 : "border-transparent hover:bg-muted"
@@ -2228,7 +2231,7 @@ function AssigneeGroup({
               type="checkbox"
               checked={selected}
               onChange={(event) => onToggle(assignee.id, event.target.checked)}
-              className="size-5 shrink-0 accent-primary"
+              className="motion-control-pop size-5 shrink-0 accent-primary"
             />
             <UserAvatar
               name={assignee.full_name}
@@ -2287,7 +2290,7 @@ function AssigneeBulkControls({
   return (
     <div className="grid gap-1 border-b bg-card px-2 pb-2">
       <div className="flex min-h-11 items-center justify-between gap-2">
-        <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1 text-xs font-semibold transition-colors duration-150 hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none has-disabled:cursor-not-allowed has-disabled:opacity-50">
+        <label className="motion-control-trigger flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1 text-xs font-semibold transition-colors duration-[var(--motion-interaction-duration)] hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none has-disabled:cursor-not-allowed has-disabled:opacity-50">
           <input
             ref={selectAllRef}
             type="checkbox"
@@ -2298,7 +2301,7 @@ function AssigneeBulkControls({
             }
             disabled={selectAllDisabled}
             onChange={(event) => onSelectAll(event.target.checked)}
-            className="size-5 shrink-0 accent-primary"
+            className="motion-control-pop size-5 shrink-0 accent-primary"
           />
           <span className="truncate">Select all shown ({visibleCount})</span>
         </label>
@@ -2308,7 +2311,7 @@ function AssigneeBulkControls({
           size="sm"
           disabled={selectedVisibleCount === 0}
           onClick={onClear}
-          className="shrink-0 transition-colors duration-150 active:bg-muted motion-reduce:transition-none"
+          className="shrink-0 active:bg-muted"
         >
           Clear shown
         </Button>

@@ -9,8 +9,8 @@ export function NavigationProgress() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 overflow-hidden"
-      style={{ opacity: isPending ? 1 : 0, transition: "opacity 150ms ease" }}
+      className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 overflow-hidden transition-opacity duration-150 ease-out motion-reduce:transition-none"
+      style={{ opacity: isPending ? 1 : 0 }}
     >
       <div className="h-full w-1/3 rounded-full bg-primary motion-safe:animate-nav-progress" />
     </div>

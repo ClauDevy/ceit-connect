@@ -1,118 +1,52 @@
 # Step 5: Motion polish
 
-**Status:** Planned | **Branch:** `feature/motion-polish` | **Reasoning level:** Medium
+**Status:** Implemented locally; automated verification complete, owner browser verification pending | **Branch:** `feature/motion-polish` | **Reasoning level:** Medium
 
-## Goal
+## Owner-approved motion contract
 
-Give interactions, page-route changes, forms, cards, and short lists restrained motion while keeping the interface calm, accessible, and fast on phones. Every animated surface must have a stable reduced-motion result.
+- Route content fades in for **300 ms**. First-list items use opacity plus `translateY(10px)` for **300 ms** with **`cubic-bezier(0.16, 1, 0.3, 1)`**. Entrance fill mode is `backwards`; normal CSS is always the final visible, interactive state.
+- Items 1–8 use 40 ms delays from 0–280 ms. Items 9–20 reuse 280 ms; item 21 onward never enters. The cap is across the whole list, not per section or phase.
+- Determinate bars and the board ring reveal their already-correct final value over **700 ms ease-out** once when first mounted. Bars use `scaleX(0)` with left origin while retaining final width. The ring's animated `stroke-dashoffset` is the sole approved non-opacity/transform entrance exception.
+- Cards/clickable rows transition color, border, shadow, translate, and scale for **220 ms**: desktop hover lifts 2 px with a stronger shadow; press returns to y=0 and scales to 0.99. Buttons hover up 1 px and press to 0.97. Hover movement is inside `@media (hover: hover)`.
+- Parent-hover arrows move 3 px; navigation icons move 2 px; avatars scale to 1.05 with a stronger ring; badges brighten without movement. These use 220 ms.
+- Dialog, alert-dialog, dropdown, and select popup enter from opacity 0 and scale 0.94 over 300 ms. Sheets slide for 300 ms. Base UI continues to own focus and dismissal.
+- Theme icons rotate 90 degrees and cross-fade for 300 ms. Empty-state tigers breathe from scale 1 to 1.03. Undo bars slide/fade in for 300 ms; removal remains immediate and is never delayed for exit motion.
+- Checkbox, switch, and circular Complete feedback is a 300 ms CSS activation pop. It is deliberately tied to user activation rather than mutation settlement, so polling, optimistic settlement, or an external value change cannot replay it.
+- No number count-up, JavaScript motion timer, `requestAnimationFrame` loop, or animation library is used.
 
-## Decisions
+## Verified inventory
 
-- Batch 5 is `feature/motion-polish`: restrained interaction, page-route, form, card, and list entrance transitions that respect reduced-motion preferences.
-- Page-route, form, card, and list entrance animations are in scope.
-- Entrance motion uses only opacity and transform, one short fixed duration, and no entrance animation beyond the first 20 items of a list.
-- The fully loaded Kanban board is not treated as a list to animate card-by-card.
-- Focus, scroll position, readable content, and immediate access to controls are preserved. No animation library is added.
+The rebuilt inventory was corrected against source: it now names the exact list renderers, loading controls, Base UI primitives, and shell consumers rather than implying blanket form/card entrances.
 
-## Current state
+- Infrastructure: `src/app/globals.css`, `src/lib/motion.ts`, `src/components/shared/motion.tsx`.
+- Shared primitives: `ui/button.tsx`, `input.tsx`, `select.tsx`, `dropdown-menu.tsx`, `dialog.tsx`, `alert-dialog.tsx`, `sheet.tsx`, `badge.tsx`, and `table.tsx`; shared `empty-state.tsx`, `load-more-control.tsx`, and `priority-badge.tsx` inherit/use the shared classes.
+- Route and shell: dashboard `app-shell.tsx`, `desktop-sidebar.tsx`, `nav-link.tsx`, `mobile-nav.tsx`, `navigation-progress.tsx`, `theme-toggle.tsx`, `avatar-menu.tsx`.
+- List entrances and interactions: `home-event-list.tsx`, `archive-event-list.tsx`, `archived-task-list.tsx`, `my-tasks-list.tsx`, `help-wanted-list.tsx`, `users-table.tsx`, `members-table.tsx`, `members-cards.tsx`.
+- Progress: `home-event-progress.tsx` and `event-board-progress-ring.tsx`.
+- Board/Undo: `event-board.tsx`, `event-board-task-card.tsx`. Kanban cards get hover/press feedback only and never list entrance.
+- Form/loading consumers retained from the verified inventory: `event-form.tsx`, `banner-uploader.tsx`, `role-picker.tsx`, `workspace-tasks.tsx`, `task-backup-controls.tsx`, `task-comments.tsx`, and `your-work-card.tsx`.
+- Untouched by direct edit: `src/components/ui/segmented-control.tsx`, `src/components/auth/sign-in-panel.tsx`, and every file under `supabase/`. Shared Button/Input styling may appear within sign-in, but auth routes receive no entrance.
 
-- `src/app/globals.css` defines mascot, navigation-progress, and blink keyframes. Tiger motion and skeleton pulse are already gated with `motion-safe`, but behavior is not audited consistently.
-- Shared controls and overlays use assorted transition properties and durations.
-- Existing loading and success feedback already communicates real state; this batch polishes it without creating new workflows.
+## First-20 and once-only mechanism
 
-### Named component and loading inventory
+- The helper freezes at most the first 20 stable IDs for a mount. Home captures its server-rendered first page. Archives capture the server first page, and archived tasks flatten phases before applying the cap.
+- My Tasks, Help Wanted, and roster wait for the first settled, successful, non-placeholder render. Placeholder/`keepPreviousData`, a retry after initial error, later pages, polling, focus refetch, filters, sort, search, tab return, Load more, optimistic changes, Undo, and settlement cannot arm or replace the set.
+- The immutable ID order assigns the capped delay: indices 0–7 receive 0–280 ms; indices 8–19 remain at 280 ms. Eligibility is created with lazy `useState`, so Strict Mode cannot replay it.
+- `animationend` is accepted only for `event.target === event.currentTarget` and animation name `cc-list-item-enter`.
+- Workspace panels stay mounted across tab changes. Batch 3H progress appearing after first paint mounts its fill once and reveals once; later enrichment does not replay it.
 
-> **Rebuilt, please verify:** this inventory was reconstructed from the current tracked source because the exact earlier prose was not available in Git.
+## Reduced motion
 
-- Shared interaction primitives: `src/components/ui/button.tsx`, `input.tsx`, `select.tsx`, `dialog.tsx`, `alert-dialog.tsx`, `sheet.tsx`, and `skeleton.tsx`.
-- Shell and navigation: `src/components/navigation/navigation-progress.tsx`, `src/components/layout/desktop-sidebar.tsx`, `mobile-nav.tsx`, `nav-link.tsx`, and `src/components/theme/theme-toggle.tsx`.
-- Event/task surfaces: `src/components/events/event-form.tsx`, `event-board.tsx`, `event-board-task-card.tsx`, `src/components/tasks/workspace-tasks.tsx`, `your-work-card.tsx`, and `task-detail.tsx`.
-- Named loading surfaces: `src/app/(dashboard)/loading.tsx`, `home/loading.tsx`, `users/loading.tsx`, `settings/loading.tsx`, `tasks/[taskId]/loading.tsx`, `src/components/shared/page-skeleton.tsx`, `src/components/events/event-board-skeleton.tsx`, and `src/components/tasks/task-detail-skeleton.tsx`.
-- Authentication, settings, invite, archive, comments, and confirmation forms must be inventoried when implementation starts so submit, validation, success, error, retry, and disabled motion stays consistent without changing their workflows.
+`prefers-reduced-motion: reduce` disables route/list entrances, delay effects, progress bar/ring reveals, popup scale, sheet slide, card/button lift and scale, arrow/nav movement, avatar scale, theme rotation, toggle pop, Undo entrance, tiger breathing, skeleton pulse, navigation-progress looping, and loading-icon rotation. Bars and rings immediately show their correct final value. Content and controls remain visible and usable without timers; loading retains disabled state plus visible text or an accessible busy label.
 
-## Scope: in / out
+## Verified security and behavior corrections
 
-**In:** short transitions for buttons, fields, focus, navigation, theme controls, menus, selects, dialogs, sheets, disclosures, loading, success feedback, page-route content, forms, cards, and at most the first 20 items of a list.
+The rebuilt risk section was corrected to distinguish decorative callbacks from business state. Motion never changes a reader, writer, payload, permission, guard, capability, focus target, scroll position, or enabled state. Protected task/comment branch changes remain instant. Board polling, optimistic movement, Undo, and settlement do not drive entrance state. Base UI focus handling is untouched. Undo removal is intentionally not exit-animated because delaying removal could outlive its protected timer.
 
-**Out:** animation after list item 20; card-by-card Kanban entrance; parallax; decorative background motion; autoplay celebration effects; animation-driven business behavior; persisted motion state; or a new animation library.
+## Test coverage
 
-## Database impact
-
-None. No migration, table, function, policy, grant, reader, writer, or stored value changes are expected.
-
-## Components and behavior
-
-- **Interactions:** buttons, fields, focus states, menus, selects, dialogs, sheets, and disclosures use restrained feedback without delaying availability or focus.
-- **Page routes and forms:** new route content and form surfaces may enter once through subtle opacity/transform motion without replaying on background refetch.
-- **Cards and lists:** cards may enter once; a list animates no more than its first 20 rendered items. Items 21 onward appear immediately in their stable state.
-- **Loading and success:** motion represents real waiting or settlement and stops promptly when state settles.
-
-## Reduced-motion behavior
-
-- Under `prefers-reduced-motion: reduce`, remove entrance, decorative, looping, sliding, scaling, and layout movement.
-- Render the stable end state immediately. A brief opacity change is permitted only when needed for state continuity.
-- No essential information, focus movement, or control availability depends on animation.
-- Do not use JavaScript timers to override the operating-system preference.
-
-## Measurable phone performance budget
-
-- Animated entrance and movement properties are limited to `opacity` and `transform`.
-- Use one short fixed duration across entrance motion; implementation documents the chosen value and keeps it at or below 200 ms.
-- Animate no more than the first 20 rendered items in any list. Items 21 onward have no entrance animation.
-- Do not animate height, width, large-area blur, background position, large shadows, or the fully loaded Kanban cards.
-- Do not run entrance motion again for polling, focus refetch, placeholder data, or ordinary search/filter updates.
-- Phone scrolling, input, overlays, safe areas, keyboard display, and fixed navigation remain responsive during motion.
-
-## Guards that must remain true
-
-- Motion never delays an action, changes permission, masks an error, exposes protected content, or leaves a control visually busy after settlement.
-- Existing duplicate-submission guards, polling pauses, focus management, and authoritative refetch behavior remain unchanged.
-- Controls do not move under a pointer or finger in a way that causes accidental activation.
-- Loading, empty, error, retry, success, disabled, and destructive states remain distinguishable without motion or color alone.
-
-## Security risks
-
-> **Rebuilt, please verify:** this restored risk and recovery coverage was reconstructed from the session requirements and current tracked components because the exact earlier prose was not available in Git.
-
-- A stale optimistic surface must not keep protected task, event, activity, user, or request content visible after an authoritative refetch removes access. Exit motion never delays clearing protected content.
-- A forbidden control must not become briefly enabled during entrance, hydration, optimistic settlement, polling, focus refetch, or reduced-motion fallback. Authorization and disabled state are established before animation begins.
-- Animation callbacks and timers must not become a second source of business state. A cancelled transition, navigation, unmount, offline failure, or stale response cannot submit twice, skip cleanup, or leave a control busy.
-
-## Earlier test docs to re-run or update
-
-- Re-run motion-relevant checks from `docs/PHASE-4-STEP-6-TESTS.md`, `docs/PHASE-4-STEP-10E-GATE.md`, and Phase 4B Steps 2 and 3.
-- Re-run focused component tests for any shared primitive whose state classes change. Database tests remain unchanged.
-
-## Test deliverable
-
-Create `docs/phase-4b/step-5-tests.md` when the batch lands. Inventory each changed component, normal motion, reduced-motion state, focus behavior, property names, fixed duration, list-item count, and phone result.
-
-> **Rebuilt, please verify:** the detailed keyboard, validation, offline, retry, stale-response, and busy-state cases below were reconstructed because the exact earlier prose was not available in Git.
-
-Focused checks must cover keyboard activation, Tab order, Escape dismissal, outside dismissal where already supported, and focus return for menus, dialogs, sheets, selects, and disclosures. Verify that route/form/card entrance never steals focus, changes scroll position, or hides validation summaries and inline errors.
-
-For each changed form or optimistic surface, test client validation, server validation, offline failure, retry, stale response ordering, authoritative refetch, rapid repeat activation, navigation/unmount during settlement, and success/error recovery. Buttons and fields must recover from busy state in `catch`/`finally`, duplicate-submission guards must remain effective, and stale optimistic protected content or forbidden controls must disappear immediately when authority changes.
-
-## Manual checklist
-
-- At phone and desktop widths in both themes, exercise interaction motion, route changes, forms, cards, lists, overlays, loading, and success/Undo feedback.
-- Repeat with reduced motion enabled and confirm all content appears immediately in its stable state.
-- Inspect a list with more than 20 items and prove only items 1–20 receive entrance motion.
-- Confirm polling, focus refetch, searching, filtering, and Load more do not replay the initial entrance sequence.
-- Confirm only opacity and transform are used for entrance/movement and the documented duration is at most 200 ms.
-- Verify the fully loaded Kanban does not animate cards individually and phone scrolling remains smooth.
-- Keyboard through every changed interactive primitive; verify Enter/Space behavior, Escape dismissal, stable Tab order, and focus returning to the invoking control.
-- Trigger validation errors, offline failures, retry, stale responses, rapid repeat actions, and navigation during submission; verify no duplicate submission, stale protected content, forbidden flash, or stuck busy state.
+The rebuilt detailed cases were corrected to focus on the actual changed surfaces and replay risks. `src/lib/motion.test.ts` pins 300/220/700 ms values, easing, 10 px start, 40 ms delay, eight-item stagger cap, whole-list 20-item limit, capture rules, final-state-first bar/ring markup, and absence of motion timers. Component tests cover roster and archived-phase boundaries plus Home bar and board ring output. Apply the regression cases from `step-2-tests.md`, `step-3-tests.md`, `step-3p-tests.md`, and `step-3h-tests.md`. Final automated and owner-pending browser checks are in `step-5-tests.md`.
 
 ## Acceptance
 
-Interactions, routes, forms, cards, and short-list entrances use consistent restrained motion. Entrance and movement use only opacity and transform at one documented duration of at most 200 ms, with no list entrance beyond item 20 and no card-by-card Kanban entrance. Reduced-motion users receive immediate stable states, phone interaction remains responsive, and application/security/database behavior is unchanged.
-
-## Open questions for the owner
-
-None.
-
-## Docs to update when this lands
-
-- Mark Step 5 results in this file and `docs/PROGRESS.md` only after implementation and verification.
-- Add `docs/phase-4b/step-5-tests.md` with the measured motion inventory.
+No database or Supabase change is part of this batch. Kanban cards have no entrance. Comments and task-detail refetch branches have no content-switch entrance. The owner will complete browser history, scroll, focus, BFcache, desktop hover, 10%-speed, and reduced-motion checks; this document claims no browser result.

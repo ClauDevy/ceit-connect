@@ -10,7 +10,7 @@ import type { CurrentUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const tabClass =
-  "flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"
+  "group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] outline-none transition-colors duration-[var(--motion-interaction-duration)] focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
 
 function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon
@@ -20,9 +20,9 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={cn(tabClass, active ? "font-semibold text-primary" : "font-medium text-muted-foreground")}
+      className={cn(tabClass, active ? "motion-nav-active font-semibold text-primary before:absolute before:top-0 before:left-1/2 before:h-0.5 before:w-6 before:-translate-x-1/2 before:rounded-full before:bg-primary" : "font-medium text-muted-foreground")}
     >
-      <Icon className="size-5" aria-hidden />
+      <Icon className="motion-nav-icon size-5" aria-hidden />
       {/* "Executive Dashboard" is too long for a tab; the full name is in the page header. */}
       {item.href === "/dashboard" ? "Dashboard" : item.label}
     </Link>
@@ -38,11 +38,11 @@ function MoreLink({ item, active, onNavigate }: { item: NavItem; active: boolean
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-3 text-sm outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+        "group flex items-center gap-3 rounded-xl px-3 py-3 text-sm outline-none transition-colors duration-[var(--motion-interaction-duration)] focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none",
         active ? "bg-muted font-semibold text-primary" : "font-medium hover:bg-secondary"
       )}
     >
-      <Icon className="size-[18px]" aria-hidden />
+      <Icon className="motion-nav-icon size-[18px]" aria-hidden />
       {item.label}
     </Link>
   )
@@ -70,7 +70,7 @@ export function MobileNav({ user }: { user: CurrentUser }) {
             aria-haspopup="dialog"
             className={cn(tabClass, moreActive ? "font-semibold text-primary" : "font-medium text-muted-foreground")}
           >
-            <Ellipsis className="size-5" aria-hidden />
+            <Ellipsis className="motion-nav-icon size-5" aria-hidden />
             More
           </button>
         )}

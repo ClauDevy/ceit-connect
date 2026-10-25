@@ -18,7 +18,7 @@ export function DesktopSidebar({ user }: { user: CurrentUser }) {
   return (
     <aside
       className={cn(
-        "relative hidden shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex",
+        "relative hidden shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground transition-[width] duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none md:flex",
         collapsed ? "w-[4.5rem]" : "w-60 lg:w-64"
       )}
     >
@@ -30,7 +30,7 @@ export function DesktopSidebar({ user }: { user: CurrentUser }) {
         className="absolute top-9 -right-3 z-30 flex size-6 items-center justify-center rounded-full border bg-sidebar text-muted-foreground outline-none transition-colors hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <ChevronLeft
-          className={cn("size-3 transition-transform duration-200", collapsed && "rotate-180")}
+          className={cn("size-3 transition-transform duration-[var(--motion-enter-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none", collapsed && "rotate-180")}
         />
       </button>
 
