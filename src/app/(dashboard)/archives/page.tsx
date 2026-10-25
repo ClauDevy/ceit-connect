@@ -1,4 +1,4 @@
-import { Archive, CalendarDays } from "lucide-react";
+import { Archive, CalendarDays, ChevronRight } from "lucide-react";
 import { redirect } from "next/navigation";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -71,46 +71,55 @@ export default async function ArchivesPage() {
           Archived events could not be loaded. Refresh the page to try again.
         </InlineAlert>
       ) : events?.length ? (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-3">
           {events.map((event) => (
-            <Card key={event.id} className="relative overflow-hidden">
+            <Card
+              key={event.id}
+              className="group relative overflow-hidden transition-[background-color,border-color] duration-150 hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50 motion-reduce:transition-none"
+            >
               <StretchedLink
                 href={`/archives/${event.id}`}
                 label={`View ${event.name} archive`}
+                className="transition-colors duration-150 active:bg-muted/60 motion-reduce:transition-none"
               />
-              <EventBanner
-                src={event.banner_url}
-                alt={`${event.name} banner`}
-                loading="lazy"
-                decoding="async"
-                className="aspect-video w-full"
-              />
-              <CardContent className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                    <Archive className="size-5" aria-hidden />
+              <div className="flex flex-col sm:flex-row">
+                <EventBanner
+                  src={event.banner_url}
+                  alt={`${event.name} banner`}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-video w-full shrink-0 sm:w-52 lg:w-60"
+                />
+                <CardContent className="flex min-w-0 flex-1 items-start gap-3 p-4 sm:items-center">
+                  <span className="hidden size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground lg:flex">
+                    <Archive className="size-4" aria-hidden />
                   </span>
-                  <Badge variant="neutral">Archived</Badge>
-                </div>
-                <div>
-                  <h2 className="font-display text-lg font-semibold leading-snug">
-                    {event.name}
-                  </h2>
-                  <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
-                    <CalendarDays
-                      className="mt-0.5 size-4 shrink-0"
-                      aria-hidden
-                    />
-                    <span>{formatDateRange(event)}</span>
-                  </p>
-                  {event.description ? (
-                    <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                      {event.description}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <h2 className="font-display text-base font-semibold leading-snug sm:text-lg">
+                        {event.name}
+                      </h2>
+                      <Badge variant="neutral">Archived</Badge>
+                    </div>
+                    <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground sm:text-sm">
+                      <CalendarDays
+                        className="mt-0.5 size-3.5 shrink-0"
+                        aria-hidden
+                      />
+                      <span>{formatDateRange(event)}</span>
                     </p>
-                  ) : null}
-                </div>
-                <span className="text-sm font-medium text-primary">View record</span>
-              </CardContent>
+                    {event.description ? (
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                        {event.description}
+                      </p>
+                    ) : null}
+                  </div>
+                  <ChevronRight
+                    className="mt-1 size-4 shrink-0 text-muted-foreground transition-colors duration-150 group-hover:text-foreground motion-reduce:transition-none sm:mt-0"
+                    aria-hidden
+                  />
+                </CardContent>
+              </div>
             </Card>
           ))}
         </div>
