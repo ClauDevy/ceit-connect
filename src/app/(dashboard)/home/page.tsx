@@ -111,7 +111,7 @@ function ActiveEventCard({
   incompleteTaskCount: number | undefined;
 }) {
   return (
-    <Card className="group relative overflow-hidden border-border/70 hover:border-primary/40 hover:shadow-sm focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/30">
+    <Card className="group relative isolate overflow-hidden border-border/70 hover:border-primary/40 hover:shadow-sm focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/30">
       <StretchedLink
         href={`/events/${event.id}`}
         label={`Open ${event.name}`}

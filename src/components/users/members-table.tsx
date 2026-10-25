@@ -1,52 +1,79 @@
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { UserAvatar } from "@/components/shared/user-avatar"
-import { MemberAction } from "@/components/users/member-actions"
-import { MemberStatusBadge } from "@/components/users/member-status-badge"
-import type { Member } from "@/lib/types"
+import { UserAvatar } from "@/components/shared/user-avatar";
+import { MemberAction } from "@/components/users/member-actions";
+import { MemberStatusBadge } from "@/components/users/member-status-badge";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { Member } from "@/lib/types";
 
 type MembersListProps = {
-  members: Member[]
-  committeeName: (id: string | null) => string
-  currentUserId: string
-  pendingId: string | null
-  onToggle: (member: Member) => void
-}
+  members: Member[];
+  committeeName: (id: string | null) => string;
+  currentUserId: string;
+  pendingId: string | null;
+  onToggle: (member: Member) => void;
+};
 
-export function MembersTable({ members, committeeName, currentUserId, pendingId, onToggle }: MembersListProps) {
+export function MembersTable({
+  members,
+  committeeName,
+  currentUserId,
+  pendingId,
+  onToggle,
+}: MembersListProps) {
   return (
-    <Table>
+    <Table className="min-w-[42rem]">
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead>Name</TableHead>
-          <TableHead>Role</TableHead>
+          <TableHead className="pl-5">User</TableHead>
           <TableHead>Committee</TableHead>
+          <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="w-px">
+          <TableHead className="w-px pr-4">
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {members.map((member) => (
-          <TableRow key={member.id} aria-busy={pendingId === member.id}>
-            <TableCell>
-              <div className="flex items-center gap-3">
-                <UserAvatar name={member.full_name} src={member.avatar_url} size="sm" />
+          <TableRow
+            key={member.id}
+            aria-busy={pendingId === member.id}
+            className="transition-colors duration-150 focus-within:bg-primary/5 motion-reduce:transition-none"
+          >
+            <TableCell className="min-w-0 py-3 pl-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <UserAvatar
+                  name={member.full_name}
+                  src={member.avatar_url}
+                  size="sm"
+                />
                 <div className="min-w-0">
                   <p className="truncate font-medium">{member.full_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {member.email}
+                  </p>
                 </div>
               </div>
             </TableCell>
-            <TableCell>
+            <TableCell className="py-3">
+              <Badge variant="neutral">
+                {committeeName(member.committee_id)}
+              </Badge>
+            </TableCell>
+            <TableCell className="py-3">
               <Badge variant="outline">{member.role}</Badge>
             </TableCell>
-            <TableCell>{committeeName(member.committee_id)}</TableCell>
-            <TableCell>
+            <TableCell className="py-3">
               <MemberStatusBadge active={member.is_active} />
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="py-3 pr-4 text-right">
               <MemberAction
                 member={member}
                 isSelf={member.id === currentUserId}
@@ -58,5 +85,5 @@ export function MembersTable({ members, committeeName, currentUserId, pendingId,
         ))}
       </TableBody>
     </Table>
-  )
+  );
 }
