@@ -68,7 +68,7 @@ Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12
 4. `feature/branding` - runs after batch 13b and before batch 14; add the council shield background
    (scattered, faint, fixed placement), login page treatment, light-mode version, and favicon. Needs a clean shield SVG.
 5. `feature/motion-polish` - shared route, tab, form, disclosure, stable-ID scroll reveal, progress, close-path, and interaction motion; reduced-motion fallback, measurable phone budget, and no new animation library.
-6. `feature/mobile-board` - swipeable columns on phones and independent collapse; task cards remain real links.
+6. `feature/mobile-board` - phone scroll-snap columns, independent collapse, and dedicated-handle touch drag-and-drop; a plain swipe never moves a task and task cards remain real links.
 7. `feature/accounts-polish` - Active/Deactivated tabs; Users paging; Settings warning dot until a password is set; no temporary password; secure invited-user Google sign-in.
 8. `feature/officer-invites` - the six officer operations, always-on last-Admin protection, and OFF-by-default role caps behind `public.app_settings.enforce_officer_role_caps`, all under one advisory lock.
 9. `feature/coadmin-user-management`
@@ -97,6 +97,7 @@ Historical Phase 4 note: the team confirmations for `allowed_viewers`, backup an
 Notifications (bell, Discord webhooks, Resend for critical only), Executive Dashboard, polish.
 
 ## Updates (latest decisions)
+- Batch 6 phone drag is in scope through a dedicated 44px handle using the existing `move_task()` path; ordinary horizontal swipe remains column navigation only. Collapsed destinations accept cross-lane drops at the authoritative tail, while Move-to and circular Completed remain always-available fallbacks. Collapse is transient and the Kanban reader stays fully loaded with no paging or virtualization.
 - No temporary password. "Allow new users to sign up" is disabled in Dev and Prod. Invite email,
   then either Continue with Google or set your own password. `/auth/callback` keeps the session only
   for an active matching profile on an allowed domain, with no password gate and no reliance on

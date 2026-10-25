@@ -3,6 +3,7 @@
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
@@ -39,6 +40,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronsUpDown,
   Filter,
   Inbox,
   RefreshCw,
@@ -47,7 +49,11 @@ import {
 import Link from "next/link";
 import { EventBanner } from "@/components/events/event-banner";
 import { EventBoardProgressRing } from "@/components/events/event-board-progress-ring";
-import { MotionPresence, TabPanel } from "@/components/shared/motion";
+import {
+  MotionPresence,
+  TabPanel,
+  useReducedMotionPreference,
+} from "@/components/shared/motion";
 import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
 import {
   EventBoardTaskCard,
@@ -85,11 +91,20 @@ import {
   getBoardRefetchInterval,
   getMovePermission,
   mapMoveError,
+  shouldCancelBoardDrag,
+  tryAcquireBoardOperation,
   undoReducer,
+  type BoardDragSnapshot,
   type BoardViewer,
   type MoveIntent,
   type NeighborHints,
 } from "@/lib/events/board-move";
+import {
+  getActiveMobileLane,
+  getAssignedPhaseTasks,
+  getMobileLanePosition,
+  toggleCollapsedLane,
+} from "@/lib/events/mobile-board";
 import {
   getTaskBackupErrorMessage,
   isClaimTaskResult,
@@ -125,7 +140,6 @@ function formatEventDateRange(event: BoardEvent) {
 function formatTaskCount(count: number) {
   return `${count} ${count === 1 ? "task" : "tasks"}`;
 }
-
 
 function PriorityChoices({
   selected,
@@ -171,22 +185,27 @@ function PriorityChoices({
 }
 
 function BoardLaneDropZone({
+  id,
   status,
   disabled,
+  collapsed = false,
   children,
 }: {
+  id?: string;
   status: BoardStatus;
   disabled: boolean;
+  collapsed?: boolean;
   children: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `lane:${status}`,
     disabled,
-    data: { type: "lane", status },
+    data: { type: "lane", status, collapsed },
   });
 
   return (
     <div
+      id={id}
       ref={setNodeRef}
       className={cn(
         "min-h-20 space-y-3 rounded-xl transition-colors duration-150 motion-reduce:transition-none",
@@ -228,7 +247,17 @@ function BoardContents({
   const [committeeOpen, setCommitteeOpen] = useState(false);
   const [committeeActiveIndex, setCommitteeActiveIndex] = useState(0);
   const [backlogOpen, setBacklogOpen] = useState(false);
+  const [activeMobileStatus, setActiveMobileStatus] =
+    useState<BoardStatus>("To Do");
+  const [collapsedLanes, setCollapsedLanes] = useState<Set<BoardStatus>>(
+    () => new Set(),
+  );
+  const [touchedCollapseLanes, setTouchedCollapseLanes] = useState<
+    Set<BoardStatus>
+  >(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [dndContextKey, setDndContextKey] = useState(0);
+  const [snapSuspended, setSnapSuspended] = useState(false);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
   const [reconciling, setReconciling] = useState(false);
@@ -238,6 +267,7 @@ function BoardContents({
     undoingTaskId: null,
   });
   const boardBusyRef = useRef(false);
+  const dragSessionRef = useRef<BoardDragSnapshot | null>(null);
   const priorityTriggerRef = useRef<HTMLButtonElement>(null);
   const priorityPanelRef = useRef<HTMLDivElement>(null);
   const priorityOverlayRef = useRef<HTMLButtonElement>(null);
@@ -245,6 +275,10 @@ function BoardContents({
   const committeePanelRef = useRef<HTMLDivElement>(null);
   const committeeOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const backlogButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileBoardRef = useRef<HTMLDivElement>(null);
+  const laneRefs = useRef(new Map<BoardStatus, HTMLElement>());
+  const laneIntersectionRatios = useRef(new Map<BoardStatus, number>());
+  const reducedMotion = useReducedMotionPreference();
   const boardBusy = pendingTaskId !== null || reconciling;
   const queryKey = useMemo(
     () => ["event-board", event.id, committeeId] as const,
@@ -292,6 +326,8 @@ function BoardContents({
 
   function selectPhase(phase: string) {
     if (phase === selectedPhase) return;
+    cancelActiveDrag();
+    if (boardBusyRef.current) return;
     setActivePhase(phase);
     setPhaseMotionKey((current) => current + 1);
   }
@@ -310,15 +346,13 @@ function BoardContents({
   const unassignedSelectedPhaseTasks = selectedPhaseTasks.filter(
     (task) => task.is_backlog,
   );
-  const assignedPhaseTasks = tasks.filter(
-    (task) =>
-      !task.is_backlog &&
-      (task.phase?.trim() || "Unphased") === selectedPhase &&
-      matchesPriority(task),
+  const assignedPhaseTasks = getAssignedPhaseTasks(
+    tasks,
+    selectedPhase,
+    selectedPriorities,
   );
   const isUnfilteredSelectedPhase =
-    committeeId === null &&
-    selectedPriorities.size === 0;
+    committeeId === null && selectedPriorities.size === 0;
   const isUnfilteredBacklogOnlyPhase =
     isUnfilteredSelectedPhase &&
     selectedPhaseTasks.length > 0 &&
@@ -349,8 +383,115 @@ function BoardContents({
     committeeOptions[selectedCommitteeIndex]?.name ?? "All committees";
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
+
+  const finishDragSession = useCallback((remount = false) => {
+    dragSessionRef.current = null;
+    boardBusyRef.current = false;
+    mobileBoardRef.current?.removeAttribute("data-dragging");
+    setActiveTaskId(null);
+    setSnapSuspended(false);
+    if (remount) setDndContextKey((current) => current + 1);
+  }, []);
+
+  const cancelActiveDrag = useCallback(() => {
+    if (!dragSessionRef.current) return;
+    finishDragSession(true);
+  }, [finishDragSession]);
+
+  useEffect(() => {
+    const root = mobileBoardRef.current;
+    if (
+      !root ||
+      query.isPending ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const status = (entry.target as HTMLElement).dataset.laneStatus as
+            BoardStatus | undefined;
+          if (status && BOARD_STATUSES.includes(status)) {
+            laneIntersectionRatios.current.set(status, entry.intersectionRatio);
+          }
+        }
+
+        const rootRect = root.getBoundingClientRect();
+        const rootCenter = rootRect.left + rootRect.width / 2;
+        const candidates = BOARD_STATUSES.flatMap((status) => {
+          const lane = laneRefs.current.get(status);
+          if (!lane) return [];
+          const rect = lane.getBoundingClientRect();
+          return [
+            {
+              status,
+              intersectionRatio:
+                laneIntersectionRatios.current.get(status) ?? 0,
+              centerDistance: Math.abs(rect.left + rect.width / 2 - rootCenter),
+            },
+          ];
+        });
+        setActiveMobileStatus((current) =>
+          getActiveMobileLane(candidates, current),
+        );
+      },
+      { root, threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+
+    for (const lane of laneRefs.current.values()) observer.observe(lane);
+    return () => observer.disconnect();
+  }, [query.isPending]);
+
+  useEffect(() => {
+    const snapshot = dragSessionRef.current;
+    if (
+      snapshot &&
+      shouldCancelBoardDrag({
+        snapshot,
+        tasks,
+        viewer,
+        dataUpdatedAt: query.dataUpdatedAt,
+      })
+    ) {
+      cancelActiveDrag();
+    }
+  }, [cancelActiveDrag, query.dataUpdatedAt, tasks, viewer]);
+
+  useEffect(() => {
+    const boardNode = mobileBoardRef.current;
+    const cancelForResize = () => cancelActiveDrag();
+    const cancelForPageHide = () => cancelActiveDrag();
+    const cancelForVisibility = () => {
+      if (document.visibilityState !== "visible") cancelActiveDrag();
+    };
+
+    window.addEventListener("resize", cancelForResize);
+    window.addEventListener("orientationchange", cancelForResize);
+    window.addEventListener("pagehide", cancelForPageHide);
+    document.addEventListener("visibilitychange", cancelForVisibility);
+    return () => {
+      window.removeEventListener("resize", cancelForResize);
+      window.removeEventListener("orientationchange", cancelForResize);
+      window.removeEventListener("pagehide", cancelForPageHide);
+      document.removeEventListener("visibilitychange", cancelForVisibility);
+      boardNode?.removeAttribute("data-dragging");
+      dragSessionRef.current = null;
+      boardBusyRef.current = false;
+    };
+  }, [cancelActiveDrag]);
+
+  function toggleLane(status: BoardStatus) {
+    cancelActiveDrag();
+    if (boardBusyRef.current) return;
+    setTouchedCollapseLanes((current) => new Set(current).add(status));
+    setCollapsedLanes((current) => toggleCollapsedLane(current, status));
+  }
 
   const moveMutation = useMutation<
     { task_id: string; status: BoardStatus; sort_order: number },
@@ -435,13 +576,16 @@ function BoardContents({
 
   useEffect(() => {
     const timers = undoState.entries.map((entry) =>
-      window.setTimeout(() => {
-        dispatchUndo({
-          type: "expire",
-          taskId: entry.taskId,
-          expiresAt: entry.expiresAt,
-        });
-      }, Math.max(0, entry.expiresAt - Date.now())),
+      window.setTimeout(
+        () => {
+          dispatchUndo({
+            type: "expire",
+            taskId: entry.taskId,
+            expiresAt: entry.expiresAt,
+          });
+        },
+        Math.max(0, entry.expiresAt - Date.now()),
+      ),
     );
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [undoState.entries]);
@@ -451,7 +595,8 @@ function BoardContents({
 
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node;
-      const isPriorityOverlay = priorityOverlayRef.current?.contains(target) ?? false;
+      const isPriorityOverlay =
+        priorityOverlayRef.current?.contains(target) ?? false;
       if (
         priorityOpen &&
         !priorityPanelRef.current?.contains(target) &&
@@ -508,6 +653,7 @@ function BoardContents({
   }
 
   function selectCommittee(id: string | null) {
+    cancelActiveDrag();
     if (boardBusyRef.current) return;
     setCommitteeId(id);
     closeCommitteeFilter();
@@ -539,6 +685,7 @@ function BoardContents({
   }
 
   function togglePriority(priority: BoardPriority) {
+    cancelActiveDrag();
     if (boardBusyRef.current) return;
     setSelectedPriorities((current) => {
       const next = new Set(current);
@@ -548,9 +695,14 @@ function BoardContents({
     });
   }
 
-  function submitMove(variables: MoveMutationVariables) {
+  function clearPriorities() {
+    cancelActiveDrag();
     if (boardBusyRef.current) return;
-    boardBusyRef.current = true;
+    setSelectedPriorities(new Set());
+  }
+
+  function submitMove(variables: MoveMutationVariables) {
+    if (!tryAcquireBoardOperation(boardBusyRef)) return;
     setPendingTaskId(variables.task.id);
     setMoveError(null);
     if (!variables.undo) {
@@ -560,8 +712,7 @@ function BoardContents({
   }
 
   async function handleClaim(task: BoardTask) {
-    if (boardBusyRef.current) return;
-    boardBusyRef.current = true;
+    if (!tryAcquireBoardOperation(boardBusyRef)) return;
     setPendingTaskId(task.id);
     setClaimingTaskId(task.id);
     setMoveError(null);
@@ -610,13 +761,43 @@ function BoardContents({
   }
 
   function handleDragStart(event: DragStartEvent) {
-    if (boardBusyRef.current || committeeId !== null) return;
-    setActiveTaskId(String(event.active.id));
+    const taskId = String(event.active.id);
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (!task || committeeId !== null) return;
+    const permission = getMovePermission(task, viewer);
+    if (permission === "none" || !tryAcquireBoardOperation(boardBusyRef))
+      return;
+
+    dragSessionRef.current = {
+      taskId,
+      phase: task.phase,
+      status: task.status,
+      permission,
+      dataUpdatedAt: query.dataUpdatedAt,
+    };
+    mobileBoardRef.current?.setAttribute("data-dragging", "true");
+    setSnapSuspended(true);
+    setActiveTaskId(taskId);
+    void queryClient.cancelQueries({ queryKey: eventQueryKey });
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setActiveTaskId(null);
-    if (!event.over || boardBusyRef.current || committeeId !== null) return;
+    const snapshot = dragSessionRef.current;
+    finishDragSession();
+    if (
+      !snapshot ||
+      snapshot.taskId !== String(event.active.id) ||
+      !event.over ||
+      committeeId !== null ||
+      shouldCancelBoardDrag({
+        snapshot,
+        tasks,
+        viewer,
+        dataUpdatedAt: query.dataUpdatedAt,
+      })
+    ) {
+      return;
+    }
     const taskId = String(event.active.id);
     const task = tasks.find((candidate) => candidate.id === taskId);
     if (!task) return;
@@ -625,12 +806,14 @@ function BoardContents({
     if (!BOARD_STATUSES.includes(overStatus as BoardStatus)) return;
     const overTaskId =
       event.over.data.current?.type === "task" ? String(event.over.id) : null;
+    const appendToTail = collapsedLanes.has(overStatus as BoardStatus);
     const intent = createDropMoveIntent({
       tasks,
       taskId,
       destinationStatus: overStatus as BoardStatus,
       overTaskId,
       permission,
+      appendToTail,
     });
     if (!intent) return;
     submitMove({
@@ -644,8 +827,14 @@ function BoardContents({
     });
   }
 
+  function handleDragCancel() {
+    finishDragSession();
+  }
+
   function handleUndo(taskId: string) {
-    const entry = undoState.entries.find((candidate) => candidate.taskId === taskId);
+    const entry = undoState.entries.find(
+      (candidate) => candidate.taskId === taskId,
+    );
     if (!entry || boardBusyRef.current) return;
     if (Date.now() >= entry.expiresAt) {
       dispatchUndo({ type: "expire", taskId, expiresAt: entry.expiresAt });
@@ -673,7 +862,7 @@ function BoardContents({
   }
 
   const activeDragTask = activeTaskId
-    ? tasks.find((task) => task.id === activeTaskId) ?? null
+    ? (tasks.find((task) => task.id === activeTaskId) ?? null)
     : null;
 
   return (
@@ -852,7 +1041,7 @@ function BoardContents({
                       <Button
                         variant="link"
                         className="h-11 px-0 lg:h-10"
-                        onClick={() => setSelectedPriorities(new Set())}
+                        onClick={clearPriorities}
                       >
                         Clear
                       </Button>
@@ -983,119 +1172,196 @@ function BoardContents({
         </Card>
       ) : (
         <div className="motion-content-ready">
-        <TabPanel motionKey={phaseMotionKey} opacityOnly>
-          {isUnfilteredBacklogOnlyPhase || isUnfilteredMixedPhase ? (
-            <div
-              role="status"
-              className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"
-            >
-              <span>
-                {isUnfilteredBacklogOnlyPhase ? (
-                  <>
-                    {formatTaskCount(selectedPhaseTasks.length)} in this phase{" "}
-                    {selectedPhaseTasks.length === 1 ? "is" : "are"} unassigned.
-                  </>
-                ) : (
-                  <>
-                    {unassignedSelectedPhaseTasks.length} of{" "}
-                    {formatTaskCount(selectedPhaseTasks.length)} unassigned.
-                  </>
-                )}
-              </span>
-              <Button
-                variant="link"
-                className="h-11 px-0 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring sm:h-10"
-                onClick={() => setBacklogOpen(true)}
+          <TabPanel motionKey={phaseMotionKey} opacityOnly>
+            {isUnfilteredBacklogOnlyPhase || isUnfilteredMixedPhase ? (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"
               >
-                Open Backlog
-              </Button>
-            </div>
-          ) : null}
+                <span>
+                  {isUnfilteredBacklogOnlyPhase ? (
+                    <>
+                      {formatTaskCount(selectedPhaseTasks.length)} in this phase{" "}
+                      {selectedPhaseTasks.length === 1 ? "is" : "are"}{" "}
+                      unassigned.
+                    </>
+                  ) : (
+                    <>
+                      {unassignedSelectedPhaseTasks.length} of{" "}
+                      {formatTaskCount(selectedPhaseTasks.length)} unassigned.
+                    </>
+                  )}
+                </span>
+                <Button
+                  variant="link"
+                  className="h-11 px-0 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring sm:h-10"
+                  onClick={() => setBacklogOpen(true)}
+                >
+                  Open Backlog
+                </Button>
+              </div>
+            ) : null}
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragCancel={() => setActiveTaskId(null)}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="grid gap-5 md:grid-cols-3">
-              {BOARD_STATUSES.map((status) => {
-                const laneTasks = assignedPhaseTasks.filter(
-                  (task) => task.status === status,
-                );
-                return (
-                  <section
-                    key={status}
-                    className="min-w-0"
-                    aria-labelledby={`lane-${status.replaceAll(" ", "-")}`}
-                  >
-                    <div className="mb-3 flex items-center gap-2 px-0.5">
-                      <span
-                        className={cn(
-                          "size-2 rounded-full",
-                          status === "To Do" && "bg-muted-foreground",
-                          status === "In Progress" && "bg-primary",
-                          status === "Completed" && "bg-emerald-500",
-                        )}
-                      />
-                      <h2
-                        id={`lane-${status.replaceAll(" ", "-")}`}
-                        className="text-sm font-semibold tracking-wide uppercase"
-                      >
-                        {status}
-                      </h2>
-                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs leading-none text-muted-foreground">
-                        {laneTasks.length}
-                      </span>
-                    </div>
-                    <SortableContext
-                      items={laneTasks.map((task) => task.id)}
-                      strategy={verticalListSortingStrategy}
+            <DndContext
+              key={dndContextKey}
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragAbort={handleDragCancel}
+              onDragCancel={handleDragCancel}
+              onDragEnd={handleDragEnd}
+            >
+              <div
+                ref={mobileBoardRef}
+                className={cn(
+                  "flex gap-4 overflow-x-auto overscroll-x-contain pb-2 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:pb-0 md:[scroll-snap-type:none]",
+                  snapSuspended ? "snap-none" : "snap-x snap-mandatory",
+                )}
+              >
+                {BOARD_STATUSES.map((status) => {
+                  const laneTasks = assignedPhaseTasks.filter(
+                    (task) => task.status === status,
+                  );
+                  const collapsed = collapsedLanes.has(status);
+                  const laneId = `lane-${status.replaceAll(" ", "-")}`;
+                  const contentId = `${laneId}-content`;
+                  return (
+                    <section
+                      key={status}
+                      ref={(node) => {
+                        if (node) laneRefs.current.set(status, node);
+                        else laneRefs.current.delete(status);
+                      }}
+                      data-lane-status={status}
+                      className="w-[calc(100%-1.5rem)] shrink-0 snap-start md:w-auto md:min-w-0 md:shrink md:[scroll-snap-align:none]"
+                      aria-labelledby={laneId}
                     >
-                      <BoardLaneDropZone
-                        status={status}
-                        disabled={boardBusy || committeeId !== null}
+                      <div className="mb-3 flex min-h-11 items-center gap-2 px-0.5">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <span
+                            className={cn(
+                              "size-2 rounded-full",
+                              status === "To Do" && "bg-muted-foreground",
+                              status === "In Progress" && "bg-primary",
+                              status === "Completed" && "bg-emerald-500",
+                            )}
+                          />
+                          <h2
+                            id={laneId}
+                            className="truncate text-sm font-semibold tracking-wide uppercase"
+                          >
+                            {status}
+                          </h2>
+                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs leading-none text-muted-foreground">
+                            {laneTasks.length}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-11 shrink-0 transition-colors duration-150 active:bg-muted motion-reduce:transition-none md:size-8 md:min-w-0"
+                          aria-expanded={!collapsed}
+                          aria-controls={contentId}
+                          aria-label={`${collapsed ? "Expand" : "Collapse"} ${status}`}
+                          onClick={() => toggleLane(status)}
+                        >
+                          <ChevronsUpDown aria-hidden />
+                        </Button>
+                      </div>
+                      <SortableContext
+                        items={laneTasks.map((task) => task.id)}
+                        strategy={verticalListSortingStrategy}
                       >
-                        {laneTasks.map((task) => {
-                          const permission = getMovePermission(task, viewer);
-                          return (
-                            <SortableEventBoardTaskCard
-                              key={task.id}
-                              task={task}
-                              permission={permission}
-                              busy={boardBusy}
-                              dragDisabled={
-                                boardBusy ||
-                                committeeId !== null ||
-                                permission === "none"
-                              }
-                              onMoveStatus={handleStatusMove}
-                            />
-                          );
-                        })}
-                        {laneTasks.length === 0 ? (
-                          <div className="grid min-h-16 place-items-center rounded-xl border-2 border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
-                            {selectedPriorities.size > 0
-                              ? "No tasks match this filter."
-                              : "No tasks yet"}
-                          </div>
-                        ) : null}
-                      </BoardLaneDropZone>
-                    </SortableContext>
-                  </section>
-                );
-              })}
-            </div>
-            <DragOverlay>
-              {activeDragTask ? (
-                <div className="w-80 max-w-[calc(100vw-2rem)]">
-                  <EventBoardTaskCard task={activeDragTask} overlay />
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </TabPanel>
+                        <BoardLaneDropZone
+                          id={contentId}
+                          status={status}
+                          collapsed={collapsed}
+                          disabled={boardBusy || committeeId !== null}
+                        >
+                          <MotionPresence
+                            open={!collapsed}
+                            className={cn(
+                              !touchedCollapseLanes.has(status) &&
+                                "[animation:none]",
+                            )}
+                          >
+                            <div className="space-y-3">
+                              {laneTasks.map((task) => {
+                                const permission = getMovePermission(
+                                  task,
+                                  viewer,
+                                );
+                                return (
+                                  <SortableEventBoardTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    permission={permission}
+                                    busy={boardBusy}
+                                    dragDisabled={
+                                      boardBusy ||
+                                      committeeId !== null ||
+                                      permission === "none"
+                                    }
+                                    onMoveStatus={handleStatusMove}
+                                  />
+                                );
+                              })}
+                              {laneTasks.length === 0 ? (
+                                <div className="grid min-h-16 place-items-center rounded-xl border-2 border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
+                                  {selectedPriorities.size > 0
+                                    ? "No tasks match this filter."
+                                    : "No tasks yet"}
+                                </div>
+                              ) : null}
+                            </div>
+                          </MotionPresence>
+                          {collapsed ? (
+                            <div className="grid min-h-20 place-items-center rounded-xl border-2 border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
+                              {activeTaskId
+                                ? `Drop to move to ${status}`
+                                : `${status} is collapsed`}
+                            </div>
+                          ) : null}
+                        </BoardLaneDropZone>
+                      </SortableContext>
+                    </section>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-3 md:hidden">
+                <p
+                  className="text-xs font-medium text-muted-foreground"
+                  aria-live="polite"
+                >
+                  Column {getMobileLanePosition(activeMobileStatus)} of{" "}
+                  {BOARD_STATUSES.length}
+                  <span aria-hidden="true"> · </span>
+                  {activeMobileStatus}
+                </p>
+                <ol className="flex items-center gap-1.5" aria-hidden="true">
+                  {BOARD_STATUSES.map((status) => (
+                    <li
+                      key={status}
+                      className={cn(
+                        "h-1.5 rounded-full transition-[width,background-color] duration-150 motion-reduce:transition-none",
+                        status === activeMobileStatus
+                          ? "w-6 bg-primary"
+                          : "w-2 bg-muted-foreground/35",
+                      )}
+                    />
+                  ))}
+                </ol>
+              </div>
+              <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
+                {activeDragTask ? (
+                  <div className="w-80 max-w-[calc(100vw-2rem)]">
+                    <EventBoardTaskCard task={activeDragTask} overlay />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </TabPanel>
         </div>
       )}
 
@@ -1116,7 +1382,10 @@ function BoardContents({
               >
                 Task Backlog
               </SheetTitle>
-              <SheetDescription id="event-board-backlog-description" className="text-xs">
+              <SheetDescription
+                id="event-board-backlog-description"
+                className="text-xs"
+              >
                 Unassigned tasks
               </SheetDescription>
             </div>
@@ -1169,16 +1438,12 @@ function BoardContents({
             role="status"
             className="motion-toast-enter flex items-center justify-between gap-3 rounded-xl border bg-popover px-4 py-3 text-sm shadow-lg"
           >
-            <span className="min-w-0 truncate">
-              Moved to {entry.toStatus}
-            </span>
+            <span className="min-w-0 truncate">Moved to {entry.toStatus}</span>
             <Button
               type="button"
               variant="link"
               className="h-9 shrink-0 px-0"
-              disabled={
-                boardBusy || undoState.undoingTaskId === entry.taskId
-              }
+              disabled={boardBusy || undoState.undoingTaskId === entry.taskId}
               onClick={() => handleUndo(entry.taskId)}
             >
               Undo

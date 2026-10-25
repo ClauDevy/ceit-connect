@@ -32,7 +32,24 @@ type ObservedElement = HTMLElement & {
 };
 
 function motionIsReduced() {
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  return (
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+  );
+}
+
+export function useReducedMotionPreference() {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!query) return;
+    const update = () => setReduced(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  return reduced;
 }
 
 /**
@@ -102,7 +119,8 @@ export function ChartBarGrow({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement> & { axis?: "x" | "y" }) {
-  const motionClass = axis === "x" ? "motion-chart-grow-x" : "motion-chart-grow-y";
+  const motionClass =
+    axis === "x" ? "motion-chart-grow-x" : "motion-chart-grow-y";
   const visibilityRef = useVisibilityAnimation<HTMLDivElement>({
     className: motionClass,
   });
@@ -150,13 +168,16 @@ export function useListReveal<T>({
   const nodes = useRef(new Map<string, ObservedElement>());
   const initiallyBelowFold = useRef(new Set<string>());
 
-  const finishAnimation = useCallback(function handleAnimationEnd(event: Event) {
+  const finishAnimation = useCallback(function handleAnimationEnd(
+    event: Event,
+  ) {
     if (!(event instanceof AnimationEvent)) return;
     if (
       event.target !== event.currentTarget ||
       (event.animationName !== LIST_ENTRANCE_ANIMATION_NAME &&
         event.animationName !== LIST_REVEAL_ANIMATION_NAME)
-    ) return;
+    )
+      return;
     const node = event.currentTarget as ObservedElement;
     node.classList.remove(
       "motion-list-item-enter",
@@ -166,41 +187,41 @@ export function useListReveal<T>({
     node.removeEventListener("animationend", handleAnimationEnd);
   }, []);
 
-  const revealNode = useCallback((
-    id: string,
-    node: ObservedElement,
-    animate = true,
-  ) => {
-    if (!claimReveal(registry.current, id)) {
-      node.removeAttribute("data-motion-pending");
-      observer.current?.unobserve(node);
-      return;
-    }
+  const revealNode = useCallback(
+    (id: string, node: ObservedElement, animate = true) => {
+      if (!claimReveal(registry.current, id)) {
+        node.removeAttribute("data-motion-pending");
+        observer.current?.unobserve(node);
+        return;
+      }
 
-    node.removeAttribute("data-motion-pending");
-    if (!animate) {
+      node.removeAttribute("data-motion-pending");
+      if (!animate) {
+        observer.current?.unobserve(node);
+        return;
+      }
+      const initialClass = getEntranceClassName(entranceCapture, id);
+      if (initialClass && !initiallyBelowFold.current.has(id)) {
+        node.classList.add(...initialClass.split(" "));
+      } else if (
+        entranceCapture.initialIds.has(id) &&
+        !initiallyBelowFold.current.has(id)
+      ) {
+        // Items outside the first-20 entrance cap that were already visible on
+        // the initial render stay final-state visible. Initial rows that were
+        // genuinely below the fold may still reveal once when scrolled to.
+      } else {
+        node.classList.add("motion-list-item-reveal");
+      }
+      node.addEventListener("animationend", finishAnimation);
       observer.current?.unobserve(node);
-      return;
-    }
-    const initialClass = getEntranceClassName(entranceCapture, id);
-    if (initialClass && !initiallyBelowFold.current.has(id)) {
-      node.classList.add(...initialClass.split(" "));
-    } else if (
-      entranceCapture.initialIds.has(id) &&
-      !initiallyBelowFold.current.has(id)
-    ) {
-      // Items outside the first-20 entrance cap that were already visible on
-      // the initial render stay final-state visible. Initial rows that were
-      // genuinely below the fold may still reveal once when scrolled to.
-    } else {
-      node.classList.add("motion-list-item-reveal");
-    }
-    node.addEventListener("animationend", finishAnimation);
-    observer.current?.unobserve(node);
-  }, [entranceCapture, finishAnimation]);
+    },
+    [entranceCapture, finishAnimation],
+  );
 
   useLayoutEffect(() => {
-    if (motionIsReduced() || typeof IntersectionObserver === "undefined") return;
+    if (motionIsReduced() || typeof IntersectionObserver === "undefined")
+      return;
     try {
       observer.current = new IntersectionObserver((entries) => {
         for (const entry of entries) {
@@ -218,7 +239,8 @@ export function useListReveal<T>({
     } catch {
       observer.current?.disconnect();
       observer.current = null;
-      for (const node of nodes.current.values()) node.removeAttribute("data-motion-pending");
+      for (const node of nodes.current.values())
+        node.removeAttribute("data-motion-pending");
     }
     return () => observer.current?.disconnect();
   }, [revealNode]);
@@ -248,24 +270,28 @@ export function useListReveal<T>({
     };
   }, [revealNode]);
 
-  const getRevealProps = useCallback((id: string) => ({
-    "data-motion-reveal-id": id,
-    ref: (node: HTMLElement | null) => {
-      const previous = nodes.current.get(id);
-      if (previous && previous !== node) observer.current?.unobserve(previous);
-      if (!node) {
-        nodes.current.delete(id);
-        return;
-      }
-      nodes.current.set(id, node as ObservedElement);
-      if (registry.current.revealedIds.has(id)) return;
-      try {
-        observer.current?.observe(node);
-      } catch {
-        node.removeAttribute("data-motion-pending");
-      }
-    },
-  }), []);
+  const getRevealProps = useCallback(
+    (id: string) => ({
+      "data-motion-reveal-id": id,
+      ref: (node: HTMLElement | null) => {
+        const previous = nodes.current.get(id);
+        if (previous && previous !== node)
+          observer.current?.unobserve(previous);
+        if (!node) {
+          nodes.current.delete(id);
+          return;
+        }
+        nodes.current.set(id, node as ObservedElement);
+        if (registry.current.revealedIds.has(id)) return;
+        try {
+          observer.current?.observe(node);
+        } catch {
+          node.removeAttribute("data-motion-pending");
+        }
+      },
+    }),
+    [],
+  );
 
   return { getRevealProps };
 }
@@ -280,10 +306,15 @@ export function TabPanel({
   motionKey: number;
   opacityOnly?: boolean;
 }) {
-  const animationClass = motionKey > 0
-    ? `motion-panel-enter-${motionKey % 2 === 0 ? "a" : "b"}${opacityOnly ? "-opacity" : ""}`
-    : undefined;
-  return <div className={cn(animationClass, className)} {...props}>{children}</div>;
+  const animationClass =
+    motionKey > 0
+      ? `motion-panel-enter-${motionKey % 2 === 0 ? "a" : "b"}${opacityOnly ? "-opacity" : ""}`
+      : undefined;
+  return (
+    <div className={cn(animationClass, className)} {...props}>
+      {children}
+    </div>
+  );
 }
 
 export function SectionEnter({
@@ -297,7 +328,15 @@ export function SectionEnter({
     ...props.style,
     "--motion-section-delay": `${Math.min(Math.max(index, 0), 3) * 40}ms`,
   } as CSSProperties;
-  return <Tag {...props} className={cn("motion-section-enter", className)} style={style}>{children}</Tag>;
+  return (
+    <Tag
+      {...props}
+      className={cn("motion-section-enter", className)}
+      style={style}
+    >
+      {children}
+    </Tag>
+  );
 }
 
 export function Collapse({
@@ -432,25 +471,21 @@ export function useInitialListEntrance<T>({
     setStoredCapture(activeCapture);
   }
 
-  const onAnimationEnd = useCallback(
-    (event: AnimationEvent<HTMLElement>) => {
-      if (
-        event.target !== event.currentTarget ||
-        event.animationName !== LIST_ENTRANCE_ANIMATION_NAME
-      ) {
-        return;
-      }
+  const onAnimationEnd = useCallback((event: AnimationEvent<HTMLElement>) => {
+    if (
+      event.target !== event.currentTarget ||
+      event.animationName !== LIST_ENTRANCE_ANIMATION_NAME
+    ) {
+      return;
+    }
 
-      const entranceId = event.currentTarget.dataset.motionEntranceId;
-      setStoredCapture((current) =>
-        current.phase === "playing" &&
-        entranceId === [...current.ids].at(-1)
-          ? { ...current, phase: "done" }
-          : current,
-      );
-    },
-    [],
-  );
+    const entranceId = event.currentTarget.dataset.motionEntranceId;
+    setStoredCapture((current) =>
+      current.phase === "playing" && entranceId === [...current.ids].at(-1)
+        ? { ...current, phase: "done" }
+        : current,
+    );
+  }, []);
 
   return {
     isEntranceItem: (id: string) =>

@@ -27,14 +27,28 @@ export function EventBoardSkeleton() {
         <Skeleton className="h-11 w-40 shrink-0 sm:h-10" />
         <Skeleton className="ml-auto h-11 w-24 shrink-0 sm:h-10" />
       </div>
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="flex snap-x snap-mandatory gap-4 overflow-hidden pb-2 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:pb-0">
         {[0, 1, 2].map((lane) => (
-          <div key={lane} className="space-y-3">
-            <Skeleton className="h-4 w-28" />
+          <div
+            key={lane}
+            className="w-[calc(100%-1.5rem)] shrink-0 snap-start space-y-3 md:w-auto md:shrink md:snap-align-none"
+          >
+            <div className="flex h-11 items-center justify-between gap-3">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="size-11 rounded-md md:hidden" />
+            </div>
             <Skeleton className="h-28 w-full" />
             <Skeleton className="h-28 w-full" />
           </div>
         ))}
+      </div>
+      <div className="flex items-center justify-center gap-3 md:hidden">
+        <Skeleton className="h-4 w-28" />
+        <div className="flex items-center gap-1.5" aria-hidden="true">
+          <Skeleton className="h-1.5 w-6 rounded-full" />
+          <Skeleton className="size-1.5 rounded-full" />
+          <Skeleton className="size-1.5 rounded-full" />
+        </div>
       </div>
     </div>
   );
