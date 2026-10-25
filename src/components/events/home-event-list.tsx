@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { CalendarDays, Pencil, RefreshCw } from "lucide-react";
 import { EventBanner } from "@/components/events/event-banner";
 import { EventCardMenu } from "@/components/events/event-card-menu";
+import { HomeEventProgressSummary } from "@/components/events/home-event-progress";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
 import { StretchedLink } from "@/components/shared/stretched-link";
@@ -14,6 +15,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
+import {
+  getVisibleActiveEventIds,
+  HOME_EVENT_PROGRESS_RPC,
+  markHomeEventProgressUnavailable,
+  mergeHomeEventProgress,
+} from "@/lib/events/home-event-progress";
 import {
   HOME_EVENT_ORDER,
   splitHomeEvents,
@@ -140,7 +147,11 @@ function ActiveEventCard({
             {event.description}
           </p>
         ) : null}
-        <div className="border-t border-border/70 pt-3 text-sm font-semibold text-primary group-hover:text-foreground group-focus-within:text-foreground">
+        <HomeEventProgressSummary
+          eventName={event.name}
+          progress={event.progress}
+        />
+        <div className="text-sm font-semibold text-primary group-hover:text-foreground group-focus-within:text-foreground">
           View board <span aria-hidden>→</span>
         </div>
       </CardContent>
@@ -240,6 +251,32 @@ async function addIncompleteTaskCounts(
   ];
 }
 
+async function addHomeEventProgress(
+  supabase: ReturnType<typeof createClient>,
+  events: readonly HomeEvent[],
+  signal: AbortSignal,
+) {
+  const activeEventIds = getVisibleActiveEventIds(events);
+  if (activeEventIds.length === 0) return [...events];
+
+  try {
+    let request = supabase.rpc(HOME_EVENT_PROGRESS_RPC, {
+      p_event_ids: activeEventIds,
+    });
+    request = request.abortSignal(signal);
+    const { data, error } = await request;
+    if (signal.aborted) {
+      throw error ?? new Error("Home progress request aborted.");
+    }
+    if (error) throw error;
+    return mergeHomeEventProgress(events, data);
+  } catch (error) {
+    if (signal.aborted) throw error;
+    console.error("Failed to load Home event progress:", error);
+    return markHomeEventProgressUnavailable(events);
+  }
+}
+
 export function HomeEventList({
   initialPage,
   canEdit,
@@ -272,9 +309,14 @@ export function HomeEventList({
       request = request.abortSignal(signal);
       const { data, error } = await request;
       if (error) throw error;
+      const eventsWithProgress = await addHomeEventProgress(
+        supabase,
+        data ?? [],
+        signal,
+      );
       return canArchive
-        ? addIncompleteTaskCounts(supabase, data ?? [])
-        : (data ?? []);
+        ? addIncompleteTaskCounts(supabase, eventsWithProgress)
+        : eventsWithProgress;
     },
     [canArchive, supabase],
   );

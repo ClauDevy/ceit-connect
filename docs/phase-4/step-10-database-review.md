@@ -8,7 +8,7 @@
 | High | None found in the tracked migration definitions. |
 | Medium | None found in the tracked migration definitions. |
 | Low | None found in the tracked migration definitions. |
-| Informational | The source review cannot prove that live Dev has no drift. Run the read-only catalog paste in `docs/PHASE-4-STEP-10-TESTS.md`; its expected result counts are `57 / 8 / 11 / 20 / 0`. |
+| Informational | The owner-confirmed Phase 4 review result remains historically `57 / 8 / 11 / 20 / 0`. Batch 0 and Batch 3H each add one reviewed function, so the updated current-source expectation is `59 / 8 / 11 / 20 / 0`; live Dev still requires the owner's read-only catalog run. |
 
 No migration is proposed by this review. The review found no service-role client in ordinary task flows. The repository's service-role uses remain limited to Auth/account administration, avatar maintenance, and the already documented event-banner cleanup path; board, task detail, archive, move, dependency, assignment, backup, volunteer, comments, work links, late sharing, Help Wanted, and My Tasks all use the caller's Supabase session.
 
@@ -22,7 +22,7 @@ Legend: **auth** means only `authenticated` receives execute; **internal** means
 
 ## Functions
 
-All 57 effective signatures have an explicit empty `search_path`; no tracked Phase 4 name has a second signature. All are expected to be owned by `postgres`. The live paste exposes any departure.
+The original Phase 4 review covered 57 effective signatures. Batch 0 adds one fixed-path signature and Batch 3H adds one, for 59 in current source; no tracked name should have a second signature. All are expected to be owned by `postgres`. The live paste exposes any departure.
 
 | Function signature | Latest definition | Security / volatility / execute | Authorization, locks, and row-count review |
 |---|---|---|---|
@@ -54,6 +54,7 @@ All 57 effective signatures have an explicit empty `search_path`; no tracked Pha
 | `guard_task_work_link_writes()` | `20261017150000` | definer / volatile / internal | Trigger-only; stored task→event order; current-real/cap checks and archive freeze. |
 | `list_active_task_assignees_with_workload()` | `20261022120000` | definer / stable / auth | Direct active leadership check; no writes; confidential-safe counts. |
 | `list_event_board_tasks(uuid, uuid)` | `20261021130000` | definer / stable / auth | Direct active check; shared current-content decision; no writes; masked shells remain narrow. |
+| `list_home_event_progress(uuid[])` | `20261025120000` | definer / stable / auth | Direct active-profile check; 20-id bound; Active-only; real/masked phase, progress, and Backlog aggregates; real-only open-backup count; no task identity or content. |
 | `list_help_wanted_tasks(integer, integer)` | `20261022120000` | definer / stable / auth | Direct active check and real-content filter; validated pagination; no writes. |
 | `list_my_tasks(text, text, integer, integer)` | `20261022150000` | definer / stable / auth | Caller-derived active assignment scope; validated filter/sort/page; no writes. |
 | `list_task_comment_mention_candidates(uuid, text, integer)` | `20261023130000` | definer / stable / auth | Current-real caller and active candidates only; validated limit; no writes. |
@@ -80,6 +81,7 @@ All 57 effective signatures have an explicit empty `search_path`; no tracked Pha
 | `task_lane_tail_sort_order(uuid, text, text, uuid)` | `20261018130000` | definer / volatile / auth | Trigger-context-only helper; direct invocation fails; VOLATILE preserves post-wait snapshot. |
 | `task_work_link_url_is_canonical(text)` | `20261017150000` | definer / immutable / internal | Pure canonical URL predicate; no reads or writes. |
 | `unassign_self(uuid)` | `20261021130000` | definer / volatile / auth | Direct active/current-real check; event/advisory/task order; exact task update checked. |
+| `update_own_profile(text)` | `20261024120000` | definer / volatile / auth | Direct active-profile check; caller-derived row; validated `full_name` only; no broad user-table update grant. |
 | `validate_task_dependency()` | `20261018120000` | definer / volatile / internal | Trigger-only; shared advisory lock before fresh same-event/cycle validation. |
 | `volunteer_for_task(uuid)` | `20261022120000` | definer / volatile / auth | Direct active/current-real check; task→event locks; unique offer insert. |
 | `withdraw_task_volunteer(uuid)` | `20261022120000` | definer / volatile / auth | Direct active check; task→event locks; caller-only delete semantics. |
@@ -144,4 +146,4 @@ All are expected enabled in origin mode. The three constraint triggers are expec
 
 ## Conclusion
 
-The tracked migrations satisfy the Step 10A static review criteria: fixed paths, explicit execute boundaries, one signature per Phase 4 function name, active-user enforcement, documented lock orders, exact-one checks for targeted mutations, trigger attachment in source, narrow raw RLS, frozen Archived history, immutable task parents, and no ordinary task-flow service role. The owner ran the read-only catalog paste on Dev, and all five result sets matched: 57 functions, 8 tables, 11 policies, 20 triggers, and 0 overloads.
+The tracked migrations satisfy the Step 10A static review criteria: fixed paths, explicit execute boundaries, one signature per reviewed function name, active-user enforcement, documented lock orders, exact-one checks for targeted mutations, trigger attachment in source, narrow raw RLS, frozen Archived history, immutable task parents, and no ordinary task-flow service role. The owner-confirmed Phase 4 gate remains historical at 57 functions, 8 tables, 11 policies, 20 triggers, and 0 overloads. Batch 0 and Batch 3H change only this legacy function inventory: current source expects 59 functions, including 37 authenticated-executable functions, with the other four result counts unchanged; no live Batch 3H result is claimed here.

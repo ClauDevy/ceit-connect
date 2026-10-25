@@ -6,7 +6,7 @@ Run this paste only in the **Dev** Supabase SQL Editor. It is read-only: every s
 
 Expected result sets, in order:
 
-1. **57 function rows** with columns `function_signature`, `owner`, `security_mode`, `volatility`, `settings`, `public_execute`, `anon_execute`, and `authenticated_execute`. Every `settings` value must contain `search_path=""`; every owner must be `postgres`. Exactly 35 rows should have `authenticated_execute = true`; all `public_execute` and `anon_execute` values must be false.
+1. **59 function rows** with columns `function_signature`, `owner`, `security_mode`, `volatility`, `settings`, `public_execute`, `anon_execute`, and `authenticated_execute`. Every `settings` value must contain `search_path=""`; every owner must be `postgres`. Exactly 37 rows should have `authenticated_execute = true`; all `public_execute` and `anon_execute` values must be false. The owner-confirmed Phase 4 gate result remains historical at 57 functions and 35 authenticated-executable functions; Batch 0 added `update_own_profile(text)`, then Batch 3H added `list_home_event_progress(uuid[])`.
 2. **8 table rows** with RLS flags and effective authenticated privileges. Every `rls_enabled` value must be true. The four child tables must show `NONE`; the paste deliberately reports existing effective privileges on `events`, `tasks`, `notifications`, and `activity_log` rather than assuming they are empty.
 3. **11 policy rows**: four on `events`, four on `tasks`, two on `notifications`, and one on `activity_log`. The four Phase 4 child tables must contribute none.
 4. **20 trigger rows**. Every `enabled_state` must be `ENABLED`; the three Active-event invariant triggers must show `deferrable = true` and `initially_deferred = true`.
@@ -15,7 +15,7 @@ Expected result sets, in order:
 If any count differs, preserve the result and stop; do not change the database.
 
 ```sql
--- RESULT 1: Phase 4 functions and effective execute privileges (57 rows).
+-- RESULT 1: current functions and effective execute privileges (59 rows after Batch 0 and Batch 3H).
 with phase4_function_names(function_name) as (
   values
     ('accept_task_volunteer'),
@@ -46,6 +46,7 @@ with phase4_function_names(function_name) as (
     ('guard_task_work_link_writes'),
     ('list_active_task_assignees_with_workload'),
     ('list_event_board_tasks'),
+    ('list_home_event_progress'),
     ('list_help_wanted_tasks'),
     ('list_my_tasks'),
     ('list_task_comment_mention_candidates'),
@@ -72,6 +73,7 @@ with phase4_function_names(function_name) as (
     ('task_lane_tail_sort_order'),
     ('task_work_link_url_is_canonical'),
     ('unassign_self'),
+    ('update_own_profile'),
     ('validate_task_dependency'),
     ('volunteer_for_task'),
     ('withdraw_task_volunteer')
@@ -225,7 +227,7 @@ with phase4_function_names(function_name) as (
     ('guard_task_volunteer_writes'), ('guard_task_work_link_updates'),
     ('guard_task_work_link_writes'),
     ('list_active_task_assignees_with_workload'), ('list_event_board_tasks'),
-    ('list_help_wanted_tasks'), ('list_my_tasks'),
+    ('list_home_event_progress'), ('list_help_wanted_tasks'), ('list_my_tasks'),
     ('list_task_comment_mention_candidates'), ('list_task_comments'),
     ('log_task_activity'), ('move_task'), ('normalize_task_comment_mentions'),
     ('prepare_unassigned_task_reset'), ('reject_task_created_by_changes'),
@@ -237,7 +239,7 @@ with phase4_function_names(function_name) as (
     ('task_content_access'), ('task_content_access_for_user'),
     ('task_dependency_allows_forward_move'), ('task_dependency_lock_key'),
     ('task_lane_tail_sort_order'), ('task_work_link_url_is_canonical'),
-    ('unassign_self'), ('validate_task_dependency'), ('volunteer_for_task'),
+    ('unassign_self'), ('update_own_profile'), ('validate_task_dependency'), ('volunteer_for_task'),
     ('withdraw_task_volunteer')
 )
 select

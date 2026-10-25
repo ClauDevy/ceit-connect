@@ -1,3 +1,10 @@
+export type HomeEventProgress = {
+  phaseLabel: string | null;
+  percentage: number;
+  visibleBackupRequestCount: number;
+  backlogCount: number;
+};
+
 export type HomeEvent = {
   id: string;
   name: string;
@@ -8,6 +15,7 @@ export type HomeEvent = {
   banner_url: string | null;
   updated_at: string;
   incompleteTaskCount?: number;
+  progress?: HomeEventProgress | null;
 };
 
 export type ArchivedEvent = {
