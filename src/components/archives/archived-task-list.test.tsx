@@ -75,8 +75,8 @@ describe("archived task phase groups", () => {
     ]);
   });
 
-  it("places a masked archived task with no returned phase under No phase without revealing more content", () => {
-    const maskedTask = task("masked-task", null, {
+  it("removes a masked archived task's returned phase before grouping", () => {
+    const maskedTask = task("masked-task", "Secret phase", {
       priority: "High",
       status: "In Progress",
     });

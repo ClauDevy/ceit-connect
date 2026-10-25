@@ -475,10 +475,7 @@ export function EventForm({
         (assigneeId) => !activeAssigneeIds.has(assigneeId),
       )
     : [];
-  const visibleAssignees = [
-    ...assigneeGroups.selected,
-    ...assigneeGroups.other,
-  ];
+  const visibleAssignees = assigneeGroups.selected;
   const visibleAssigneeIds = new Set(
     visibleAssignees.map((assignee) => assignee.id),
   );
@@ -2288,7 +2285,7 @@ function AssigneeBulkControls({
   }, [partlySelected]);
 
   return (
-    <div className="sticky top-0 z-10 grid gap-1 border-b bg-card px-2 pb-2">
+    <div className="grid gap-1 border-b bg-card px-2 pb-2">
       <div className="flex min-h-11 items-center justify-between gap-2">
         <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1 text-xs font-semibold transition-colors duration-150 hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none has-disabled:cursor-not-allowed has-disabled:opacity-50">
           <input
