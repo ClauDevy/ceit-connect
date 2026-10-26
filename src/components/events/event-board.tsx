@@ -88,9 +88,11 @@ import {
   createStatusMoveIntent,
   createUndoEntry,
   createUndoIntent,
+  finishBoardDragOperation,
   getBoardRefetchInterval,
   getMovePermission,
   mapMoveError,
+  releaseBoardOperation,
   shouldCancelBoardDrag,
   tryAcquireBoardOperation,
   undoReducer,
@@ -311,6 +313,7 @@ function BoardContents({
   });
 
   const tasks = useMemo(() => query.data ?? [], [query.data]);
+  const hasTasks = tasks.length > 0;
   const phases = useMemo(
     () =>
       Array.from(
@@ -388,14 +391,22 @@ function BoardContents({
     }),
   );
 
-  const finishDragSession = useCallback((remount = false) => {
-    dragSessionRef.current = null;
-    boardBusyRef.current = false;
-    mobileBoardRef.current?.removeAttribute("data-dragging");
-    setActiveTaskId(null);
-    setSnapSuspended(false);
-    if (remount) setDndContextKey((current) => current + 1);
-  }, []);
+  const finishDragSession = useCallback(
+    (remount = false, preserveLock = false) => {
+      const hadActiveDrag = dragSessionRef.current !== null;
+      dragSessionRef.current = null;
+      finishBoardDragOperation(
+        boardBusyRef,
+        hadActiveDrag,
+        preserveLock,
+      );
+      mobileBoardRef.current?.removeAttribute("data-dragging");
+      setActiveTaskId(null);
+      setSnapSuspended(false);
+      if (remount) setDndContextKey((current) => current + 1);
+    },
+    [],
+  );
 
   const cancelActiveDrag = useCallback(() => {
     if (!dragSessionRef.current) return;
@@ -406,6 +417,7 @@ function BoardContents({
     const root = mobileBoardRef.current;
     if (
       !root ||
+      !hasTasks ||
       query.isPending ||
       typeof IntersectionObserver === "undefined"
     ) {
@@ -446,7 +458,7 @@ function BoardContents({
 
     for (const lane of laneRefs.current.values()) observer.observe(lane);
     return () => observer.disconnect();
-  }, [query.isPending]);
+  }, [hasTasks, query.isPending]);
 
   useEffect(() => {
     const snapshot = dragSessionRef.current;
@@ -567,7 +579,7 @@ function BoardContents({
           refetchType: "active",
         });
       } finally {
-        boardBusyRef.current = false;
+        releaseBoardOperation(boardBusyRef);
         setPendingTaskId(null);
         setReconciling(false);
       }
@@ -701,8 +713,15 @@ function BoardContents({
     setSelectedPriorities(new Set());
   }
 
-  function submitMove(variables: MoveMutationVariables) {
-    if (!tryAcquireBoardOperation(boardBusyRef)) return;
+  function submitMove(
+    variables: MoveMutationVariables,
+    lockAlreadyHeld = false,
+  ) {
+    if (lockAlreadyHeld) {
+      if (!boardBusyRef.current) return;
+    } else if (!tryAcquireBoardOperation(boardBusyRef)) {
+      return;
+    }
     setPendingTaskId(variables.task.id);
     setMoveError(null);
     if (!variables.undo) {
@@ -783,7 +802,6 @@ function BoardContents({
 
   function handleDragEnd(event: DragEndEvent) {
     const snapshot = dragSessionRef.current;
-    finishDragSession();
     if (
       !snapshot ||
       snapshot.taskId !== String(event.active.id) ||
@@ -796,14 +814,21 @@ function BoardContents({
         dataUpdatedAt: query.dataUpdatedAt,
       })
     ) {
+      finishDragSession();
       return;
     }
     const taskId = String(event.active.id);
     const task = tasks.find((candidate) => candidate.id === taskId);
-    if (!task) return;
+    if (!task) {
+      finishDragSession();
+      return;
+    }
     const permission = getMovePermission(task, viewer);
     const overStatus = event.over.data.current?.status;
-    if (!BOARD_STATUSES.includes(overStatus as BoardStatus)) return;
+    if (!BOARD_STATUSES.includes(overStatus as BoardStatus)) {
+      finishDragSession();
+      return;
+    }
     const overTaskId =
       event.over.data.current?.type === "task" ? String(event.over.id) : null;
     const appendToTail = collapsedLanes.has(overStatus as BoardStatus);
@@ -815,16 +840,23 @@ function BoardContents({
       permission,
       appendToTail,
     });
-    if (!intent) return;
-    submitMove({
-      task,
-      intent,
-      originalNeighbors: captureTaskNeighbors(tasks, task.id) ?? {
-        previousNeighborId: null,
-        nextNeighborId: null,
+    if (!intent) {
+      finishDragSession();
+      return;
+    }
+    finishDragSession(false, true);
+    submitMove(
+      {
+        task,
+        intent,
+        originalNeighbors: captureTaskNeighbors(tasks, task.id) ?? {
+          previousNeighborId: null,
+          nextNeighborId: null,
+        },
+        undo: false,
       },
-      undo: false,
-    });
+      true,
+    );
   }
 
   function handleDragCancel() {
