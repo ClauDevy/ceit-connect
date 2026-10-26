@@ -32,6 +32,7 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - Gmail SMTP needs 2-Step Verification + an **App Password** (shown once; the same one works for Dev and Prod). Host `smtp.gmail.com`, port **587**. (Resend uses 465 and needs a verified domain — a `vercel.app` address can't be verified.)
 - The login page deliberately shows one generic error; the real cause (rate limit, bad URL) is only visible in the browser Network tab.
 - No system can verify a mailbox exists before inviting it: a mistyped address still creates an "Active" account that can never be used. Deactivate it; never delete.
+- Batch 8 treats `auth.users.email_confirmed_at` as the provisional accepted-invite signal because the callback already requires it. Before UI work is accepted, verify a real Dev email-link acceptance and an invited Google acceptance against both `email_confirmed_at` and `last_sign_in_at`; if Google differs, fix the predicate through a new migration.
 
 ## 4. Next.js 16 / React
 - `middleware.ts` was renamed **`proxy.ts`**. It only refreshes the Supabase session; never gate pages there (known bypass class). Gate in pages, layouts, and route handlers.
@@ -62,6 +63,7 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - After Step 7, a task update run as the SQL Editor owner (`current_user = 'postgres'`) may change **only** `status`, `sort_order`, and `depends_on_task_id`; a change to any other column, including `phase`, is rejected. The dependency allowance exists only for the narrow `set_task_dependency()` definer. An owner status change receives no automatic destination ranking, keeps its old `sort_order`, and can violate `tasks_lane_sort_order_key`. Before changing task status, test fixtures must either set `sort_order` explicitly in the same owner update or impersonate an authorized role and call `move_task()`.
 - No-op task updates and updates whose only real row difference is `sort_order` no longer write `activity_log` rows.
 - `task_lane_tail_sort_order` must remain `VOLATILE`; a `STABLE` function reuses the caller's snapshot and can miss rows committed while waiting on the per-event advisory lock.
+- Officer writers take one global transaction advisory lock before every authorization, setting, count, invitation, or target read. Fresh `preparing` rows reserve a seat for 15 minutes; finalization atomically replaces the reservation with its active profile, while stale retry/cancellation releases it once.
 
 ## 6. Workflow
 - CodeRabbit (VSCode) found real bugs on every branch; run it before each PR and again after fixing.

@@ -37,6 +37,8 @@ the migration's actual regex and proves every parser output matches it.
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -242,6 +244,8 @@ $$;
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -433,6 +437,8 @@ $$;
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -562,6 +568,8 @@ $$;
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -609,7 +617,9 @@ select * from public.add_task_work_link('44420000-0000-4000-8000-000000000002', 
 select set_config('request.jwt.claims', json_build_object('sub', '44400000-0000-4000-8000-000000000002', 'role', 'authenticated')::text, true);
 select * from public.add_task_work_link('44420000-0000-4000-8000-000000000003', null, 'https://drive.google.com/file/d/ArchiveGuard_ID/view');
 
+alter table public.users disable trigger users_guard_officer_writes;
 delete from auth.users where id = '44400000-0000-4000-8000-000000000003';
+alter table public.users enable trigger users_guard_officer_writes;
 update public.events set status = 'Archived' where id = '44410000-0000-4000-8000-000000000002';
 set constraints all immediate;
 
@@ -663,6 +673,8 @@ $$;
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -777,6 +789,8 @@ $$;
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -895,6 +909,8 @@ $$;
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -948,8 +964,10 @@ select set_config('request.jwt.claims', json_build_object('sub', '44700000-0000-
 select * from public.add_task_work_link('44720000-0000-4000-8000-000000000001', 'Orphan one', 'https://drive.google.com/file/d/OrphanBoolean_One/view');
 select * from public.add_task_work_link('44720000-0000-4000-8000-000000000001', 'Orphan two', 'https://drive.google.com/file/d/OrphanBoolean_Two/view');
 
+alter table public.users disable trigger users_guard_officer_writes;
 delete from auth.users
 where id = '44700000-0000-4000-8000-000000000003';
+alter table public.users enable trigger users_guard_officer_writes;
 set constraints all immediate;
 
 do $$

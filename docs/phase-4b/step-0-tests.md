@@ -7,6 +7,8 @@ The exception must contain exactly **32 result lines**, all `PASS`. Line 30 aggr
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 alter table public.users add column anonymized_at timestamptz;
 alter table public.users add column step_0_future_marker text;
 

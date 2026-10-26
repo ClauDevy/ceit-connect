@@ -32,6 +32,8 @@ their child data.
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -191,6 +193,8 @@ $$;
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -328,6 +332,8 @@ $$;
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -348,7 +354,9 @@ from (values
 
 insert into public.users (id, email, full_name, role, committee_id, is_active)
 select id, email, full_name, role,
-  (select id from public.committees order by name limit 1), is_active
+  case when role = 'Admin' then null else
+    (select id from public.committees order by name limit 1)
+  end, is_active
 from (values
   ('43300000-0000-4000-8000-000000000001'::uuid, 's3-access-admin@test.local', 'Admin', 'Admin', true),
   ('43300000-0000-4000-8000-000000000002'::uuid, 's3-access-primary@test.local', 'Primary', 'Member', true),
@@ -357,9 +365,6 @@ from (values
   ('43300000-0000-4000-8000-000000000005'::uuid, 's3-access-member@test.local', 'Other Member', 'Member', true),
   ('43300000-0000-4000-8000-000000000006'::uuid, 's3-access-inactive@test.local', 'Inactive Viewer', 'Member', false)
 ) fixture(id, email, full_name, role, is_active);
-
-update public.users set committee_id = null
-where id = '43300000-0000-4000-8000-000000000001';
 
 insert into public.events (id, name, start_date, end_date, status, created_by)
 values ('43310000-0000-4000-8000-000000000001', 'Access Event',
@@ -481,6 +486,8 @@ $$;
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -591,6 +598,8 @@ restricted `task_content_access()` helper while changing `auth.uid()` claims.
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -717,6 +726,8 @@ $$;
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
