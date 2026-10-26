@@ -34,7 +34,8 @@ None. There is no SQL paste, migration result count, reader replacement, policy 
 ## Gate results
 
 - Focused tests: 94/94 pass across 12 Batch 7 and shared-contract files.
-- `npm test`: 331 tests pass; collection still fails for the two pre-existing unrelated unresolved-`@/` imports in `src/components/shared/load-more-control.test.tsx` and `src/lib/tasks/backup.test.ts`.
+- CodeRabbit follow-up tests: 25/25 pass across callback, warning-link accessibility, and unchanged paging-reader contract coverage.
+- `npm test`: 334 tests pass after the CodeRabbit follow-up; collection still fails for the two pre-existing unrelated unresolved-`@/` imports in `src/components/shared/load-more-control.test.tsx` and `src/lib/tasks/backup.test.ts`.
 - `npm run build`: passes with Next.js 16.3.4 and all 24 routes, including `/api/users`.
 - `npm run lint`: passes with zero reported issues.
 - `git diff --check`: passes (Git reports only the repository's CRLF-conversion notices).

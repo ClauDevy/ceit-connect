@@ -11,7 +11,7 @@ async function rejectExchangedSession(
   supabase: CallbackClient,
   origin: string,
 ) {
-  const { error: signOutError } = await supabase.auth.signOut();
+  const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
   if (signOutError) {
     console.error("Failed to clear a rejected callback session");
   }
