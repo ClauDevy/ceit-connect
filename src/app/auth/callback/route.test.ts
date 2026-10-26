@@ -186,6 +186,7 @@ describe("GET /auth/callback", () => {
         "http://localhost/login?error=auth",
       );
       expect(mock.signOut).toHaveBeenCalledTimes(1);
+      expect(mock.signOut).toHaveBeenCalledWith({ scope: "local" });
       expect(consoleError).toHaveBeenCalledWith(
         "Failed to clear a rejected callback session",
       );

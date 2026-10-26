@@ -23,17 +23,26 @@ export function useToggleMemberActive(onChanged?: () => Promise<void>) {
 
       if (!res.ok) {
         setError(data.error ?? "Something went wrong")
+        setPendingId(null)
         return false
       }
-
-      await onChanged?.()
-      return true
     } catch {
       setError("Network error, please try again")
+      setPendingId(null)
       return false
+    }
+
+    try {
+      // Paging owns and displays refresh failures; they must not turn a
+      // successful toggle into this hook's network-error state.
+      await onChanged?.()
+    } catch {
+      // A non-paging refresh callback is also best-effort after success.
     } finally {
       setPendingId(null)
     }
+
+    return true
   }
 
   return { pendingId, error, setActive }
