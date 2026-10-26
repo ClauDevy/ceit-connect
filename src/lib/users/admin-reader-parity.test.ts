@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const migration = readFileSync(
   "supabase/migrations/20261026150000_coadmin_user_management.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const reader = migration.slice(
   migration.indexOf("create function public.list_managed_users"),
   migration.indexOf("create function public.finalize_member_invite"),
