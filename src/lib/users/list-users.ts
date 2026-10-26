@@ -1,18 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LIST_FETCH_LIMIT, LIST_PAGE_SIZE } from "../list-paging";
-import type { Committee, Member } from "../types";
+import { LIST_PAGE_SIZE } from "../list-paging";
+import type { Member } from "../types";
 
 export const MAX_USERS_SEARCH_CODE_POINTS = 100;
 export const MAX_USERS_OFFSET = 10_000;
 
 export type UsersStatus = "active" | "deactivated";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export function isStrictUuid(value: string) {
-  return UUID_PATTERN.test(value);
-}
 
 export function normalizeUsersSearch(raw: string) {
   const value = raw.trim();
@@ -43,92 +36,31 @@ export function isMember(value: unknown): value is Member {
   );
 }
 
-function escapeIlikeLiteral(value: string) {
-  // Layer 1 is PostgreSQL ILIKE escaping. Backslash is the LIKE escape
-  // character, so a literal backslash, %, or _ must reach PostgreSQL as
-  // \\, \%, or \_ respectively. The surrounding % wildcards are added later.
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/%/g, "\\%")
-    .replace(/_/g, "\\_");
-}
-
-function quotePostgrestValue(value: string) {
-  // Layer 2 is PostgREST grammar escaping. Quoting prevents commas, dots,
-  // colons, and parentheses from becoming .or() syntax. Within those quotes,
-  // both backslashes (including Layer 1's) and double quotes are escaped.
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
-export function matchingCommitteeIds(
-  committees: readonly Committee[],
-  search: string,
-) {
-  const needle = search.toLocaleLowerCase();
-  return committees
-    .filter((committee) => committee.name.toLocaleLowerCase().includes(needle))
-    .map((committee) => committee.id);
-}
-
-export function buildUsersSearchFilter(
-  search: string,
-  committeeIds: readonly string[],
-) {
-  if (!search) return null;
-
-  for (const id of committeeIds) {
-    if (!isStrictUuid(id)) {
-      throw new Error("Invalid committee id returned by the lookup.");
-    }
-  }
-
-  const ilikePattern = quotePostgrestValue(
-    `%${escapeIlikeLiteral(search)}%`,
-  );
-  const filters = [
-    `full_name.ilike.${ilikePattern}`,
-    `email.ilike.${ilikePattern}`,
-    `role.ilike.${ilikePattern}`,
-  ];
-
-  if (committeeIds.length > 0) {
-    filters.push(`committee_id.in.(${committeeIds.join(",")})`);
-  }
-
-  return filters.join(",");
-}
-
 export async function listUsersPage(
   supabase: SupabaseClient,
   {
-    committees,
     offset,
     search,
     status,
   }: {
-    committees: readonly Committee[];
     offset: number;
     search: string;
     status: UsersStatus;
   },
 ) {
-  const committeeIds = search
-    ? matchingCommitteeIds(committees, search)
-    : [];
-  const searchFilter = buildUsersSearchFilter(search, committeeIds);
-
-  let query = supabase
-    .from("users")
-    .select("id, full_name, email, role, committee_id, avatar_url, is_active")
-    .eq("is_active", status === "active");
-
-  if (searchFilter) query = query.or(searchFilter);
-
-  const { data, error } = await query
-    .order("full_name", { ascending: true })
-    .order("id", { ascending: true })
-    .range(offset, offset + LIST_FETCH_LIMIT - 1);
-  return { data: (data ?? []) as Member[], error };
+  const { data, error } = await supabase.rpc("list_managed_users", {
+    p_is_active: status === "active",
+    p_search: search || null,
+    p_offset: offset,
+  });
+  const rows = data ?? [];
+  return {
+    data: Array.isArray(rows) && rows.every(isMember) ? (rows as Member[]) : null,
+    error:
+      Array.isArray(rows) && rows.every(isMember)
+        ? error
+        : (error ?? new Error("Invalid users reader response")),
+  };
 }
 
 export function parseUsersOffset(raw: string | null) {

@@ -76,8 +76,10 @@ describe("POST /api/invite-officers", () => {
     expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
 
     mocks.getAuthUser.mockResolvedValue({ id: "admin" });
+    // A Co-Admin profile is rejected because the route asks for Admin only.
     mocks.getActiveProfileForRoles.mockResolvedValueOnce(null);
     expect((await POST(request({ action: "send", invites: [row()] }))).status).toBe(403);
+    expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith(["Admin"]);
     expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
   });
 

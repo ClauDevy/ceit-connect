@@ -2,6 +2,8 @@ import {
   ArrowRightLeft,
   Ellipsis,
   MailX,
+  Pencil,
+  RotateCcw,
   ShieldCheck,
   UserRoundX,
 } from "lucide-react";
@@ -12,10 +14,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Member, PendingOfficerInvite } from "@/lib/types";
+import type { Member, PendingOfficerInvite, Role } from "@/lib/types";
 
 export type MemberActionName =
   | "toggle"
+  | "edit-name"
   | "cancel-invite"
   | "appoint"
   | "return-to-member"
@@ -27,6 +30,7 @@ type MemberActionProps = {
   isSelf: boolean;
   pending: boolean;
   pendingInvite?: PendingOfficerInvite;
+  viewerRole: Extract<Role, "Admin" | "Co-Admin">;
   onAction: (action: MemberActionName, member: Member) => void;
 };
 
@@ -35,8 +39,31 @@ export function MemberAction({
   isSelf,
   pending,
   pendingInvite,
+  viewerRole,
   onAction,
 }: MemberActionProps) {
+  if (viewerRole === "Co-Admin") {
+    return (
+      <ActionMenu member={member} pending={pending}>
+        <DropdownMenuItem onClick={() => onAction("edit-name", member)}>
+          <Pencil className="size-4" aria-hidden />
+          Edit name
+        </DropdownMenuItem>
+        {member.is_active ? (
+          <DestructiveItem onClick={() => onAction("toggle", member)}>
+            <UserRoundX className="size-4" aria-hidden />
+            Deactivate
+          </DestructiveItem>
+        ) : (
+          <DropdownMenuItem onClick={() => onAction("toggle", member)}>
+            <RotateCcw className="size-4" aria-hidden />
+            Reactivate
+          </DropdownMenuItem>
+        )}
+      </ActionMenu>
+    );
+  }
+
   if (pendingInvite) {
     return (
       <ActionMenu member={member} pending={pending}>

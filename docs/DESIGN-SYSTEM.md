@@ -29,6 +29,7 @@ This guide turns the existing tokens, shared components, and approved prototype 
 - Icon-only buttons require an accessible name and tooltip/title where the meaning is not visible. Every form label must match an input `id` through `htmlFor`.
 - A navigating card or row uses the whole box as its link target. Never nest a button or another interactive control inside a link; place independent actions as accessible siblings.
 - Per-item destructive actions such as Archive, Deactivate, Remove, and Delete live in menus and require confirmation. Bulk actions and typed-confirmation flows remain buttons that open their confirmation dialog.
+- On a shared role-aware management page, derive the viewer role on the server and pass one explicit capability variant through the desktop table and phone cards. Both layouts must show the same actions and failure text; never maintain a second hidden mobile action inventory. Read-only authority such as a derived committee may be displayed as text, but must not be submitted as an editable field.
 - On Active Home event cards, Edit and Archive live in one per-item menu that renders only when the viewer has an available action; its trigger stays separate from the stretched card link. Draft cards instead show a visible supporting Edit button because Drafts have no other per-card action.
 - Home Draft events remain visually compact and distinct from Active cards: dashed boundary, small banner thumbnail, visible Draft badge, “Not launched” metadata, and a single-column list. Badge and Edit must wrap without overlap at every width.
 - Long form dialogs may pin their header and action footer around one internal scroll region. Validation remains visible beside the actions, and an invalid submit focuses or reveals the first problem without changing validation rules.
@@ -75,6 +76,7 @@ This guide turns the existing tokens, shared components, and approved prototype 
 - Tab motion is driven only by user selection. Polling, refetch, filtering, sorting, search, Load more, optimistic state, Undo, settlement, and validation redirects do not replay it. Kanban cards and comment rows never receive entrance motion.
 - Closing snapshots are inert, `aria-hidden`, pointer-disabled, and non-submittable. Use Base UI ending styles or `transitionend`, never a timer; authorization removal and navigation may unmount immediately.
 - Every new Activity Log, Executive Dashboard, and notifications UI must use the kit, document its normal and reduced-motion result, and add an automated contract row plus a manual browser row.
+- User Management reuses `useListReveal` for stable roster rows and `TabPanel` only for user-selected Active/Deactivated changes. Search, paging, invite refresh, and name/status reconciliation do not replay tab motion. Its reduced-motion check requires immediately visible rows, menus, confirmation/edit dialogs, and final states with no one-off timers.
 
 ## Mobile rules
 

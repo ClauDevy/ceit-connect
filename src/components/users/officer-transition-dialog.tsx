@@ -20,7 +20,10 @@ import {
 } from "@/components/ui/select";
 import type { Committee, Member } from "@/lib/types";
 
-type TransitionAction = Exclude<MemberActionName, "toggle" | "cancel-invite">;
+type TransitionAction = Exclude<
+  MemberActionName,
+  "toggle" | "cancel-invite" | "edit-name"
+>;
 
 const TITLES: Record<TransitionAction, string> = {
   appoint: "Appoint officer",

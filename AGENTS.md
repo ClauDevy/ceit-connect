@@ -16,7 +16,7 @@ Task delegation and tracking system for a 12-committee university student counci
 
 ## Status
 
-Phases 0–4 are complete and live on Dev and Prod: scaffold, database + RLS, auth, the event engine, and the task engine. **Phase 4B is planned; no Phase 4B code is built.**
+Phases 0–4 are complete and live on Dev and Prod: scaffold, database + RLS, auth, the event engine, and the task engine. **Phase 4B is in progress; current batch status lives in `docs/PROGRESS.md` and `docs/PHASE-4B-PLAN.md`. Consult them first.**
 Read `docs/PROGRESS.md` first for the exact current state, then `docs/PHASE-4B-PLAN.md` for the approved work and run order.
 
 ## Stack
@@ -58,6 +58,7 @@ Read `docs/PHASE-4B-PLAN.md` first and ask up to 5 grouped questions about anyth
 - Colors: use the semantic tokens only (`bg-background`, `bg-card`, `bg-primary`, `bg-muted`, `text-muted-foreground`, `text-accent-foreground`, `border`, ...). Never hard-code hex colors. Dark mode comes from the same tokens.
 - Every form field needs a matching `htmlFor` / `id`.
 - Every new UI, including Activity Log, Executive Dashboard, and notifications, uses the shared motion kit and ships both a reduced-motion state and a test row; do not add one-off animation timers or libraries.
+- When one management page serves multiple roles, derive the viewer role in the server guard, pass it explicitly to shared desktop/mobile renderers, and keep both presentations on the same role-aware action inventory. Hidden actions still require route/RPC enforcement.
 - New pages go under `src/app/(dashboard)/<route>/`; new API routes at `src/app/api/<n>/route.ts`; files are kebab-case.
 - After a POST form/route, redirect with `NextResponse.redirect(url, 303)`, not 307.
 - `events.start_date` / `end_date` are `date` columns — use `yyyy-mm-dd` strings from `<input type="date">`.

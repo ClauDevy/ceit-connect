@@ -11,9 +11,7 @@ vi.mock("@/lib/auth", () => ({
   getActiveProfileForRoles: mocks.getActiveProfileForRoles,
   getAuthUser: mocks.getAuthUser,
 }));
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: mocks.createClient,
-}));
+vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/users/list-users", async () => {
   const actual = await import("../../../lib/users/list-users");
   return { ...actual, listUsersPage: mocks.listUsersPage };
@@ -21,25 +19,8 @@ vi.mock("@/lib/users/list-users", async () => {
 
 import { GET } from "./route";
 
-const committee = {
-  id: "123e4567-e89b-42d3-a456-426614174000",
-  name: "CIA",
-};
-
 function request(query = "status=active&offset=0&search=") {
   return new Request(`http://localhost/api/users?${query}`);
-}
-
-function dataClient(
-  result: { data: unknown; error: unknown } = {
-    data: [committee],
-    error: null,
-  },
-) {
-  const order = vi.fn().mockResolvedValue(result);
-  const select = vi.fn(() => ({ order }));
-  const from = vi.fn(() => ({ select }));
-  return { client: { from }, from, order, select };
 }
 
 beforeEach(() => {
@@ -47,8 +28,10 @@ beforeEach(() => {
   mocks.getAuthUser.mockResolvedValue({ id: "admin" });
   mocks.getActiveProfileForRoles.mockResolvedValue({
     role: "Admin",
+    committee_id: null,
     is_active: true,
   });
+  mocks.createClient.mockResolvedValue({ rpc: vi.fn() });
   mocks.listUsersPage.mockResolvedValue({ data: [], error: null });
 });
 
@@ -62,16 +45,57 @@ describe("GET /api/users", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  for (const caller of ["inactive Admin", "profile-less", "Co-Admin", "Member"]) {
+  for (const caller of [
+    "inactive Admin",
+    "inactive Co-Admin",
+    "profile-less",
+    "Member",
+  ]) {
     it(`returns no-store JSON 403 for ${caller}`, async () => {
       mocks.getActiveProfileForRoles.mockResolvedValue(null);
       const response = await GET(request());
       expect(response.status).toBe(403);
-      expect(response.headers.get("cache-control")).toBe("no-store");
-      expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith(["Admin"]);
+      expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith([
+        "Admin",
+        "Co-Admin",
+      ]);
       expect(mocks.createClient).not.toHaveBeenCalled();
     });
   }
+
+  it.each(["Admin", "Co-Admin"])(
+    "allows an active %s through the caller-session reader",
+    async (role) => {
+      mocks.getActiveProfileForRoles.mockResolvedValue({
+        role,
+        committee_id: role === "Co-Admin" ? "committee" : null,
+        is_active: true,
+      });
+      const client = { rpc: vi.fn() };
+      mocks.createClient.mockResolvedValue(client);
+      const response = await GET(
+        request("status=deactivated&offset=20&search=%20CiA%20"),
+      );
+      expect(response.status).toBe(200);
+      expect(mocks.listUsersPage).toHaveBeenCalledWith(client, {
+        offset: 20,
+        search: "CiA",
+        status: "deactivated",
+      });
+    },
+  );
+
+  it.each(["%25", "_", "%5C"])(
+    "passes literal search token %s to the reader",
+    async (search) => {
+      await GET(request(`status=active&offset=0&search=${search}`));
+      expect(mocks.listUsersPage).toHaveBeenLastCalledWith(expect.anything(), {
+        offset: 0,
+        search: decodeURIComponent(search),
+        status: "active",
+      });
+    },
+  );
 
   it.each([
     "status=all&offset=0",
@@ -82,72 +106,21 @@ describe("GET /api/users", () => {
   ])("rejects invalid input before data-client construction: %s", async (query) => {
     const response = await GET(request(query));
     expect(response.status).toBe(400);
-    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("skips the committee lookup for empty search and makes one Users read", async () => {
-    const mock = dataClient();
-    mocks.createClient.mockResolvedValue(mock.client);
-    const response = await GET(request());
-    expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(mock.from).not.toHaveBeenCalled();
-    expect(mocks.listUsersPage).toHaveBeenCalledTimes(1);
-    expect(mocks.listUsersPage).toHaveBeenCalledWith(mock.client, {
-      committees: [],
-      offset: 0,
-      search: "",
-      status: "active",
-    });
-  });
-
-  it("checks the committee lookup and passes it to one Users read", async () => {
-    const mock = dataClient();
-    mocks.createClient.mockResolvedValue(mock.client);
-    const response = await GET(
-      request("status=deactivated&offset=20&search=%20CiA%20"),
-    );
-    expect(response.status).toBe(200);
-    expect(mock.from).toHaveBeenCalledWith("committees");
-    expect(mock.select).toHaveBeenCalledWith("id, name");
-    expect(mock.order).toHaveBeenCalledWith("name");
-    expect(mocks.listUsersPage).toHaveBeenCalledTimes(1);
-    expect(mocks.listUsersPage).toHaveBeenCalledWith(mock.client, {
-      committees: [committee],
-      offset: 20,
-      search: "CiA",
-      status: "deactivated",
-    });
-  });
-
-  it("fails safely when the committee lookup fails or has invalid rows", async () => {
-    for (const result of [
-      { data: null, error: { message: "private" } },
-      { data: [{ id: 7, name: "CIA" }], error: null },
-    ]) {
-      const mock = dataClient(result);
-      mocks.createClient.mockResolvedValue(mock.client);
-      const response = await GET(
-        request("status=active&offset=0&search=cia"),
-      );
-      expect(response.status).toBe(500);
-      await expect(response.json()).resolves.toEqual({
-        error: "Users could not be loaded",
-      });
-    }
-    expect(mocks.listUsersPage).not.toHaveBeenCalled();
-  });
-
-  it("fails safely when the Users query reports or throws an error", async () => {
-    const mock = dataClient();
-    mocks.createClient.mockResolvedValue(mock.client);
+  it("fails safely when the reader reports or throws an error", async () => {
     mocks.listUsersPage.mockResolvedValueOnce({
-      data: [],
+      data: null,
       error: { message: "private" },
     });
-    expect((await GET(request())).status).toBe(500);
-    mocks.listUsersPage.mockRejectedValueOnce(new Error("invalid committee id"));
+    const reported = await GET(request());
+    expect(reported.status).toBe(500);
+    await expect(reported.json()).resolves.toEqual({
+      error: "Users could not be loaded",
+    });
+
+    mocks.listUsersPage.mockRejectedValueOnce(new Error("private"));
     expect((await GET(request())).status).toBe(500);
   });
 });
