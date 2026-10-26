@@ -97,6 +97,18 @@ export function tryAcquireBoardOperation(lock: BoardOperationLock) {
   return true;
 }
 
+export function finishBoardDragOperation(
+  lock: BoardOperationLock,
+  hadActiveDrag: boolean,
+  preserveLock = false,
+) {
+  if (hadActiveDrag && !preserveLock) lock.current = false;
+}
+
+export function releaseBoardOperation(lock: BoardOperationLock) {
+  lock.current = false;
+}
+
 export function shouldCancelBoardDrag({
   snapshot,
   tasks,
