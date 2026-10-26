@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import type { CurrentUser } from "@/lib/types"
+import { SettingsWarningDot } from "@/components/layout/settings-warning-dot"
 
 export function AvatarMenu({ user }: { user: CurrentUser }) {
   return (
@@ -32,6 +33,7 @@ export function AvatarMenu({ user }: { user: CurrentUser }) {
         <DropdownMenuLinkItem render={<Link href="/settings" />} closeOnClick>
           <Settings aria-hidden className="size-4" />
           Settings
+          {!user.passwordSet ? <SettingsWarningDot className="ml-auto" /> : null}
         </DropdownMenuLinkItem>
         <form action="/auth/signout" method="post">
           {/* Keep the form mounted until the browser starts the native POST navigation. */}

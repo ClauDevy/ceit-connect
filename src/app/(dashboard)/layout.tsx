@@ -20,7 +20,7 @@ export default async function DashboardLayout({
   // email, not their role in the council.
   const { data: profile } = await supabase
     .from("users")
-    .select("id, full_name, role, committee_id, avatar_url, is_active")
+    .select("id, full_name, role, committee_id, avatar_url, is_active, password_set")
     .eq("id", user.id)
     .single();
 
@@ -42,6 +42,7 @@ export default async function DashboardLayout({
     role: profile.role,
     committeeId: profile.committee_id,
     avatarUrl: profile.avatar_url,
+    passwordSet: profile.password_set,
   };
 
   return (

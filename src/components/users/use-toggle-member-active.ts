@@ -5,8 +5,7 @@ import type { Member } from "@/lib/types"
 
 // Owns the request/pending/error state for activating or deactivating a
 // member, so the table and card layouts stay purely presentational.
-export function useToggleMemberActive(initialMembers: Member[]) {
-  const [members, setMembers] = useState(initialMembers)
+export function useToggleMemberActive(onChanged?: () => Promise<void>) {
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState("")
 
@@ -24,20 +23,27 @@ export function useToggleMemberActive(initialMembers: Member[]) {
 
       if (!res.ok) {
         setError(data.error ?? "Something went wrong")
+        setPendingId(null)
         return false
       }
-
-      setMembers((prev) =>
-        prev.map((m) => (m.id === member.id ? { ...m, is_active: isActive } : m))
-      )
-      return true
     } catch {
       setError("Network error, please try again")
+      setPendingId(null)
       return false
+    }
+
+    try {
+      // Paging owns and displays refresh failures; they must not turn a
+      // successful toggle into this hook's network-error state.
+      await onChanged?.()
+    } catch {
+      // A non-paging refresh callback is also best-effort after success.
     } finally {
       setPendingId(null)
     }
+
+    return true
   }
 
-  return { members, pendingId, error, setActive }
+  return { pendingId, error, setActive }
 }

@@ -20,6 +20,7 @@ export interface CurrentUser {
   role: Role;
   committeeId: string | null;
   avatarUrl: string | null;
+  passwordSet: boolean;
 }
 
 export interface Committee {
