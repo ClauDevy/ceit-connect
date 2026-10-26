@@ -62,11 +62,14 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!["Admin", "Co-Admin", "Member"].includes(role)) {
-    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  if (role !== "Member") {
+    return NextResponse.json(
+      { error: "Use Invite officers for Admin and Co-Admin invitations" },
+      { status: 400 },
+    );
   }
 
-  if (role !== "Admin" && !normalizedCommitteeId) {
+  if (!normalizedCommitteeId) {
     return NextResponse.json(
       { error: "Committee is required for Co-Admin and Member roles" },
       { status: 400 }
@@ -114,7 +117,7 @@ export async function POST(request: Request) {
     email: normalizedEmail,
     full_name: normalizedFullName,
     role,
-    committee_id: role === "Admin" ? null : normalizedCommitteeId,
+    committee_id: normalizedCommitteeId,
   });
 
   if (profileError) {

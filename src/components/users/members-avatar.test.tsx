@@ -46,7 +46,8 @@ const props = {
   committeeName: () => "Documentation",
   currentUserId: "admin-1",
   pendingId: null,
-  onToggle: vi.fn(),
+  onAction: vi.fn(),
+  pendingInviteByAuthUserId: new Map(),
 };
 
 describe("User Management avatar markup", () => {

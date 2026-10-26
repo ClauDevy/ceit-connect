@@ -7,8 +7,7 @@ import { FormField } from "@/components/ui/form-field"
 import { IconInput } from "@/components/ui/icon-input"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RolePicker } from "@/components/users/role-picker"
-import type { Committee, Role } from "@/lib/types"
+import type { Committee } from "@/lib/types"
 
 type InviteUserFormProps = {
   committees: Committee[]
@@ -18,19 +17,17 @@ type InviteUserFormProps = {
 export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
-  const [role, setRole] = useState<Role>("Member")
   const [committeeId, setCommitteeId] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
 
-  const needsCommittee = role !== "Admin"
   const committeeItems = committees.map((c) => ({ value: c.id, label: c.name }))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (needsCommittee && !committeeId) {
-      setError("Choose a committee for this role.")
+    if (!committeeId) {
+      setError("Choose a committee for this member.")
       return
     }
 
@@ -44,8 +41,8 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
         body: JSON.stringify({
           email,
           fullName,
-          role,
-          committeeId: needsCommittee ? committeeId : null,
+          role: "Member",
+          committeeId,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -108,10 +105,7 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
         )}
       </FormField>
 
-      <RolePicker value={role} onChange={setRole} />
-
-      {needsCommittee && (
-        <FormField label="Committee">
+      <FormField label="Committee">
           {(control) => (
             <Select
               items={committeeItems}
@@ -130,8 +124,7 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
               </SelectContent>
             </Select>
           )}
-        </FormField>
-      )}
+      </FormField>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">
