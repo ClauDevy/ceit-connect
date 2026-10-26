@@ -275,6 +275,8 @@ ordinary and archive-only viewers.
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 do $$
 declare v_committees uuid[];
 begin
@@ -468,6 +470,8 @@ own Auth/profile fixtures and rolls every change back.
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 
 do $$
 declare
@@ -704,6 +708,8 @@ asserts its SQLSTATE, exact message, and unchanged stored title.
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 
 do $$
 declare
@@ -1034,6 +1040,8 @@ checks read `pg_proc.prosrc` and `pg_trigger`; they never text-match
 ```sql
 begin;
 
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
+
 do $$ declare c uuid[]; begin
   select array_agg(id order by name) into c from public.committees;
   if coalesce(cardinality(c),0)<1 then raise exception '10C-2 requires a committee.'; end if;
@@ -1187,6 +1195,8 @@ exception must contain exactly **16 result lines**, all `PASS`.
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 
 do $$ declare c uuid[]; begin
   select array_agg(id order by name) into c from public.committees;
@@ -1389,6 +1399,8 @@ event/phase/status lane.
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 select set_config('request.jwt.claims','{}',true);
 
 do $$ declare c uuid; begin
@@ -1559,6 +1571,8 @@ relies on the task insert trigger for unique lane ranks.
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 select set_config('request.jwt.claims','{}',true);
 do $$ declare c uuid; begin select id into c from public.committees order by name limit 1; if c is null then raise exception '10D-2 requires a committee.'; end if; perform set_config('test.s10d2_c',c::text,true); end $$;
 
@@ -1698,6 +1712,8 @@ inside its own exception subtransaction.
 
 ```sql
 begin;
+
+select pg_catalog.set_config('ceit_connect.officer_writer','invite_new_officer', true);
 select set_config('request.jwt.claims','{}',true);
 do $$ declare c uuid; begin select id into c from public.committees order by name limit 1; if c is null then raise exception '10D-3 requires a committee.'; end if; perform set_config('test.s10d3_c',c::text,true); end $$;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)

@@ -91,8 +91,8 @@ Task Draft visibility is enforced separately from event visibility. `tasks_selec
 
 ### Phase 4B Batch 0 users authorization
 
-- The effective `users` policies are `users_select_own_row`, `co_admin_view_own_committee_members`, and `admin_full_access_users`. The former `co_admin_update_own_committee_members` policy is dropped.
-- `PUBLIC`, `anon`, and `authenticated` have no table-level or column-level direct `UPDATE` privilege on `public.users`. The unchanged `admin_full_access_users` policy still provides Admin SELECT visibility, but its UPDATE branch is unreachable to an `authenticated` API caller because PostgreSQL checks table privilege before RLS. Service-role writers are unchanged.
+- After Batch 8 is applied, the effective `users` policies are `users_select_own_row`, `co_admin_view_own_committee_members`, and SELECT-only `admin_view_all_users`. Batch 8 drops `admin_full_access_users`; the former `co_admin_update_own_committee_members` policy was already dropped by Batch 0.
+- `PUBLIC`, `anon`, and `authenticated` have no direct `INSERT`, `UPDATE`, or `DELETE` privilege on `public.users`. Batch 8 also adds the fail-closed `users_guard_officer_writes` trigger: profile deletion is always rejected, and officer insert/role/committee/active-state changes require a postgres-owned narrow writer plus its exact transaction-local writer token. Member-only server paths remain available.
 - `update_own_profile(p_full_name text) returns text` is the only own-profile writer. It is postgres-owned, fixed-empty-path, `VOLATILE SECURITY DEFINER`, and executable only by `authenticated`. It authorizes an active profile before validating input, derives the target from `auth.uid()`, and explicitly updates only `full_name`.
 - Names reject raw input over 1,000 code points before the per-character scan; reject U+0000–U+001F, U+007F–U+009F, U+2028, and U+2029; trim only U+0020, U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000, and U+FEFF at the edges; and contain 1–100 Unicode code points afterward. `CCP01` means the caller profile is unavailable and `CCP02` means the name is invalid.
 
@@ -232,6 +232,7 @@ Known Storage limitation: Postgres and Storage cannot share a transaction. Direc
 40. `20261023160000_archived_task_viewers.sql` — adds deny-by-default archive-only confidential-task sharing, narrow Admin/owning-Co-Admin grant/revoke functions, a capped lock-free share-control reader, the Archived-only central access union, and the combined safe detail access list without changing task/event RLS or freeze triggers
 41. `20261024120000_users_authorization_fix.sql` — removes broad Co-Admin user updates, revokes direct authenticated user updates, and adds the narrow active-caller own-profile name writer
 42. `20261025120000_home_event_progress.sql` — adds the bounded authenticated-only Active-event aggregate reader for Home phase, numeric-rounded progress, visible backup requests, and Backlog without changing tables, policies, triggers, or existing functions
+43. `20261026120000_officer_invitations_and_transitions.sql` — adds the private fixed-key cap setting, 15-minute officer-seat preparations, six exact officer transitions, the narrow Co-Admin active-state writer, pending reader, shared advisory lock, invoker users guard, Admin SELECT-only policy, and exact grants. It is tracked locally and is not yet claimed on Dev or Prod.
 
 ## Environments
 
