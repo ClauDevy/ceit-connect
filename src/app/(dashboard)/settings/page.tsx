@@ -54,7 +54,7 @@ export default async function SettingsPage() {
           description={
             profile?.password_set
               ? "Update your password."
-              : "Set a password to enable email and password sign-in, and Google sign-in."
+              : "Set a backup password to enable email and password sign-in."
           }
         >
           <SetPasswordForm hasPassword={!!profile?.password_set} />

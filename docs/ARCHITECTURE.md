@@ -116,7 +116,7 @@ These are approved plans, not built or live rules. Each batch's own docs step mo
 
 ## Approved deviations from the original document
 
-- **Sign-in methods:** besides the magic link, accounts can use a password (set in Settings after the first login) and Google sign-in. Google works only for invited users who have already set a password (gated in `/auth/callback`). Forgot-password uses a typed 6-digit emailed code, not a link.
+- **Sign-in methods:** invited accounts may use a magic link, set their own password, or continue with Google. `/auth/callback` retains a session only for a verified Auth email with the same active profile UUID and normalized email on the environment allowlist; it does not inspect provider metadata or require `password_set`. Forgot-password uses a typed 6-digit emailed code, not a link.
 - **Email:** Supabase custom SMTP through a Gmail App Password (interim) instead of Resend, because Resend needs a verified domain to email arbitrary recipients and the team has no domain yet.
 - **Invites and user management are Admin-only** (the original text implied Co-Admins could manage their committee's members).
 - **`allowed_viewers uuid[]`** was added to `tasks` so an assignee or committee head can grant extra people access to a confidential task (the sixth condition in `get_task`).

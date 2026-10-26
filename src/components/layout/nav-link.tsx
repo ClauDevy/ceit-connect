@@ -4,14 +4,16 @@ import Link from "next/link"
 import { useNavClick } from "@/components/navigation/navigation-provider"
 import type { NavItem } from "@/lib/nav"
 import { cn } from "@/lib/utils"
+import { SettingsWarningDot } from "@/components/layout/settings-warning-dot"
 
 type NavLinkProps = {
   item: NavItem
   active: boolean
   collapsed?: boolean
+  showWarning?: boolean
 }
 
-export function NavLink({ item, active, collapsed }: NavLinkProps) {
+export function NavLink({ item, active, collapsed, showWarning }: NavLinkProps) {
   const Icon = item.icon
   const onClick = useNavClick(item.href)
 
@@ -31,6 +33,11 @@ export function NavLink({ item, active, collapsed }: NavLinkProps) {
     >
       <Icon className="motion-nav-icon size-[18px] shrink-0" aria-hidden />
       <span className={cn(collapsed && "sr-only")}>{item.label}</span>
+      {showWarning ? (
+        <SettingsWarningDot
+          className={collapsed ? "absolute top-1.5 right-1.5" : "ml-auto"}
+        />
+      ) : null}
     </Link>
   )
 }

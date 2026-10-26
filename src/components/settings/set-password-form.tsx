@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { PasswordInput } from "@/components/ui/password-input"
 
 export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
+  const router = useRouter()
   const [currentPassword, setCurrentPassword] = useState("")
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
@@ -56,6 +58,7 @@ export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
       setCurrentPassword("")
       setPassword("")
       setConfirm("")
+      router.refresh()
     } catch {
       setStatus("error")
       setError("Something went wrong")
@@ -68,7 +71,7 @@ export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
         <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
         {hasPassword
           ? "Password updated."
-          : "Password set. You can now sign in with Google or your email and password."}
+          : "Password set. You can now sign in with your email and password."}
       </div>
     )
   }
