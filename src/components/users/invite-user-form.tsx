@@ -7,14 +7,21 @@ import { FormField } from "@/components/ui/form-field"
 import { IconInput } from "@/components/ui/icon-input"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Committee } from "@/lib/types"
+import type { Committee, Role } from "@/lib/types"
 
 type InviteUserFormProps = {
   committees: Committee[]
+  viewerRole: Extract<Role, "Admin" | "Co-Admin">
+  committeeName: string | null
   onDone: () => void
 }
 
-export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
+export function InviteUserForm({
+  committees,
+  viewerRole,
+  committeeName,
+  onDone,
+}: InviteUserFormProps) {
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
   const [committeeId, setCommitteeId] = useState("")
@@ -26,7 +33,7 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!committeeId) {
+    if (viewerRole === "Admin" && !committeeId) {
       setError("Choose a committee for this member.")
       return
     }
@@ -38,12 +45,11 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
       const res = await fetch("/api/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          fullName,
-          role: "Member",
-          committeeId,
-        }),
+        body: JSON.stringify(
+          viewerRole === "Admin"
+            ? { email, fullName, committeeId }
+            : { email, fullName },
+        ),
       })
       const data = await res.json().catch(() => ({}))
 
@@ -52,6 +58,7 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
         return
       }
       setSent(true)
+      window.dispatchEvent(new Event("member-users-changed"))
     } catch {
       setError("Network error, please try again")
     } finally {
@@ -62,7 +69,7 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
   if (sent) {
     return (
       <div className="grid justify-items-center gap-3 py-2 text-center">
-        <CheckCircle2 className="size-10 text-emerald-600" aria-hidden />
+        <CheckCircle2 className="size-10 text-primary" aria-hidden />
         <div>
           <p className="font-display text-lg font-semibold">Invite sent</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -105,7 +112,8 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
         )}
       </FormField>
 
-      <FormField label="Committee">
+      {viewerRole === "Admin" ? (
+        <FormField label="Committee">
           {(control) => (
             <Select
               items={committeeItems}
@@ -124,7 +132,19 @@ export function InviteUserForm({ committees, onDone }: InviteUserFormProps) {
               </SelectContent>
             </Select>
           )}
-      </FormField>
+        </FormField>
+      ) : (
+        <FormField label="Committee">
+          {(control) => (
+            <Input
+              {...control}
+              value={committeeName ?? "No committee assigned"}
+              readOnly
+              aria-readonly="true"
+            />
+          )}
+        </FormField>
+      )}
 
       {error && (
         <p role="alert" className="text-sm text-destructive">

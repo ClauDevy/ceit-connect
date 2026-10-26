@@ -48,6 +48,7 @@ const props = {
   pendingId: null,
   onAction: vi.fn(),
   pendingInviteByAuthUserId: new Map(),
+  viewerRole: "Admin" as const,
 };
 
 describe("User Management avatar markup", () => {

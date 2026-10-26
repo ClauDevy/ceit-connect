@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Member, PendingOfficerInvite } from "@/lib/types";
+import type { Member, PendingOfficerInvite, Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type MembersListProps = {
@@ -20,6 +20,7 @@ type MembersListProps = {
   pendingId: string | null;
   onAction: (action: MemberActionName, member: Member) => void;
   pendingInviteByAuthUserId: ReadonlyMap<string, PendingOfficerInvite>;
+  viewerRole: Extract<Role, "Admin" | "Co-Admin">;
   getRevealProps?: (id: string) => {
     "data-motion-reveal-id": string;
     ref: (node: HTMLElement | null) => void;
@@ -33,6 +34,7 @@ export function MembersTable({
   pendingId,
   onAction,
   pendingInviteByAuthUserId,
+  viewerRole,
   getRevealProps,
 }: MembersListProps) {
   return (
@@ -95,6 +97,7 @@ export function MembersTable({
                 isSelf={member.id === currentUserId}
                 pending={pendingId !== null}
                 pendingInvite={pendingInviteByAuthUserId.get(member.id)}
+                viewerRole={viewerRole}
                 onAction={onAction}
               />
             </TableCell>

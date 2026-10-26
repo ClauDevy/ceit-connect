@@ -12,7 +12,7 @@ import type { PendingOfficerInvite } from "@/lib/types";
 
 export default async function UsersPage() {
   const user = await requireUser();
-  const profile = await getActiveProfileForRoles(["Admin"]);
+  const profile = await getActiveProfileForRoles(["Admin", "Co-Admin"]);
   if (!profile) {
     redirect("/home");
   }
@@ -22,12 +22,13 @@ export default async function UsersPage() {
   const [committeesResult, membersResult, pendingResult] = await Promise.all([
     supabase.from("committees").select("id, name").order("name"),
     listUsersPage(supabase, {
-      committees: [],
       offset: 0,
       search: "",
       status: "active",
     }),
-    supabase.rpc("list_pending_officer_invites"),
+    profile.role === "Admin"
+      ? supabase.rpc("list_pending_officer_invites")
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const loadFailed = Boolean(committeesResult.error || membersResult.error);
@@ -38,16 +39,35 @@ export default async function UsersPage() {
     });
   }
 
+  const allCommittees = committeesResult.data ?? [];
+  const ownCommittee = profile.committee_id
+    ? allCommittees.find((committee) => committee.id === profile.committee_id) ?? null
+    : null;
+  const visibleCommittees =
+    profile.role === "Admin" ? allCommittees : ownCommittee ? [ownCommittee] : [];
+
   return (
     <div className="motion-content-ready">
       <PageHeader
         title="User management"
-        description="Invite council members, set their roles, and deactivate the roster at the end of the year."
+        description={
+          profile.role === "Admin"
+            ? "Invite council members, set their roles, and deactivate the roster at the end of the year."
+            : "Manage Members in your committee."
+        }
         actions={
           loadFailed ? null : (
             <div className="flex flex-col gap-2 sm:flex-row">
-              <InviteOfficersDialog committees={committeesResult.data ?? []} />
-              <InviteUserDialog committees={committeesResult.data ?? []} />
+              {profile.role === "Admin" ? (
+                <InviteOfficersDialog committees={allCommittees} />
+              ) : null}
+              {profile.role === "Admin" || ownCommittee ? (
+                <InviteUserDialog
+                  committees={visibleCommittees}
+                  viewerRole={profile.role}
+                  committeeName={ownCommittee?.name ?? null}
+                />
+              ) : null}
             </div>
           )
         }
@@ -57,11 +77,17 @@ export default async function UsersPage() {
         <InlineAlert>
           User Management could not be loaded. Refresh the page to try again.
         </InlineAlert>
+      ) : profile.role === "Co-Admin" && !ownCommittee ? (
+        <InlineAlert>
+          No committee is assigned to your account. Ask an Admin to assign one
+          before managing Members.
+        </InlineAlert>
       ) : (
         <UsersTable
           initialPage={normalizeLookaheadPage(membersResult.data ?? [], 0)}
-          committees={committeesResult.data ?? []}
+          committees={visibleCommittees}
           currentUserId={user.id}
+          viewerRole={profile.role}
           initialPendingInvites={
             pendingResult.error
               ? []
