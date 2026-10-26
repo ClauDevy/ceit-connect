@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -8,6 +9,9 @@ import { LoadMoreControl } from "@/components/shared/load-more-control";
 import { TabPanel, useListReveal } from "@/components/shared/motion";
 import { MembersCards } from "@/components/users/members-cards";
 import { MembersTable } from "@/components/users/members-table";
+import { type MemberActionName } from "@/components/users/member-actions";
+import { OfficerTransitionDialog } from "@/components/users/officer-transition-dialog";
+import { PendingOfficerInvites } from "@/components/users/pending-officer-invites";
 import { useToggleMemberActive } from "@/components/users/use-toggle-member-active";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +21,8 @@ import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
 import type { OffsetListPage } from "@/lib/list-paging";
 import { preventSearchFormSubmission } from "@/lib/search";
 import type { Committee, Member } from "@/lib/types";
+import type { PendingOfficerInvite } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import {
   isMember,
   truncateUsersSearch,
@@ -27,6 +33,8 @@ type UsersTableProps = {
   initialPage: OffsetListPage<Member>;
   committees: Committee[];
   currentUserId: string;
+  initialPendingInvites: PendingOfficerInvite[];
+  initialPendingError: boolean;
 };
 
 const TABS = [
@@ -38,13 +46,32 @@ export function UsersTable({
   initialPage,
   committees,
   currentUserId,
+  initialPendingInvites,
+  initialPendingError,
 }: UsersTableProps) {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const [status, setStatus] = useState<UsersStatus>("active");
   const [tabMotionKey, setTabMotionKey] = useState(0);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [target, setTarget] = useState<Member | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cancelInviteTarget, setCancelInviteTarget] = useState<Member | null>(null);
+  const [cancelInviteError, setCancelInviteError] = useState("");
+  const [cancelInviteBusy, setCancelInviteBusy] = useState(false);
+  const [transitionAction, setTransitionAction] = useState<Exclude<
+    MemberActionName,
+    "toggle" | "cancel-invite"
+  > | null>(null);
+  const [transitionTarget, setTransitionTarget] = useState<Member | null>(null);
+  const [transitionBusy, setTransitionBusy] = useState(false);
+  const [transitionError, setTransitionError] = useState("");
+  const [pendingInvites, setPendingInvites] = useState(initialPendingInvites);
+  const [pendingInvitesError, setPendingInvitesError] = useState(
+    initialPendingError ? "Pending invitations could not be loaded." : "",
+  );
+  const [pendingInvitesLoading, setPendingInvitesLoading] = useState(false);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setSearch(query.trim()), 250);
@@ -87,6 +114,28 @@ export function UsersTable({
     singularLabel: "user",
     pluralLabel: "users",
   });
+  const refreshUsers = paging.refreshFromStart;
+
+  const refreshPendingInvites = useCallback(async () => {
+    setPendingInvitesLoading(true);
+    const { data, error } = await supabase.rpc("list_pending_officer_invites");
+    if (error) {
+      setPendingInvitesError("Pending invitations could not be loaded.");
+    } else {
+      setPendingInvites((data ?? []) as PendingOfficerInvite[]);
+      setPendingInvitesError("");
+    }
+    setPendingInvitesLoading(false);
+  }, [supabase]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void refreshPendingInvites();
+      void refreshUsers();
+    };
+    window.addEventListener("officer-invites-changed", refresh);
+    return () => window.removeEventListener("officer-invites-changed", refresh);
+  }, [refreshPendingInvites, refreshUsers]);
   const toggle = useToggleMemberActive(paging.refreshFromStart);
   const reveal = useListReveal({
     initialItems: initialPage.items,
@@ -110,6 +159,111 @@ export function UsersTable({
     if (ok) setConfirmOpen(false);
   }
 
+  function handleAction(action: MemberActionName, member: Member) {
+    if (action === "toggle") {
+      setTarget(member);
+      setConfirmOpen(true);
+    } else if (action === "cancel-invite") {
+      setCancelInviteTarget(member);
+      setCancelInviteError("");
+    } else {
+      setTransitionTarget(member);
+      setTransitionAction(action);
+      setTransitionError("");
+    }
+  }
+
+  async function cancelRosterInvitation() {
+    if (!cancelInviteTarget) return;
+    const invitation = pendingInvites.find(
+      (item) => item.auth_user_id === cancelInviteTarget.id,
+    );
+    if (!invitation) {
+      setCancelInviteError("The pending invitation changed. Refresh and try again.");
+      return;
+    }
+    setCancelInviteBusy(true);
+    setCancelInviteError("");
+    try {
+      const response = await fetch("/api/invite-officers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel", inviteId: invitation.id }),
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        setCancelInviteError(
+          body &&
+            typeof body === "object" &&
+            typeof (body as { error?: unknown }).error === "string"
+            ? (body as { error: string }).error
+            : "The invitation could not be cancelled.",
+        );
+        return;
+      }
+      setCancelInviteTarget(null);
+      await Promise.all([refreshPendingInvites(), paging.refreshFromStart()]);
+    } catch {
+      setCancelInviteError("Network error. Try again.");
+    } finally {
+      setCancelInviteBusy(false);
+    }
+  }
+
+  async function submitTransition(details: {
+    role?: "Admin" | "Co-Admin";
+    committeeId: string | null;
+  }) {
+    if (!transitionAction || !transitionTarget) return;
+    setTransitionBusy(true);
+    setTransitionError("");
+    const requestBody =
+      transitionAction === "appoint"
+        ? {
+            action: transitionAction,
+            userId: transitionTarget.id,
+            role: details.role,
+            committeeId: details.committeeId,
+          }
+        : transitionAction === "step-down"
+          ? { action: transitionAction, committeeId: details.committeeId }
+          : {
+              action: transitionAction,
+              userId: transitionTarget.id,
+              committeeId: details.committeeId,
+            };
+    try {
+      const response = await fetch("/api/officer-transitions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        setTransitionError(
+          body &&
+            typeof body === "object" &&
+            typeof (body as { error?: unknown }).error === "string"
+            ? (body as { error: string }).error
+            : "The officer action could not be completed.",
+        );
+        return;
+      }
+      if (transitionAction === "step-down") {
+        router.replace("/home");
+        router.refresh();
+        return;
+      }
+      setTransitionAction(null);
+      setTransitionTarget(null);
+      await paging.refreshFromStart();
+    } catch {
+      setTransitionError("Network error. Try again.");
+    } finally {
+      setTransitionBusy(false);
+    }
+  }
+
   function selectTab(nextStatus: UsersStatus) {
     if (nextStatus === status) return;
     setStatus(nextStatus);
@@ -121,11 +275,13 @@ export function UsersTable({
     committeeName,
     currentUserId,
     pendingId: toggle.pendingId,
-    onToggle: (member: Member) => {
-      setTarget(member);
-      setConfirmOpen(true);
-    },
+    onAction: handleAction,
     getRevealProps: reveal.getRevealProps,
+    pendingInviteByAuthUserId: new Map(
+      pendingInvites
+        .filter((invite) => invite.auth_user_id)
+        .map((invite) => [invite.auth_user_id as string, invite]),
+    ),
   };
 
   const statusLabel = status === "active" ? "active" : "deactivated";
@@ -133,6 +289,19 @@ export function UsersTable({
 
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
+      <PendingOfficerInvites
+        invites={pendingInvites}
+        visibleAuthUserIds={new Set(paging.items.map((member) => member.id))}
+        loading={pendingInvitesLoading}
+        error={pendingInvitesError}
+        onRetry={() => void refreshPendingInvites()}
+        onCancelled={async () => {
+          await Promise.all([
+            refreshPendingInvites(),
+            paging.refreshFromStart(),
+          ]);
+        }}
+      />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <SegmentedControl
           aria-label="User status"
@@ -242,10 +411,49 @@ export function UsersTable({
             ? "They'll be able to sign in again."
             : "This removes their access and deletes their profile photo. Their past work stays in the archives."
         }
-        confirmLabel={reactivating ? "Reactivate" : "Deactivate"}
+        confirmLabel={
+          toggle.cleanupPendingId === target?.id
+            ? "Retry login cleanup"
+            : reactivating
+              ? "Reactivate"
+              : "Deactivate"
+        }
         destructive={!reactivating}
         loading={toggle.pendingId !== null}
         onConfirm={confirmToggle}
+      />
+
+      <ConfirmDialog
+        open={cancelInviteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !cancelInviteBusy) {
+            setCancelInviteTarget(null);
+            setCancelInviteError("");
+          }
+        }}
+        title={`Cancel ${cancelInviteTarget?.full_name ?? "this invitation"}?`}
+        description="Their profile will be deactivated and login blocked. Their account will not be deleted."
+        confirmLabel={cancelInviteError ? "Retry cancellation" : "Cancel invitation"}
+        destructive
+        loading={cancelInviteBusy}
+        error={cancelInviteError}
+        onConfirm={() => void cancelRosterInvitation()}
+      />
+
+      <OfficerTransitionDialog
+        key={`${transitionAction ?? "closed"}:${transitionTarget?.id ?? "none"}`}
+        action={transitionAction}
+        member={transitionTarget}
+        committees={committees}
+        busy={transitionBusy}
+        error={transitionError}
+        onClose={() => {
+          if (transitionBusy) return;
+          setTransitionAction(null);
+          setTransitionTarget(null);
+          setTransitionError("");
+        }}
+        onSubmit={(details) => void submitTransition(details)}
       />
     </div>
   );

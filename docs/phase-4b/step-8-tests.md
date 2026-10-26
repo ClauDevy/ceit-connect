@@ -698,3 +698,91 @@ The migration uses `email_confirmed_at` provisionally because the current
 callback already treats that field as the verified-email admission contract.
 `last_sign_in_at` proves a login occurred, not specifically that the invited
 email identity was verified.
+
+## 8-UI/route automated verification
+
+Owner-reported database result: Step 8 Tests 1–9 and the historical reruns
+passed on Dev. No Prod application or result is claimed.
+
+Installed dependency verification for `@supabase/supabase-js` 2.116.0:
+
+- `AdminUserAttributes.ban_duration` is `string | "none"`; the installed source
+  states that `"none"` lifts a ban and documents `"876000h"` as the 100-year
+  ban example.
+- Auth API errors expose numeric `status` and string `code`. Invitation throttles
+  are recognized only for status `429` paired with
+  `over_email_send_rate_limit` or `over_request_rate_limit`; message text is
+  never inspected.
+- `auth.admin.signOut` requires the target user's JWT, so officer cancellation
+  instead uses `updateUserById` after the caller-session cancel RPC succeeds.
+
+Focused command: nine files, **69 tests passed**. Coverage includes 0/1/10/11
+batches, normalized duplicates, fail-closed domains, sequential order, every
+RPC outcome, CCO01–CCO09 safe mappings, first/middle rate limits, a user created
+before email failure and then deleted, finalization cleanup, cancel-before-ban,
+ban failure/retry after an RPC no-op, no duplicate sent retry, transition RPC
+routing, Admin-target denial, pending-only actions, step-down Home redirect and
+shell refresh, motion/reduced-motion contracts, semantic tokens, and 44 px phone
+targets.
+
+Full `npm test`: **49 files / 381 assertions passed**. The only failures are the
+same two pre-existing collection failures: `load-more-control.test.tsx` cannot
+resolve `@/components/ui/button`, and `backup.test.ts` cannot resolve
+`@/lib/list-paging`. Neither failing file was changed by Batch 8.
+
+`npm run lint` passed with zero warnings or errors. `npm run build` passed on
+Next.js 16.3.4 with 26 generated routes, including `/api/invite-officers` and
+`/api/officer-transitions`.
+
+## 8-UI/route manual browser checklist — pending owner
+
+1. Sign in as an active Admin and open `/users`. Confirm **Invite officers** is
+   beside the Member-only **Invite user** action; verify an inactive Admin,
+   Co-Admin, Member, and profile-less session cannot access the page/routes.
+2. Open Invite user and confirm it has no role picker and creates Members only.
+   Attempt an officer-role payload in DevTools and confirm rejection occurs
+   before an Auth user/email is created.
+3. Open Invite officers. Add/remove rows at the 1 and 10 boundaries; verify the
+   eleventh cannot be added, every label is keyboard-associated, Co-Admin alone
+   reveals Committee, and duplicate normalized emails are rejected without mail.
+4. Send one Admin and one Co-Admin. Confirm rows update individually in order,
+   remain visible until the dialog closes, and the roster/pending section refresh.
+5. Exercise a ten-person batch while watching Network. Confirm one Auth send is
+   in flight at a time. Simulate the exact 429/code rate limit on the first and a
+   middle entry; prior successes remain sent, later rows are unsent, and the UI
+   says “Email limit reached. Try again in about an hour.”
+6. Click Retry unsent. Confirm only unsent/cleanup-pending rows are submitted;
+   a sent or fresh-preparing invitation never receives another email. Confirm a
+   stale preparation is reconciled before a new attempt.
+7. Simulate Auth user creation followed by email failure. Confirm the cancel RPC
+   runs and the never-finalized Auth attempt is deleted. Simulate deletion
+   failure; confirm cleanup-pending remains visible with Retry and no raw error.
+8. Cancel a normal unaccepted officer invitation. Confirm the profile becomes
+   inactive first, the Auth account remains and is banned, and the roster row
+   offers only Cancel invitation while pending. Simulate ban failure and confirm
+   Retry re-calls cancel before re-applying the ban.
+9. Confirm a linked pending invitation appears as an **Invitation pending** badge
+   on its roster row and is omitted from the separate pending section. Confirm
+   invitations without a visible roster row appear once in that section. Search,
+   switch Active/Deactivated, and Load more; fetch-21/show-20 offsets and Load
+   more behavior must remain unchanged.
+10. Exercise appoint Member, move Member, return Co-Admin to Member, Co-Admin
+    deactivate/reactivate, and cancellation. Confirm destructive actions are in
+    menus and require confirmation; other Admin rows have no demote/deactivate
+    action. An unaccepted officer must direct the Admin to Cancel invitation.
+11. Simulate a Co-Admin ban/unban failure after `set_officer_active` succeeds.
+    Confirm the dialog keeps **Retry login cleanup** visible and retry re-applies
+    Auth even though the RPC now no-ops. On deactivation, verify the avatar object
+    removal result is checked.
+12. As the current Admin, step down with a confirmed second active Admin. Confirm
+    navigation immediately replaces `/users` with `/home` and the shell role is
+    refreshed. Confirm CCO09 keeps the last Admin on `/users` with a safe message.
+13. With unsent or cleanup-pending invite rows, close the dialog by X, Escape,
+    outside click, and Cancel paths. Each must warn before discarding results;
+    choosing to stay preserves every row and status.
+14. At phone width, verify every interactive target is at least 44 px, compact
+    rows do not overflow, menus and dialogs remain reachable, and focus returns
+    correctly. Repeat in light and dark themes.
+15. Enable reduced motion. Confirm conditional fields/results appear in their
+    final state without spatial motion while hover, focus-visible, pressed,
+    disabled, busy, validation, status, and retry feedback remain visible.

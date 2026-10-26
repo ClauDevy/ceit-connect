@@ -94,6 +94,15 @@ describe("POST /api/invite authorization", () => {
 });
 
 describe("POST /api/invite validation and writes", () => {
+  it.each(["Admin", "Co-Admin"])(
+    "rejects the %s role before constructing service role",
+    async (role) => {
+      const response = await POST(request({ ...validBody(), role }));
+      expect(response.status).toBe(400);
+      expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+    },
+  );
+
   it("rejects malformed JSON and wrong runtime field types before service role", async () => {
     const malformed = new Request("http://localhost/api/invite", {
       method: "POST",

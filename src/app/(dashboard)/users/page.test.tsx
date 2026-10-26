@@ -30,6 +30,9 @@ vi.mock("@/lib/list-paging", () => ({
 vi.mock("@/components/users/invite-user-dialog", () => ({
   InviteUserDialog: () => null,
 }));
+vi.mock("@/components/users/invite-officers-dialog", () => ({
+  InviteOfficersDialog: () => null,
+}));
 vi.mock("@/components/shared/page-header", () => ({
   PageHeader: () => null,
 }));
@@ -73,7 +76,10 @@ describe("Users page guard", () => {
   it("loads page data for an active Admin", async () => {
     const order = vi.fn().mockResolvedValue({ data: [], error: null });
     const select = vi.fn(() => ({ order }));
-    mocks.createClient.mockResolvedValue({ from: vi.fn(() => ({ select })) });
+    mocks.createClient.mockResolvedValue({
+      from: vi.fn(() => ({ select })),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+    });
     await expect(UsersPage()).resolves.toBeTruthy();
     expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith(["Admin"]);
     expect(mocks.createClient).toHaveBeenCalledTimes(1);
@@ -101,7 +107,10 @@ describe("Users page guard", () => {
         ),
       })),
     }));
-    mocks.createClient.mockResolvedValue({ from });
+    mocks.createClient.mockResolvedValue({
+      from,
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+    });
 
     const html = renderToStaticMarkup(await UsersPage());
 
