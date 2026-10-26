@@ -12,9 +12,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { InviteUserForm } from "@/components/users/invite-user-form"
-import type { Committee } from "@/lib/types"
+import type { Committee, Role } from "@/lib/types"
 
-export function InviteUserDialog({ committees }: { committees: Committee[] }) {
+export function InviteUserDialog({
+  committees,
+  viewerRole,
+  committeeName,
+}: {
+  committees: Committee[]
+  viewerRole: Extract<Role, "Admin" | "Co-Admin">
+  committeeName: string | null
+}) {
   const [open, setOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
 
@@ -49,6 +57,8 @@ export function InviteUserDialog({ committees }: { committees: Committee[] }) {
         <InviteUserForm
           key={formKey}
           committees={committees}
+          viewerRole={viewerRole}
+          committeeName={committeeName}
           onDone={closeDialog}
         />
       </DialogContent>

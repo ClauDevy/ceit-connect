@@ -32,7 +32,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/archives", label: "Event Archives", icon: Archive, roles: EVERYONE },
   { href: "/dashboard", label: "Executive Dashboard", icon: ChartColumn, roles: LEADERSHIP, pinnedOnMobile: true },
   { href: "/activity-log", label: "Activity Log", icon: History, roles: ["Admin"] },
-  { href: "/users", label: "User Management", icon: Users, roles: ["Admin"] },
+  { href: "/users", label: "User Management", icon: Users, roles: LEADERSHIP },
   { href: "/settings", label: "Settings", icon: Settings, roles: EVERYONE, pinnedOnMobile: true, passwordWarning: true },
 ];
 

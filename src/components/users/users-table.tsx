@@ -11,6 +11,7 @@ import { MembersCards } from "@/components/users/members-cards";
 import { MembersTable } from "@/components/users/members-table";
 import { type MemberActionName } from "@/components/users/member-actions";
 import { OfficerTransitionDialog } from "@/components/users/officer-transition-dialog";
+import { EditMemberNameDialog } from "@/components/users/edit-member-name-dialog";
 import { PendingOfficerInvites } from "@/components/users/pending-officer-invites";
 import { useToggleMemberActive } from "@/components/users/use-toggle-member-active";
 import { Card } from "@/components/ui/card";
@@ -20,7 +21,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
 import type { OffsetListPage } from "@/lib/list-paging";
 import { preventSearchFormSubmission } from "@/lib/search";
-import type { Committee, Member } from "@/lib/types";
+import type { Committee, Member, Role } from "@/lib/types";
 import type { PendingOfficerInvite } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -35,6 +36,7 @@ type UsersTableProps = {
   currentUserId: string;
   initialPendingInvites: PendingOfficerInvite[];
   initialPendingError: boolean;
+  viewerRole: Extract<Role, "Admin" | "Co-Admin">;
 };
 
 const TABS = [
@@ -48,21 +50,27 @@ export function UsersTable({
   currentUserId,
   initialPendingInvites,
   initialPendingError,
+  viewerRole,
 }: UsersTableProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(
+    () => (viewerRole === "Admin" ? createClient() : null),
+    [viewerRole],
+  );
   const [status, setStatus] = useState<UsersStatus>("active");
   const [tabMotionKey, setTabMotionKey] = useState(0);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [target, setTarget] = useState<Member | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Member | null>(null);
+  const [nameOverrides, setNameOverrides] = useState<Record<string, string>>({});
   const [cancelInviteTarget, setCancelInviteTarget] = useState<Member | null>(null);
   const [cancelInviteError, setCancelInviteError] = useState("");
   const [cancelInviteBusy, setCancelInviteBusy] = useState(false);
   const [transitionAction, setTransitionAction] = useState<Exclude<
     MemberActionName,
-    "toggle" | "cancel-invite"
+    "toggle" | "cancel-invite" | "edit-name"
   > | null>(null);
   const [transitionTarget, setTransitionTarget] = useState<Member | null>(null);
   const [transitionBusy, setTransitionBusy] = useState(false);
@@ -117,6 +125,7 @@ export function UsersTable({
   const refreshUsers = paging.refreshFromStart;
 
   const refreshPendingInvites = useCallback(async () => {
+    if (!supabase) return;
     setPendingInvitesLoading(true);
     const { data, error } = await supabase.rpc("list_pending_officer_invites");
     if (error) {
@@ -129,13 +138,26 @@ export function UsersTable({
   }, [supabase]);
 
   useEffect(() => {
+    if (viewerRole !== "Admin") return;
     const refresh = () => {
       void refreshPendingInvites();
       void refreshUsers();
     };
     window.addEventListener("officer-invites-changed", refresh);
     return () => window.removeEventListener("officer-invites-changed", refresh);
-  }, [refreshPendingInvites, refreshUsers]);
+  }, [refreshPendingInvites, refreshUsers, viewerRole]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (status === "active") void refreshUsers();
+      else {
+        setStatus("active");
+        setTabMotionKey((current) => current + 1);
+      }
+    };
+    window.addEventListener("member-users-changed", refresh);
+    return () => window.removeEventListener("member-users-changed", refresh);
+  }, [refreshUsers, status]);
   const toggle = useToggleMemberActive(paging.refreshFromStart);
   const reveal = useListReveal({
     initialItems: initialPage.items,
@@ -166,6 +188,8 @@ export function UsersTable({
     } else if (action === "cancel-invite") {
       setCancelInviteTarget(member);
       setCancelInviteError("");
+    } else if (action === "edit-name") {
+      setEditTarget(member);
     } else {
       setTransitionTarget(member);
       setTransitionAction(action);
@@ -270,8 +294,12 @@ export function UsersTable({
     setTabMotionKey((current) => current + 1);
   }
 
+  const displayedMembers = paging.items.map((member) => ({
+    ...member,
+    full_name: nameOverrides[member.id] ?? member.full_name,
+  }));
   const listProps = {
-    members: paging.items,
+    members: displayedMembers,
     committeeName,
     currentUserId,
     pendingId: toggle.pendingId,
@@ -282,6 +310,7 @@ export function UsersTable({
         .filter((invite) => invite.auth_user_id)
         .map((invite) => [invite.auth_user_id as string, invite]),
     ),
+    viewerRole,
   };
 
   const statusLabel = status === "active" ? "active" : "deactivated";
@@ -289,19 +318,21 @@ export function UsersTable({
 
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
-      <PendingOfficerInvites
-        invites={pendingInvites}
-        visibleAuthUserIds={new Set(paging.items.map((member) => member.id))}
-        loading={pendingInvitesLoading}
-        error={pendingInvitesError}
-        onRetry={() => void refreshPendingInvites()}
-        onCancelled={async () => {
-          await Promise.all([
-            refreshPendingInvites(),
-            paging.refreshFromStart(),
-          ]);
-        }}
-      />
+      {viewerRole === "Admin" ? (
+        <PendingOfficerInvites
+          invites={pendingInvites}
+          visibleAuthUserIds={new Set(paging.items.map((member) => member.id))}
+          loading={pendingInvitesLoading}
+          error={pendingInvitesError}
+          onRetry={() => void refreshPendingInvites()}
+          onCancelled={async () => {
+            await Promise.all([
+              refreshPendingInvites(),
+              paging.refreshFromStart(),
+            ]);
+          }}
+        />
+      ) : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <SegmentedControl
           aria-label="User status"
@@ -409,7 +440,9 @@ export function UsersTable({
         description={
           reactivating
             ? "They'll be able to sign in again."
-            : "This removes their access and deletes their profile photo. Their past work stays in the archives."
+            : viewerRole === "Admin"
+              ? "This removes their access and deletes their profile photo. Their past work stays in the archives."
+              : "This removes their app access. Their profile photo and past work stay unchanged."
         }
         confirmLabel={
           toggle.cleanupPendingId === target?.id
@@ -423,7 +456,7 @@ export function UsersTable({
         onConfirm={confirmToggle}
       />
 
-      <ConfirmDialog
+      {viewerRole === "Admin" ? <ConfirmDialog
         open={cancelInviteTarget !== null}
         onOpenChange={(open) => {
           if (!open && !cancelInviteBusy) {
@@ -438,9 +471,9 @@ export function UsersTable({
         loading={cancelInviteBusy}
         error={cancelInviteError}
         onConfirm={() => void cancelRosterInvitation()}
-      />
+      /> : null}
 
-      <OfficerTransitionDialog
+      {viewerRole === "Admin" ? <OfficerTransitionDialog
         key={`${transitionAction ?? "closed"}:${transitionTarget?.id ?? "none"}`}
         action={transitionAction}
         member={transitionTarget}
@@ -454,7 +487,24 @@ export function UsersTable({
           setTransitionError("");
         }}
         onSubmit={(details) => void submitTransition(details)}
-      />
+      /> : null}
+
+      {viewerRole === "Co-Admin" ? (
+        <EditMemberNameDialog
+          key={editTarget?.id ?? "closed"}
+          member={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={(fullName) => {
+            if (!editTarget) return;
+            setNameOverrides((current) => ({
+              ...current,
+              [editTarget.id]: fullName,
+            }));
+            setEditTarget(null);
+            void paging.refreshFromStart();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

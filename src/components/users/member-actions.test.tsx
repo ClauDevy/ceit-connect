@@ -41,6 +41,7 @@ describe("MemberAction", () => {
   it("puts an authorized active member's Deactivate action in a menu", () => {
     const html = renderToStaticMarkup(
       <MemberAction
+        viewerRole="Admin"
         member={activeMember}
         isSelf={false}
         pending={false}
@@ -56,6 +57,7 @@ describe("MemberAction", () => {
   it("keeps Reactivate direct and does not render a menu trigger", () => {
     const html = renderToStaticMarkup(
       <MemberAction
+        viewerRole="Admin"
         member={{ ...activeMember, is_active: false }}
         isSelf={false}
         pending={false}
@@ -71,6 +73,7 @@ describe("MemberAction", () => {
   it("gives the current Admin only the self step-down action", () => {
     const html = renderToStaticMarkup(
       <MemberAction
+        viewerRole="Admin"
         member={{ ...activeMember, role: "Admin", committee_id: null }}
         isSelf
         pending={false}
@@ -86,6 +89,7 @@ describe("MemberAction", () => {
   it("shows only Cancel invitation for an unaccepted officer", () => {
     const html = renderToStaticMarkup(
       <MemberAction
+        viewerRole="Admin"
         member={{ ...activeMember, role: "Co-Admin" }}
         isSelf={false}
         pending={false}
@@ -106,5 +110,37 @@ describe("MemberAction", () => {
     expect(html).toContain("Cancel invitation");
     expect(html).not.toContain("Deactivate");
     expect(html).not.toContain("Return to Member");
+  });
+
+  it("gives a Co-Admin only edit and deactivate for an active Member", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Co-Admin"
+        member={activeMember}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(html).toContain("Edit name");
+    expect(html).toContain("Deactivate");
+    expect(html).not.toContain("Appoint as officer");
+    expect(html).not.toContain("Move committee");
+    expect(html).not.toContain("Cancel invitation");
+  });
+
+  it("gives a Co-Admin only edit and reactivate for a deactivated Member", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Co-Admin"
+        member={{ ...activeMember, is_active: false }}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(html).toContain("Edit name");
+    expect(html).toContain("Reactivate");
+    expect(html).not.toContain("Deactivate");
   });
 });

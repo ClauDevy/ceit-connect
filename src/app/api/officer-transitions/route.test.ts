@@ -28,9 +28,10 @@ beforeEach(() => {
 });
 
 describe("POST /api/officer-transitions", () => {
-  it("denies unauthorized callers before constructing the caller client", async () => {
+  it("denies a direct Co-Admin request before constructing the caller client", async () => {
     mocks.getActiveProfileForRoles.mockResolvedValue(null);
     expect((await POST(request({ action: "step-down", committeeId }))).status).toBe(403);
+    expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith(["Admin"]);
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
