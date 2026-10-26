@@ -27,6 +27,12 @@ function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status });
 }
 
+function isAuthEmailExists(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const authError = error as { code?: unknown; status?: unknown };
+  return authError.code === "email_exists" && authError.status === 422;
+}
+
 async function hasLiveOfficerInvite(
   adminClient: AdminClient,
   authUserId: string,
@@ -211,6 +217,16 @@ export async function POST(request: Request) {
   }
 
   if (inviteError || !invitedUser) {
+    if (isAuthEmailRateLimit(inviteError)) {
+      return json(
+        { error: "Email limit reached. Try again in about an hour." },
+        429,
+      );
+    }
+    if (isAuthEmailExists(inviteError)) {
+      const collision = safeMemberManagementError({ code: "CCM07" });
+      return json({ error: collision.message }, collision.status);
+    }
     if (invitedUser) {
       const cleaned = await cleanUpUnfinalizedAuthUser(
         adminClient,
@@ -218,12 +234,6 @@ export async function POST(request: Request) {
         normalizedEmail,
       );
       if (!cleaned) return json({ error: MEMBER_MANAGEMENT_CLEANUP_MESSAGE }, 502);
-    }
-    if (isAuthEmailRateLimit(inviteError)) {
-      return json(
-        { error: "Email limit reached. Try again in about an hour." },
-        429,
-      );
     }
     return json({ error: "The invitation email could not be sent. Try again." }, 500);
   }

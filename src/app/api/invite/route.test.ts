@@ -224,6 +224,36 @@ describe("POST /api/invite finalization and cleanup", () => {
     });
   });
 
+  it("maps an already-registered Auth email to the safe CCM07 conflict", async () => {
+    const caller = callerClient();
+    const service = adminClient({
+      inviteError: { status: 422, code: "email_exists", message: "private" },
+    });
+    const response = await POST(request());
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "An account or officer invitation already uses this email.",
+    });
+    expect(service.getUserById).not.toHaveBeenCalled();
+    expect(service.deleteUser).not.toHaveBeenCalled();
+    expect(caller.rpc).not.toHaveBeenCalled();
+  });
+
+  it("keeps unrelated Auth invite failures generic", async () => {
+    const caller = callerClient();
+    const service = adminClient({
+      inviteError: { status: 503, code: "unexpected_failure", message: "private" },
+    });
+    const response = await POST(request());
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "The invitation email could not be sent. Try again.",
+    });
+    expect(service.getUserById).not.toHaveBeenCalled();
+    expect(service.deleteUser).not.toHaveBeenCalled();
+    expect(caller.rpc).not.toHaveBeenCalled();
+  });
+
   it("rejects an email owned by a live officer invite before sending Auth email", async () => {
     const service = adminClient({ precheckOfficerByEmail: true });
     const response = await POST(request());

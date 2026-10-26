@@ -16,7 +16,7 @@ Task delegation and tracking system for a 12-committee university student counci
 
 ## Status
 
-Phases 0–4 are complete and live on Dev and Prod: scaffold, database + RLS, auth, the event engine, and the task engine. **Phase 4B is planned; no Phase 4B code is built.**
+Phases 0–4 are complete and live on Dev and Prod: scaffold, database + RLS, auth, the event engine, and the task engine. **Phase 4B is in progress; current batch status lives in `docs/PROGRESS.md` and `docs/PHASE-4B-PLAN.md`. Consult them first.**
 Read `docs/PROGRESS.md` first for the exact current state, then `docs/PHASE-4B-PLAN.md` for the approved work and run order.
 
 ## Stack
