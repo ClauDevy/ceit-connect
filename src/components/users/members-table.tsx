@@ -1,5 +1,5 @@
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { MemberAction } from "@/components/users/member-actions";
+import { MemberAction, type MemberActionName } from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Member } from "@/lib/types";
+import type { Member, PendingOfficerInvite } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type MembersListProps = {
@@ -18,7 +18,8 @@ type MembersListProps = {
   committeeName: (id: string | null) => string;
   currentUserId: string;
   pendingId: string | null;
-  onToggle: (member: Member) => void;
+  onAction: (action: MemberActionName, member: Member) => void;
+  pendingInviteByAuthUserId: ReadonlyMap<string, PendingOfficerInvite>;
   getRevealProps?: (id: string) => {
     "data-motion-reveal-id": string;
     ref: (node: HTMLElement | null) => void;
@@ -30,7 +31,8 @@ export function MembersTable({
   committeeName,
   currentUserId,
   pendingId,
-  onToggle,
+  onAction,
+  pendingInviteByAuthUserId,
   getRevealProps,
 }: MembersListProps) {
   return (
@@ -81,14 +83,19 @@ export function MembersTable({
               <Badge variant="outline">{member.role}</Badge>
             </TableCell>
             <TableCell className="py-3">
-              <MemberStatusBadge active={member.is_active} />
+              {pendingInviteByAuthUserId.has(member.id) ? (
+                <Badge variant="neutral">Invitation pending</Badge>
+              ) : (
+                <MemberStatusBadge active={member.is_active} />
+              )}
             </TableCell>
             <TableCell className="py-3 pr-4 text-right">
               <MemberAction
                 member={member}
                 isSelf={member.id === currentUserId}
                 pending={pendingId !== null}
-                onToggle={onToggle}
+                pendingInvite={pendingInviteByAuthUserId.get(member.id)}
+                onAction={onAction}
               />
             </TableCell>
           </TableRow>

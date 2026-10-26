@@ -1,6 +1,6 @@
 # Step 8: Officer invitations and transitions
 
-**Status:** Planned | **Branch:** `feature/officer-invites` | **Reasoning level:** High (security-critical migrations and tests)
+**Status:** 8-DB applied and verified on Dev; 8-UI/route implemented locally, browser verification pending | **Branch:** `feature/officer-invites` | **Reasoning level:** High (security-critical migrations and tests)
 
 ## Goal
 
@@ -36,9 +36,9 @@ Year-end handover is either: return the old Co-Admin head to Member and appoint 
 
 ## Current state and mandatory preflight
 
-- The current invite route accepts all three roles and uses service role; Batch 0 first adds its active-Admin guard.
-- Admin profiles are documented with `committee_id = null`; no officer invitation/reservation model or locked transition RPC exists yet.
-- Direct Admin `users` updates could bypass officer invariants and must be closed when the narrow RPCs land.
+- The ordinary invite route is Member-only; `/api/invite-officers` owns officer invitation, retry, cancellation, and Auth cleanup.
+- Admin profiles keep `committee_id = null`; the officer invitation/reservation model and locked transitions are applied on Dev.
+- Direct officer writes are closed by the applied users guard and narrow RPC boundary.
 - The `President` committee lookup row remains valid data and is not removed or renamed.
 
 Before designing the transition migration, the owner runs this read-only query separately on Dev and Prod and records only the result rows, never secrets:
@@ -104,7 +104,7 @@ The server route uses service role only for Auth invitation/cancellation work th
 - Validate the whole request and each normalized email, role, committee, existing-account result, caller authority, reservation eligibility, and caps state before sending that person's email. With caps on, create a `preparing` reservation under the shared lock before sending; finalization atomically replaces it with the active profile. Reject a batch larger than ten without sending any email.
 - A `preparing` reservation is fresh for 15 minutes. On explicit retry, an older preparation becomes `cleanup_pending`, releases its reservation exactly once, and must be reconciled against Auth before another send. This prevents a route crash from holding a seat forever.
 - Send invitations sequentially, never in an uncontrolled parallel burst and never with an automatic retry loop. Record a per-person result before moving to the next address.
-- A safe retry resubmits only explicitly failed or cleanup-pending people after re-reading Auth, profile, pending-invite, reservation, and cap state. It must not send a second email for a person whose invitation already succeeded or create a duplicate reservation.
+- A safe retry resubmits only explicitly unsent or cleanup-pending people after re-reading authoritative invitation, profile, reservation, and cap state. It must not send a second email for a person whose invitation already succeeded or create a duplicate reservation.
 - If Auth invitation succeeds but the database reservation/profile finalization fails, report a partial failure and attempt only the approved cleanup for the newly created, still-unaccepted invitation. Never delete or rewrite an established account. If cleanup fails, retain an explicit cleanup-pending result for manual/retry handling.
 - If the database reservation succeeds but email/Auth fails, release only that attempt's reservation under the shared officer lock, report failure, and leave capacity reusable. Cancellation and cleanup are idempotent and cannot release another invitation's seat.
 - Stop or defer further sends when the provider reports a rate limit. Preserve completed per-person outcomes, leave unsent entries clearly unsent/retryable, and do not create a retry storm or claim all-or-nothing success.
@@ -155,8 +155,8 @@ No current code path may depend on selecting an arbitrary first Co-Admin row.
 - Re-run the users-policy assertions in `docs/PHASE-4-STEP-2-TESTS.md`, `docs/PHASE-4-STEP-3-TESTS.md`, and `docs/PHASE-4-STEP-4-TESTS.md` after replacing raw role/committee/active-state changes with officer RPCs.
 - Re-run inactive and profile-less denials from `docs/PHASE-4-STEP-1A-TESTS.md` and the relevant Step 10 gate sessions if a shared authorization helper changes.
 - Re-run/update Batch 0 tests for the Users page, current `/api/invite` route, and active-Admin invitation guard. Re-run the Phase 4 catalog tests, preserve their exact results as historical, and extend the Phase 4B catalog/Step 10 allowlists for every new table, function, trigger, policy, and grant.
-- Audit every current service-role callsite: `src/app/api/invite/route.ts`, `toggle-user-active/route.ts`, `update-avatar/route.ts`, `set-password/route.ts`, `complete-reset/route.ts`, and `event-banner/route.ts`. The owner fixed the new officer path as `src/app/api/invite-officers/route.ts`; the later four-action officer route must use caller-session RPCs only and must not join the service-role inventory. Account for the Step 7 callback service-role removal and the later Batch 10 removal route.
-- Lock the four non-email actions to `src/app/api/officer-transitions/route.ts`. It will use only the caller-session Supabase client to invoke `appoint_member_as_officer`, `return_coadmin_to_member`, `move_member_to_committee`, or `step_down_as_admin`; it must not construct a service-role client. Cancellation stays with the invitation route, and officer activation stays in the existing toggle route.
+- Final service-role inventory: `src/app/api/invite/route.ts` uses Auth invitation plus the existing Member profile path; `invite-officers/route.ts` uses `inviteUserByEmail`, `updateUserById(..., { ban_duration: "876000h" })`, and `deleteUser` only after caller-session authorization/RPC state permits the exact Auth action; `toggle-user-active/route.ts` retains its Member profile/Storage path and uses `updateUserById` with `"876000h"`/`"none"` plus checked Storage removal for Co-Admins; `update-avatar/route.ts`, `set-password/route.ts`, `complete-reset/route.ts`, and `event-banner/route.ts` remain existing callsites. The Step 7 callback has no service role. Batch 10 owns its later removal route.
+- `src/app/api/officer-transitions/route.ts` uses only the caller-session Supabase client to invoke `appoint_member_as_officer`, `return_coadmin_to_member`, `move_member_to_committee`, or `step_down_as_admin`. Service-role inventory: **none**. Cancellation stays with the invitation route, and officer activation stays in the existing toggle route.
 - Keep the existing Users fetch-21/show-20 contract unchanged. Fetch `list_pending_officer_invites()` separately for active Admins and render its invite-keyed results as a distinct pending section; do not insert pending rows into the 21-row users response, its offset, its `hasMore` calculation, or its stable-ID paging merge.
 - The Step 8 callsite audit must list the final new officer invite route by its actual pathname before implementation is accepted; if it differs from the reconstructed path above, update this inventory and its route tests rather than adding a second route.
 

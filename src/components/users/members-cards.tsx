@@ -1,8 +1,8 @@
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { MemberAction } from "@/components/users/member-actions";
+import { MemberAction, type MemberActionName } from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
 import { Badge } from "@/components/ui/badge";
-import type { Member } from "@/lib/types";
+import type { Member, PendingOfficerInvite } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type MembersListProps = {
@@ -10,7 +10,8 @@ type MembersListProps = {
   committeeName: (id: string | null) => string;
   currentUserId: string;
   pendingId: string | null;
-  onToggle: (member: Member) => void;
+  onAction: (action: MemberActionName, member: Member) => void;
+  pendingInviteByAuthUserId: ReadonlyMap<string, PendingOfficerInvite>;
   getRevealProps?: (id: string) => {
     "data-motion-reveal-id": string;
     ref: (node: HTMLElement | null) => void;
@@ -22,7 +23,8 @@ export function MembersCards({
   committeeName,
   currentUserId,
   pendingId,
-  onToggle,
+  onAction,
+  pendingInviteByAuthUserId,
   getRevealProps,
 }: MembersListProps) {
   return (
@@ -56,7 +58,8 @@ export function MembersCards({
                 member={member}
                 isSelf={member.id === currentUserId}
                 pending={pendingId !== null}
-                onToggle={onToggle}
+                pendingInvite={pendingInviteByAuthUserId.get(member.id)}
+                onAction={onAction}
               />
             </div>
           </div>
@@ -66,7 +69,11 @@ export function MembersCards({
             <Badge variant="neutral" className="max-w-full truncate">
               {committeeName(member.committee_id)}
             </Badge>
-            <MemberStatusBadge active={member.is_active} />
+            {pendingInviteByAuthUserId.has(member.id) ? (
+              <Badge variant="neutral">Invitation pending</Badge>
+            ) : (
+              <MemberStatusBadge active={member.is_active} />
+            )}
           </div>
         </li>
       ))}
