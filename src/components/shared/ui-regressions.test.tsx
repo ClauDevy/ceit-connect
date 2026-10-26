@@ -40,7 +40,10 @@ vi.mock("@/components/ui/skeleton", () => ({
   ),
 }));
 
-vi.mock("@/components/shared/page-skeleton", () => ({
+vi.mock("@/components/shared/page-skeleton", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/components/shared/page-skeleton")
+  >()),
   PageHeaderSkeleton: ({ withAction }: { withAction?: boolean }) => (
     <div>
       <div className="h-8 w-48" />
