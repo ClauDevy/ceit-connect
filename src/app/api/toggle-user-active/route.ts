@@ -50,6 +50,93 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: target, error: targetError } = await supabase
+    .from("users")
+    .select("role, is_active")
+    .eq("id", userId)
+    .single();
+
+  if (targetError || !target) {
+    return NextResponse.json(
+      { error: "The selected user could not be found" },
+      { status: 404 },
+    );
+  }
+  if (target.role === "Admin") {
+    return NextResponse.json(
+      { error: "Admin accounts cannot be activated or deactivated here" },
+      { status: 403 },
+    );
+  }
+
+  if (target.role === "Co-Admin") {
+    const { error: officerError } = await supabase.rpc("set_officer_active", {
+      p_user_id: userId,
+      p_is_active: isActive,
+    });
+    if (officerError) {
+      const message =
+        officerError.code === "CCO03" && !isActive
+          ? "Use Cancel invitation for an unaccepted officer invite."
+          : officerError.code === "CCO04"
+            ? "That officer seat is currently full."
+            : "The officer status could not be changed.";
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
+
+    // This must run even when the idempotent RPC returned without changing a
+    // row: an earlier request may have committed Postgres but failed Auth.
+    let adminClient: Awaited<ReturnType<typeof createServiceRoleClient>>;
+    let authError: unknown;
+    try {
+      adminClient = await createServiceRoleClient();
+      const authResult = await adminClient.auth.admin.updateUserById(userId, {
+        ban_duration: isActive ? "none" : "876000h",
+      });
+      authError = authResult.error;
+    } catch {
+      return NextResponse.json(
+        {
+          error: "Profile status changed, but login cleanup still needs attention.",
+          cleanupPending: true,
+        },
+        { status: 502 },
+      );
+    }
+
+    let storageWarning = false;
+    if (!isActive) {
+      try {
+        const { error: removeError } = await adminClient.storage
+          .from("avatars")
+          .remove([`${userId}/avatar.webp`]);
+        storageWarning = Boolean(removeError);
+      } catch {
+        storageWarning = true;
+      }
+    }
+
+    if (authError) {
+      return NextResponse.json(
+        {
+          error: "Profile status changed, but login cleanup still needs attention.",
+          cleanupPending: true,
+          ...(storageWarning
+            ? { warning: "The avatar file could not be removed." }
+            : {}),
+        },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      ...(storageWarning
+        ? { warning: "User status changed, but the avatar file could not be removed." }
+        : {}),
+    });
+  }
+
   const adminClient = await createServiceRoleClient();
 
   // Update the profile first — if this fails, nothing destructive has

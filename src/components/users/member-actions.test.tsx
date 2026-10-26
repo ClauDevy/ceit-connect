@@ -44,7 +44,7 @@ describe("MemberAction", () => {
         member={activeMember}
         isSelf={false}
         pending={false}
-        onToggle={vi.fn()}
+        onAction={vi.fn()}
       />,
     );
 
@@ -59,7 +59,7 @@ describe("MemberAction", () => {
         member={{ ...activeMember, is_active: false }}
         isSelf={false}
         pending={false}
-        onToggle={vi.fn()}
+        onAction={vi.fn()}
       />,
     );
 
@@ -68,19 +68,43 @@ describe("MemberAction", () => {
     expect(html).not.toContain("Deactivate");
   });
 
-  it('renders only "You" for the current user with no action menu', () => {
+  it("gives the current Admin only the self step-down action", () => {
     const html = renderToStaticMarkup(
       <MemberAction
-        member={activeMember}
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
         isSelf
         pending={false}
-        onToggle={vi.fn()}
+        onAction={vi.fn()}
       />,
     );
 
-    expect(html).toContain("You");
-    expect(html).not.toContain("More actions");
+    expect(html).toContain("Step down to Member");
     expect(html).not.toContain("Deactivate");
     expect(html).not.toContain("Reactivate");
+  });
+
+  it("shows only Cancel invitation for an unaccepted officer", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        member={{ ...activeMember, role: "Co-Admin" }}
+        isSelf={false}
+        pending={false}
+        pendingInvite={{
+          id: "invite-1",
+          auth_user_id: activeMember.id,
+          email: activeMember.email,
+          full_name: activeMember.full_name,
+          officer_role: "Co-Admin",
+          committee_id: activeMember.committee_id,
+          status: "sent",
+          created_at: "2026-10-26T00:00:00Z",
+          cleanup_pending: false,
+        }}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(html).toContain("Cancel invitation");
+    expect(html).not.toContain("Deactivate");
+    expect(html).not.toContain("Return to Member");
   });
 });

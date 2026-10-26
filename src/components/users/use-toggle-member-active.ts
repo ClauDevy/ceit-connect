@@ -8,6 +8,7 @@ import type { Member } from "@/lib/types"
 export function useToggleMemberActive(onChanged?: () => Promise<void>) {
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState("")
+  const [cleanupPendingId, setCleanupPendingId] = useState<string | null>(null)
 
   async function setActive(member: Member, isActive: boolean) {
     setPendingId(member.id)
@@ -23,9 +24,11 @@ export function useToggleMemberActive(onChanged?: () => Promise<void>) {
 
       if (!res.ok) {
         setError(data.error ?? "Something went wrong")
+        setCleanupPendingId(data.cleanupPending === true ? member.id : null)
         setPendingId(null)
         return false
       }
+      setCleanupPendingId(null)
     } catch {
       setError("Network error, please try again")
       setPendingId(null)
@@ -45,5 +48,5 @@ export function useToggleMemberActive(onChanged?: () => Promise<void>) {
     return true
   }
 
-  return { pendingId, error, setActive }
+  return { pendingId, error, cleanupPendingId, setActive }
 }

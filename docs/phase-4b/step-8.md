@@ -1,6 +1,6 @@
 # Step 8: Officer invitations and transitions
 
-**Status:** Planned | **Branch:** `feature/officer-invites` | **Reasoning level:** High (security-critical migrations and tests)
+**Status:** 8-DB applied and verified on Dev; 8-UI/route implemented locally, browser verification pending | **Branch:** `feature/officer-invites` | **Reasoning level:** High (security-critical migrations and tests)
 
 ## Goal
 
@@ -17,7 +17,7 @@ Only active Admins may initiate operations 1–5 through the officer RPCs. Opera
 3. **Return Co-Admin to Member** — return a Co-Admin to Member in a selected committee; there is no generic role-change operation.
 4. **Move Member to another committee** — move an existing Member only; no officer is moved through this operation.
 5. **Cancel unaccepted officer invite** — cancel a pending Admin or Co-Admin invitation that has not been accepted.
-6. **Admin step-down** — the active Admin steps down on their own initiative, becomes a Member, and chooses a committee. Another active Admin must already exist.
+6. **Admin step-down** — the active Admin steps down on their own initiative, becomes a Member, and chooses a committee. Another active Admin with a matching confirmed Auth account must already exist; an unaccepted Admin invite does not protect continuity.
 
 There are no self-service or Co-Admin officer changes. No Admin may demote, deactivate, remove, delete, or anonymize another Admin. The last active Admin can never step down, be deactivated, or be removed.
 
@@ -29,16 +29,16 @@ Year-end handover is either: return the old Co-Admin head to Member and appoint 
 - RLS is enabled. `anon` and `authenticated` receive no table grants and no policy that exposes the row. The value is read only inside the officer functions.
 - The exact switch is `public.app_settings.enforce_officer_role_caps`. It is `false` in Dev and Prod during Phase 4B testing.
 - When false, any number of Admins and Co-Admins may exist for testing. All authorization, transition validation, and never-zero protection still apply.
-- When true, there may be at most two active Admins and at most one active Co-Admin per committee, counting unaccepted officer invitations that reserve those seats.
+- When true, there may be at most two Admin seats and at most one Co-Admin seat per committee. A seat is either an active officer profile or a fresh `preparing` officer invitation. Finalization converts the preparation into the active profile in one transaction, so it is counted exactly once.
 - Invite, appointment, activation, return-to-Member, invite cancellation, and step-down paths all take the same transaction-level advisory lock. Upper-cap checks apply only to operations that add or activate an officer seat; reducing operations remain available.
 - Enabling the switch never invalidates, deactivates, or rewrites existing accounts that already exceed a cap. It blocks only a new invite, appointment, or activation that would add to an already-full seat.
 - Batch 14 enables the switch through a new tracked migration before final release, after test accounts are reconciled.
 
 ## Current state and mandatory preflight
 
-- The current invite route accepts all three roles and uses service role; Batch 0 first adds its active-Admin guard.
-- Admin profiles are documented with `committee_id = null`; no officer invitation/reservation model or locked transition RPC exists yet.
-- Direct Admin `users` updates could bypass officer invariants and must be closed when the narrow RPCs land.
+- The ordinary invite route is Member-only; `/api/invite-officers` owns officer invitation, retry, cancellation, and Auth cleanup.
+- Admin profiles keep `committee_id = null`; the officer invitation/reservation model and locked transitions are applied on Dev.
+- Direct officer writes are closed by the applied users guard and narrow RPC boundary.
 - The `President` committee lookup row remains valid data and is not removed or renamed.
 
 Before designing the transition migration, the owner runs this read-only query separately on Dev and Prod and records only the result rows, never secrets:
@@ -51,7 +51,7 @@ where role = 'Admin'
 order by id;
 ```
 
-Expected result: zero rows. If either environment returns a row, stop before writing the migration. The owner must decide whether that account's `committee_id` is corrected to null through a tracked migration or whether the role model is reconsidered. Do not silently normalize live data and do not make the officer RPCs guess.
+Expected result: zero rows. The owner confirmed zero rows on Dev and zero rows on Prod before migration work. If a later environment returns a row, stop before applying the migration; do not silently normalize live data or make the officer RPCs guess.
 
 ## Scope: in / out
 
@@ -62,6 +62,26 @@ Expected result: zero rows. If either environment returns a row, stop before wri
 ## Database impact
 
 Add a new tracked migration containing `public.app_settings`, a deny-by-default pending officer-invite/reservation boundary, narrow officer RPCs, and policy/trigger changes that make those RPCs the only officer-transition path. Do not edit applied migrations.
+
+### Replaced and added write boundaries
+
+| Boundary | Before Batch 8 | Batch 8 definition | Behaviour difference |
+|---|---|---|---|
+| `admin_full_access_users` | `FOR ALL TO authenticated USING (my_role() = 'Admin')` | Dropped and replaced by `admin_view_all_users FOR SELECT TO authenticated USING (public.my_role() = 'Admin')` | Active Admin roster reads remain; the Admin RLS path no longer authorizes raw insert, update, or delete. `INSERT`, `UPDATE`, and `DELETE` are also revoked from client roles. |
+| `users_guard_officer_writes` | No users-table guard trigger existed. Service-role writes could bypass officer invariants. | New `BEFORE INSERT OR UPDATE OR DELETE` trigger calling fixed-empty-path `SECURITY INVOKER` `guard_officer_user_writes()` | Officer insert/role/committee/active-state changes require both `current_user = 'postgres'` and the exact transaction-local writer token set immediately around the narrow definer write. A client setting the same GUC still fails. Every profile delete is rejected, including an Auth FK cascade over an established profile. Member-only insert and active-state paths remain available. |
+
+Exact old/new review definitions:
+
+| Boundary | Old definition | New definition |
+|---|---|---|
+| Admin users policy | `CREATE POLICY "admin_full_access_users" ON users FOR ALL TO authenticated USING (my_role() = 'Admin');` | `DROP POLICY "admin_full_access_users" ON public.users;` then `CREATE POLICY "admin_view_all_users" ON public.users FOR SELECT TO authenticated USING (public.my_role() = 'Admin');`, followed by revoking client `INSERT`, `UPDATE`, and `DELETE`. |
+| Users write guard | None. | `CREATE TRIGGER users_guard_officer_writes BEFORE INSERT OR UPDATE OR DELETE ON public.users FOR EACH ROW EXECUTE FUNCTION public.guard_officer_user_writes();`. The complete function body is in the unapplied Batch 8 migration; it is `SECURITY INVOKER`, rejects every delete, and admits protected columns only when both postgres execution identity and the exact narrow-writer token match. |
+
+The trigger is deliberately invoker-security. A definer trigger would see its own
+owner as `current_user` and could not distinguish the narrow definer writer from
+a raw caller. The narrow officer functions are definer-security, so their
+guarded statements execute as `postgres`; authenticated and service-role raw
+writes do not.
 
 Every officer function must:
 
@@ -79,11 +99,12 @@ The server route uses service role only for Auth invitation/cancellation work th
 
 > **Rebuilt, please verify:** this operational sequence was reconstructed from `docs/GOTCHAS.md`, the current invite route, and the approved owner decisions because the exact earlier prose was not available in Git.
 
-- Custom SMTP is limited to about 30 emails per hour. Resend is limited to 100 emails per day. The 100/day Resend value is **rebuilt, please verify** because `docs/GOTCHAS.md` names Resend but currently records only the custom-SMTP 30/hour number.
+- Custom SMTP is limited to about 30 emails per hour. Resend is not currently integrated; its then-current provider/account limits must be verified if it is adopted rather than recording an unverified daily figure now.
 - Officer invitation batches remain 1–10 people and must stay below the approximately 30/hour custom-SMTP ceiling after accounting for other authentication email traffic. Do not fill unused batch slots merely because the UI permits ten.
-- Validate the whole request and each normalized email, role, committee, existing-account result, caller authority, reservation eligibility, and caps state before sending that person's email. Reject a batch larger than ten without sending any email.
+- Validate the whole request and each normalized email, role, committee, existing-account result, caller authority, reservation eligibility, and caps state before sending that person's email. With caps on, create a `preparing` reservation under the shared lock before sending; finalization atomically replaces it with the active profile. Reject a batch larger than ten without sending any email.
+- A `preparing` reservation is fresh for 15 minutes. On explicit retry, an older preparation becomes `cleanup_pending`, releases its reservation exactly once, and must be reconciled against Auth before another send. This prevents a route crash from holding a seat forever.
 - Send invitations sequentially, never in an uncontrolled parallel burst and never with an automatic retry loop. Record a per-person result before moving to the next address.
-- A safe retry resubmits only explicitly failed or cleanup-pending people after re-reading Auth, profile, pending-invite, reservation, and cap state. It must not send a second email for a person whose invitation already succeeded or create a duplicate reservation.
+- A safe retry resubmits only explicitly unsent or cleanup-pending people after re-reading authoritative invitation, profile, reservation, and cap state. It must not send a second email for a person whose invitation already succeeded or create a duplicate reservation.
 - If Auth invitation succeeds but the database reservation/profile finalization fails, report a partial failure and attempt only the approved cleanup for the newly created, still-unaccepted invitation. Never delete or rewrite an established account. If cleanup fails, retain an explicit cleanup-pending result for manual/retry handling.
 - If the database reservation succeeds but email/Auth fails, release only that attempt's reservation under the shared officer lock, report failure, and leave capacity reusable. Cancellation and cleanup are idempotent and cannot release another invitation's seat.
 - Stop or defer further sends when the provider reports a rate limit. Preserve completed per-person outcomes, leave unsent entries clearly unsent/retryable, and do not create a retry storm or claim all-or-nothing success.
@@ -109,8 +130,9 @@ No current code path may depend on selecting an arbitrary first Co-Admin row.
 - Only active Admins perform operations 1–5. Only the affected active Admin initiates operation 6.
 - A Co-Admin cannot appoint, return, move, invite, cancel, or change any officer.
 - An Admin cannot change another Admin's role or active state and cannot remove/anonymize another Admin.
-- The last active Admin protection is always on, regardless of the cap setting.
-- Pending invites reserve seats only when caps are on and are released exactly once by cancellation, expiry handling if later approved, or successful activation.
+- The last active confirmed Admin protection is always on, regardless of the cap setting. An active Admin profile whose matching Auth email is still unconfirmed is not a valid successor for step-down.
+- Fresh `preparing` invites reserve seats only when caps are on. Finalization converts the reservation into the active profile atomically; cancellation, failed-attempt cleanup, or the 15-minute stale-preparation retry path releases it exactly once.
+- A cancelled invitation keeps its Auth account and profile. Re-inviting the same email is rejected rather than creating a second account; Batch 8 does not add a separate account-recovery/re-invitation flow.
 - An account over the future limit remains usable after caps turn on; only additive invites, appointments, and activations are rejected.
 - Runtime-validate every batch item and reject more than 10 before sending email. Check every Supabase result.
 - `public.app_settings` has exactly the seeded fixed-key row: alternate keys and duplicate singleton rows are rejected, and officer functions fail closed if the row is missing or malformed.
@@ -122,23 +144,25 @@ No current code path may depend on selecting an arbitrary first Co-Admin row.
 - A disabled upper cap must not accidentally disable last-Admin protection or Admin-to-Admin prohibitions.
 - Enabling caps must not make existing over-limit accounts impossible to return to Member, deactivate where authorized, cancel, or step down.
 - Service-role routes bypass RLS and therefore re-verify the caller before constructing or using the service-role client.
-- Creating Auth invitations before durable reservation/finalization can consume SMTP/Resend budget and leave a partial account. Validate first, send sequentially, clean up only a newly created unaccepted attempt, and expose the exact partial result.
+- Sending occurs only after a durable `preparing` reservation is created. Auth and Postgres still cannot share a transaction, so a route crash can leave a stale preparation or newly created unaccepted Auth attempt; explicit retry reconciles it, releases the reservation once, and exposes the exact partial result.
 - An automatic retry can duplicate mail, reservations, or accounts. Retry is explicit, idempotent, per person, and based on authoritative Auth/database state.
 - A singleton table without a fixed checked primary key can accumulate ambiguous settings rows. Pin the key, seed one row transactionally, deny client writes, and require every reader to reject a missing or non-unique result.
 
 ## Earlier test docs and service-role callsites to re-run or audit
 
-> **Rebuilt, please verify:** this restored inventory was reconstructed from the captured earlier-test list and current tracked callsites; the future officer-route pathname remains provisional as marked below.
+> **Rebuilt, now verified against the repository:** this restored inventory was reconstructed from the captured earlier-test list and current tracked callsites. The owner locked the invite route, and this review locks the caller-session transition route below.
 
 - Re-run the users-policy assertions in `docs/PHASE-4-STEP-2-TESTS.md`, `docs/PHASE-4-STEP-3-TESTS.md`, and `docs/PHASE-4-STEP-4-TESTS.md` after replacing raw role/committee/active-state changes with officer RPCs.
 - Re-run inactive and profile-less denials from `docs/PHASE-4-STEP-1A-TESTS.md` and the relevant Step 10 gate sessions if a shared authorization helper changes.
 - Re-run/update Batch 0 tests for the Users page, current `/api/invite` route, and active-Admin invitation guard. Re-run the Phase 4 catalog tests, preserve their exact results as historical, and extend the Phase 4B catalog/Step 10 allowlists for every new table, function, trigger, policy, and grant.
-- Audit every current service-role callsite: `src/app/api/invite/route.ts`, `toggle-user-active/route.ts`, `update-avatar/route.ts`, `set-password/route.ts`, `complete-reset/route.ts`, and `event-banner/route.ts`; the planned `src/app/api/invite-officers/route.ts` is **rebuilt, please verify** because its exact future pathname was not previously pinned; plus the later Batch 10 removal route. Confirm each constructs the service-role client only after its own caller/session/role/`is_active` validation. Account for the Step 7 callback path removal when that batch lands.
+- Final service-role inventory: `src/app/api/invite/route.ts` uses Auth invitation plus the existing Member profile path; `invite-officers/route.ts` uses `inviteUserByEmail`, `updateUserById(..., { ban_duration: "876000h" })`, and `deleteUser` only after caller-session authorization/RPC state permits the exact Auth action; `toggle-user-active/route.ts` retains its Member profile/Storage path and uses `updateUserById` with `"876000h"`/`"none"` plus checked Storage removal for Co-Admins; `update-avatar/route.ts`, `set-password/route.ts`, `complete-reset/route.ts`, and `event-banner/route.ts` remain existing callsites. The Step 7 callback has no service role. Batch 10 owns its later removal route.
+- `src/app/api/officer-transitions/route.ts` uses only the caller-session Supabase client to invoke `appoint_member_as_officer`, `return_coadmin_to_member`, `move_member_to_committee`, or `step_down_as_admin`. Service-role inventory: **none**. Cancellation stays with the invitation route, and officer activation stays in the existing toggle route.
+- Keep the existing Users fetch-21/show-20 contract unchanged. Fetch `list_pending_officer_invites()` separately for active Admins and render its invite-keyed results as a distinct pending section; do not insert pending rows into the 21-row users response, its offset, its `hasMore` calculation, or its stable-ID paging merge.
 - The Step 8 callsite audit must list the final new officer invite route by its actual pathname before implementation is accepted; if it differs from the reconstructed path above, update this inventory and its route tests rather than adding a second route.
 
 ## Test deliverable
 
-Create `docs/phase-4b/step-8-tests.md` when the batch lands. Include rollback-safe Dev SQL, route/UI tests, the Admin `committee_id` preflight result, catalog/grant assertions, and genuine overlapping-transaction tests.
+Create `docs/phase-4b/step-8-tests.md` when the batch lands. Include rollback-safe, one-paste Dev SQL, route/UI tests, the Admin `committee_id` preflight result, and catalog/grant/function-body concurrency assertions. The database suite uses no committed fixtures or two-tab runs.
 
 With caps **off**, exercise all six operations: invite a new Admin/Co-Admin, appoint an active Member, return a Co-Admin to Member, move a Member to another committee, cancel an unaccepted officer invite, and Admin self-step-down. Prove a third Admin, a second same-committee Co-Admin, and additional pending reservations are permitted while operation-specific authorization, transition validation, Admin-to-Admin prohibitions, and zero-Admin protection remain enforced.
 
@@ -148,9 +172,9 @@ Cover all six operations, no generic transition RPC, active/inactive/profile-les
 
 Catalog and invariant tests must prove the fixed singleton-key primary key and check constraint, exactly one seeded row, duplicate-key rejection, invalid-key rejection, the expected setting value, fail-closed officer readers, and no `anon` or `authenticated` table privileges or policies.
 
-Concurrency cases include competing invites, appointments, and activations for the same final seat; two step-down attempts; return-to-Member versus appointment; Member move versus appointment; cancellation versus activation; and same/different-committee operations. Run the applicable cases with caps off and caps on. Assert no zero-Admin state, partial transition, duplicate reservation, wrong committee, double-released seat, or deadlock.
+Concurrency proof is rollback-only and catalog/body based: all seven writers must take the same transaction-level advisory lock as their first statement, with no authorization/settings/count/target read before it; affected invitation/profile rows are then locked in deterministic UUID order; and exact affected-row assertions follow writes. Functional pastes prove caps off/on, zero-Admin protection, atomic reservation conversion, stale and failed release-once behavior, and no duplicate account/profile state.
 
-Email-route cases cover 0/1/10/11 entries, normalized duplicates, other auth-email traffic near the approximately 30/hour SMTP limit, the 100/day Resend limit (**rebuilt, please verify**), provider rate-limit responses, failure before send, Auth-success/database-failure, database-reservation/Auth-failure, cleanup success/failure, explicit retry, and a later retry after the original invitation has already succeeded. Assert sequential sending and honest sent/failed/unsent/cleanup-pending results.
+Email-route cases cover 0/1/10/11 entries, normalized duplicates, other auth-email traffic near the approximately 30/hour SMTP limit, provider rate-limit responses, failure before send, reservation/Auth failure, stale preparation, cleanup success/failure, explicit retry, and a later retry after the original invitation has already succeeded. Resend limits are verified only if Resend is later adopted. Assert sequential sending and honest sent/failed/unsent/cleanup-pending results.
 
 ## Manual checklist
 

@@ -1,4 +1,10 @@
-import { Ellipsis, UserRoundX } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Ellipsis,
+  MailX,
+  ShieldCheck,
+  UserRoundX,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,26 +12,51 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Member } from "@/lib/types";
+import type { Member, PendingOfficerInvite } from "@/lib/types";
+
+export type MemberActionName =
+  | "toggle"
+  | "cancel-invite"
+  | "appoint"
+  | "return-to-member"
+  | "move-committee"
+  | "step-down";
 
 type MemberActionProps = {
   member: Member;
   isSelf: boolean;
   pending: boolean;
-  onToggle: (member: Member) => void;
+  pendingInvite?: PendingOfficerInvite;
+  onAction: (action: MemberActionName, member: Member) => void;
 };
 
-// Deactivate is destructive and therefore lives in a per-user menu. Reactivate
-// remains a direct supporting action, while the current user's row has no menu.
 export function MemberAction({
   member,
   isSelf,
   pending,
-  onToggle,
+  pendingInvite,
+  onAction,
 }: MemberActionProps) {
-  if (isSelf) {
+  if (pendingInvite) {
     return (
-      <span className="text-xs font-medium text-muted-foreground">You</span>
+      <ActionMenu member={member} pending={pending}>
+        <DestructiveItem onClick={() => onAction("cancel-invite", member)}>
+          <MailX className="size-4" aria-hidden />
+          Cancel invitation
+        </DestructiveItem>
+      </ActionMenu>
+    );
+  }
+
+  if (member.role === "Admin") {
+    if (!isSelf) return null;
+    return (
+      <ActionMenu member={member} pending={pending}>
+        <DestructiveItem onClick={() => onAction("step-down", member)}>
+          <UserRoundX className="size-4" aria-hidden />
+          Step down to Member
+        </DestructiveItem>
+      </ActionMenu>
     );
   }
 
@@ -35,13 +66,49 @@ export function MemberAction({
         variant="outline"
         size="sm"
         disabled={pending}
-        onClick={() => onToggle(member)}
+        onClick={() => onAction("toggle", member)}
       >
         Reactivate
       </Button>
     );
   }
 
+  return (
+    <ActionMenu member={member} pending={pending}>
+      {member.role === "Member" ? (
+        <>
+          <DropdownMenuItem onClick={() => onAction("appoint", member)}>
+            <ShieldCheck className="size-4" aria-hidden />
+            Appoint as officer
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onAction("move-committee", member)}>
+            <ArrowRightLeft className="size-4" aria-hidden />
+            Move committee
+          </DropdownMenuItem>
+        </>
+      ) : (
+        <DestructiveItem onClick={() => onAction("return-to-member", member)}>
+          <ArrowRightLeft className="size-4" aria-hidden />
+          Return to Member
+        </DestructiveItem>
+      )}
+      <DestructiveItem onClick={() => onAction("toggle", member)}>
+        <UserRoundX className="size-4" aria-hidden />
+        Deactivate
+      </DestructiveItem>
+    </ActionMenu>
+  );
+}
+
+function ActionMenu({
+  member,
+  pending,
+  children,
+}: {
+  member: Member;
+  pending: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -52,14 +119,25 @@ export function MemberAction({
         <Ellipsis className="size-5" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent aria-label={`Actions for ${member.full_name}`}>
-        <DropdownMenuItem
-          className="text-destructive transition-colors duration-150 active:bg-destructive/20 data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive motion-reduce:transition-none"
-          onClick={() => onToggle(member)}
-        >
-          <UserRoundX className="size-4" aria-hidden />
-          Deactivate
-        </DropdownMenuItem>
+        {children}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function DestructiveItem({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <DropdownMenuItem
+      className="text-destructive transition-colors duration-150 active:bg-destructive/20 data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive motion-reduce:transition-none"
+      onClick={onClick}
+    >
+      {children}
+    </DropdownMenuItem>
   );
 }
