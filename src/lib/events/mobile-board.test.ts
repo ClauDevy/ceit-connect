@@ -152,4 +152,9 @@ describe("mobile board source contracts", () => {
     );
     expect(boardSource).toContain("appendToTail,");
   });
+
+  it("restarts lane observation when an empty board receives tasks", () => {
+    expect(boardSource).toContain("!hasTasks ||");
+    expect(boardSource).toContain("}, [hasTasks, query.isPending]);");
+  });
 });
