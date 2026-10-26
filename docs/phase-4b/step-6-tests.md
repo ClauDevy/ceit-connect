@@ -61,7 +61,7 @@ Run every available-device row in light and dark mode. Record device, OS, and br
 
 - Drop outside every lane; press Escape with a hardware keyboard where available; interrupt the touch; app-switch/background; lock/unlock; navigate away; rotate; and resize. Each path submits nothing, removes the preview, and restores column snapping.
 - While holding a drag, change phase, priority, committee, or collapse state. The drag cancels before the state change and submits nothing.
-- Use a second session to cause a focus/poll result while a drag is held, including removing the card or revoking its move capability. The first session cancels immediately and never recreates or duplicates the card.
+- Start a refetch immediately before pickup and let that already-in-flight response settle during the drag, or use the explicit authoritative cache-update test path, including removing the card or revoking its move capability. The drag cancels immediately and never recreates or duplicates the card.
 - Inspect Network: rapid/repeated releases, a second control activation, and a slow response produce at most one `move_task` request. Controls remain guarded through authoritative settlement.
 - Work offline: the optimistic move rolls back once with the existing offline message. Restore connectivity and refetch; the card appears once in its authoritative lane.
 - Complete a successful move and Undo within the existing window. Confirm one normal Undo RPC and one final card; expiry/stale failure behavior remains unchanged.

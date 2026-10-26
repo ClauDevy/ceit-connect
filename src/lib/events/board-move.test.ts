@@ -9,10 +9,12 @@ import {
   createStatusMoveIntent,
   createUndoEntry,
   createUndoIntent,
+  finishBoardDragOperation,
   getBoardRefetchInterval,
   getMovePermission,
   getNeighborHints,
   mapMoveError,
+  releaseBoardOperation,
   shouldCancelBoardDrag,
   tryAcquireBoardOperation,
   undoReducer,
@@ -119,12 +121,30 @@ describe("board drag session guards", () => {
     committeeId: null,
   };
 
-  it("acquires the shared operation lock at most once until it is released", () => {
+  it("rejects a second submission while the shared lock is held", () => {
     const lock = { current: false };
     expect(tryAcquireBoardOperation(lock)).toBe(true);
     expect(tryAcquireBoardOperation(lock)).toBe(false);
     lock.current = false;
     expect(tryAcquireBoardOperation(lock)).toBe(true);
+  });
+
+  it("does not release another operation's lock without an active drag", () => {
+    const lock = { current: true };
+
+    finishBoardDragOperation(lock, false);
+
+    expect(lock.current).toBe(true);
+  });
+
+  it("preserves a dropped drag's lock until mutation settlement", () => {
+    const lock = { current: true };
+
+    finishBoardDragOperation(lock, true, true);
+    expect(lock.current).toBe(true);
+
+    releaseBoardOperation(lock);
+    expect(lock.current).toBe(false);
   });
 
   it("cancels a drag after a refetch or authoritative capability change", () => {
