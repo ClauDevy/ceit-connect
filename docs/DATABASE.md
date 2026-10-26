@@ -12,7 +12,7 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 
 `id uuid pk` (**must equal an `auth.users.id`** — Supabase's own login table), `email text`, `full_name text`, `role text` (`Admin` | `Co-Admin` | `Member`), `committee_id uuid → committees.id` (null for Admins), `is_active bool`, `created_at timestamptz`, `password_set bool not null default false`, `discord_id text null`, `avatar_url text null`.
 
-- `password_set` = the person has completed a real first login and set a password; Google sign-in is gated on it.
+- `password_set` = the person has set a password for email/password sign-in. It drives the Settings navigation reminder only and is never an authorization or Google-admission gate.
 - A person always needs **both** an `auth.users` row and a `users` row. The Invite flow creates both together and rolls back the login account if the profile insert fails.
 - Users are never deleted. Deactivate with `is_active = false`.
 

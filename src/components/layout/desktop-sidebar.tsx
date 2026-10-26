@@ -44,6 +44,7 @@ export function DesktopSidebar({ user }: { user: CurrentUser }) {
                 item={item}
                 active={isNavActive(pathname, item.href)}
                 collapsed={collapsed}
+                showWarning={item.passwordWarning && !user.passwordSet}
               />
             ))}
           </nav>

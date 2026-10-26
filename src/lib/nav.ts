@@ -17,6 +17,8 @@ export interface NavItem {
   roles: readonly Role[];
   /** Pinned to the mobile bottom bar; everything else goes under "More". */
   pinnedOnMobile?: boolean;
+  /** Shows the password reminder when the current user's flag is false. */
+  passwordWarning?: boolean;
 }
 
 const EVERYONE: readonly Role[] = ["Admin", "Co-Admin", "Member"];
@@ -31,7 +33,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/dashboard", label: "Executive Dashboard", icon: ChartColumn, roles: LEADERSHIP, pinnedOnMobile: true },
   { href: "/activity-log", label: "Activity Log", icon: History, roles: ["Admin"] },
   { href: "/users", label: "User Management", icon: Users, roles: ["Admin"] },
-  { href: "/settings", label: "Settings", icon: Settings, roles: EVERYONE, pinnedOnMobile: true },
+  { href: "/settings", label: "Settings", icon: Settings, roles: EVERYONE, pinnedOnMobile: true, passwordWarning: true },
 ];
 
 export function navForRole(role: Role) {

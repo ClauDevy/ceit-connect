@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getActiveProfileForRoles, getAuthUser } from "@/lib/auth";
+import { parseAllowedEmailDomains } from "../../../lib/allowed-email-domains";
 
 export async function POST(request: Request) {
   // Route handlers must return JSON for signed-out callers. Calling
@@ -76,10 +77,9 @@ export async function POST(request: Request) {
   // comes from an env var so Dev can include test domains (e.g. gmail.com)
   // while Prod stays locked to the real university domain — no code
   // changes needed to switch, just the env var.
-  const allowedDomains = (process.env.ALLOWED_EMAIL_DOMAINS ?? "")
-    .split(",")
-    .map((d) => d.trim().toLowerCase())
-    .filter(Boolean);
+  const allowedDomains = parseAllowedEmailDomains(
+    process.env.ALLOWED_EMAIL_DOMAINS,
+  );
 
   const emailDomain = normalizedEmail.split("@")[1]?.toLowerCase();
 

@@ -1,6 +1,6 @@
 # Step 7: Accounts polish
 
-**Status:** Planned | **Branch:** `feature/accounts-polish` | **Reasoning level:** High (security-critical migrations and tests)
+**Status:** Implemented locally; owner browser gate pending | **Branch:** `feature/accounts-polish` | **Reasoning level:** High (security-critical admission and tests)
 
 ## Goal
 
@@ -115,4 +115,13 @@ Only an existing verified Auth user with an active matching profile and an allow
 - Add `docs/phase-4b/step-7-tests.md`.
 - Update stale Google/password wording in `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, and the `docs/PROGRESS.md` decisions log only when the batch lands.
 - Record any Dashboard-only Auth configuration verification in `docs/GOTCHAS.md` without exposing project secrets.
+
+## Implementation result
+
+- Callback admission follows one ordered fail-closed path for non-empty verified Auth email, same-UUID active profile, normalized email equality, and normalized allowed domain. Every rejection after exchange checks sign-out and returns `error=auth`; old callback error links are generic. No provider metadata, `password_set`, service-role client, or deletion path remains.
+- The invite and callback share the same trim/lowercase/empty-removal allowlist parser. Invite behavior otherwise remains unchanged, including its separately tracked Batch 14 empty-allowlist issue and its checked rollback of a newly created half-account when profile insertion fails.
+- User Management defaults to Active and offers a Deactivated tab. The server validates status, a 20-row-aligned offset capped at 10,000, and a 100-code-point search; safely quotes PostgREST grammar; escapes literal ILIKE wildcards; resolves matching names from the authenticated 12-row committees lookup; and makes one RLS-backed Users query for 21 rows ordered by `full_name, id`.
+- The client reuses the Batch 3P paging hook/helpers, renders 20, advances by 20, resets on tab/search identity, cancels stale requests, deduplicates UUIDs, refreshes page one after status mutations, uses `TabPanel` only for explicit tab choices, and retains stable-ID list reveal with reduced-motion final states.
+- The shell carries `password_set` as `CurrentUser.passwordSet`. The shared accessible reminder appears in the desktop sidebar, mobile bottom/More renderers, and mobile avatar menu only while false; it never gates access. First-password success refreshes server state, and Settings no longer says a password enables Google.
+- No migration, database reader, policy, grant, overload, temporary password, Supabase command, Dev change, or Prod change was made.
 

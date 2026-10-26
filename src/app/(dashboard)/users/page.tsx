@@ -5,6 +5,8 @@ import { InviteUserDialog } from "@/components/users/invite-user-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { UsersTable } from "@/components/users/users-table";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { normalizeLookaheadPage } from "@/lib/list-paging";
+import { listUsersPage } from "@/lib/users/list-users";
 
 export default async function UsersPage() {
   const user = await requireUser();
@@ -17,12 +19,12 @@ export default async function UsersPage() {
 
   const [committeesResult, membersResult] = await Promise.all([
     supabase.from("committees").select("id, name").order("name"),
-    supabase
-      .from("users")
-      .select(
-        "id, full_name, email, role, committee_id, avatar_url, is_active",
-      )
-      .order("full_name"),
+    listUsersPage(supabase, {
+      committees: [],
+      offset: 0,
+      search: "",
+      status: "active",
+    }),
   ]);
 
   const loadFailed = Boolean(committeesResult.error || membersResult.error);
@@ -51,7 +53,7 @@ export default async function UsersPage() {
         </InlineAlert>
       ) : (
         <UsersTable
-          members={membersResult.data ?? []}
+          initialPage={normalizeLookaheadPage(membersResult.data ?? [], 0)}
           committees={committeesResult.data ?? []}
           currentUserId={user.id}
         />
