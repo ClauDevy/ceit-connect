@@ -8,11 +8,12 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { isNavActive, navForRole, type NavItem } from "@/lib/nav"
 import type { CurrentUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { SettingsWarningDot } from "@/components/layout/settings-warning-dot"
 
 const tabClass =
   "group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] outline-none transition-colors duration-[var(--motion-interaction-duration)] focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
 
-function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
+function BottomTab({ item, active, showWarning }: { item: NavItem; active: boolean; showWarning: boolean }) {
   const Icon = item.icon
   const onClick = useNavClick(item.href)
   return (
@@ -23,13 +24,14 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
       className={cn(tabClass, active ? "motion-nav-active font-semibold text-primary before:absolute before:top-0 before:left-1/2 before:h-0.5 before:w-6 before:-translate-x-1/2 before:rounded-full before:bg-primary" : "font-medium text-muted-foreground")}
     >
       <Icon className="motion-nav-icon size-5" aria-hidden />
+      {showWarning ? <SettingsWarningDot className="absolute top-1 right-[calc(50%_-_1.1rem)]" /> : null}
       {/* "Executive Dashboard" is too long for a tab; the full name is in the page header. */}
       {item.href === "/dashboard" ? "Dashboard" : item.label}
     </Link>
   )
 }
 
-function MoreLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate: () => void }) {
+function MoreLink({ item, active, onNavigate, showWarning }: { item: NavItem; active: boolean; onNavigate: () => void; showWarning: boolean }) {
   const Icon = item.icon
   const onClick = useNavClick(item.href, onNavigate)
   return (
@@ -44,6 +46,7 @@ function MoreLink({ item, active, onNavigate }: { item: NavItem; active: boolean
     >
       <Icon className="motion-nav-icon size-[18px]" aria-hidden />
       {item.label}
+      {showWarning ? <SettingsWarningDot className="ml-auto" /> : null}
     </Link>
   )
 }
@@ -61,7 +64,7 @@ export function MobileNav({ user }: { user: CurrentUser }) {
         className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t bg-card px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] md:hidden"
       >
         {pinned.map((item) => (
-          <BottomTab key={item.href} item={item} active={isNavActive(pathname, item.href)} />
+          <BottomTab key={item.href} item={item} active={isNavActive(pathname, item.href)} showWarning={Boolean(item.passwordWarning && !user.passwordSet)} />
         ))}
         {more.length > 0 && (
           <button
@@ -86,6 +89,7 @@ export function MobileNav({ user }: { user: CurrentUser }) {
                 item={item}
                 active={isNavActive(pathname, item.href)}
                 onNavigate={() => setMoreOpen(false)}
+                showWarning={Boolean(item.passwordWarning && !user.passwordSet)}
               />
             ))}
           </nav>

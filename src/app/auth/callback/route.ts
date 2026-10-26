@@ -1,5 +1,22 @@
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import {
+  getNormalizedEmailDomain,
+  parseAllowedEmailDomains,
+} from "../../../lib/allowed-email-domains";
+import { createClient } from "@/lib/supabase/server";
+
+type CallbackClient = Awaited<ReturnType<typeof createClient>>;
+
+async function rejectExchangedSession(
+  supabase: CallbackClient,
+  origin: string,
+) {
+  const { error: signOutError } = await supabase.auth.signOut();
+  if (signOutError) {
+    console.error("Failed to clear a rejected callback session");
+  }
+  return NextResponse.redirect(`${origin}/login?error=auth`);
+}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -14,43 +31,55 @@ export async function GET(request: Request) {
       ? rawNext
       : "/home";
 
-  if (code) {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (!error && data.user) {
-      const provider = data.user.app_metadata?.provider;
-
-      if (provider === "google") {
-        const { data: profile, error: profileError } = await supabase
-          .from("users")
-          .select("password_set")
-          .eq("id", data.user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          await supabase.auth.signOut();
-          return NextResponse.redirect(`${origin}/login?error=auth`);
-        }
-
-        if (!profile) {
-          await supabase.auth.signOut();
-          const adminClient = await createServiceRoleClient();
-          await adminClient.auth.admin.deleteUser(data.user.id);
-          return NextResponse.redirect(`${origin}/login?error=not_invited`);
-        }
-
-        if (!profile.password_set) {
-          await supabase.auth.signOut();
-          return NextResponse.redirect(
-            `${origin}/login?error=set_password_first`
-          );
-        }
-      }
-
-      return NextResponse.redirect(`${origin}${next}`);
-    }
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error || !data.user) {
+    return rejectExchangedSession(supabase, origin);
+  }
+
+  const authEmail = data.user.email?.trim().toLowerCase() ?? "";
+  if (!authEmail) {
+    return rejectExchangedSession(supabase, origin);
+  }
+
+  if (!data.user.email_confirmed_at) {
+    return rejectExchangedSession(supabase, origin);
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("users")
+    .select("email, is_active")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    return rejectExchangedSession(supabase, origin);
+  }
+
+  if (!profile.is_active) {
+    return rejectExchangedSession(supabase, origin);
+  }
+
+  if (profile.email.trim().toLowerCase() !== authEmail) {
+    return rejectExchangedSession(supabase, origin);
+  }
+
+  const allowedDomains = parseAllowedEmailDomains(
+    process.env.ALLOWED_EMAIL_DOMAINS,
+  );
+  const emailDomain = getNormalizedEmailDomain(authEmail);
+  if (
+    allowedDomains.length === 0 ||
+    !emailDomain ||
+    !allowedDomains.includes(emailDomain)
+  ) {
+    return rejectExchangedSession(supabase, origin);
+  }
+
+  return NextResponse.redirect(`${origin}${next}`);
 }

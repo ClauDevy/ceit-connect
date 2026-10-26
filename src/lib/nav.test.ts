@@ -64,4 +64,11 @@ describe("role navigation", () => {
     expect(isNavActive("/homepage", "/home")).toBe(false)
     expect(isNavActive(null, "/home")).toBe(false)
   })
+
+  it("marks only Settings as password-warning capable", () => {
+    const nav = navForRole("Admin")
+    expect(nav.all.filter((item) => item.passwordWarning).map((item) => item.href)).toEqual([
+      "/settings",
+    ])
+  })
 })

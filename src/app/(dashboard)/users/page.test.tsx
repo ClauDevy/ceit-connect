@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   getActiveProfileForRoles: vi.fn(),
   createClient: vi.fn(),
+  listUsersPage: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
@@ -16,6 +17,16 @@ vi.mock("@/lib/auth", () => ({
   getActiveProfileForRoles: mocks.getActiveProfileForRoles,
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
+vi.mock("@/lib/users/list-users", () => ({
+  listUsersPage: mocks.listUsersPage,
+}));
+vi.mock("@/lib/list-paging", () => ({
+  normalizeLookaheadPage: (rows: unknown[], offset: number) => ({
+    items: rows.slice(0, 20),
+    hasMore: rows.length > 20,
+    offset,
+  }),
+}));
 vi.mock("@/components/users/invite-user-dialog", () => ({
   InviteUserDialog: () => null,
 }));
@@ -39,6 +50,7 @@ beforeEach(() => {
     committee_id: null,
     is_active: true,
   });
+  mocks.listUsersPage.mockResolvedValue({ data: [], error: null });
 });
 
 describe("Users page guard", () => {
@@ -65,19 +77,27 @@ describe("Users page guard", () => {
     await expect(UsersPage()).resolves.toBeTruthy();
     expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith(["Admin"]);
     expect(mocks.createClient).toHaveBeenCalledTimes(1);
-    expect(select).toHaveBeenCalledWith(
-      "id, full_name, email, role, committee_id, avatar_url, is_active",
-    );
+    expect(select).toHaveBeenCalledWith("id, name");
+    expect(mocks.listUsersPage).toHaveBeenCalledWith(expect.anything(), {
+      committees: [],
+      offset: 0,
+      search: "",
+      status: "active",
+    });
   });
 
   it("shows a safe error instead of an empty roster when a query fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.listUsersPage.mockResolvedValue({
+      data: null,
+      error: { message: "private database detail" },
+    });
     const from = vi.fn((table: string) => ({
       select: vi.fn(() => ({
         order: vi.fn().mockResolvedValue(
-          table === "users"
-            ? { data: null, error: { message: "private database detail" } }
-            : { data: [], error: null },
+          table === "committees"
+            ? { data: [], error: null }
+            : { data: null, error: { message: "unexpected" } },
         ),
       })),
     }));
