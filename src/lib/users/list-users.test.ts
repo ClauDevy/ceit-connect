@@ -1,67 +1,42 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   MAX_USERS_OFFSET,
-  buildUsersSearchFilter,
-  isStrictUuid,
   listUsersPage,
-  matchingCommitteeIds,
   normalizeUsersSearch,
   parseUsersOffset,
   parseUsersStatus,
   truncateUsersSearch,
 } from "./list-users";
 
-const committeeId = "123e4567-e89b-42d3-a456-426614174000";
-
-function expected(pattern: string) {
-  return [
-    `full_name.ilike.${pattern}`,
-    `email.ilike.${pattern}`,
-    `role.ilike.${pattern}`,
-  ].join(",");
-}
-
-describe("Users search filter", () => {
-  it.each([
-    ["%", expected('"%\\\\%%"')],
-    ["_", expected('"%\\\\_%"')],
-    ["\\", expected('"%\\\\\\\\%"')],
-    ['"', expected('"%\\"%"')],
-    [",", expected('"%,%"')],
-    ["()", expected('"%()%"')],
-    [".", expected('"%.%"')],
-  ])("constructs the exact safe filter for %j", (search, filter) => {
-    expect(buildUsersSearchFilter(search, [])).toBe(filter);
-  });
-
-  it("adds only strictly validated committee UUIDs", () => {
-    expect(buildUsersSearchFilter("cia", [committeeId])).toBe(
-      `${expected('"%cia%"')},committee_id.in.(${committeeId})`,
-    );
-    expect(() => buildUsersSearchFilter("cia", ["committee-1"])).toThrow(
-      "Invalid committee id returned by the lookup.",
-    );
-  });
-
-  it("matches committee names case-insensitively as literal text", () => {
-    const committees = [
-      { id: committeeId, name: "CIA" },
-      {
-        id: "223e4567-e89b-42d3-a456-426614174000",
-        name: "COEXA",
-      },
-    ];
-    expect(matchingCommitteeIds(committees, "Ci")).toEqual([committeeId]);
-    expect(matchingCommitteeIds(committees, "%")).toEqual([]);
-  });
-
-  it("requires strict UUID syntax", () => {
-    expect(isStrictUuid(committeeId)).toBe(true);
-    expect(isStrictUuid("123e4567-e89b-12d3-a456-426614174000")).toBe(true);
-    expect(isStrictUuid("123e4567-e89b-02d3-a456-426614174000")).toBe(false);
-    expect(isStrictUuid(`${committeeId},id.eq.attacker`)).toBe(false);
-  });
-});
+const rows = [
+  {
+    id: "10000000-0000-4000-8000-000000000001",
+    full_name: "Admin A",
+    email: "admin@example.edu",
+    role: "Admin",
+    committee_id: null,
+    avatar_url: null,
+    is_active: true,
+  },
+  {
+    id: "10000000-0000-4000-8000-000000000002",
+    full_name: "Co-Admin B",
+    email: "coadmin@example.edu",
+    role: "Co-Admin",
+    committee_id: "20000000-0000-4000-8000-000000000001",
+    avatar_url: "https://example.test/avatar.webp",
+    is_active: true,
+  },
+  {
+    id: "10000000-0000-4000-8000-000000000003",
+    full_name: "Member C",
+    email: "member@example.edu",
+    role: "Member",
+    committee_id: "20000000-0000-4000-8000-000000000002",
+    avatar_url: null,
+    is_active: true,
+  },
+];
 
 describe("Users request validation", () => {
   it("trims and bounds search by Unicode code points", () => {
@@ -92,34 +67,65 @@ describe("Users request validation", () => {
   });
 });
 
-describe("Users roster query", () => {
-  it("makes one status-scoped, searched, ordered fetch-21 query", async () => {
-    const range = vi.fn().mockResolvedValue({ data: [], error: null });
-    const secondOrder = vi.fn(() => ({ range }));
-    const firstOrder = vi.fn(() => ({ order: secondOrder }));
-    const or = vi.fn(() => ({ order: firstOrder }));
-    const eq = vi.fn(() => ({ or }));
-    const select = vi.fn(() => ({ eq }));
-    const from = vi.fn(() => ({ select }));
+describe("Users management reader", () => {
+  it("uses only list_managed_users and preserves its fetch-21 ordering and fields", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: rows, error: null });
+    const result = await listUsersPage({ rpc } as never, {
+      offset: 20,
+      search: "committee name",
+      status: "deactivated",
+    });
 
-    await listUsersPage(
-      { from } as never,
-      {
-        committees: [{ id: committeeId, name: "CIA" }],
-        offset: 20,
-        search: "cia",
-        status: "deactivated",
-      },
-    );
+    expect(rpc).toHaveBeenCalledWith("list_managed_users", {
+      p_is_active: false,
+      p_search: "committee name",
+      p_offset: 20,
+    });
+    expect(result).toEqual({ data: rows, error: null });
+  });
 
-    expect(from).toHaveBeenCalledTimes(1);
-    expect(from).toHaveBeenCalledWith("users");
-    expect(eq).toHaveBeenCalledWith("is_active", false);
-    expect(or).toHaveBeenCalledWith(
-      `${expected('"%cia%"')},committee_id.in.(${committeeId})`,
-    );
-    expect(firstOrder).toHaveBeenCalledWith("full_name", { ascending: true });
-    expect(secondOrder).toHaveBeenCalledWith("id", { ascending: true });
-    expect(range).toHaveBeenCalledWith(20, 40);
+  it.each(["%", "_", "\\"])(
+    "passes literal search text %j unchanged to the reader",
+    async (search) => {
+      const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+      await listUsersPage({ rpc } as never, {
+        offset: 0,
+        search,
+        status: "active",
+      });
+      expect(rpc).toHaveBeenCalledWith("list_managed_users", {
+        p_is_active: true,
+        p_search: search,
+        p_offset: 0,
+      });
+    },
+  );
+
+  it("sends null for an empty search", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    await listUsersPage({ rpc } as never, {
+      offset: 0,
+      search: "",
+      status: "active",
+    });
+    expect(rpc).toHaveBeenCalledWith("list_managed_users", {
+      p_is_active: true,
+      p_search: null,
+      p_offset: 0,
+    });
+  });
+
+  it("fails closed when the reader returns a malformed row", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ ...rows[0], avatar_url: 7 }],
+      error: null,
+    });
+    const result = await listUsersPage({ rpc } as never, {
+      offset: 0,
+      search: "",
+      status: "active",
+    });
+    expect(result.data).toBeNull();
+    expect(result.error).toBeInstanceOf(Error);
   });
 });

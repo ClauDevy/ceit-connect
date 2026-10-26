@@ -25,6 +25,7 @@ Let an active Admin remove up to 50 eligible deactivated former members per run 
 
 - The batch maximum is exactly 50 selected accounts per run.
 - Add nullable `anonymized_at` as the permanent marker. An anonymized account can never be reactivated.
+- Replace or extend Batch 9's shared `reactivate_committee_member(uuid)` boundary so it rejects every non-null `anonymized_at`, then re-run the conditional `ANONYMIZED_CASE` in `docs/phase-4b/step-9-tests.md`. Batch 9 deliberately neither adds nor references the marker.
 - An open task is a `To Do` or `In Progress` task in a Draft or Active event where the user appears in `primary_assignees` or `assist_assignees`.
 - Archived tasks do not block removal because they are frozen and could never be closed; retaining those UUID references preserves their history.
 - Cross-service work is not atomic. Use deterministic, idempotent per-user retries and report each user as `removed`, `skipped`, `failed`, or `cleanup-pending`.

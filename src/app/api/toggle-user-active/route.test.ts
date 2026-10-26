@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ createClient: vi.fn(), createServiceRoleClient: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getAuthUser: vi.fn(),
+  getActiveProfileForRoles: vi.fn(),
+  createClient: vi.fn(),
+  createServiceRoleClient: vi.fn(),
+}));
+vi.mock("@/lib/auth", () => ({
+  getAuthUser: mocks.getAuthUser,
+  getActiveProfileForRoles: mocks.getActiveProfileForRoles,
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: mocks.createClient,
   createServiceRoleClient: mocks.createServiceRoleClient,
@@ -8,55 +17,120 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import { POST } from "./route";
 
-const targetId = "10000000-0000-4000-8000-000000000001";
-const request = (isActive: boolean) =>
-  new Request("http://localhost/api/toggle-user-active", {
-    method: "POST",
-    body: JSON.stringify({ userId: targetId, isActive }),
-  });
+const callerId = "10000000-0000-4000-8000-000000000001";
+const targetId = "10000000-0000-4000-8000-000000000002";
+const otherCommitteeId = "10000000-0000-4000-8000-000000000003";
+const officerId = "10000000-0000-4000-8000-000000000004";
 
-function caller(role: string, targetRole: string, rpcError: unknown = null) {
-  let selection = 0;
-  const single = vi.fn(async () => ({
-    data:
-      selection++ % 2 === 0
-        ? { role, is_active: true }
-        : { role: targetRole, is_active: false },
+function request(isActive: boolean, userId = targetId, extra = {}) {
+  return new Request("http://localhost/api/toggle-user-active", {
+    method: "POST",
+    body: JSON.stringify({ userId, isActive, ...extra }),
+  });
+}
+
+function sessionClient(options?: { rpcError?: unknown; targetRole?: string }) {
+  const rpc = vi.fn().mockResolvedValue({ data: null, error: options?.rpcError ?? null });
+  const single = vi.fn().mockResolvedValue({
+    data: { role: options?.targetRole ?? "Member", is_active: false },
     error: null,
-  }));
+  });
   const eq = vi.fn(() => ({ single }));
   const select = vi.fn(() => ({ eq }));
-  const rpc = vi.fn().mockResolvedValue({ data: null, error: rpcError });
-  mocks.createClient.mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "admin" } } }) },
-    from: vi.fn(() => ({ select })),
-    rpc,
-  });
-  return { rpc };
+  const from = vi.fn(() => ({ select }));
+  const client = { rpc, from };
+  mocks.createClient.mockResolvedValue(client);
+  return { client, rpc, from };
 }
 
-function admin(authError: unknown = null) {
+function serviceClient(authError: unknown = null) {
   const updateUserById = vi.fn().mockResolvedValue({ data: {}, error: authError });
   const remove = vi.fn().mockResolvedValue({ data: [], error: null });
-  mocks.createServiceRoleClient.mockResolvedValue({
+  const eq = vi.fn().mockResolvedValue({ error: null });
+  const update = vi.fn(() => ({ eq }));
+  const client = {
     auth: { admin: { updateUserById } },
     storage: { from: vi.fn(() => ({ remove })) },
-  });
-  return { updateUserById, remove };
+    from: vi.fn(() => ({ update })),
+  };
+  mocks.createServiceRoleClient.mockResolvedValue(client);
+  return { client, updateUserById, remove, update };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.getAuthUser.mockResolvedValue({ id: callerId });
+  mocks.getActiveProfileForRoles.mockResolvedValue({
+    role: "Co-Admin",
+    committee_id: "committee-a",
+    is_active: true,
+  });
+  sessionClient();
+});
 
-describe("POST /api/toggle-user-active officer path", () => {
-  it("rejects Admin targets before constructing service role", async () => {
-    caller("Admin", "Admin");
-    expect((await POST(request(false))).status).toBe(403);
+describe("POST /api/toggle-user-active Co-Admin boundary", () => {
+  it.each([
+    [false, "deactivate_committee_member"],
+    [true, "reactivate_committee_member"],
+  ])("uses only the caller-session %s RPC", async (isActive, rpcName) => {
+    const session = sessionClient();
+    const response = await POST(request(isActive));
+    expect(response.status).toBe(200);
+    expect(session.rpc).toHaveBeenCalledWith(rpcName, { p_user_id: targetId });
+    expect(session.from).not.toHaveBeenCalled();
     expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
   });
 
-  it("uses set_officer_active then bans and removes the avatar", async () => {
-    const session = caller("Admin", "Co-Admin");
-    const service = admin();
+  it.each([
+    ["officer id", officerId],
+    ["other-committee id", otherCommitteeId],
+    ["their own id", callerId],
+  ])("denies a Co-Admin sending %s without service-role access", async (_label, id) => {
+    const session = sessionClient({
+      rpcError: { code: "CCM03", message: "private" },
+    });
+    const response = await POST(request(false, id));
+    expect(response.status).toBe(404);
+    expect(session.rpc).toHaveBeenCalledWith("deactivate_committee_member", {
+      p_user_id: id,
+    });
+    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+  });
+
+  it("rejects avatar, role, and committee authority before the RPC", async () => {
+    for (const extra of [
+      { avatar_url: null },
+      { role: "Member" },
+      { committeeId: "committee-a" },
+    ]) {
+      const session = sessionClient();
+      expect((await POST(request(false, targetId, extra))).status).toBe(400);
+      expect(session.rpc).not.toHaveBeenCalled();
+    }
+    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+  });
+
+  it("denies signed-out and inactive callers before data clients", async () => {
+    mocks.getAuthUser.mockResolvedValueOnce(null);
+    expect((await POST(request(false))).status).toBe(401);
+    mocks.getAuthUser.mockResolvedValue({ id: callerId });
+    mocks.getActiveProfileForRoles.mockResolvedValueOnce(null);
+    expect((await POST(request(false))).status).toBe(403);
+  });
+});
+
+describe("POST /api/toggle-user-active Admin regression", () => {
+  beforeEach(() => {
+    mocks.getActiveProfileForRoles.mockResolvedValue({
+      role: "Admin",
+      committee_id: null,
+      is_active: true,
+    });
+  });
+
+  it("keeps the officer RPC, Auth ban, and avatar removal path", async () => {
+    const session = sessionClient({ targetRole: "Co-Admin" });
+    const service = serviceClient();
     const response = await POST(request(false));
     expect(response.status).toBe(200);
     expect(session.rpc).toHaveBeenCalledWith("set_officer_active", {
@@ -69,29 +143,15 @@ describe("POST /api/toggle-user-active officer path", () => {
     expect(service.remove).toHaveBeenCalledWith([`${targetId}/avatar.webp`]);
   });
 
-  it("re-applies the unban after an idempotent RPC no-op retry", async () => {
-    const session = caller("Admin", "Co-Admin");
-    const service = admin({ message: "first Auth failure" });
-    const first = await POST(request(true));
-    expect(first.status).toBe(502);
-    await expect(first.json()).resolves.toMatchObject({ cleanupPending: true });
-
-    service.updateUserById.mockResolvedValueOnce({ data: {}, error: null });
-    const second = await POST(request(true));
-    expect(second.status).toBe(200);
-    expect(session.rpc).toHaveBeenCalledTimes(2);
-    expect(service.updateUserById).toHaveBeenLastCalledWith(targetId, {
-      ban_duration: "none",
-    });
-  });
-
-  it("does not construct service role when the RPC says to cancel an invitation", async () => {
-    caller("Admin", "Co-Admin", { code: "CCO03", message: "private" });
+  it("keeps Admin Member deactivation avatar clearing", async () => {
+    sessionClient({ targetRole: "Member" });
+    const service = serviceClient();
     const response = await POST(request(false));
-    expect(response.status).toBe(409);
-    expect(await response.json()).toEqual({
-      error: "Use Cancel invitation for an unaccepted officer invite.",
+    expect(response.status).toBe(200);
+    expect(service.update).toHaveBeenCalledWith({
+      is_active: false,
+      avatar_url: null,
     });
-    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+    expect(service.remove).toHaveBeenCalledWith([`${targetId}/avatar.webp`]);
   });
 });

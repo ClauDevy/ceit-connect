@@ -2,7 +2,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { MemberAction, type MemberActionName } from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
 import { Badge } from "@/components/ui/badge";
-import type { Member, PendingOfficerInvite } from "@/lib/types";
+import type { Member, PendingOfficerInvite, Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type MembersListProps = {
@@ -12,6 +12,7 @@ type MembersListProps = {
   pendingId: string | null;
   onAction: (action: MemberActionName, member: Member) => void;
   pendingInviteByAuthUserId: ReadonlyMap<string, PendingOfficerInvite>;
+  viewerRole: Extract<Role, "Admin" | "Co-Admin">;
   getRevealProps?: (id: string) => {
     "data-motion-reveal-id": string;
     ref: (node: HTMLElement | null) => void;
@@ -25,6 +26,7 @@ export function MembersCards({
   pendingId,
   onAction,
   pendingInviteByAuthUserId,
+  viewerRole,
   getRevealProps,
 }: MembersListProps) {
   return (
@@ -59,6 +61,7 @@ export function MembersCards({
                 isSelf={member.id === currentUserId}
                 pending={pendingId !== null}
                 pendingInvite={pendingInviteByAuthUserId.get(member.id)}
+                viewerRole={viewerRole}
                 onAction={onAction}
               />
             </div>
