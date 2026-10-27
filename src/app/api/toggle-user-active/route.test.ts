@@ -29,10 +29,18 @@ function request(isActive: boolean, userId = targetId, extra = {}) {
   });
 }
 
-function sessionClient(options?: { rpcError?: unknown; targetRole?: string }) {
+function sessionClient(options?: {
+  rpcError?: unknown;
+  targetRole?: string;
+  anonymizedAt?: string | null;
+}) {
   const rpc = vi.fn().mockResolvedValue({ data: null, error: options?.rpcError ?? null });
   const single = vi.fn().mockResolvedValue({
-    data: { role: options?.targetRole ?? "Member", is_active: false },
+    data: {
+      role: options?.targetRole ?? "Member",
+      is_active: false,
+      anonymized_at: options?.anonymizedAt ?? null,
+    },
     error: null,
   });
   const eq = vi.fn(() => ({ single }));
@@ -77,7 +85,18 @@ describe("POST /api/toggle-user-active Co-Admin boundary", () => {
     const response = await POST(request(isActive));
     expect(response.status).toBe(200);
     expect(session.rpc).toHaveBeenCalledWith(rpcName, { p_user_id: targetId });
-    expect(session.from).not.toHaveBeenCalled();
+    expect(session.from).toHaveBeenCalledTimes(isActive ? 1 : 0);
+    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+  });
+
+  it("rejects an anonymized target before the reactivation RPC", async () => {
+    const session = sessionClient({ anonymizedAt: "2026-10-27T12:00:00.000Z" });
+    const response = await POST(request(true));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "This account cannot be reactivated",
+    });
+    expect(session.rpc).not.toHaveBeenCalled();
     expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
   });
 
@@ -153,5 +172,22 @@ describe("POST /api/toggle-user-active Admin regression", () => {
       avatar_url: null,
     });
     expect(service.remove).toHaveBeenCalledWith([`${targetId}/avatar.webp`]);
+  });
+
+  it("rejects an anonymized target before any Admin service-role write", async () => {
+    const session = sessionClient({
+      targetRole: "Member",
+      anonymizedAt: "2026-10-27T12:00:00.000Z",
+    });
+    const service = serviceClient();
+    const response = await POST(request(true));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "This account cannot be reactivated",
+    });
+    expect(session.rpc).not.toHaveBeenCalled();
+    expect(service.update).not.toHaveBeenCalled();
+    expect(service.updateUserById).not.toHaveBeenCalled();
+    expect(service.remove).not.toHaveBeenCalled();
   });
 });
