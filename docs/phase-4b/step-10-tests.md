@@ -832,5 +832,24 @@ Stage B must additionally remove a Google-linked Dev Member, perform the
 idempotent Auth email update/ban and Storage cleanup, re-invite the original
 address as a new UUID, and sign in with Google. If the old banned Auth user's
 retained Google identity prevents that sign-in, stop before building the UI
-and decide the identity-cleanup strategy.
+and implement the required identity-cleanup strategy. The owner confirmed this
+failure; Phase 1b's replacement gate is in
+`docs/phase-4b/step-10-phase-1b-tests.md`.
+
+## Stage B Phase 1 route tests
+
+Phase 1 adds Vitest coverage in:
+
+- `src/lib/users/former-member-removal.test.ts`
+- `src/app/api/remove-former-members/route.test.ts`
+- `src/app/api/toggle-user-active/route.test.ts`
+
+The focused suites cover exact request and RPC shapes, 0/1/50/51 and duplicate
+selection handling, caller denial, no-store preview ordering, authoritative
+confirmation, fresh and already-anonymized retries, exact Auth email/confirm/ban
+arguments, returned Auth-state verification, the service-role identity cleanup
+RPC and strict result contract, Storage cleanup, safe failure messages,
+per-item continuation, repeated Admin checks, and pre-service-role reactivation
+denial. The owner-confirmed Google gate requires Phase 1b; no removal UI is
+present.
 
