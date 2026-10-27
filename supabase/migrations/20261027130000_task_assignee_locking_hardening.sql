@@ -741,8 +741,14 @@ begin
           primary_assignees = v_assignees
       where task_row.id = v_task_id
         and task_row.event_id = p_event_id
-        and task_row.primary_assignees <@ v_lock_user_ids
-        and task_row.assist_assignees <@ v_lock_user_ids;
+        and not exists (
+          select 1
+          from pg_catalog.unnest(
+            task_row.primary_assignees || task_row.assist_assignees
+          ) as stored(user_id)
+          join public.users as lock_user on lock_user.id = stored.user_id
+          where not stored.user_id = any(v_lock_user_ids)
+        );
 
       get diagnostics v_affected = row_count;
       if v_affected <> 1 then
