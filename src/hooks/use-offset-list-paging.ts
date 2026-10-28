@@ -113,7 +113,7 @@ export function useOffsetListPaging<T>({
 
       try {
         const rows = await readPage(offset, controller.signal);
-        if (!mountedRef.current || controller.signal.aborted) return;
+        if (!mountedRef.current || controller.signal.aborted) return false;
 
         const page = normalizeLookaheadPage(rows, offset);
         setState((current) => {
@@ -146,13 +146,14 @@ export function useOffsetListPaging<T>({
             settled: true,
           };
         });
+        return true;
       } catch (error) {
         if (
           !mountedRef.current ||
           controller.signal.aborted ||
           requestToken !== requestTokenRef.current
         ) {
-          return;
+          return false;
         }
         setState((current) => ({
           ...current,
@@ -162,6 +163,7 @@ export function useOffsetListPaging<T>({
           pendingMode: null,
           settled: true,
         }));
+        return false;
       } finally {
         if (requestToken === requestTokenRef.current) abortRef.current = null;
       }
@@ -170,21 +172,23 @@ export function useOffsetListPaging<T>({
   );
 
   const refreshFromStart = useCallback(
-    () => (activeRef.current ? requestPage("replace", 0) : Promise.resolve()),
+    () =>
+      activeRef.current ? requestPage("replace", 0) : Promise.resolve(false),
     [requestPage],
   );
 
   const loadMore = useCallback(() => {
     const current = stateRef.current;
     if (current.pendingMode || pausedRef.current || !current.hasMore) {
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
     return requestPage("append", current.nextOffset);
   }, [requestPage]);
 
   const retry = useCallback(() => {
     const current = stateRef.current;
-    if (!current.failedMode || current.pendingMode) return Promise.resolve();
+    if (!current.failedMode || current.pendingMode)
+      return Promise.resolve(false);
     return requestPage(current.failedMode, current.failedOffset);
   }, [requestPage]);
 
@@ -283,6 +287,8 @@ export function useOffsetListPaging<T>({
   return {
     ...state,
     isInitialLoading: !state.settled && state.items.length === 0,
+    isIdentityLoading:
+      active && (identityRef.current !== identity || !state.settled),
     isLoadingMore: state.pendingMode === "append",
     isRefreshing: state.pendingMode === "replace",
     loadMore,

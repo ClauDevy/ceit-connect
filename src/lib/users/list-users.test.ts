@@ -68,9 +68,20 @@ describe("Users request validation", () => {
 });
 
 describe("Users management reader", () => {
-  it("uses only list_managed_users and preserves its fetch-21 ordering and fields", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: rows, error: null });
-    const result = await listUsersPage({ rpc } as never, {
+  it("enriches only authorized deactivated rows and preserves their ordering", async () => {
+    const deactivatedRows = rows.map((row) => ({ ...row, is_active: false }));
+    const rpc = vi.fn().mockResolvedValue({ data: deactivatedRows, error: null });
+    const markerIn = vi.fn().mockResolvedValue({
+      data: deactivatedRows.map((row, index) => ({
+        id: row.id,
+        anonymized_at: index === 1 ? "2026-10-27T12:00:00Z" : null,
+      })),
+      error: null,
+    });
+    const from = vi.fn(() => ({
+      select: vi.fn(() => ({ in: markerIn })),
+    }));
+    const result = await listUsersPage({ rpc, from } as never, {
       offset: 20,
       search: "committee name",
       status: "deactivated",
@@ -81,7 +92,81 @@ describe("Users management reader", () => {
       p_search: "committee name",
       p_offset: 20,
     });
-    expect(result).toEqual({ data: rows, error: null });
+    expect(from).toHaveBeenCalledWith("users");
+    expect(markerIn).toHaveBeenCalledWith(
+      "id",
+      deactivatedRows.map((row) => row.id),
+    );
+    expect(result).toEqual({
+      data: deactivatedRows.map((row, index) => ({
+        ...row,
+        anonymized_at: index === 1 ? "2026-10-27T12:00:00Z" : null,
+      })),
+      error: null,
+    });
+  });
+
+  it("sets active rows to a non-terminal state without a second read", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: rows, error: null });
+    const from = vi.fn();
+    const result = await listUsersPage({ rpc, from } as never, {
+      offset: 0,
+      search: "",
+      status: "active",
+    });
+    expect(from).not.toHaveBeenCalled();
+    expect(result.data).toEqual(
+      rows.map((row) => ({ ...row, anonymized_at: null })),
+    );
+  });
+
+  it.each([
+    { name: "an error", data: [], error: new Error("private") },
+    { name: "a missing row", data: [], error: null },
+    {
+      name: "a duplicate row",
+      data: [
+        { id: rows[0].id, anonymized_at: null },
+        { id: rows[0].id, anonymized_at: null },
+        { id: rows[2].id, anonymized_at: null },
+      ],
+      error: null,
+    },
+    {
+      name: "an unauthorized extra row",
+      data: [
+        ...rows.map((row) => ({ id: row.id, anonymized_at: null })),
+        { id: "10000000-0000-4000-8000-000000000099", anonymized_at: null },
+      ],
+      error: null,
+    },
+    {
+      name: "an invalid timestamp",
+      data: rows.map((row, index) => ({
+        id: row.id,
+        anonymized_at: index === 0 ? "not-a-timestamp" : null,
+      })),
+      error: null,
+    },
+  ])("fails closed when marker enrichment returns $name", async ({ data, error }) => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: rows.map((row) => ({ ...row, is_active: false })),
+        error: null,
+      }),
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          in: vi.fn().mockResolvedValue({ data, error }),
+        })),
+      })),
+    };
+    const result = await listUsersPage(client as never, {
+      offset: 0,
+      search: "",
+      status: "deactivated",
+    });
+    expect(result.data).toBeNull();
+    expect(result.error).toBeTruthy();
   });
 
   it.each(["%", "_", "\\"])(

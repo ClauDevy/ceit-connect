@@ -64,6 +64,9 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - No-op task updates and updates whose only real row difference is `sort_order` no longer write `activity_log` rows.
 - `task_lane_tail_sort_order` must remain `VOLATILE`; a `STABLE` function reuses the caller's snapshot and can miss rows committed while waiting on the per-event advisory lock.
 - Officer writers take one global transaction advisory lock before every authorization, setting, count, invitation, or target read. Fresh `preparing` rows reserve a seat for 15 minutes; finalization atomically replaces the reservation with its active profile, while stale retry/cancellation releases it once.
+- Phase 1b service-role SQL cases must set both the PostgreSQL role and `request.jwt.claims.role`.
+- Phase 1b success fixtures must reach `anonymized_at` through the real Stage A `anonymize_former_member()` function.
+- Phase 1b negative cases must compare before/after profile, Auth, identity, and session fingerprints to prove no partial mutation.
 
 ## 6. Workflow
 - CodeRabbit (VSCode) found real bugs on every branch; run it before each PR and again after fixing.

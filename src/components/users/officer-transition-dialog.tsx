@@ -22,7 +22,11 @@ import type { Committee, Member } from "@/lib/types";
 
 type TransitionAction = Exclude<
   MemberActionName,
-  "toggle" | "cancel-invite" | "edit-name"
+  | "toggle"
+  | "cancel-invite"
+  | "edit-name"
+  | "remove-former-member"
+  | "retry-former-member-cleanup"
 >;
 
 const TITLES: Record<TransitionAction, string> = {

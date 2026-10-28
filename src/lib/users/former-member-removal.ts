@@ -38,6 +38,15 @@ export type FormerMemberRemovalResult = {
   reasonCode?: FormerMemberReasonCode;
 };
 
+export type FormerMemberPreviewPayload = {
+  count: number;
+  users: FormerMemberPreview[];
+};
+
+export type FormerMemberRemovalPayload = {
+  results: FormerMemberRemovalResult[];
+};
+
 export type FormerMemberRequest =
   | { action: "preview"; userIds: string[] }
   | { action: "remove"; userIds: string[]; confirmation: string };
@@ -195,6 +204,102 @@ export function parseFormerMemberPreviewRows(
     });
   }
   return parsed;
+}
+
+export function parseFormerMemberPreviewPayload(
+  value: unknown,
+  requestedUserIds: readonly string[],
+): FormerMemberPreviewPayload | null {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, ["count", "users"]) ||
+    value.count !== requestedUserIds.length ||
+    !Array.isArray(value.users)
+  ) {
+    return null;
+  }
+
+  const rpcRows: PreviewRpcRow[] = [];
+  for (const unknownUser of value.users) {
+    if (
+      !isRecord(unknownUser) ||
+      !hasOnlyKeys(unknownUser, [
+        "inputOrdinal",
+        "userId",
+        "fullName",
+        "email",
+        "role",
+        "committeeId",
+        "isActive",
+        "anonymizedAt",
+        "openTaskCount",
+        "outcome",
+        "reasonCode",
+      ])
+    ) {
+      return null;
+    }
+    rpcRows.push({
+      input_ordinal: unknownUser.inputOrdinal as number,
+      user_id: unknownUser.userId as string,
+      full_name: unknownUser.fullName as string | null,
+      email: unknownUser.email as string | null,
+      role: unknownUser.role as string | null,
+      committee_id: unknownUser.committeeId as string | null,
+      is_active: unknownUser.isActive as boolean | null,
+      anonymized_at: unknownUser.anonymizedAt as string | null,
+      open_task_count: unknownUser.openTaskCount as number,
+      outcome: unknownUser.outcome as FormerMemberPreviewOutcome,
+      reason_code: unknownUser.reasonCode as FormerMemberReasonCode,
+    });
+  }
+
+  const users = parseFormerMemberPreviewRows(rpcRows, requestedUserIds);
+  return users ? { count: value.count as number, users } : null;
+}
+
+export function parseFormerMemberRemovalPayload(
+  value: unknown,
+  requestedUserIds: readonly string[],
+): FormerMemberRemovalPayload | null {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, ["results"]) ||
+    !Array.isArray(value.results) ||
+    value.results.length !== requestedUserIds.length
+  ) {
+    return null;
+  }
+
+  const results: FormerMemberRemovalResult[] = [];
+  for (const [index, unknownResult] of value.results.entries()) {
+    if (
+      !isRecord(unknownResult) ||
+      !hasOnlyKeys(unknownResult, ["userId", "state", "message", "reasonCode"]) ||
+      !isUuid(unknownResult.userId) ||
+      unknownResult.userId.toLowerCase() !==
+        requestedUserIds[index]?.toLowerCase() ||
+      (unknownResult.state !== "removed" &&
+        unknownResult.state !== "skipped" &&
+        unknownResult.state !== "failed" &&
+        unknownResult.state !== "cleanup-pending") ||
+      typeof unknownResult.message !== "string" ||
+      unknownResult.message.length === 0 ||
+      (unknownResult.reasonCode !== undefined &&
+        !isReasonCode(unknownResult.reasonCode))
+    ) {
+      return null;
+    }
+    results.push({
+      userId: unknownResult.userId.toLowerCase(),
+      state: unknownResult.state,
+      message: unknownResult.message,
+      ...(unknownResult.reasonCode
+        ? { reasonCode: unknownResult.reasonCode }
+        : {}),
+    });
+  }
+  return { results };
 }
 
 export function parseAnonymizeRpcRow(

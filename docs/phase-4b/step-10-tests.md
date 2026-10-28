@@ -853,3 +853,73 @@ per-item continuation, repeated Admin checks, and pre-service-role reactivation
 denial. The owner-confirmed Google gate requires Phase 1b; no removal UI is
 present.
 
+## Stage B Phase 2 UI verification
+
+Implemented locally without a migration, service-role list read, Supabase
+command, commit, or push. The tracked `users` policies permit the second
+caller-session marker read: Admins have `admin_view_all_users`; Co-Admins have
+same-committee SELECT, and `list_managed_users` returns them only Members from
+that same committee. The migrations revoke direct writes but do not revoke
+authenticated table/column SELECT.
+
+Automated verification completed on 2026-10-27:
+
+- Focused Part A: 56/56 tests passed across reader enrichment, terminal
+  presentation, role-aware actions, selection, Users API/page, and desktop/
+  phone rendering.
+- Focused Part B: 93/93 tests passed across strict preview/result contracts,
+  route regressions, 20/65-second abort contracts, frozen snapshots, retry
+  filtering, unknown outcomes, motion, and role-aware UI.
+- Final full Vitest run: 546/546 tests passed across 59 files.
+- Next.js 16.3.4 production build: passed, including TypeScript and all 28
+  routes.
+- ESLint: passed with zero issues.
+
+UI follow-up verification completed on 2026-10-27 after the Dev UX review:
+
+- Focused visibility/loading/selection/removal UI coverage: 44/44 tests passed
+  across six files.
+- Final full Vitest run: 561/561 tests passed across 62 files.
+- Next.js 16.3.4 production build: passed, including TypeScript and all 28
+  routes.
+- ESLint: passed with zero issues.
+- No migration, route contract, service-role reader, or Supabase command was
+  added or run.
+
+Manual browser rows remain owner-pending. Use Dev only and verify both desktop
+and phone widths, light and dark themes, then repeat the motion row with OS
+reduced motion enabled:
+
+- [ ] In light/dark desktop and phone views, removed rows are hidden by default.
+  The keyboard-operable `Show removed members` toggle reveals `Former member`
+  rows with `Removed`, committee, and role badges without requesting data or
+  resetting paging; shorter pages, all-loaded-removed state, and Load more stay
+  accurate.
+- [ ] Admin Deactivated selection works by mouse and keyboard; select-all uses
+  only visible non-removed rows, excludes removed/Admin/lookahead/unloaded rows,
+  stays across Load more, clears on tab/search changes, accepts 50, and
+  atomically rejects 51. Co-Admins receive no selection controls.
+- [ ] Ordinary rows show Reactivate and Remove former member in their menus.
+  Revealed removed rows show only Admin `Re-run cleanup`; Co-Admins see the row
+  with no profile-changing, removal, or retry control.
+- [ ] Single and bulk previews show eligible, open-task skipped, unavailable,
+  and cleanup-retry states; a stale target is authoritatively rechecked and
+  the exact full-count phrase is required.
+- [ ] Mixed results preserve request order and accurate Auth, Google identity,
+  and photo-cleanup messages; per-row Retry cleanup and Retry incomplete open
+  a fresh preview containing only failed/cleanup-pending UUIDs.
+- [ ] A timed-out preview releases controls and can be retried. A timed-out or
+  network-failed removal reports an unknown outcome, refreshes Deactivated,
+  and its `Show removed members` action waits for the page-one refresh before
+  revealing marked rows and closing, without fabricating per-user failures.
+- [ ] Co-Admin UI denial and direct API denial hold for Co-Admin, Member,
+  inactive Admin, profile-less, and unauthenticated callers; an anonymized
+  account remains non-reactivatable through UI and direct API.
+- [ ] Normal motion uses stable row reveal and tab-only panel motion. Reduced
+  motion immediately shows final list/dialog/control states with no spatial,
+  stagger, or one-off timer animation.
+- [ ] Tab and search input changes immediately show the shared roster skeleton,
+  expose no stale selection or row actions, announce loading once, and resolve
+  to success, empty, or error without getting stuck. Repeat this row with OS
+  reduced motion enabled.
+
