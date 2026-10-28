@@ -15,6 +15,10 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 - `password_set` = the person has set a password for email/password sign-in. It drives the Settings navigation reminder only and is never an authorization or Google-admission gate.
 - A person always needs **both** an `auth.users` row and a `users` row. The Invite flow creates both together and rolls back the login account if the profile insert fails.
 - Users are never deleted. Deactivate with `is_active = false`.
+- `anonymized_at timestamptz null` is the terminal former-member marker. A
+  marked row stays inactive with its UUID, role, committee, and history
+  references preserved; its display identity is fixed to `Former member` and
+  `<uuid>@former.invalid`, and it can never be reactivated.
 
 ### events
 
@@ -102,6 +106,24 @@ Task Draft visibility is enforced separately from event visibility. `tasks_selec
 - `deactivate_committee_member(p_user_id)`, `reactivate_committee_member(p_user_id)`, and `update_committee_member_full_name(p_user_id, p_full_name)` are authenticated-only, fixed-empty-path definers for active Co-Admins targeting same-committee Members. They share the officer advisory lock/re-check pattern and write only `is_active` or normalized `full_name`; no direct authenticated `users` UPDATE policy is restored.
 - Co-Admin deactivation intentionally leaves the profile avatar, Storage object, and Auth ban state unchanged in Batch 9. Batch 14 owns the avatar and ordinary-Member Auth ban/unban decision; Admin deactivation keeps its existing avatar cleanup behavior.
 - Names reject raw input over 1,000 code points before the per-character scan; reject U+0000–U+001F, U+007F–U+009F, U+2028, and U+2029; trim only U+0020, U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000, and U+FEFF at the edges; and contain 1–100 Unicode code points afterward. `CCP01` means the caller profile is unavailable and `CCP02` means the name is invalid.
+
+### Phase 4B Batch 10 former-member removal
+
+- `preview_former_member_removal(uuid[])` and
+  `anonymize_former_member(uuid)` are caller-session Admin boundaries. They
+  preserve the UUID and history, refuse active/Admin/self/open-task targets,
+  and return the terminal state idempotently.
+- `cleanup_former_member_auth(uuid)` is an unapplied Phase 1b
+  service-role-only, postgres-owned, fixed-empty-path `SECURITY DEFINER`
+  boundary. It accepts only an inactive profile with non-null `anonymized_at`
+  after the Admin API has proved the deterministic confirmed email and future
+  ban. It deletes non-email identities; canonicalizes zero or one email
+  identity without creating one; clears Auth metadata, phone/change state,
+  sessions, refresh tokens, and available MFA/one-time-token/flow-state rows;
+  and preserves Auth UUID, email, confirmed timestamp, password hash, ban, and
+  operational timestamps. More than one email identity or a provider-ID
+  collision rolls the statement back. `auth.audit_log_entries` is intentionally
+  retained as a known Auth audit leftover.
 
 ### Phase 4 Step 7 controls
 
@@ -241,6 +263,11 @@ Known Storage limitation: Postgres and Storage cannot share a transaction. Direc
 42. `20261025120000_home_event_progress.sql` — adds the bounded authenticated-only Active-event aggregate reader for Home phase, numeric-rounded progress, visible backup requests, and Backlog without changing tables, policies, triggers, or existing functions
 43. `20261026120000_officer_invitations_and_transitions.sql` — adds the private fixed-key cap setting, 15-minute officer-seat preparations, six exact officer transitions, the narrow Co-Admin active-state writer, pending reader, shared advisory lock, invoker users guard, Admin SELECT-only policy, and exact grants. The owner applied it on Dev and confirmed Step 8 Tests 1–9 plus the historical reruns passed; it is not claimed on Prod.
 44. `20261026150000_coadmin_user_management.sql` — adds the fixed-shape Admin/Co-Admin management reader, Member-only invite finalizer, and three same-committee Co-Admin Member writers without adding a policy or restoring direct user writes. The owner applied it on Dev and confirmed the fixed 116-line SQL test paste passed; it is not claimed on Prod.
+
+45. `20261027120000_task_assignee_locking.sql` - adds the shared sorted per-user assignment/removal lock and hardens task-assignment writers. Applied and passed on Dev; not claimed on Prod.
+46. `20261027130000_task_assignee_locking_hardening.sql` - preserves orphan-assignee editing while tightening Create Event, Edit Event, and direct assignment lock sets. Applied and passed on Dev; not claimed on Prod.
+47. `20261027150000_former_member_anonymization.sql` - adds the terminal profile marker, reactivation guard, eligibility preview, and idempotent Admin anonymization writer. Applied and passed on Dev; not claimed on Prod.
+48. `20261027180000_former_member_auth_identity_cleanup.sql` - adds the fail-closed service-role Auth identity/PII/session cleanup boundary. It is intentionally unapplied pending the owner-confirmed Dev catalog comparison.
 
 ## Environments
 

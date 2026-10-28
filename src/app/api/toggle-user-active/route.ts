@@ -44,6 +44,24 @@ export async function POST(request: Request) {
   const userId = payload.userId;
   const isActive = payload.isActive;
 
+  // The database trigger/RPC remains the final boundary. This caller-session
+  // check prevents every route path from reaching a service-role write for a
+  // permanently anonymized account.
+  if (isActive) {
+    const { data: activationTarget, error: activationTargetError } =
+      await supabase
+        .from("users")
+        .select("anonymized_at")
+        .eq("id", userId)
+        .single();
+    if (activationTargetError || !activationTarget) {
+      return json({ error: "The selected user could not be found" }, 404);
+    }
+    if (activationTarget.anonymized_at !== null) {
+      return json({ error: "This account cannot be reactivated" }, 409);
+    }
+  }
+
   if (requester.role === "Co-Admin") {
     const functionName = isActive
       ? "reactivate_committee_member"
@@ -68,7 +86,7 @@ export async function POST(request: Request) {
 
   const { data: target, error: targetError } = await supabase
     .from("users")
-    .select("role, is_active")
+    .select("role, is_active, anonymized_at")
     .eq("id", userId)
     .single();
 
@@ -80,6 +98,9 @@ export async function POST(request: Request) {
       { error: "Admin accounts cannot be activated or deactivated here" },
       403,
     );
+  }
+  if (isActive && target.anonymized_at !== null) {
+    return json({ error: "This account cannot be reactivated" }, 409);
   }
 
   if (target.role === "Co-Admin") {
