@@ -1,6 +1,6 @@
 # Step 10: Remove former member
 
-**Status:** Planned | **Branch:** `feature/member-removal` | **Reasoning level:** High (security-critical migrations and tests)
+**Status:** Stage A passed on Dev; Stage B Phase 1b implemented locally, catalog gate pending | **Branch:** `feature/member-removal` | **Reasoning level:** High (security-critical migrations and tests)
 
 ## Goal
 
@@ -97,6 +97,355 @@ Because these systems cannot share a transaction, retries inspect current profil
 - Rewriting immutable activity snapshots would corrupt the audit trail. Their UUIDs are not personal-display fields and must remain unchanged.
 - Leaving the public avatar object after a failed cleanup retains personal data. Report `cleanup-pending`, retry the fixed object path, and never report full success until removal is confirmed or the object is already absent.
 
+## Stage B implementation notes
+
+Stage B is split by an owner-required Dev gate. Phase 1 implements only the
+strict route contracts, caller-session preview/removal orchestration,
+service-role Auth/Storage cleanup, activation-route hardening, and automated
+tests. No removal UI is built until the Google-linked re-invite gate below
+passes and the owner explicitly approves continuing.
+
+The new POST route follows the repository's existing same-origin cookie-auth
+convention: browser callers use a relative `/api/...` URL (and therefore the
+browser's normal same-origin cookie behavior), while the route calls
+`getAuthUser()`, rechecks the active Admin profile through a caller-session
+client, and relies on RPC/RLS authorization. The repository has no shared
+explicit `Origin`, `Referer`, or `Sec-Fetch-Site` validator; Stage B does not
+invent a different one for this route.
+
+The route exports `maxDuration = 60` as a conservative deployment hint. This
+does not assume or override any hosting plan's actual limit. A 50-user request
+can therefore end without a complete response if the platform stops it. Work
+is database-first and per UUID, so a retry of the same UUIDs is safe. When the
+UI phase is later approved, a request-level timeout must refresh the
+Deactivated list, show every marked row as `Former member / Cleanup may be
+retried`, and expose `Retry cleanup`; that retry must rerun the same DB outcome,
+Auth update/ban, and fixed-path Storage deletion. Phase 1 intentionally ships
+no such UI yet.
+
+The Phase 1 Auth Admin update changes only `email`, `email_confirm`, and
+`ban_duration`. It sends no email. The owner-confirmed Google gate proved that
+this leaves personal data in `auth.users.raw_user_meta_data`, provider data in
+`raw_app_meta_data`, and the linked Google row in `auth.identities`. Google
+sign-in with the original address then resolves to the old banned UUID and
+blocks the re-invited user.
+
+Phase 1b therefore keeps the Admin update as the email/confirmation/ban step,
+then calls the service-role-only `cleanup_former_member_auth(uuid)` database
+boundary before Storage cleanup. The installed `@supabase/auth-js` 2.116 API
+supports `admin.updateUserById()` metadata updates, but `GoTrueAdminApi` has no
+Admin identity-list or identity-delete method. Its only `unlinkIdentity()` is
+a caller-session method: it requires the affected user to be signed in, manual
+linking enabled, and at least two identities. It cannot safely clean another
+user after that user is banned. A fixed-search-path `SECURITY DEFINER` function
+is therefore the one approved mechanism.
+
+The function deletes every non-email identity, canonicalizes zero or one email
+identity without manufacturing a missing identity, clears user/app metadata,
+phone and change-token state, sessions and refresh tokens, and optional MFA,
+one-time-token, and OAuth flow-state rows. More than one email identity or a
+provider-ID collision fails the whole statement atomically. It never changes
+the Auth UUID, deterministic email, confirmed timestamp, password hash, ban,
+or operational timestamps. `auth.audit_log_entries` is deliberately untouched
+and is a known retained Auth audit record.
+
+Auth success is accepted only when the Admin API returns the same UUID, the
+deterministic `<uuid>@former.invalid` email, a confirmed-email timestamp, and a
+future ban timestamp. If Auth fails or cannot prove that state after the DB
+profile was anonymized, the item is `failed`, never `removed`, and reports that
+the original email is not free yet. Identity cleanup failure after proven Auth
+success is `cleanup-pending`, never `removed`; its safe message says the email
+is free for re-invite but Google sign-in may still resolve to the old banned
+account until cleanup finishes. Storage failure after proven Auth and identity
+cleanup is `cleanup-pending`.
+
+### Google-linked Dev gate (required before UI)
+
+Prepare a throwaway Gmail controlled by the owner, invite it as a Dev Member,
+sign in with Google once, confirm the Google identity in the Dev Auth dashboard,
+then deactivate it. While signed in to the Dev application as an Admin, open
+the browser console and paste this preview snippet:
+
+```js
+window.step10FormerMemberId = prompt("Paste the deactivated Member UUID")?.trim();
+if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(window.step10FormerMemberId ?? "")) {
+  throw new Error("A valid deactivated Member UUID is required.");
+}
+window.step10PreviewResponse = await fetch("/api/remove-former-members", {
+  method: "POST",
+  credentials: "same-origin",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: "preview",
+    userIds: [window.step10FormerMemberId],
+  }),
+});
+window.step10PreviewBody = await window.step10PreviewResponse.json();
+console.log("Preview status:", window.step10PreviewResponse.status);
+console.table(window.step10PreviewBody.users ?? []);
+console.log(window.step10PreviewBody);
+```
+
+Confirm that the preview is HTTP 200, count 1, and the target is the intended
+inactive non-Admin with `outcome: "eligible"`. Then paste the removal snippet:
+
+```js
+window.step10RemoveResponse = await fetch("/api/remove-former-members", {
+  method: "POST",
+  credentials: "same-origin",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: "remove",
+    userIds: [window.step10FormerMemberId],
+    confirmation: "REMOVE 1 MEMBERS",
+  }),
+});
+window.step10RemoveBody = await window.step10RemoveResponse.json();
+console.log("Removal status:", window.step10RemoveResponse.status);
+console.table(window.step10RemoveBody.results ?? []);
+console.log(window.step10RemoveBody);
+```
+
+The gate checklist is:
+
+1. The removal response is HTTP 200 with the intended UUID and state `removed`.
+2. `public.users` keeps that UUID and role/committee/history links; it has
+   `Former member`, `<uuid>@former.invalid`, `is_active = false`, null avatar
+   and Discord fields, and a non-null `anonymized_at`.
+3. The old Auth row keeps the same UUID, has `<uuid>@former.invalid` as its
+   confirmed email, the same password hash and operational timestamps, and a
+   future ban timestamp. Its user metadata is empty and its app metadata names
+   only the email provider.
+4. `avatars/<uuid>/avatar.webp` is absent.
+5. Direct reactivation returns the safe permanent-denial response and performs
+   no Auth, profile, or Storage write.
+6. Invite the original Gmail again through the normal Dev Member invitation
+   flow and verify it receives a new Auth/profile UUID.
+7. Sign in with Google using that Gmail. The new UUID must reach the app as the
+   active Member; the old UUID must remain banned and anonymized.
+8. Verify the old Auth row has no non-email identity, zero or one canonical
+   email identity, no phone/change-token state, no sessions/refresh tokens, and
+   no optional MFA, one-time-token, or flow-state rows.
+
+### Phase 1b Dev catalog comparison (run before applying the migration)
+
+Run this read-only query in the Dev SQL editor and compare its output with
+`20261027180000_former_member_auth_identity_cleanup.sql`. It reads
+`pg_catalog.pg_attribute` rather than `information_schema.columns`, includes
+generated-column status and types, and exposes the constraints needed to
+confirm identity uniqueness and session/MFA deletion behavior. Do not apply the
+migration until every referenced column and comparison type matches.
+
+The rollback-only 42-line function gate and its numbered expected output are
+in `docs/phase-4b/step-10-phase-1b-tests.md`.
+
+```sql
+with inspected_tables(table_name) as (
+  values
+    ('users'),
+    ('identities'),
+    ('sessions'),
+    ('refresh_tokens'),
+    ('mfa_factors'),
+    ('mfa_challenges'),
+    ('mfa_amr_claims'),
+    ('one_time_tokens'),
+    ('flow_state'),
+    ('audit_log_entries')
+),
+relations as (
+  select
+    inspected_tables.table_name,
+    relation.oid as relation_id,
+    relation.relkind
+  from inspected_tables
+  left join pg_catalog.pg_namespace as namespace
+    on namespace.nspname = 'auth'
+  left join pg_catalog.pg_class as relation
+    on relation.relnamespace = namespace.oid
+   and relation.relname = inspected_tables.table_name
+),
+table_inventory as (
+  select pg_catalog.jsonb_object_agg(
+    relations.table_name,
+    pg_catalog.jsonb_build_object(
+      'present', relations.relation_id is not null,
+      'relkind', relations.relkind
+    )
+    order by relations.table_name
+  ) as value
+  from relations
+),
+column_inventory as (
+  select coalesce(
+    pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'table', relations.table_name,
+        'position', attribute.attnum,
+        'column', attribute.attname,
+        'data_type', pg_catalog.format_type(
+          attribute.atttypid, attribute.atttypmod
+        ),
+        'not_null', attribute.attnotnull,
+        'is_generated', attribute.attgenerated <> '',
+        'generation_expression', case
+          when attribute.attgenerated <> '' then
+            pg_catalog.pg_get_expr(default_row.adbin, default_row.adrelid)
+          else null
+        end,
+        'identity_kind', nullif(attribute.attidentity, '')
+      )
+      order by relations.table_name, attribute.attnum
+    ),
+    '[]'::jsonb
+  ) as value
+  from relations
+  join pg_catalog.pg_attribute as attribute
+    on attribute.attrelid = relations.relation_id
+   and attribute.attnum > 0
+   and not attribute.attisdropped
+  left join pg_catalog.pg_attrdef as default_row
+    on default_row.adrelid = attribute.attrelid
+   and default_row.adnum = attribute.attnum
+),
+constraint_inventory as (
+  select coalesce(
+    pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'table', relations.table_name,
+        'name', constraint_row.conname,
+        'type', constraint_row.contype,
+        'definition', pg_catalog.pg_get_constraintdef(
+          constraint_row.oid, true
+        )
+      )
+      order by relations.table_name, constraint_row.conname
+    ),
+    '[]'::jsonb
+  ) as value
+  from relations
+  join pg_catalog.pg_constraint as constraint_row
+    on constraint_row.conrelid = relations.relation_id
+),
+index_inventory as (
+  select coalesce(
+    pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'table', relations.table_name,
+        'name', index_relation.relname,
+        'is_unique', index_row.indisunique,
+        'definition', pg_catalog.pg_get_indexdef(index_row.indexrelid)
+      )
+      order by relations.table_name, index_relation.relname
+    ),
+    '[]'::jsonb
+  ) as value
+  from relations
+  join pg_catalog.pg_index as index_row
+    on index_row.indrelid = relations.relation_id
+  join pg_catalog.pg_class as index_relation
+    on index_relation.oid = index_row.indexrelid
+),
+identity_email as (
+  select coalesce(
+    (
+      select pg_catalog.jsonb_build_object(
+        'present', true,
+        'is_generated', attribute.attgenerated <> '',
+        'generation_expression', case
+          when attribute.attgenerated <> '' then
+            pg_catalog.pg_get_expr(default_row.adbin, default_row.adrelid)
+          else null
+        end,
+        'data_type', pg_catalog.format_type(
+          attribute.atttypid, attribute.atttypmod
+        )
+      )
+      from pg_catalog.pg_attribute as attribute
+      left join pg_catalog.pg_attrdef as default_row
+        on default_row.adrelid = attribute.attrelid
+       and default_row.adnum = attribute.attnum
+      where attribute.attrelid = pg_catalog.to_regclass('auth.identities')
+        and attribute.attname = 'email'
+        and attribute.attnum > 0
+        and not attribute.attisdropped
+    ),
+    pg_catalog.jsonb_build_object(
+      'present', false,
+      'is_generated', false,
+      'generation_expression', null,
+      'data_type', null
+    )
+  ) as value
+),
+refresh_tokens_user_id as (
+  select coalesce(
+    (
+      select pg_catalog.jsonb_build_object(
+        'present', true,
+        'data_type', pg_catalog.format_type(
+          attribute.atttypid, attribute.atttypmod
+        )
+      )
+      from pg_catalog.pg_attribute as attribute
+      where attribute.attrelid = pg_catalog.to_regclass(
+        'auth.refresh_tokens'
+      )
+        and attribute.attname = 'user_id'
+        and attribute.attnum > 0
+        and not attribute.attisdropped
+    ),
+    pg_catalog.jsonb_build_object(
+      'present', false,
+      'data_type', null
+    )
+  ) as value
+),
+trigger_inventory as (
+  select coalesce(
+    pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'table', relation.relname,
+        'name', trigger_row.tgname,
+        'enabled', trigger_row.tgenabled,
+        'definition', pg_catalog.pg_get_triggerdef(trigger_row.oid, true)
+      )
+      order by relation.relname, trigger_row.tgname
+    ),
+    '[]'::jsonb
+  ) as value
+  from pg_catalog.pg_namespace as namespace
+  join pg_catalog.pg_class as relation
+    on relation.relnamespace = namespace.oid
+  join pg_catalog.pg_trigger as trigger_row
+    on trigger_row.tgrelid = relation.oid
+   and not trigger_row.tgisinternal
+  where namespace.nspname = 'auth'
+    and relation.relname in (
+      'users', 'identities', 'sessions', 'refresh_tokens'
+    )
+)
+select pg_catalog.jsonb_build_object(
+  'auth_role', pg_catalog.jsonb_build_object(
+    'present', pg_catalog.to_regprocedure('auth.role()') is not null
+  ),
+  'identities_email', identity_email.value,
+  'refresh_tokens_user_id', refresh_tokens_user_id.value,
+  'tables', table_inventory.value,
+  'columns', column_inventory.value,
+  'constraints', constraint_inventory.value,
+  'indexes', index_inventory.value,
+  'non_internal_triggers', trigger_inventory.value
+) as auth_catalog
+from table_inventory
+cross join column_inventory
+cross join constraint_inventory
+cross join index_inventory
+cross join identity_email
+cross join refresh_tokens_user_id
+cross join trigger_inventory;
+```
+
 ## Earlier test docs to re-run or update
 
 - Re-run Batch 0 users-policy tests and Batch 9 activation/deactivation tests with `anonymized_at` added to every reactivation guard.
@@ -111,7 +460,7 @@ Because these systems cannot share a transaction, retries inspect current profil
 
 Create `docs/phase-4b/step-10-tests.md` when the batch lands. Include one self-contained rollback-safe Dev SQL paste ending in the required intentional `TEST RESULTS` exception, plus route/orchestration tests using mocked Auth and Storage boundaries.
 
-Cover active target, Admin target, self target, already anonymized target, inactive eligible Member, inactive Co-Admin, 0/1/50/51 selections, duplicate IDs, stale preview, and unauthorized callers. For open-task eligibility, cross primary/assist assignment with To Do/In Progress/Completed and Draft/Active/Archived parents; only open Draft/Active combinations skip. Prove UUIDs and all listed foreign-key/array/history locations remain unchanged while profile PII changes. Pin the shared per-user lock-key helper and inventory every direct or indirect writer of either assignee array.
+Cover active target, Admin target, self target, already anonymized target, inactive eligible Member, inactive Co-Admin, 0/1/50/51 selections, duplicate IDs, stale preview, and unauthorized callers. For open-task eligibility, cross primary/assist assignment with To Do/In Progress/Completed and Draft/Active/Archived parents; only open Draft/Active combinations skip. Prove UUIDs and all listed foreign-key/array/history locations remain unchanged while profile PII changes. Pin the shared per-user lock-key helper and inventory every direct or indirect writer of either assignee array. The counted live-catalog line must require the broad body search to equal exactly `accept_task_volunteer`, `assign_task_people`, `claim_task`, `create_event_with_tasks`, `edit_event_with_tasks`, `move_task`, `set_task_backup_request`, and `unassign_self`, while separately requiring the true array-writing subset to equal the same list without `move_task` and `set_task_backup_request`; those two only read the arrays for authorization. Fold into the existing Edit Event race/result line a rollback-safe case that inserts a task as postgres under an approved task-assignee writer marker with an orphan UUID in either stored assignee array, then proves `edit_event_with_tasks` can save that task when the payload does not re-send the orphan. These assertions do not add a result line, so the planned total remains 190.
 
 Add genuine overlapping-transaction tests for assignment racing with removal in both arrival orders. Cover a one-person and multi-person assignment with deliberately reversed input order, and prove locks are acquired in sorted unique user-id order before task/event rows. Exactly one valid outcome wins: a committed open assignment makes removal return `skipped`, or committed removal makes assignment reject the inactive/anonymized target. Assert no deadlock, partial array update, removed-but-assigned account, duplicate assignee, or retry without authoritative re-read.
 
