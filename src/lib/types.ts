@@ -36,6 +36,7 @@ export interface Member {
   committee_id: string | null;
   avatar_url: string | null;
   is_active: boolean;
+  anonymized_at: string | null;
 }
 
 export interface PendingOfficerInvite {

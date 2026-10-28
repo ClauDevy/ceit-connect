@@ -1,6 +1,6 @@
 # Step 10: Remove former member
 
-**Status:** Stage A passed on Dev; Stage B Phase 1b implemented locally, catalog gate pending | **Branch:** `feature/member-removal` | **Reasoning level:** High (security-critical migrations and tests)
+**Status:** Stage A passed on Dev; Stage B Phases 1 and 1b applied/implemented; Phase 2 and its UX follow-up implemented locally with manual verification pending | **Branch:** `feature/member-removal` | **Reasoning level:** High (security-critical migrations and tests)
 
 ## Goal
 
@@ -116,12 +116,29 @@ invent a different one for this route.
 The route exports `maxDuration = 60` as a conservative deployment hint. This
 does not assume or override any hosting plan's actual limit. A 50-user request
 can therefore end without a complete response if the platform stops it. Work
-is database-first and per UUID, so a retry of the same UUIDs is safe. When the
-UI phase is later approved, a request-level timeout must refresh the
-Deactivated list, show every marked row as `Former member / Cleanup may be
-retried`, and expose `Retry cleanup`; that retry must rerun the same DB outcome,
-Auth update/ban, and fixed-path Storage deletion. Phase 1 intentionally ships
-no such UI yet.
+is database-first and per UUID, so a retry of the same UUIDs is safe. The
+implemented UI refreshes the Deactivated list after a request-level timeout,
+keeps marked rows hidden by default, and lets the Admin reveal them as `Former
+member` with a `Removed` badge and `Re-run cleanup`; that action reruns the same
+database outcome, Auth/identity cleanup, and fixed-path Storage deletion.
+
+Stage B Phase 2 is implemented locally. The Deactivated reader now enriches
+only its already-authorized returned UUIDs with `anonymized_at` through the
+caller session and fails the whole page closed on an incomplete or malformed
+enrichment. Marked rows are hidden by default behind a client-only `Show
+removed members` toggle available to Admins and Co-Admins; paging, the hidden
+lookahead, loaded UUID identity, and Load more remain unchanged. Admins can
+select at most 50 currently rendered non-Admin, non-terminal rows, while marked
+rows, the hidden lookahead, and unloaded pages remain outside selection.
+Single, bulk, row-retry, and incomplete-result retry paths
+share the same authoritative preview and exact typed confirmation flow.
+Preview requests abort after 20 seconds; removal requests abort after 65
+seconds and report an unknown outcome rather than inventing per-user failures,
+then refresh the Deactivated list. Tab and search changes immediately replace
+stale rows and controls with shared roster skeletons, while the toggle itself
+never requests or resets paging. Co-Admins can reveal terminal labels but
+receive no removal, retry, reactivation, selection, or other profile-changing
+controls for those rows. Manual browser verification remains pending.
 
 The Phase 1 Auth Admin update changes only `email`, `email_confirm`, and
 `ban_duration`. It sends no email. The owner-confirmed Google gate proved that
@@ -229,12 +246,16 @@ The gate checklist is:
 
 ### Phase 1b Dev catalog comparison (run before applying the migration)
 
+(Historical: this gate ran and the migration is applied to Dev. Pending Prod push at the end of Batch 10.)
+
 Run this read-only query in the Dev SQL editor and compare its output with
 `20261027180000_former_member_auth_identity_cleanup.sql`. It reads
 `pg_catalog.pg_attribute` rather than `information_schema.columns`, includes
 generated-column status and types, and exposes the constraints needed to
 confirm identity uniqueness and session/MFA deletion behavior. Do not apply the
 migration until every referenced column and comparison type matches.
+
+(Historical: this gate ran and the migration is applied to Dev. Pending Prod push at the end of Batch 10.)
 
 The rollback-only 42-line function gate and its numbered expected output are
 in `docs/phase-4b/step-10-phase-1b-tests.md`.

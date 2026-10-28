@@ -113,9 +113,10 @@ Task Draft visibility is enforced separately from event visibility. `tasks_selec
   `anonymize_former_member(uuid)` are caller-session Admin boundaries. They
   preserve the UUID and history, refuse active/Admin/self/open-task targets,
   and return the terminal state idempotently.
-- `cleanup_former_member_auth(uuid)` is an unapplied Phase 1b
-  service-role-only, postgres-owned, fixed-empty-path `SECURITY DEFINER`
-  boundary. It accepts only an inactive profile with non-null `anonymized_at`
+- `cleanup_former_member_auth(uuid)` is a Phase 1b service-role-only,
+  postgres-owned, fixed-empty-path `SECURITY DEFINER` boundary applied to Dev
+  and pending Prod push at the end of Batch 10. It accepts only an inactive
+  profile with non-null `anonymized_at`
   after the Admin API has proved the deterministic confirmed email and future
   ban. It deletes non-email identities; canonicalizes zero or one email
   identity without creating one; clears Auth metadata, phone/change state,
@@ -267,7 +268,7 @@ Known Storage limitation: Postgres and Storage cannot share a transaction. Direc
 45. `20261027120000_task_assignee_locking.sql` - adds the shared sorted per-user assignment/removal lock and hardens task-assignment writers. Applied and passed on Dev; not claimed on Prod.
 46. `20261027130000_task_assignee_locking_hardening.sql` - preserves orphan-assignee editing while tightening Create Event, Edit Event, and direct assignment lock sets. Applied and passed on Dev; not claimed on Prod.
 47. `20261027150000_former_member_anonymization.sql` - adds the terminal profile marker, reactivation guard, eligibility preview, and idempotent Admin anonymization writer. Applied and passed on Dev; not claimed on Prod.
-48. `20261027180000_former_member_auth_identity_cleanup.sql` - adds the fail-closed service-role Auth identity/PII/session cleanup boundary. It is intentionally unapplied pending the owner-confirmed Dev catalog comparison.
+48. `20261027180000_former_member_auth_identity_cleanup.sql` - adds the fail-closed service-role Auth identity/PII/session cleanup boundary. Applied to Dev; pending Prod push at the end of Batch 10.
 
 ## Environments
 

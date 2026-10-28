@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   UserRoundX,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +17,8 @@ import type { Member, PendingOfficerInvite, Role } from "@/lib/types";
 
 export type MemberActionName =
   | "toggle"
+  | "remove-former-member"
+  | "retry-former-member-cleanup"
   | "edit-name"
   | "cancel-invite"
   | "appoint"
@@ -42,6 +43,20 @@ export function MemberAction({
   viewerRole,
   onAction,
 }: MemberActionProps) {
+  if (member.anonymized_at !== null) {
+    if (viewerRole === "Co-Admin") return null;
+    return (
+      <ActionMenu member={member} pending={pending}>
+        <DestructiveItem
+          onClick={() => onAction("retry-former-member-cleanup", member)}
+        >
+          <RotateCcw className="size-4" aria-hidden />
+          Re-run cleanup
+        </DestructiveItem>
+      </ActionMenu>
+    );
+  }
+
   if (viewerRole === "Co-Admin") {
     return (
       <ActionMenu member={member} pending={pending}>
@@ -89,14 +104,18 @@ export function MemberAction({
 
   if (!member.is_active) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={pending}
-        onClick={() => onAction("toggle", member)}
-      >
-        Reactivate
-      </Button>
+      <ActionMenu member={member} pending={pending}>
+        <DropdownMenuItem onClick={() => onAction("toggle", member)}>
+          <RotateCcw className="size-4" aria-hidden />
+          Reactivate
+        </DropdownMenuItem>
+        <DestructiveItem
+          onClick={() => onAction("remove-former-member", member)}
+        >
+          <UserRoundX className="size-4" aria-hidden />
+          Remove former member
+        </DestructiveItem>
+      </ActionMenu>
     );
   }
 

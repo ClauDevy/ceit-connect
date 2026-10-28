@@ -35,6 +35,7 @@ const activeMember: Member = {
   committee_id: "committee-1",
   avatar_url: null,
   is_active: true,
+  anonymized_at: null,
 };
 
 describe("MemberAction", () => {
@@ -54,7 +55,7 @@ describe("MemberAction", () => {
     expect(html).not.toContain("Reactivate");
   });
 
-  it("keeps Reactivate direct and does not render a menu trigger", () => {
+  it("groups Reactivate and Remove former member in the row menu", () => {
     const html = renderToStaticMarkup(
       <MemberAction
         viewerRole="Admin"
@@ -66,8 +67,47 @@ describe("MemberAction", () => {
     );
 
     expect(html).toContain("Reactivate");
-    expect(html).not.toContain("More actions");
+    expect(html).toContain("More actions");
+    expect(html).toContain("Remove former member");
     expect(html).not.toContain("Deactivate");
+  });
+
+  it("gives an Admin only Re-run cleanup for an anonymized row", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{
+          ...activeMember,
+          full_name: "Former member",
+          is_active: false,
+          anonymized_at: "2026-10-27T12:00:00Z",
+        }}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(html).toContain("Re-run cleanup");
+    expect(html).not.toContain("Reactivate");
+    expect(html).not.toContain("Edit name");
+  });
+
+  it("gives a Co-Admin no actions for an anonymized row", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Co-Admin"
+        member={{
+          ...activeMember,
+          full_name: "Former member",
+          is_active: false,
+          anonymized_at: "2026-10-27T12:00:00Z",
+        }}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(html).toBe("");
   });
 
   it("gives the current Admin only the self step-down action", () => {
