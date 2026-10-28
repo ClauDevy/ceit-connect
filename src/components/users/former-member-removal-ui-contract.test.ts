@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   PREVIEW_TIMEOUT_MS,
   REMOVAL_TIMEOUT_MS,
+  classifyRemovalResponse,
 } from "./former-member-removal-dialog";
 
 const dialog = readFileSync(
@@ -42,11 +43,43 @@ describe("former-member removal UI contract", () => {
 
   it("handles unknown outcomes without claiming per-user failure", () => {
     expect(dialog).toContain("Outcome unknown");
+    expect(dialog).toContain("some accounts may have");
+    expect(dialog).toContain("use Re-run cleanup on marked rows");
     expect(dialog).toContain("await onRefresh()");
     expect(dialog).toContain("onShowRemovedMembers");
     expect(dialog).toContain("showRemovedBusy || refreshInFlight");
     expect(usersTable).toContain("setShowRemovedMembers(true)");
     expect(usersTable).toContain("if (!refreshed) return false");
+  });
+
+  it("treats uncertain removal HTTP responses as unknown", () => {
+    for (const status of [500, 502]) {
+      expect(
+        classifyRemovalResponse({ ok: false, status }, { error: "safe" }),
+      ).toBe("unknown");
+    }
+    expect(classifyRemovalResponse({ ok: true, status: 200 }, null)).toBe(
+      "unknown",
+    );
+
+    for (const status of [400, 403, 409]) {
+      expect(
+        classifyRemovalResponse({ ok: false, status }, { error: "safe" }),
+      ).toBe("error");
+    }
+
+    expect(
+      classifyRemovalResponse({ ok: true, status: 200 }, { results: [] }),
+    ).toBe("success");
+    expect(dialog).toContain("response.json().catch(() => null)");
+    expect(dialog).toMatch(
+      /responseDisposition === "unknown"[\s\S]*setPhase\("unknown"\)[\s\S]*finally \{[\s\S]*await onRefresh\(\)/,
+    );
+    expect(dialog).toMatch(
+      /responseDisposition === "error"[\s\S]*readSafeError[\s\S]*setPhase\("confirm"\)/,
+    );
+    expect(dialog).toContain('if (!parsed) {\n        setPhase("unknown")');
+    expect(dialog).toContain('setPhase("preview-error")');
   });
 
   it("keeps desktop and phone selection role-aware and motion-safe", () => {

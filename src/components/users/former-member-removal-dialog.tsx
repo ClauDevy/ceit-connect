@@ -154,7 +154,12 @@ export function FormerMemberRemovalDialog({
         signal: controller.signal,
       });
       const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
+      const responseDisposition = classifyRemovalResponse(response, body);
+      if (responseDisposition === "unknown") {
+        setPhase("unknown");
+        return;
+      }
+      if (responseDisposition === "error") {
         setError(
           readSafeError(
             body,
@@ -331,9 +336,9 @@ export function FormerMemberRemovalDialog({
         {phase === "unknown" ? (
           <>
             <InlineAlert>
-              Outcome unknown. The request timed out or the connection ended
-              after removal may have started. Refresh the Deactivated list and
-              show removed members to find rows that may need cleanup.
+              Outcome unknown. The request ended after some accounts may have
+              completed. The Deactivated list was refreshed; show removed
+              members and use Re-run cleanup on marked rows.
             </InlineAlert>
             {refreshError ? <InlineAlert>{refreshError}</InlineAlert> : null}
             <DialogFooter>
@@ -490,5 +495,17 @@ function readSafeError(value: unknown, fallback: string) {
     : fallback;
 }
 
-export { PREVIEW_TIMEOUT_MS, REMOVAL_TIMEOUT_MS };
+function classifyRemovalResponse(
+  response: Pick<Response, "ok" | "status">,
+  body: unknown,
+) {
+  if (response.status >= 500 || body === null) return "unknown" as const;
+  return response.ok ? ("success" as const) : ("error" as const);
+}
+
+export {
+  PREVIEW_TIMEOUT_MS,
+  REMOVAL_TIMEOUT_MS,
+  classifyRemovalResponse,
+};
 export type { RemovalRequest };
