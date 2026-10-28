@@ -39,6 +39,7 @@ const member: Member = {
   committee_id: "committee-1",
   avatar_url: "https://storage.example/member-1/avatar.webp?v=updated",
   is_active: true,
+  anonymized_at: null,
 };
 
 const props = {
@@ -49,6 +50,12 @@ const props = {
   onAction: vi.fn(),
   pendingInviteByAuthUserId: new Map(),
   viewerRole: "Admin" as const,
+  selectionEnabled: false,
+  selectedIds: new Set<string>(),
+  allVisibleSelected: false,
+  someVisibleSelected: false,
+  onToggleSelection: vi.fn(),
+  onToggleVisibleSelection: vi.fn(),
 };
 
 describe("User Management avatar markup", () => {
