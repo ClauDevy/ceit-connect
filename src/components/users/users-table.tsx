@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -12,11 +12,17 @@ import { MembersTable } from "@/components/users/members-table";
 import { type MemberActionName } from "@/components/users/member-actions";
 import { OfficerTransitionDialog } from "@/components/users/officer-transition-dialog";
 import { EditMemberNameDialog } from "@/components/users/edit-member-name-dialog";
+import {
+  FormerMemberRemovalDialog,
+  type RemovalRequest,
+} from "@/components/users/former-member-removal-dialog";
 import { PendingOfficerInvites } from "@/components/users/pending-officer-invites";
 import { useToggleMemberActive } from "@/components/users/use-toggle-member-active";
+import { UsersRosterSkeleton } from "@/components/users/users-roster-skeleton";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { IconInput } from "@/components/ui/icon-input";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
 import type { OffsetListPage } from "@/lib/list-paging";
@@ -24,6 +30,16 @@ import { preventSearchFormSubmission } from "@/lib/search";
 import type { Committee, Member, Role } from "@/lib/types";
 import type { PendingOfficerInvite } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
+import {
+  getSelectableFormerMemberIds,
+  toggleVisibleFormerMemberSelection,
+  updateFormerMemberSelection,
+} from "@/lib/users/former-member-selection";
+import {
+  countRemovedMembers,
+  getVisibleMembers,
+  isUsersSearchDebouncing,
+} from "@/lib/users/former-member-visibility";
 import {
   isMember,
   truncateUsersSearch,
@@ -64,13 +80,30 @@ export function UsersTable({
   const [target, setTarget] = useState<Member | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Member | null>(null);
-  const [nameOverrides, setNameOverrides] = useState<Record<string, string>>({});
-  const [cancelInviteTarget, setCancelInviteTarget] = useState<Member | null>(null);
+  const [nameOverrides, setNameOverrides] = useState<Record<string, string>>(
+    {},
+  );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMessage, setSelectionMessage] = useState("");
+  const [showRemovedMembers, setShowRemovedMembers] = useState(false);
+  const [forceRosterSkeleton, setForceRosterSkeleton] = useState(false);
+  const [removalRequest, setRemovalRequest] = useState<RemovalRequest | null>(
+    null,
+  );
+  const removalRequestKey = useRef(0);
+  const unknownRevealPromise = useRef<Promise<boolean> | null>(null);
+  const [cancelInviteTarget, setCancelInviteTarget] = useState<Member | null>(
+    null,
+  );
   const [cancelInviteError, setCancelInviteError] = useState("");
   const [cancelInviteBusy, setCancelInviteBusy] = useState(false);
   const [transitionAction, setTransitionAction] = useState<Exclude<
     MemberActionName,
-    "toggle" | "cancel-invite" | "edit-name"
+    | "toggle"
+    | "cancel-invite"
+    | "edit-name"
+    | "remove-former-member"
+    | "retry-former-member-cleanup"
   > | null>(null);
   const [transitionTarget, setTransitionTarget] = useState<Member | null>(null);
   const [transitionBusy, setTransitionBusy] = useState(false);
@@ -158,7 +191,9 @@ export function UsersTable({
     window.addEventListener("member-users-changed", refresh);
     return () => window.removeEventListener("member-users-changed", refresh);
   }, [refreshUsers, status]);
-  const toggle = useToggleMemberActive(paging.refreshFromStart);
+  const toggle = useToggleMemberActive(async () => {
+    await paging.refreshFromStart();
+  });
   const reveal = useListReveal({
     initialItems: initialPage.items,
     items: paging.items,
@@ -168,12 +203,25 @@ export function UsersTable({
   });
 
   const committeeNames = useMemo(
-    () => new Map(committees.map((committee) => [committee.id, committee.name])),
+    () =>
+      new Map(committees.map((committee) => [committee.id, committee.name])),
     [committees],
   );
   const committeeName = (id: string | null) =>
     (id ? committeeNames.get(id) : null) ?? "—";
   const reactivating = target ? !target.is_active : false;
+
+  function openRemoval(
+    userIds: string[],
+    origin: RemovalRequest["origin"] = "remove",
+  ) {
+    removalRequestKey.current += 1;
+    setRemovalRequest({
+      key: removalRequestKey.current,
+      origin,
+      userIds: [...userIds],
+    });
+  }
 
   async function confirmToggle() {
     if (!target) return;
@@ -190,6 +238,14 @@ export function UsersTable({
       setCancelInviteError("");
     } else if (action === "edit-name") {
       setEditTarget(member);
+    } else if (
+      action === "remove-former-member" ||
+      action === "retry-former-member-cleanup"
+    ) {
+      openRemoval(
+        [member.id],
+        action === "retry-former-member-cleanup" ? "rerun-cleanup" : "remove",
+      );
     } else {
       setTransitionTarget(member);
       setTransitionAction(action);
@@ -203,7 +259,9 @@ export function UsersTable({
       (item) => item.auth_user_id === cancelInviteTarget.id,
     );
     if (!invitation) {
-      setCancelInviteError("The pending invitation changed. Refresh and try again.");
+      setCancelInviteError(
+        "The pending invitation changed. Refresh and try again.",
+      );
       return;
     }
     setCancelInviteBusy(true);
@@ -290,14 +348,77 @@ export function UsersTable({
 
   function selectTab(nextStatus: UsersStatus) {
     if (nextStatus === status) return;
+    setSelectedIds(new Set());
+    setSelectionMessage("");
     setStatus(nextStatus);
     setTabMotionKey((current) => current + 1);
   }
 
-  const displayedMembers = paging.items.map((member) => ({
+  const loadedMembers = paging.items.map((member) => ({
     ...member,
     full_name: nameOverrides[member.id] ?? member.full_name,
   }));
+  const removedLoadedCount =
+    status === "deactivated" ? countRemovedMembers(loadedMembers) : 0;
+  const displayedMembers =
+    status === "deactivated" && !showRemovedMembers
+      ? getVisibleMembers(loadedMembers, false)
+      : loadedMembers;
+  const searchDebouncing = isUsersSearchDebouncing(query, search);
+  const rosterLoading =
+    paging.isIdentityLoading || searchDebouncing || forceRosterSkeleton;
+  const selectionEnabled = viewerRole === "Admin" && status === "deactivated";
+  const visibleSelectableIds = selectionEnabled
+    ? getSelectableFormerMemberIds(displayedMembers)
+    : [];
+  const visibleSelectableIdSet = new Set(visibleSelectableIds);
+  const effectiveSelectedIds = new Set(
+    [...selectedIds].filter((id) => visibleSelectableIdSet.has(id)),
+  );
+  const selectedVisibleCount = visibleSelectableIds.filter((id) =>
+    effectiveSelectedIds.has(id),
+  ).length;
+  const allVisibleSelected =
+    visibleSelectableIds.length > 0 &&
+    selectedVisibleCount === visibleSelectableIds.length;
+  const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
+
+  function applySelectionUpdate(
+    update: ReturnType<typeof updateFormerMemberSelection>,
+  ) {
+    if (!update.ok) {
+      setSelectionMessage(update.message);
+      return;
+    }
+    setSelectedIds(update.selectedIds);
+    setSelectionMessage(
+      update.selectedIds.size === 0
+        ? "Selection cleared."
+        : `${update.selectedIds.size} ${update.selectedIds.size === 1 ? "account" : "accounts"} selected.`,
+    );
+  }
+
+  function toggleMemberSelection(member: Member, selected: boolean) {
+    if (
+      !selectionEnabled ||
+      member.role === "Admin" ||
+      member.anonymized_at !== null
+    )
+      return;
+    applySelectionUpdate(
+      updateFormerMemberSelection(effectiveSelectedIds, member.id, selected),
+    );
+  }
+
+  function toggleVisibleSelection() {
+    applySelectionUpdate(
+      toggleVisibleFormerMemberSelection(
+        effectiveSelectedIds,
+        visibleSelectableIds,
+      ),
+    );
+  }
+
   const listProps = {
     members: displayedMembers,
     committeeName,
@@ -311,10 +432,38 @@ export function UsersTable({
         .map((invite) => [invite.auth_user_id as string, invite]),
     ),
     viewerRole,
+    selectionEnabled,
+    selectedIds: effectiveSelectedIds,
+    allVisibleSelected,
+    someVisibleSelected,
+    onToggleSelection: toggleMemberSelection,
+    onToggleVisibleSelection: toggleVisibleSelection,
   };
 
   const statusLabel = status === "active" ? "active" : "deactivated";
   const initialError = paging.error && paging.failedMode === "replace";
+
+  function revealRemovedMembersAfterUnknownOutcome() {
+    if (unknownRevealPromise.current) return unknownRevealPromise.current;
+    if (paging.isRefreshing || forceRosterSkeleton)
+      return Promise.resolve(false);
+
+    setForceRosterSkeleton(true);
+    const refresh = paging
+      .refreshFromStart()
+      .then((refreshed) => {
+        if (!refreshed) return false;
+        setShowRemovedMembers(true);
+        setRemovalRequest(null);
+        return true;
+      })
+      .finally(() => {
+        setForceRosterSkeleton(false);
+        unknownRevealPromise.current = null;
+      });
+    unknownRevealPromise.current = refresh;
+    return refresh;
+  }
 
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
@@ -346,9 +495,11 @@ export function UsersTable({
             icon={Search}
             type="search"
             value={query}
-            onChange={(event) =>
-              setQuery(truncateUsersSearch(event.target.value))
-            }
+            onChange={(event) => {
+              setQuery(truncateUsersSearch(event.target.value));
+              setSelectedIds(new Set());
+              setSelectionMessage("");
+            }}
             onKeyDown={preventSearchFormSubmission}
             placeholder="Search name, email, role, committee…"
             aria-label="Search users"
@@ -356,14 +507,92 @@ export function UsersTable({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground" aria-live="polite">
-          {paging.items.length} {statusLabel} {paging.items.length === 1 ? "user" : "users"} loaded
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p
+          className="text-sm text-muted-foreground"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {rosterLoading
+            ? `Loading ${statusLabel} users.`
+            : `${displayedMembers.length} ${statusLabel} ${displayedMembers.length === 1 ? "user" : "users"} loaded`}
+          {selectionMessage ? (
+            <span className="sr-only"> {selectionMessage}</span>
+          ) : null}
         </p>
-        {paging.isRefreshing && paging.items.length > 0 ? (
-          <span className="text-xs text-muted-foreground">Refreshing…</span>
+        {status === "deactivated" ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!showRemovedMembers && removedLoadedCount > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                {removedLoadedCount} removed hidden
+              </span>
+            ) : null}
+            <label className="motion-control-trigger flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-medium hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none">
+              <input
+                type="checkbox"
+                checked={showRemovedMembers}
+                className="motion-control-pop size-4 rounded border-input accent-primary"
+                onChange={(event) =>
+                  setShowRemovedMembers(event.target.checked)
+                }
+              />
+              Show removed members
+            </label>
+          </div>
         ) : null}
       </div>
+
+      {!rosterLoading && selectionEnabled && displayedMembers.length > 0 ? (
+        <div className="flex min-h-11 flex-wrap items-center gap-2 border-y py-2">
+          <label className="motion-control-trigger flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-medium hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none">
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              aria-checked={someVisibleSelected ? "mixed" : allVisibleSelected}
+              className="motion-control-pop size-4 rounded border-input accent-primary"
+              onChange={toggleVisibleSelection}
+            />
+            Select all visible
+          </label>
+          <span className="text-sm text-muted-foreground">
+            {selectedVisibleCount} selected
+          </span>
+          {selectedVisibleCount > 0 ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedIds(new Set());
+                  setSelectionMessage("Selection cleared.");
+                }}
+              >
+                Clear
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="ml-auto"
+                onClick={() =>
+                  openRemoval(
+                    visibleSelectableIds.filter((id) =>
+                      effectiveSelectedIds.has(id),
+                    ),
+                  )
+                }
+              >
+                Remove selected
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
+      {selectionMessage.startsWith("Select no more") ? (
+        <InlineAlert>{selectionMessage}</InlineAlert>
+      ) : null}
 
       {toggle.error ? (
         <p
@@ -375,52 +604,67 @@ export function UsersTable({
       ) : null}
 
       <TabPanel motionKey={tabMotionKey}>
-        <Card className="min-w-0 overflow-hidden rounded-xl">
-          {paging.isInitialLoading ? (
-            <div className="p-8 text-center text-sm text-muted-foreground" role="status">
-              Loading users…
-            </div>
-          ) : initialError ? (
-            <EmptyState
-              title="Users could not be loaded"
-              description="Try the request again."
-              action={
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void paging.retry()}
-                >
-                  Retry
-                </Button>
-              }
-            />
-          ) : paging.items.length === 0 ? (
-            <EmptyState
-              title={search ? "No users match that search" : `No ${statusLabel} users`}
-              description={
-                search
-                  ? "Try a different name, email, role, or committee."
-                  : status === "active"
-                    ? "Invite a council member to get started."
-                    : "Deactivated accounts will appear here."
-              }
-            />
-          ) : (
-            <>
-              <div className="hidden min-w-0 lg:block">
-                <MembersTable {...listProps} />
-              </div>
-              <div className="lg:hidden">
-                <MembersCards {...listProps} />
-              </div>
-            </>
-          )}
-        </Card>
+        {rosterLoading ? (
+          <UsersRosterSkeleton />
+        ) : (
+          <Card className="min-w-0 overflow-hidden rounded-xl">
+            {initialError ? (
+              <EmptyState
+                title="Users could not be loaded"
+                description="Try the request again."
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void paging.retry()}
+                  >
+                    Retry
+                  </Button>
+                }
+              />
+            ) : paging.items.length === 0 ? (
+              <EmptyState
+                title={
+                  search
+                    ? "No users match that search"
+                    : `No ${statusLabel} users`
+                }
+                description={
+                  search
+                    ? "Try a different name, email, role, or committee."
+                    : status === "active"
+                      ? "Invite a council member to get started."
+                      : "Deactivated accounts will appear here."
+                }
+              />
+            ) : displayedMembers.length === 0 && removedLoadedCount > 0 ? (
+              <EmptyState
+                title="All loaded members are removed"
+                description={
+                  paging.hasMore
+                    ? "Load more to check later results, or show removed members."
+                    : "Turn on Show removed members to view them."
+                }
+              />
+            ) : (
+              <>
+                <div className="hidden min-w-0 lg:block">
+                  <MembersTable {...listProps} />
+                </div>
+                <div className="lg:hidden">
+                  <MembersCards {...listProps} />
+                </div>
+              </>
+            )}
+          </Card>
+        )}
       </TabPanel>
 
       <LoadMoreControl
         announcement={paging.announcement}
-        disabled={paging.isRefreshing || toggle.pendingId !== null}
+        disabled={
+          rosterLoading || paging.isRefreshing || toggle.pendingId !== null
+        }
         errorMessage={
           paging.error && paging.failedMode === "append"
             ? "More users could not be loaded. The loaded users are still shown."
@@ -456,38 +700,44 @@ export function UsersTable({
         onConfirm={confirmToggle}
       />
 
-      {viewerRole === "Admin" ? <ConfirmDialog
-        open={cancelInviteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open && !cancelInviteBusy) {
-            setCancelInviteTarget(null);
-            setCancelInviteError("");
+      {viewerRole === "Admin" ? (
+        <ConfirmDialog
+          open={cancelInviteTarget !== null}
+          onOpenChange={(open) => {
+            if (!open && !cancelInviteBusy) {
+              setCancelInviteTarget(null);
+              setCancelInviteError("");
+            }
+          }}
+          title={`Cancel ${cancelInviteTarget?.full_name ?? "this invitation"}?`}
+          description="Their profile will be deactivated and login blocked. Their account will not be deleted."
+          confirmLabel={
+            cancelInviteError ? "Retry cancellation" : "Cancel invitation"
           }
-        }}
-        title={`Cancel ${cancelInviteTarget?.full_name ?? "this invitation"}?`}
-        description="Their profile will be deactivated and login blocked. Their account will not be deleted."
-        confirmLabel={cancelInviteError ? "Retry cancellation" : "Cancel invitation"}
-        destructive
-        loading={cancelInviteBusy}
-        error={cancelInviteError}
-        onConfirm={() => void cancelRosterInvitation()}
-      /> : null}
+          destructive
+          loading={cancelInviteBusy}
+          error={cancelInviteError}
+          onConfirm={() => void cancelRosterInvitation()}
+        />
+      ) : null}
 
-      {viewerRole === "Admin" ? <OfficerTransitionDialog
-        key={`${transitionAction ?? "closed"}:${transitionTarget?.id ?? "none"}`}
-        action={transitionAction}
-        member={transitionTarget}
-        committees={committees}
-        busy={transitionBusy}
-        error={transitionError}
-        onClose={() => {
-          if (transitionBusy) return;
-          setTransitionAction(null);
-          setTransitionTarget(null);
-          setTransitionError("");
-        }}
-        onSubmit={(details) => void submitTransition(details)}
-      /> : null}
+      {viewerRole === "Admin" ? (
+        <OfficerTransitionDialog
+          key={`${transitionAction ?? "closed"}:${transitionTarget?.id ?? "none"}`}
+          action={transitionAction}
+          member={transitionTarget}
+          committees={committees}
+          busy={transitionBusy}
+          error={transitionError}
+          onClose={() => {
+            if (transitionBusy) return;
+            setTransitionAction(null);
+            setTransitionTarget(null);
+            setTransitionError("");
+          }}
+          onSubmit={(details) => void submitTransition(details)}
+        />
+      ) : null}
 
       {viewerRole === "Co-Admin" ? (
         <EditMemberNameDialog
@@ -503,6 +753,22 @@ export function UsersTable({
             setEditTarget(null);
             void paging.refreshFromStart();
           }}
+        />
+      ) : null}
+
+      {viewerRole === "Admin" ? (
+        <FormerMemberRemovalDialog
+          key={removalRequest?.key ?? "closed"}
+          request={removalRequest}
+          onClose={() => setRemovalRequest(null)}
+          onRefresh={async () => {
+            setSelectedIds(new Set());
+            setSelectionMessage("");
+            return paging.refreshFromStart();
+          }}
+          onStartRetry={(userIds) => openRemoval(userIds, "result-retry")}
+          onShowRemovedMembers={revealRemovedMembersAfterUnknownOutcome}
+          refreshInFlight={paging.isRefreshing || forceRosterSkeleton}
         />
       ) : null}
     </div>

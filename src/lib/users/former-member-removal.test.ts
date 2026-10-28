@@ -3,7 +3,9 @@ import {
   expectedFormerMemberConfirmation,
   parseAnonymizeRpcRow,
   parseCleanupFormerMemberAuthRpcRow,
+  parseFormerMemberPreviewPayload,
   parseFormerMemberPreviewRows,
+  parseFormerMemberRemovalPayload,
   parseFormerMemberRequest,
 } from "./former-member-removal";
 
@@ -248,5 +250,60 @@ describe("former-member RPC contracts", () => {
         id,
       ),
     ).toBeNull();
+  });
+});
+
+describe("former-member browser response contracts", () => {
+  const preview = {
+    count: 1,
+    users: [
+      {
+        inputOrdinal: 1,
+        userId: id,
+        fullName: "Test Member",
+        email: "test@example.com",
+        role: "Member",
+        committeeId: null,
+        isActive: false,
+        anonymizedAt: null,
+        openTaskCount: 0,
+        outcome: "eligible",
+        reasonCode: "eligible",
+      },
+    ],
+  };
+
+  it("accepts only an ordered authoritative preview", () => {
+    expect(parseFormerMemberPreviewPayload(preview, [id])).toEqual(preview);
+    expect(
+      parseFormerMemberPreviewPayload({ ...preview, count: 2 }, [id]),
+    ).toBeNull();
+    expect(
+      parseFormerMemberPreviewPayload(
+        {
+          ...preview,
+          users: [{ ...preview.users[0], userId: otherId }],
+        },
+        [id],
+      ),
+    ).toBeNull();
+    expect(
+      parseFormerMemberPreviewPayload({ ...preview, private: true }, [id]),
+    ).toBeNull();
+  });
+
+  it("accepts ordered results and rejects missing or reordered entries", () => {
+    const payload = {
+      results: [
+        {
+          userId: id,
+          state: "cleanup-pending",
+          message: "Identity cleanup is pending.",
+        },
+      ],
+    };
+    expect(parseFormerMemberRemovalPayload(payload, [id])).toEqual(payload);
+    expect(parseFormerMemberRemovalPayload({ results: [] }, [id])).toBeNull();
+    expect(parseFormerMemberRemovalPayload(payload, [otherId])).toBeNull();
   });
 });

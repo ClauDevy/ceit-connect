@@ -1,5 +1,8 @@
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { MemberAction, type MemberActionName } from "@/components/users/member-actions";
+import {
+  MemberAction,
+  type MemberActionName,
+} from "@/components/users/member-actions";
 import { MemberStatusBadge } from "@/components/users/member-status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { Member, PendingOfficerInvite, Role } from "@/lib/types";
@@ -13,6 +16,9 @@ type MembersListProps = {
   onAction: (action: MemberActionName, member: Member) => void;
   pendingInviteByAuthUserId: ReadonlyMap<string, PendingOfficerInvite>;
   viewerRole: Extract<Role, "Admin" | "Co-Admin">;
+  selectionEnabled: boolean;
+  selectedIds: ReadonlySet<string>;
+  onToggleSelection: (member: Member, selected: boolean) => void;
   getRevealProps?: (id: string) => {
     "data-motion-reveal-id": string;
     ref: (node: HTMLElement | null) => void;
@@ -27,6 +33,9 @@ export function MembersCards({
   onAction,
   pendingInviteByAuthUserId,
   viewerRole,
+  selectionEnabled,
+  selectedIds,
+  onToggleSelection,
   getRevealProps,
 }: MembersListProps) {
   return (
@@ -41,6 +50,18 @@ export function MembersCards({
           )}
         >
           <div className="flex min-w-0 items-start gap-3">
+            {selectionEnabled && member.anonymized_at === null ? (
+              <input
+                type="checkbox"
+                checked={selectedIds.has(member.id)}
+                disabled={member.role === "Admin" || pendingId !== null}
+                aria-label={`Select ${member.full_name}`}
+                className="motion-control-pop mt-3 size-4 shrink-0 rounded border-input accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                onChange={(event) =>
+                  onToggleSelection(member, event.target.checked)
+                }
+              />
+            ) : null}
             <UserAvatar
               name={member.full_name}
               src={member.avatar_url}
@@ -49,7 +70,7 @@ export function MembersCards({
             />
             <div className="min-w-0 flex-1 pt-0.5">
               <p className="truncate font-semibold leading-tight">
-                {member.full_name}
+                {member.anonymized_at ? "Former member" : member.full_name}
               </p>
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 {member.email}
@@ -75,7 +96,10 @@ export function MembersCards({
             {pendingInviteByAuthUserId.has(member.id) ? (
               <Badge variant="neutral">Invitation pending</Badge>
             ) : (
-              <MemberStatusBadge active={member.is_active} />
+              <MemberStatusBadge
+                active={member.is_active}
+                anonymized={member.anonymized_at !== null}
+              />
             )}
           </div>
         </li>
