@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
+// These strict event-ID and banner-file checks mirror
+// public.can_write_event_banner_object() and must change with that function.
 const UUID_SOURCE =
   "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 const UUID_PATTERN = new RegExp(`^${UUID_SOURCE}$`, "i");
@@ -20,6 +22,8 @@ function objectPathFromUrl(eventId: string, bannerUrl: string | null) {
 
   try {
     const url = new URL(bannerUrl);
+    // This stored banner filename check mirrors
+    // public.event_banner_url_is_valid() and must change with that function.
     const match = url.pathname.match(
       new RegExp(
         `^/storage/v1/object/public/banners/(${UUID_SOURCE})/(${UUID_SOURCE}\\.webp)$`,
