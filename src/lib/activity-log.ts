@@ -1,10 +1,15 @@
 export const ACTIVITY_LOG_PAGE_SIZE = 20;
 export const GLOBAL_ACTIVITY_LOG_PAGE_SIZE = 20;
+export const ACTIVITY_LOG_RETENTION_DAYS = 30;
 export const ACTIVITY_PAGE_BLOCK_SIZE = 3;
 export const ACTIVITY_PREFETCH_PAGES = 2;
 export const ACTIVITY_LOG_MAX_SEARCH_LENGTH = 100;
 export const ACTIVITY_LOG_MAX_REPLAY_PAGES = 5;
 export const ACTIVITY_LOG_STALE_TIME = 30_000;
+
+export function activityLogRetentionNotice() {
+  return `Activity is kept for ${ACTIVITY_LOG_RETENTION_DAYS} days.`;
+}
 
 export const ACTIVITY_SORT_LABELS = {
   newest: "Newest first",
