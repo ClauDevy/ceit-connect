@@ -10,9 +10,7 @@ import {
   type BoardTask,
 } from "@/lib/events/board";
 import { createClient } from "@/lib/supabase/server";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { isCanonicalUuid } from "@/lib/uuid";
 
 async function BoardData({
   event,
@@ -87,7 +85,7 @@ export default async function EventBoardPage({
   if (!profile) redirect("/home");
 
   const { eventId } = await params;
-  if (!UUID_PATTERN.test(eventId)) redirect("/home");
+  if (!isCanonicalUuid(eventId)) redirect("/home");
 
   const supabase = await createClient();
   const { data: event, error } = await supabase
