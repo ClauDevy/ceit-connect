@@ -43,6 +43,7 @@ import {
   ChevronsUpDown,
   Filter,
   Inbox,
+  Plus,
   RefreshCw,
   X,
 } from "lucide-react";
@@ -55,6 +56,7 @@ import {
   useReducedMotionPreference,
 } from "@/components/shared/motion";
 import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
+import { ActiveTaskDialog } from "@/components/tasks/active-task-dialog";
 import {
   EventBoardTaskCard,
   SortableEventBoardTaskCard,
@@ -111,6 +113,7 @@ import {
   getTaskBackupErrorMessage,
   isClaimTaskResult,
 } from "@/lib/tasks/backup";
+import { canShowBoardTaskEdit } from "@/lib/tasks/active-task-ui";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -249,6 +252,9 @@ function BoardContents({
   const [committeeOpen, setCommitteeOpen] = useState(false);
   const [committeeActiveIndex, setCommitteeActiveIndex] = useState(0);
   const [backlogOpen, setBacklogOpen] = useState(false);
+  const [taskDialog, setTaskDialog] = useState<
+    { mode: "add" } | { mode: "edit"; taskId: string } | null
+  >(null);
   const [activeMobileStatus, setActiveMobileStatus] =
     useState<BoardStatus>("To Do");
   const [collapsedLanes, setCollapsedLanes] = useState<Set<BoardStatus>>(
@@ -282,6 +288,7 @@ function BoardContents({
   const laneIntersectionRatios = useRef(new Map<BoardStatus, number>());
   const reducedMotion = useReducedMotionPreference();
   const boardBusy = pendingTaskId !== null || reconciling;
+  const canAddTask = viewer.role === "Admin" || viewer.role === "Co-Admin";
   const queryKey = useMemo(
     () => ["event-board", event.id, committeeId] as const,
     [event.id, committeeId],
@@ -290,6 +297,13 @@ function BoardContents({
     () => ["event-board", event.id] as const,
     [event.id],
   );
+
+  const refetchBoardAfterTaskSettlement = useCallback(async () => {
+    await queryClient.refetchQueries({
+      queryKey: eventQueryKey,
+      type: "active",
+    });
+  }, [eventQueryKey, queryClient]);
 
   const query = useQuery({
     queryKey,
@@ -1167,11 +1181,25 @@ function BoardContents({
           ) : null}
         </div>
 
+        {canAddTask ? (
+          <Button
+            type="button"
+            className="ml-auto h-11 min-w-11 transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/80 motion-reduce:transition-none sm:h-10"
+            disabled={boardBusy}
+            onClick={() => setTaskDialog({ mode: "add" })}
+          >
+            <Plus aria-hidden /> Add Task
+          </Button>
+        ) : null}
+
         <Button
           id="event-board-backlog-button"
           ref={backlogButtonRef}
           variant="outline"
-          className="ml-auto h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10"
+          className={cn(
+            "h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10",
+            !canAddTask && "ml-auto",
+          )}
           aria-label={`Open Backlog, ${formatTaskCount(backlogTasks.length)}`}
           onClick={() => setBacklogOpen(true)}
         >
@@ -1336,6 +1364,13 @@ function BoardContents({
                                       permission === "none"
                                     }
                                     onMoveStatus={handleStatusMove}
+                                    canEdit={canShowBoardTaskEdit(viewer, task)}
+                                    onEdit={() =>
+                                      setTaskDialog({
+                                        mode: "edit",
+                                        taskId: task.id,
+                                      })
+                                    }
                                   />
                                 );
                               })}
@@ -1446,6 +1481,11 @@ function BoardContents({
                 busy={boardBusy}
                 claimBusy={claimingTaskId === task.id}
                 onClaim={handleClaim}
+                canEdit={canShowBoardTaskEdit(viewer, task)}
+                onEdit={() => {
+                  setBacklogOpen(false);
+                  setTaskDialog({ mode: "edit", taskId: task.id });
+                }}
               />
             ))}
             {backlogTasks.length === 0 ? (
@@ -1458,6 +1498,22 @@ function BoardContents({
           </div>
         </SheetContent>
       </Sheet>
+
+      {taskDialog ? (
+        <ActiveTaskDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setTaskDialog(null);
+          }}
+          mode={taskDialog.mode}
+          eventId={taskDialog.mode === "add" ? event.id : undefined}
+          taskId={taskDialog.mode === "edit" ? taskDialog.taskId : undefined}
+          defaultPhase={selectedPhase}
+          viewer={viewer}
+          committees={committees}
+          onSettled={refetchBoardAfterTaskSettlement}
+        />
+      ) : null}
 
       <div
         className="fixed right-4 bottom-20 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4"

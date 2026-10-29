@@ -30,7 +30,7 @@ async function BoardData({
     p_event_id: event.id,
     p_committee_id: null,
   });
-  const committeesPromise = viewer.role === "Admin"
+  const committeesPromise = viewer.role !== "Member"
     ? supabase
         .from("committees")
         .select("id, name")
@@ -66,7 +66,10 @@ async function BoardData({
     <EventBoard
       event={event}
       viewer={viewer}
-      committees={committeesResult.data ?? []}
+      committees={(committeesResult.data ?? []).filter(
+        (committee) =>
+          viewer.role === "Admin" || committee.id === viewer.committeeId,
+      )}
       initialTasks={boardData}
     />
   );

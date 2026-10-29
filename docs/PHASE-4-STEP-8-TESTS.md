@@ -131,10 +131,10 @@ begin
     and v_body like '%- ''primary_assignees''%'
     and v_body like '%- ''assist_assignees''%'
     and v_body like '%- ''request_backup''%'
-    and v_body not like '%- ''phase''%'
     and v_body not like '%- ''event_id''%'
-    and v_body not like '%- ''is_confidential''%';
-  v_results := v_results || format(E'\nOWNER_GUARD_EXACT_SIX_COLUMNS: %s', case when v_ok then 'PASS' else 'FAIL' end);
+    and v_body like '%v_writer = ''edit_event_with_tasks''%'
+    and v_body like '%v_writer = ''edit_active_event_task''%';
+  v_results := v_results || format(E'\nOWNER_GUARD_SIX_BASE_COLUMNS_PLUS_TWO_EXACT_MARKERS: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
   select array_agg(p.proname order by p.proname) into v_names
   from pg_catalog.pg_proc p
@@ -144,8 +144,8 @@ begin
     and pg_catalog.pg_get_userbyid(p.proowner) = 'postgres'
     and (p.prosrc ~* '\mupdate[[:space:]]+public\.tasks\M'
       or p.prosrc ~* '\mdelete[[:space:]]+from[[:space:]]+public\.tasks\M');
-  v_ok := v_names = array['accept_task_volunteer','assign_task_people','claim_task','delete_task','move_task','set_task_backup_request','set_task_dependency','unassign_self']::text[];
-  v_results := v_results || format(E'\nOWNER_BRANCH_EXACT_EIGHT_WRITERS: %s', case when v_ok then 'PASS' else 'FAIL' end);
+  v_ok := v_names = array['accept_task_volunteer','assign_task_people','claim_task','delete_task','edit_active_event_task','edit_event_with_tasks','move_task','set_task_backup_request','set_task_dependency','unassign_self']::text[];
+  v_results := v_results || format(E'\nOWNER_BRANCH_EXACT_TEN_WRITERS: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
   select array_agg(p.proname order by p.proname) into v_names
   from pg_catalog.pg_proc p
@@ -154,8 +154,8 @@ begin
     and pg_catalog.pg_get_userbyid(p.proowner) = 'postgres'
     and (p.prosrc ~* '\mupdate[[:space:]]+public\.tasks\M'
       or p.prosrc ~* '\mdelete[[:space:]]+from[[:space:]]+public\.tasks\M');
-  v_ok := v_names = array['accept_task_volunteer','assign_task_people','claim_task','delete_task','edit_event_with_tasks','guard_event_updates','move_task','prepare_unassigned_task_reset','set_task_backup_request','set_task_confidentiality','set_task_dependency','unassign_self']::text[];
-  v_results := v_results || format(E'\nFULL_EXACT_TWELVE_WRITERS: %s', case when v_ok then 'PASS' else 'FAIL' end);
+  v_ok := v_names = array['accept_task_volunteer','assign_task_people','claim_task','delete_task','edit_active_event_task','edit_event_with_tasks','guard_event_updates','move_task','prepare_unassigned_task_reset','set_task_backup_request','set_task_confidentiality','set_task_dependency','unassign_self']::text[];
+  v_results := v_results || format(E'\nFULL_EXACT_THIRTEEN_WRITERS: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
   select lower(pg_catalog.pg_get_functiondef('public.guard_task_volunteer_writes()'::regprocedure)) into v_body;
   v_ok := strpos(v_body,'for no key update') > 0

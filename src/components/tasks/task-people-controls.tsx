@@ -272,7 +272,7 @@ export function TaskPeopleControls({
       ) : null}
 
       <Dialog open={assignmentOpen} onOpenChange={setAssignmentOpen}>
-        <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] overflow-hidden sm:max-w-xl">
+        <DialogContent className="max-h-[min(42rem,calc(100dvh-2rem))] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Task assignees</DialogTitle>
             <DialogDescription>

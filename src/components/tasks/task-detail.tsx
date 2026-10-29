@@ -11,12 +11,14 @@ import {
   ArrowLeft,
   CalendarClock,
   LockKeyhole,
+  Pencil,
   RefreshCw,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
+import { ActiveTaskDialog } from "@/components/tasks/active-task-dialog";
 import { TaskComments } from "@/components/tasks/task-comments";
 import { ArchivedTaskSharing } from "@/components/tasks/archived-task-sharing";
 import { TaskEditControls } from "@/components/tasks/task-edit-controls";
@@ -38,7 +40,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { BoardAssignee } from "@/lib/events/board";
+import type { BoardAssignee, BoardCommittee } from "@/lib/events/board";
+import {
+  canShowTaskPageEdit,
+  formatTaskMetadataTimestamp,
+  type ActiveTaskViewer,
+} from "@/lib/tasks/active-task-ui";
 import {
   getTaskBackHref,
   isTaskDetail,
@@ -82,16 +89,11 @@ type TaskDetailProps = {
   initialBackupState?: TaskBackupState | null;
   initialWorkloads?: TaskAssigneeWorkload[];
   canFetch?: boolean;
+  viewer?: ActiveTaskViewer;
+  committees?: BoardCommittee[];
 };
 
 const POLL_INTERVAL_MS = 15_000;
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: APP_TIME_ZONE.iana,
-});
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -265,9 +267,13 @@ function RealTask({
   editControls,
   backup,
   onRefreshTask,
+  canEditTask,
+  onEditTask,
 }: {
   task: TaskDetailData;
   onRefreshTask: () => Promise<void>;
+  canEditTask: boolean;
+  onEditTask: () => void;
   workLinks: WorkLinksSectionProps;
   editControls: {
     data: TaskEditControlData | null | undefined;
@@ -353,13 +359,26 @@ function RealTask({
               {task.event_name} · {task.committee_name}
             </p>
           </div>
-          {backup.data?.out_can_toggle_backup ? (
-            <div className="sm:shrink-0">
+          {canEditTask || backup.data?.out_can_toggle_backup ? (
+            <div className="flex items-center gap-2 sm:shrink-0">
+              {canEditTask ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-11 transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-9"
+                  onClick={onEditTask}
+                >
+                  <Pencil aria-hidden /> Edit
+                </Button>
+              ) : null}
+              {backup.data?.out_can_toggle_backup ? (
               <TaskBackupToggle
                 state={backup.data}
                 busyAction={backup.busyAction}
                 onToggle={backup.onToggle}
               />
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -519,7 +538,11 @@ function RealTask({
               )}
               <DetailRow
                 label="Created"
-                value={dateFormatter.format(new Date(task.created_at!))}
+                value={formatTaskMetadataTimestamp(task.created_at!)}
+              />
+              <DetailRow
+                label="Last updated"
+                value={formatTaskMetadataTimestamp(task.updated_at!)}
               />
               <DetailRow label="Associated event" value={task.event_name!} />
             </CardContent>
@@ -538,6 +561,8 @@ function TaskDetailContents({
   initialBackupState,
   initialWorkloads,
   canFetch = true,
+  viewer = { role: "Member", committeeId: null },
+  committees = [],
 }: TaskDetailProps) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -545,6 +570,7 @@ function TaskDetailContents({
     useState<BackupBusyAction>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupNotice, setBackupNotice] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const query = useQuery({
     queryKey: ["task-detail", taskId],
     queryFn: async ({ signal }) => {
@@ -1031,6 +1057,11 @@ function TaskDetailContents({
           onRefreshTask={async () => {
             await query.refetch();
           }}
+          canEditTask={canShowTaskPageEdit(
+            query.data,
+            editControlsQuery.data,
+          )}
+          onEditTask={() => setEditDialogOpen(true)}
           workLinks={{
             data: workLinksQuery.data,
             isPending: workLinksQuery.isPending,
@@ -1060,6 +1091,17 @@ function TaskDetailContents({
           }}
         />
       )}
+      {editDialogOpen && !query.data.is_masked ? (
+        <ActiveTaskDialog
+          open
+          onOpenChange={setEditDialogOpen}
+          mode="edit"
+          taskId={taskId}
+          viewer={viewer}
+          committees={committees}
+          onSettled={refreshAccess}
+        />
+      ) : null}
     </div>
   );
 }
