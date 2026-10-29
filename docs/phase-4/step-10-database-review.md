@@ -8,7 +8,7 @@
 | High | None found in the tracked migration definitions. |
 | Medium | None found in the tracked migration definitions. |
 | Low | None found in the tracked migration definitions. |
-| Informational | The owner-confirmed Phase 4 review result remains historically `57 / 8 / 11 / 20 / 0`. Batch 0 and Batch 3H each add one reviewed function, so the updated current-source expectation is `59 / 8 / 11 / 20 / 0`; live Dev still requires the owner's read-only catalog run. |
+| Informational | The owner-confirmed Phase 4 review result remains historical. After local Batch 11 Run 1, the current-source expectation is `65 / 8 / 11 / 22 / 0`; live Dev still requires the owner's read-only catalog run. Batch 11's exact current inventories are 10 postgres-owned definer update/delete writers, 13 full update/delete writers, and 3 task insert writers. |
 
 No migration is proposed by this review. The review found no service-role client in ordinary task flows. The repository's service-role uses remain limited to Auth/account administration, avatar maintenance, and the already documented event-banner cleanup path; board, task detail, archive, move, dependency, assignment, backup, volunteer, comments, work links, late sharing, Help Wanted, and My Tasks all use the caller's Supabase session.
 
@@ -22,10 +22,16 @@ Legend: **auth** means only `authenticated` receives execute; **internal** means
 
 ## Functions
 
-The original Phase 4 review covered 57 effective signatures. Batch 0 adds one fixed-path signature and Batch 3H adds one, for 59 in current source; no tracked name should have a second signature. All are expected to be owned by `postgres`. The live paste exposes any departure.
+The original Phase 4 review covered 57 effective signatures. The local Batch 11 source now expects 65 with no overloads. All are expected to be owned by `postgres`; the live paste exposes any departure.
 
 | Function signature | Latest definition | Security / volatility / execute | Authorization, locks, and row-count review |
 |---|---|---|---|
+| `count_event_tasks_for_capacity(uuid)` | `20261028130000` | definer / volatile / auth | Trigger-context-only all-status scalar count; fresh post-advisory snapshot; direct calls fail `42501`; no task content returned. |
+| `create_active_event_task(...)` | `20261028130000` | definer / volatile / auth | Active stored caller recheck; sorted user then event lock; derived creator/status/rank; exact insert count. |
+| `edit_active_event_task(...)` | `20261028130000` | definer / volatile / auth | Real access; sorted users then event/task; stored and proposed committee check; CCL01 token/set check; exact update count. |
+| `enforce_event_task_capacity()` | `20261028130000` | invoker trigger / volatile / internal | Event advisory lock precedes all-status count; 200 cap; bounded Edit Event exception. |
+| `set_task_updated_at()` | `20261028120000` | invoker trigger / volatile / internal | Runs after business-column BEFORE triggers; ignores rank-only updates and overwrites forged tokens. |
+| `validate_active_event_task_payload(...)` | `20261028130000` | invoker / immutable / internal | Shared cap, shape, timestamp-order, confidentiality, and list validation; performs no DML. |
 | `accept_task_volunteer(uuid, uuid)` | `20261022120000` | definer / volatile / auth | Direct active check; task→event locks; assignment cap and exact task update checked. |
 | `add_task_comment(uuid, text, boolean, uuid[])` | `20261023130000` | definer / volatile / auth | Direct active/current-real check; task→event locks and recheck; one inserted row returned. |
 | `add_task_work_link(uuid, text, text)` | `20261017150000` | definer / volatile / auth | Delegated active/current-real check; task→event locks in guard; one inserted row returned. |
@@ -128,6 +134,7 @@ All are expected enabled in origin mode. The three constraint triggers are expec
 | `events_guard_banner_url` | `events` | BEFORE INSERT OR UPDATE, ROW | Existing banner integrity boundary retained. |
 | `events_require_task_when_inserted_active` | `events` | AFTER INSERT, deferred ROW | Active event must have a task at transaction end. |
 | `tasks_activity_log` | `tasks` | AFTER INSERT OR UPDATE OR DELETE, ROW | Attached once; no-op/rank-only noise suppressed. |
+| `tasks_a0_enforce_event_capacity` | `tasks` | BEFORE INSERT, ROW | Event row → advisory lock → RLS-independent all-status count; 200 cap attached before other insert triggers. |
 | `tasks_restrict_assignee_updates` | `tasks` | BEFORE UPDATE, ROW | Current narrow caller/owner allowlists attached. |
 | `tasks_guard_archived_event_writes` | `tasks` | BEFORE INSERT OR UPDATE OR DELETE, ROW | Parent lifecycle lock/recheck attached. |
 | `tasks_preserve_active_event_task_on_delete` | `tasks` | AFTER DELETE, deferred ROW | Last-task removal checked at transaction end. |
@@ -138,6 +145,7 @@ All are expected enabled in origin mode. The three constraint triggers are expec
 | `tasks_z0_reject_event_id_changes` | `tasks` | BEFORE UPDATE OF `event_id`, ROW | Reparenting rejected before later Phase 4 update triggers. |
 | `tasks_z1_reject_created_by_changes` | `tasks` | BEFORE UPDATE OF `created_by`, ROW | Provenance immutable. |
 | `tasks_z2_set_destination_lane_order` | `tasks` | BEFORE lane/rank UPDATE, ROW | Destination rank serialization attached after guards. |
+| `tasks_z4_set_updated_at` | `tasks` | BEFORE UPDATE, ROW | Runs after business-column BEFORE triggers; meaningful-change token attachment. |
 | `task_work_links_guard_writes` | `task_work_links` | BEFORE INSERT OR DELETE, ROW | Task→event access/archive guard. |
 | `task_work_links_reject_updates` | `task_work_links` | BEFORE UPDATE, ROW | Child immutability guard. |
 | `task_volunteers_guard_writes` | `task_volunteers` | BEFORE INSERT OR UPDATE OR DELETE, ROW | Task→event access/archive guard. |
@@ -146,4 +154,4 @@ All are expected enabled in origin mode. The three constraint triggers are expec
 
 ## Conclusion
 
-The tracked migrations satisfy the Step 10A static review criteria: fixed paths, explicit execute boundaries, one signature per reviewed function name, active-user enforcement, documented lock orders, exact-one checks for targeted mutations, trigger attachment in source, narrow raw RLS, frozen Archived history, immutable task parents, and no ordinary task-flow service role. The owner-confirmed Phase 4 gate remains historical at 57 functions, 8 tables, 11 policies, 20 triggers, and 0 overloads. Batch 0 and Batch 3H change only this legacy function inventory: current source expects 59 functions, including 37 authenticated-executable functions, with the other four result counts unchanged; no live Batch 3H result is claimed here.
+The tracked migrations satisfy the Step 10A static review criteria: fixed paths, explicit execute boundaries, one signature per reviewed function name, active-user enforcement, documented lock orders, exact-one checks for targeted mutations, trigger attachment in source, narrow raw RLS, frozen Archived history, immutable task parents, and no ordinary task-flow service role. The owner-confirmed Phase 4 gate remains historical. Local Batch 11 source expects 65 functions, 8 tables, 11 policies, 22 triggers, and 0 overloads, including 40 authenticated-executable functions; no live Batch 11 result is claimed here.

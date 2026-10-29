@@ -16,6 +16,7 @@ const realTask: TaskDetail = {
   call_time: null,
   end_time: null,
   created_at: "2026-10-10T08:00:00+00:00",
+  updated_at: "2026-10-11T09:10:11.123456+00:00",
   committee_id: "committee-1",
   committee_name: "COEXA",
   primary_assignees: [
@@ -45,6 +46,7 @@ const maskedTask: TaskDetail = {
   call_time: null,
   end_time: null,
   created_at: null,
+  updated_at: null,
   committee_id: null,
   committee_name: null,
   primary_assignees: [],
