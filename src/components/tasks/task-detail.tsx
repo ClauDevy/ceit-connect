@@ -30,6 +30,7 @@ import {
   type BackupBusyAction,
 } from "@/components/tasks/task-backup-controls";
 import { TaskPeopleControls } from "@/components/tasks/task-people-controls";
+import { TaskLeaveRequests } from "@/components/tasks/task-leave-requests";
 import {
   YourWorkCard,
   type NewWorkLink,
@@ -278,10 +279,14 @@ function RealTask({
   onRefreshTask,
   canEditTask,
   onEditTask,
+  viewerRole,
+  viewerId,
 }: {
   task: TaskDetailData;
   onRefreshTask: () => Promise<void>;
   canEditTask: boolean;
+  viewerRole: "Admin" | "Co-Admin" | "Member";
+  viewerId: string;
   onEditTask: () => void;
   workLinks: WorkLinksSectionProps;
   editControls: {
@@ -426,6 +431,7 @@ function RealTask({
         </div>
 
         <aside className="space-y-4">
+          <TaskLeaveRequests taskId={task.id} />
           {backup.data ? (
             <TaskBackupRequestedCard
               state={backup.data}
@@ -454,11 +460,14 @@ function RealTask({
           {editControls.data ? (
             <>
               <TaskEditControls
+                viewerId={viewerId}
                 controls={editControls.data}
                 onSaveDependency={editControls.onSaveDependency}
                 onSaveConfidentiality={editControls.onSaveConfidentiality}
               />
               <TaskPeopleControls
+                viewerId={viewerId}
+                viewerRole={viewerRole}
                 controls={editControls.data}
                 taskTitle={task.title}
                 onAssignPeople={editControls.onAssignPeople}
@@ -1071,6 +1080,8 @@ function TaskDetailContents({
       ) : (
         <RealTask
           task={query.data}
+          viewerRole={viewer.role}
+          viewerId={viewer.id ?? ""}
           onRefreshTask={async () => {
             await query.refetch();
           }}

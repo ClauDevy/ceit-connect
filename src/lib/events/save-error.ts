@@ -4,6 +4,9 @@ type SupabaseSaveError = {
 };
 
 export function getEventSaveErrorMessage(error: SupabaseSaveError) {
+  if (error.code === "CCD01") {
+    return "This creator already has 10 Draft events. Launch, archive, or delete a Draft before saving another.";
+  }
   if (error.code === "40P01") {
     return "Another task change happened at the same time. Please try saving again.";
   }

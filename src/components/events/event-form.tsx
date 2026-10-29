@@ -145,6 +145,7 @@ export type InitialEvent = {
 };
 
 type EventFormProps = {
+  currentUserId: string;
   role: Extract<Role, "Admin" | "Co-Admin">;
   committees: Committee[];
   taskCommittees: Committee[];
@@ -313,6 +314,7 @@ function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
 }
 
 export function EventForm({
+  currentUserId,
   role,
   committees,
   taskCommittees,
@@ -445,7 +447,12 @@ export function EventForm({
     };
     const byName = (left: AssigneeOption, right: AssigneeOption) =>
       left.full_name.localeCompare(right.full_name);
-    const filtered = assignees.filter(matchesSearch);
+    const actorIsStored = taskEditor.draft.assigneeIds.includes(currentUserId);
+    const filtered = assignees.filter(
+      (assignee) =>
+        (assignee.id !== currentUserId || actorIsStored) &&
+        matchesSearch(assignee),
+    );
 
     return {
       selected: filtered
@@ -470,7 +477,7 @@ export function EventForm({
           return committeeOrder || byName(left, right);
         }),
     };
-  }, [assigneeSearch, assignees, committeeNames, taskEditor]);
+  }, [assigneeSearch, assignees, committeeNames, currentUserId, taskEditor]);
 
   const selectedCommitteeHasActiveMembers = taskEditor
     ? assignees.some(

@@ -45,6 +45,7 @@ import {
 } from "@/lib/tasks/active-task";
 import {
   activeTaskPickerLimitMessage,
+  buildActiveTaskPickerCandidates,
   buildActiveTaskEditDraft,
   buildBulkPersonSelection,
   buildSinglePersonSelection,
@@ -142,12 +143,17 @@ function workloadPeople(rows: TaskAssigneeWorkload[]): PersonOption[] {
 function mergePeople(
   active: PersonOption[],
   controls: TaskEditControlData | null,
+  actorId: string,
 ) {
-  const people = new Map(active.map((person) => [person.id, person]));
+  const storedPrimary = controls?.primary_assignees ?? [];
+  const storedAssist = controls?.assist_assignees ?? [];
+  const storedViewers = controls?.allowed_viewers ?? [];
+  const stored = [...storedPrimary, ...storedAssist, ...storedViewers];
+  const people = new Map<string, PersonOption>(
+    active.map((person) => [person.id, person]),
+  );
   for (const person of [
-    ...(controls?.primary_assignees ?? []),
-    ...(controls?.assist_assignees ?? []),
-    ...(controls?.allowed_viewers ?? []),
+    ...stored,
     ...(controls?.viewer_options ?? []),
     ...(controls?.assignee_options ?? []),
   ]) {
@@ -160,8 +166,15 @@ function mergePeople(
       });
     }
   }
-  return [...people.values()].sort((a, b) =>
+  const candidates = [...people.values()].sort((a, b) =>
     personName(a).localeCompare(personName(b)),
+  );
+  return buildActiveTaskPickerCandidates(
+    candidates,
+    storedPrimary,
+    storedAssist,
+    storedViewers,
+    actorId,
   );
 }
 
@@ -363,7 +376,8 @@ export function ActiveTaskDialog({
   const committeesRef = useRef(committees);
   const [draft, setDraft] = useState<ActiveTaskDraft>(EMPTY_DRAFT);
   const [controls, setControls] = useState<TaskEditControlData | null>(null);
-  const [people, setPeople] = useState<PersonOption[]>([]);
+  const [assigneePeople, setAssigneePeople] = useState<PersonOption[]>([]);
+  const [viewerPeople, setViewerPeople] = useState<PersonOption[]>([]);
   const [assistIds, setAssistIds] = useState<Set<string>>(new Set());
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
   const [initialEditDraft, setInitialEditDraft] = useState<ActiveTaskDraft | null>(null);
@@ -416,7 +430,15 @@ export function ActiveTaskDialog({
         setControls(null);
         setAssistIds(new Set());
         setExpectedUpdatedAt(null);
-        setPeople(activePeople);
+        const candidates = buildActiveTaskPickerCandidates(
+          activePeople,
+          [],
+          [],
+          [],
+          viewer.id ?? "",
+        );
+        setAssigneePeople(candidates.assignees);
+        setViewerPeople(candidates.viewers);
         setInitialEditDraft(null);
         setRequiresReload(false);
         setOptionsLoaded(true);
@@ -464,7 +486,13 @@ export function ActiveTaskDialog({
       setControls(nextControls);
       setAssistIds(new Set(nextControls.assist_assignees.map((person) => person.id)));
       setExpectedUpdatedAt(detailResult.data[0].updated_at);
-      setPeople(mergePeople(activePeople, nextControls));
+      const candidates = mergePeople(
+        activePeople,
+        nextControls,
+        viewer.id ?? "",
+      );
+      setAssigneePeople(candidates.assignees);
+      setViewerPeople(candidates.viewers);
       setRequiresReload(false);
       setOptionsLoaded(true);
     } catch (loadError) {
@@ -481,7 +509,7 @@ export function ActiveTaskDialog({
     } finally {
       if (!background) setLoading(false);
     }
-  }, [defaultPhase, mode, open, supabase, taskId, viewer.committeeId, viewer.role]);
+  }, [defaultPhase, mode, open, supabase, taskId, viewer.committeeId, viewer.id, viewer.role]);
 
   useEffect(() => {
     if (!open) return;
@@ -610,10 +638,6 @@ export function ActiveTaskDialog({
     !loading &&
     optionsLoaded &&
     (mode === "add" || Boolean(expectedUpdatedAt && controls?.can_edit_task));
-  const visibleViewerPeople = people.filter(
-    (person) =>
-      !draft.primaryAssigneeIds.includes(person.id) && !assistIds.has(person.id),
-  );
   const pickerLimitError = activeTaskPickerLimitMessage(pickerLimitAttempt);
 
   return (
@@ -722,7 +746,7 @@ export function ActiveTaskDialog({
                     <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase"><Users className="size-4" aria-hidden /> People and access</h3>
                     <PersonPicker
                       label="Primary assignees"
-                      people={people}
+                      people={assigneePeople}
                       selectedIds={draft.primaryAssigneeIds}
                       disabledIds={assistIds}
                       limit={MAX_TASK_ASSIGNEES}
@@ -757,7 +781,7 @@ export function ActiveTaskDialog({
                       {draft.isConfidential ? (
                         <PersonPicker
                           label="Additional viewers"
-                          people={visibleViewerPeople}
+                          people={viewerPeople}
                           selectedIds={draft.allowedViewerIds}
                           limit={MAX_TASK_ALLOWED_VIEWERS}
                           search={viewerSearch}

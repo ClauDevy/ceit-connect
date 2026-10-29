@@ -17,6 +17,9 @@ type EditableEvent = {
   updated_at: string;
 };
 
+const DRAFT_CAP_MESSAGE =
+  "This creator already has 10 Draft events. Launch, archive, or delete a Draft before changing its banner.";
+
 function objectPathFromUrl(eventId: string, bannerUrl: string | null) {
   if (!bannerUrl) return null;
 
@@ -273,10 +276,12 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: updateError
-          ? "The banner could not be saved. Try again."
+          ? updateError.code === "CCD01"
+            ? DRAFT_CAP_MESSAGE
+            : "The banner could not be saved. Try again."
           : STALE_MESSAGE,
       },
-      { status: updateError ? 500 : 409 },
+      { status: updateError?.code === "CCD01" ? 409 : updateError ? 500 : 409 },
     );
   }
 
@@ -368,8 +373,13 @@ export async function DELETE(request: Request) {
   if (updateError) {
     console.error("Failed to clear event banner URL:", updateError);
     return NextResponse.json(
-      { error: "The banner could not be removed. Try again." },
-      { status: 500 },
+      {
+        error:
+          updateError.code === "CCD01"
+            ? DRAFT_CAP_MESSAGE
+            : "The banner could not be removed. Try again.",
+      },
+      { status: updateError.code === "CCD01" ? 409 : 500 },
     );
   }
   if (updatedRows.length !== 1) {

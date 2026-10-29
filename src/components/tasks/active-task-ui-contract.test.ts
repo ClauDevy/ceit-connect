@@ -79,10 +79,12 @@ describe("Batch 11 active task UI contract", () => {
     );
   });
 
-  it("uses supplied committee labels, filters redundant viewers, and keeps the people footer reachable", () => {
+  it("uses supplied committee labels, stored-state picker candidates, and a reachable people footer", () => {
     expect(dialog).toContain("items={committeeItems}");
-    expect(dialog).toContain("!draft.primaryAssigneeIds.includes(person.id)");
-    expect(dialog).toContain("!assistIds.has(person.id)");
+    expect(dialog).toContain("people={assigneePeople}");
+    expect(dialog).toContain("people={viewerPeople}");
+    expect(activeTaskUi).toContain("storedAssigneeIds.has(person.id)");
+    expect(activeTaskUi).toContain("storedViewerIds.has(person.id)");
     expect(dialog).toContain("Select all shown in {bulkCommittee.name}");
     expect(dialog).toContain("Clear shown");
     expect(activeTaskUi).toContain('return "Select up to 100 people."');

@@ -44,10 +44,12 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function HelpWantedContents({
+  viewerRole,
   initialPage,
   active,
   onLoadedStateChange,
 }: {
+  viewerRole: "Admin" | "Co-Admin" | "Member";
   initialPage?: OffsetListPage<HelpWantedTask>;
   active: boolean;
   onLoadedStateChange?: (state: {
@@ -128,7 +130,11 @@ function HelpWantedContents({
       ) {
         throw new Error("The volunteer writer returned an invalid response.");
       }
-      setActionNotice("You volunteered to help.");
+      setActionNotice(
+        viewerRole === "Member"
+          ? "Your volunteer offer was sent."
+          : "You are now helping with this task.",
+      );
     } catch (error) {
       setActionError(getTaskBackupErrorMessage("volunteer", error));
     } finally {
@@ -356,10 +362,12 @@ function HelpWantedContents({
 }
 
 export function HelpWantedList({
+  viewerRole,
   initialPage,
   active = true,
   onLoadedStateChange,
 }: {
+  viewerRole: "Admin" | "Co-Admin" | "Member";
   initialPage?: OffsetListPage<HelpWantedTask>;
   active?: boolean;
   onLoadedStateChange?: (state: {
@@ -369,6 +377,7 @@ export function HelpWantedList({
 }) {
   return (
     <HelpWantedContents
+      viewerRole={viewerRole}
       initialPage={initialPage}
       active={active}
       onLoadedStateChange={onLoadedStateChange}
