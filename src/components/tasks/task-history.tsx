@@ -11,6 +11,7 @@ import {
   activityFiltersToRpc,
   activityReplayDepth,
   appendActivityPage,
+  activityLogRetentionNotice,
   normalizeActivityResponse,
   replayActivityPages,
   taskHistoryOlderPageFailure,
@@ -114,6 +115,7 @@ export function TaskHistory({ taskId, initialWindow }: { taskId: string; initial
           {refreshing ? "Refreshing…" : "Refresh"}
         </Button>
       </div>
+      <p className="text-sm text-muted-foreground">{activityLogRetentionNotice()}</p>
       {!unavailable && query.error ? (
         <p className="text-sm text-muted-foreground">
           History could not refresh. The previous results are still shown.
