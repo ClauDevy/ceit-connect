@@ -34,6 +34,7 @@ describe("role navigation", () => {
       "/workspace",
       "/archives",
       "/dashboard",
+      "/activity-log",
       "/users",
       "/settings",
     ])
@@ -43,7 +44,7 @@ describe("role navigation", () => {
       "/dashboard",
       "/settings",
     ])
-    expect(hrefs(nav.more)).toEqual(["/archives", "/users"])
+    expect(hrefs(nav.more)).toEqual(["/archives", "/activity-log", "/users"])
   })
 
   it("keeps the complete Member navigation inventory", () => {

@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { AppShell } from "@/components/layout/app-shell";
 import type { CurrentUser } from "@/lib/types";
 import { BfcacheGuard } from "@/components/bfcache-guard";
+import { QueryProvider } from "@/components/query-provider";
 
 export default async function DashboardLayout({
   children,
@@ -48,7 +49,9 @@ export default async function DashboardLayout({
   return (
     <>
       <BfcacheGuard />
-      <AppShell user={currentUser}>{children}</AppShell>
+      <QueryProvider>
+        <AppShell user={currentUser}>{children}</AppShell>
+      </QueryProvider>
     </>
   );
 }
