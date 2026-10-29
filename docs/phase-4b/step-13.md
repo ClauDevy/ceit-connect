@@ -1,6 +1,6 @@
 # Step 13: Task rules
 
-**Status:** Planned | **Branch:** `fix/task-rules` | **Reasoning level:** High (security-critical migrations and tests)
+**Status:** Implemented locally; awaiting owner Dev/Prod application and SQL verification | **Branch:** `fix/task-rules` | **Reasoning level:** High (security-critical migrations and tests)
 
 ## Goal
 
@@ -31,6 +31,12 @@ Run the mandatory read-only loophole audit, then extend the existing self-unassi
 **Out:** notifications; Realtime; raw task visibility expansion; Phase 5 work; dependency-v2 behavior; unrelated picker redesign; or implementation of an audit-discovered security gap before owner review.
 
 ## Stage 1 — read-only loophole audit and stop gate
+
+**Completed audit (2026-10-30):** all tracked migration and application callers were re-inventoried. The owner approved three corrections: raw `events_delete` is Draft-only; raw `tasks_delete` is To Do-only; and task confidentiality/viewer writes use the new transaction-local `ceit_connect.task_access_writer` guard plus raw-INSERT hardening. No application code issues raw event deletes. `delete_task`, Edit Event task deletion, and event-delete cascades remain postgres-owned definer/cascade paths and do not depend on the narrowed authenticated task policy. All actual access writers (`set_task_confidentiality`, `create_active_event_task`, and `edit_active_event_task`) set the marker; Create/Edit Event, template import, archive, and delete paths were proven not to write those two fields.
+
+**Migration-review corrections (2026-10-30):** resolve now rejects profile-less/inactive callers before its null-safe authority test and takes user → event → dependency → task → request locks. Both guards normalize unset GUCs before every trust/exception comparison. The confidentiality definer explicitly restores active leadership, owning-committee, real-access, and Draft/Active checks before delegation; pending readers/resolution/cancellation use the same real-visibility boundary. Create/Edit Event reject unauthorized callers before locks, self-unassign has explicit missing-task failures, the officer helper rechecks eligibility under locks, and acceptance removes the selected offer before the guarded assignee update. Its full replacement preserves the effective Step 10 behavior apart from the approved self-accept rejection and required pre-update offer deletion, and drops the unused renamed Step 12 body.
+
+The three sections labelled **Rebuilt, please verify** remain provenance warnings. Implementation items depending on them are: the writer/state inventory and raw-boundary corrections [R1], picker/candidate stored-state rules [R2], and SQL/manual coverage inventory [R3].
 
 Inventory every task/event writer, direct grant, RLS policy, definer/invoker function, trigger exemption, child-table writer, service-role route, and client mutation that can affect task lifecycle, assignments, access, or Draft counts. Record each path with caller derivation, authorization, lifecycle, lock order, affected columns, exact-row checks, and tests.
 

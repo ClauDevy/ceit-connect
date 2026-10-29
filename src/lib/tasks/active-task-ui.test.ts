@@ -7,6 +7,7 @@ import {
 } from "./active-task";
 import {
   activeTaskPickerLimitMessage,
+  buildActiveTaskPickerCandidates,
   buildActiveTaskEditDraft,
   buildBulkPersonSelection,
   buildSinglePersonSelection,
@@ -167,6 +168,58 @@ describe("active task Edit prefill", () => {
     expect(parseStoredTaskPriority("High")).toBe("High");
     expect(parseStoredTaskPriority(null)).toBeNull();
     expect(parseStoredTaskPriority("Urgent")).toBeUndefined();
+  });
+});
+
+describe("active task stored-state picker candidates", () => {
+  const person = (id: string) => ({ id });
+  const actor = person("actor");
+  const storedViewer = person("stored-viewer");
+  const storedAssignee = person("stored-assignee");
+  const newcomer = person("new-person");
+  const all = [actor, storedViewer, storedAssignee, newcomer];
+
+  it("keeps an actor stored only as a viewer available only to the viewer picker", () => {
+    const result = buildActiveTaskPickerCandidates(all, [], [], [actor], actor.id);
+    expect(result.assignees).not.toContain(actor);
+    expect(result.viewers).toContain(actor);
+  });
+
+  it("keeps an actor stored as an assignee available only to the assignee picker", () => {
+    const result = buildActiveTaskPickerCandidates(all, [actor], [], [], actor.id);
+    expect(result.assignees).toContain(actor);
+    expect(result.viewers).not.toContain(actor);
+  });
+
+  it("keeps a stored viewer out of new assignee options", () => {
+    const result = buildActiveTaskPickerCandidates(all, [], [], [storedViewer], actor.id);
+    expect(result.assignees).not.toContain(storedViewer);
+    expect(result.viewers).toContain(storedViewer);
+  });
+
+  it("keeps a stored assignee out of new viewer options", () => {
+    const result = buildActiveTaskPickerCandidates(all, [storedAssignee], [], [], actor.id);
+    expect(result.assignees).toContain(storedAssignee);
+    expect(result.viewers).not.toContain(storedAssignee);
+  });
+
+  it("keeps a new non-actor person available to both pickers", () => {
+    const result = buildActiveTaskPickerCandidates(all, [], [], [], actor.id);
+    expect(result.assignees).toContain(newcomer);
+    expect(result.viewers).toContain(newcomer);
+  });
+
+  it("allows a stored viewer to be removed and re-added from stored DB state", () => {
+    const first = buildActiveTaskPickerCandidates(all, [], [], [storedViewer], actor.id);
+    const afterUnsavedRemoval = buildActiveTaskPickerCandidates(
+      all,
+      [],
+      [],
+      [storedViewer],
+      actor.id,
+    );
+    expect(first.viewers).toContain(storedViewer);
+    expect(afterUnsavedRemoval.viewers).toContain(storedViewer);
   });
 });
 
