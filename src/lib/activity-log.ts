@@ -1,3 +1,7 @@
+import { isCanonicalUuid } from "@/lib/uuid";
+
+export { isCanonicalUuid };
+
 export const ACTIVITY_LOG_PAGE_SIZE = 20;
 export const GLOBAL_ACTIVITY_LOG_PAGE_SIZE = 20;
 export const ACTIVITY_LOG_RETENTION_DAYS = 30;
@@ -98,8 +102,6 @@ export type ActivityRpcRow = {
   next_cursor_id: unknown;
 };
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const CONTROL_PATTERN = /[\u0000-\u001f\u007f]/;
 
@@ -111,10 +113,6 @@ export const DEFAULT_ACTIVITY_FILTERS: ActivityFilters = {
   dateTo: null,
   search: null,
 };
-
-export function isCanonicalUuid(value: unknown): value is string {
-  return typeof value === "string" && UUID_PATTERN.test(value);
-}
 
 function isActivityAction(value: unknown): value is ActivityAction {
   return value === "INSERT" || value === "UPDATE" || value === "DELETE";

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { isCanonicalUuid } from "@/lib/uuid";
 import { splitAppTimestamp } from "@/lib/timezone";
 import {
   isTaskAssigneeWorkload,
@@ -69,11 +70,7 @@ export default async function EditEventPage({
   }
 
   const [{ eventId }, query] = await Promise.all([params, searchParams]);
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      eventId,
-    )
-  ) {
+  if (!isCanonicalUuid(eventId)) {
     redirect("/home");
   }
 
