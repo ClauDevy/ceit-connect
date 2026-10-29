@@ -697,7 +697,7 @@ export function ActiveTaskDialog({
                     <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase"><CalendarDays className="size-4" aria-hidden /> Schedule</h3>
                     <FormField label="Type" labelTarget="group">
                       {(control) => (
-                        <div id={control.id} aria-labelledby={control.labelId} data-active-task-field="taskType" className="grid grid-cols-2 gap-2">
+                        <div {...control} data-active-task-field="taskType" className="grid grid-cols-2 gap-2">
                           {(["Deliverable", "LiveOperation"] as ActiveTaskType[]).map((type) => (
                             <Button key={type} type="button" variant="outline" className={cn("h-11", draft.taskType === type && "border-primary bg-primary/10 text-primary")} aria-pressed={draft.taskType === type} onClick={() => updateDraft({ taskType: type, ...(type === "Deliverable" ? { dutyDate: "", callTime: "", endTime: "" } : {}) })}>{type === "LiveOperation" ? "Live Operation" : type}</Button>
                           ))}
