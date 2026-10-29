@@ -1,4 +1,5 @@
 import { toAppTimestamp } from "../timezone";
+import { isCanonicalUuid } from "../uuid";
 
 export const ACTIVE_TASK_RETRY_MESSAGE =
   "Assignments changed while saving. Please try again.";
@@ -93,8 +94,6 @@ export type ActiveTaskRpcFailure = {
 
 export type ActiveTaskRpcSuccess = { ok: true; data: unknown };
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const TIMESTAMP_PATTERN =
@@ -149,7 +148,7 @@ function validateUuidArray(value: unknown, maximum: number) {
   if (value.length > maximum) return { status: "cap" as const };
   if (
     !value.every(
-      (item) => typeof item === "string" && UUID_PATTERN.test(item),
+      (item) => isCanonicalUuid(item),
     )
   ) {
     return { status: "invalid" as const };
@@ -198,7 +197,7 @@ function validateCommonTaskDraft(
     phase.trim().length < 1 ||
     phase.trim().length > 100
   ) return invalid("phase", VALIDATION_MESSAGES.phase);
-  if (typeof committeeId !== "string" || !UUID_PATTERN.test(committeeId)) {
+  if (!isCanonicalUuid(committeeId)) {
     return invalid("committee", VALIDATION_MESSAGES.committee);
   }
   if (
@@ -283,7 +282,7 @@ export function validateCreateActiveTaskRequest(
   if (!isPlainRecord(value) || !hasExactKeys(value, ["eventId", ...COMMON_KEYS])) {
     return invalid("form", VALIDATION_MESSAGES.generic);
   }
-  if (typeof value.eventId !== "string" || !UUID_PATTERN.test(value.eventId)) {
+  if (!isCanonicalUuid(value.eventId)) {
     return invalid("form", VALIDATION_MESSAGES.event);
   }
   const draft = validateCommonTaskDraft(value);
@@ -301,7 +300,7 @@ export function validateEditActiveTaskRequest(
   ) {
     return invalid("form", VALIDATION_MESSAGES.generic);
   }
-  if (typeof value.taskId !== "string" || !UUID_PATTERN.test(value.taskId)) {
+  if (!isCanonicalUuid(value.taskId)) {
     return invalid("form", VALIDATION_MESSAGES.task);
   }
   if (
