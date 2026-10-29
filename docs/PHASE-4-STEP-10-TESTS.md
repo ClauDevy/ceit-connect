@@ -14,6 +14,8 @@ Expected result sets, in order:
 
 If any count differs, preserve the result and stop; do not change the database.
 
+> The activity-log catalog lines below are historical Phase 4 expectations. Batch 12 replaces them with no direct client table privileges, no `activity_log_select` policy, and the fixed-shape `list_activity_log()` grant checks in `docs/phase-4b/step-12-tests.md`; the remaining Phase 4 inventory is unchanged here.
+
 ```sql
 -- RESULT 1: current functions and effective execute privileges (65 rows after Batch 11).
 with phase4_function_names(function_name) as (
