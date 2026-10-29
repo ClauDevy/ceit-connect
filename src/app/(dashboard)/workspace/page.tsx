@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { WorkspaceTasks } from "@/components/tasks/workspace-tasks";
+import { TaskLeaveRequests } from "@/components/tasks/task-leave-requests";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import {
   getHelpWantedRpcArgs,
@@ -56,7 +57,9 @@ export default async function WorkspacePage() {
         title="Workspace"
         description="Everything assigned to you, and everywhere the council needs a hand."
       />
+      {profile.role !== "Member" ? <TaskLeaveRequests /> : null}
       <WorkspaceTasks
+        viewerRole={profile.role}
         initialMyTasksPage={initialMyTasksPage}
         initialHelpWantedPage={initialHelpWantedPage}
       />

@@ -9,9 +9,39 @@ import type { TaskDetail } from "./detail";
 import type { TaskEditControlData } from "./edit-controls";
 
 export type ActiveTaskViewer = {
+  id?: string;
   role: "Admin" | "Co-Admin" | "Member";
   committeeId: string | null;
 };
+
+export function buildActiveTaskPickerCandidates<T extends { id: string }>(
+  candidates: readonly T[],
+  storedPrimaryAssignees: readonly { id: string }[],
+  storedAssistAssignees: readonly { id: string }[],
+  storedAllowedViewers: readonly { id: string }[],
+  actorId: string,
+) {
+  const storedAssigneeIds = new Set(
+    [...storedPrimaryAssignees, ...storedAssistAssignees].map(
+      (person) => person.id,
+    ),
+  );
+  const storedViewerIds = new Set(
+    storedAllowedViewers.map((person) => person.id),
+  );
+  return {
+    assignees: candidates.filter(
+      (person) =>
+        storedAssigneeIds.has(person.id) ||
+        (person.id !== actorId && !storedViewerIds.has(person.id)),
+    ),
+    viewers: candidates.filter(
+      (person) =>
+        storedViewerIds.has(person.id) ||
+        (person.id !== actorId && !storedAssigneeIds.has(person.id)),
+    ),
+  };
+}
 
 export function normalizeActiveTaskViewerIds(
   viewerIds: readonly string[],

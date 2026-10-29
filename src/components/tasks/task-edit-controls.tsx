@@ -24,6 +24,7 @@ import {
 } from "@/lib/tasks/edit-controls";
 
 type TaskEditControlsProps = {
+  viewerId: string;
   controls: TaskEditControlData;
   onSaveDependency: (dependencyId: string | null) => Promise<void>;
   onSaveConfidentiality: (
@@ -37,6 +38,7 @@ function viewerName(viewer: TaskEditViewer) {
 }
 
 export function TaskEditControls({
+  viewerId,
   controls,
   onSaveDependency,
   onSaveConfidentiality,
@@ -75,14 +77,17 @@ export function TaskEditControls({
     const choices = new Map<string, TaskEditViewer>();
     for (const viewer of controls.allowed_viewers)
       choices.set(viewer.id, viewer);
-    for (const viewer of controls.viewer_options)
-      choices.set(viewer.id, viewer);
+    for (const viewer of controls.viewer_options) {
+      if (viewer.id !== viewerId || choices.has(viewer.id)) {
+        choices.set(viewer.id, viewer);
+      }
+    }
     return [...choices.values()].filter((viewer) =>
       viewerName(viewer)
         .toLocaleLowerCase()
         .includes(viewerSearch.trim().toLocaleLowerCase()),
     );
-  }, [controls.allowed_viewers, controls.viewer_options, viewerSearch]);
+  }, [controls.allowed_viewers, controls.viewer_options, viewerId, viewerSearch]);
 
   async function saveDependency() {
     setSavingDependency(true);
