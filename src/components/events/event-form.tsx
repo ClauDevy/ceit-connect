@@ -1809,9 +1809,7 @@ export function EventForm({
                 <FormField label="Type" labelTarget="group">
                   {(control) => (
                     <TaskTypeToggle
-                      id={control.id}
-                      aria-labelledby={control.labelId}
-                      aria-describedby={control["aria-describedby"]}
+                      {...control}
                       value={taskEditor.draft.taskType}
                       onValueChange={(value) =>
                         updateTaskDraft({ taskType: value })
