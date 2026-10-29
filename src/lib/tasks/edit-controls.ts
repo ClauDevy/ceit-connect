@@ -18,6 +18,7 @@ export type TaskDependencyOption = {
 export type TaskEditControlData = {
   can_set_dependency: boolean;
   can_set_confidentiality: boolean;
+  can_edit_task: boolean;
   can_assign_people: boolean;
   can_delete: boolean;
   can_unassign_self: boolean;
@@ -105,6 +106,7 @@ export function isTaskEditControlData(
   if (
     typeof row.can_set_dependency !== "boolean" ||
     typeof row.can_set_confidentiality !== "boolean" ||
+    typeof row.can_edit_task !== "boolean" ||
     typeof row.can_assign_people !== "boolean" ||
     typeof row.can_delete !== "boolean" ||
     typeof row.can_unassign_self !== "boolean" ||

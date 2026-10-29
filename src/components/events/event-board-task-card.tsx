@@ -3,13 +3,26 @@
 import type { CSSProperties } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, GripVertical, LoaderCircle, LockKeyhole } from "lucide-react";
+import {
+  Check,
+  GripVertical,
+  LoaderCircle,
+  LockKeyhole,
+  MoreHorizontal,
+  Pencil,
+} from "lucide-react";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -86,6 +99,8 @@ type CardBodyProps = {
   onMoveStatus?: (task: BoardTask, status: BoardStatus) => void;
   claimBusy?: boolean;
   onClaim?: (task: BoardTask) => void;
+  canEdit?: boolean;
+  onEdit?: (task: BoardTask) => void;
 };
 
 function CardBody({
@@ -99,6 +114,8 @@ function CardBody({
   onMoveStatus,
   claimBusy = false,
   onClaim,
+  canEdit = false,
+  onEdit,
 }: CardBodyProps) {
   const showBacklogFooter =
     task.is_masked ||
@@ -140,6 +157,29 @@ function CardBody({
           )}
 
           <div className="relative z-20 flex items-center gap-1">
+            {canEdit && onEdit && !overlay ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="size-11 rounded-full transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none md:size-8"
+                      aria-label={`Task actions for ${task.title}`}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  }
+                >
+                  <MoreHorizontal aria-hidden />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => onEdit(task)}>
+                    <Pencil aria-hidden /> Edit task
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
             {task.status === "Completed" && !task.is_masked ? (
               <Check
                 className="size-4 text-emerald-600"
@@ -319,12 +359,16 @@ export function SortableEventBoardTaskCard({
   busy,
   dragDisabled,
   onMoveStatus,
+  canEdit,
+  onEdit,
 }: {
   task: BoardTask;
   permission: MovePermission;
   busy: boolean;
   dragDisabled: boolean;
   onMoveStatus: (task: BoardTask, status: BoardStatus) => void;
+  canEdit?: boolean;
+  onEdit?: (task: BoardTask) => void;
 }) {
   const {
     attributes,
@@ -355,6 +399,8 @@ export function SortableEventBoardTaskCard({
         dragAttributes={dragAttributes}
         dragListeners={dragListeners}
         onMoveStatus={onMoveStatus}
+        canEdit={canEdit}
+        onEdit={onEdit}
       />
     </div>
   );

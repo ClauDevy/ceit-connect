@@ -24,11 +24,23 @@ import {
   type TaskAssigneeWorkload,
 } from "@/lib/tasks/workload";
 import { createClient } from "@/lib/supabase/server";
+import type { BoardCommittee } from "@/lib/events/board";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function TaskData({ taskId }: { taskId: string }) {
+type TaskViewer = {
+  role: "Admin" | "Co-Admin" | "Member";
+  committeeId: string | null;
+};
+
+async function TaskData({
+  taskId,
+  viewer,
+}: {
+  taskId: string;
+  viewer: TaskViewer;
+}) {
   const supabase = await createClient();
   const [
     detailResult,
@@ -36,12 +48,20 @@ async function TaskData({ taskId }: { taskId: string }) {
     editControlsResult,
     backupStateResult,
     workloadResult,
+    committeesResult,
   ] = await Promise.all([
     supabase.rpc("get_task_detail", { p_task_id: taskId }),
     supabase.rpc("get_task_work_links", { p_task_id: taskId }),
     supabase.rpc("get_task_edit_controls", { p_task_id: taskId }),
     supabase.rpc("get_task_backup_state", { p_task_id: taskId }),
     supabase.rpc("list_active_task_assignees_with_workload"),
+    viewer.role !== "Member"
+      ? supabase
+          .from("committees")
+          .select("id, name")
+          .order("name")
+          .returns<BoardCommittee[]>()
+      : Promise.resolve({ data: [] as BoardCommittee[], error: null }),
   ]);
 
   if (detailResult.error) {
@@ -128,6 +148,14 @@ async function TaskData({ taskId }: { taskId: string }) {
     console.error("Task assignee workload returned invalid data.");
   }
 
+  if (committeesResult.error) {
+    console.error("Failed to load task edit committees:", committeesResult.error);
+  }
+  const committees = (committeesResult.data ?? []).filter(
+    (committee) =>
+      viewer.role === "Admin" || committee.id === viewer.committeeId,
+  );
+
   return (
     <TaskDetail
       taskId={taskId}
@@ -136,6 +164,8 @@ async function TaskData({ taskId }: { taskId: string }) {
       initialEditControls={initialEditControls}
       initialBackupState={initialBackupState}
       initialWorkloads={initialWorkloads}
+      viewer={viewer}
+      committees={committees}
     />
   );
 }
@@ -153,12 +183,23 @@ export default async function TaskDetailPage({
 
   const { taskId } = await params;
   if (!UUID_PATTERN.test(taskId)) {
-    return <TaskDetail taskId={taskId} initialTask={null} canFetch={false} />;
+    return (
+      <TaskDetail
+        taskId={taskId}
+        initialTask={null}
+        canFetch={false}
+        viewer={{ role: profile.role, committeeId: profile.committee_id }}
+        committees={[]}
+      />
+    );
   }
 
   return (
     <Suspense fallback={<TaskDetailSkeleton />}>
-      <TaskData taskId={taskId} />
+      <TaskData
+        taskId={taskId}
+        viewer={{ role: profile.role, committeeId: profile.committee_id }}
+      />
     </Suspense>
   );
 }

@@ -8,9 +8,12 @@ test is one self-contained SQL Editor paste with its own Auth/profile/event/task
 fixtures and caller impersonation. Every paste ends with an intentional
 `raise exception 'TEST RESULTS ...'`, which rolls the transaction back.
 
-> **Step 8 supersession note:** Step 8 expands the postgres-owner guard to six
-> columns and the direct-writer inventories to eight owner-branch/twelve full
-> writers. Step 8 TEST 1 is now authoritative. The following historical result
+> **Batch 11 supersession note:** after the two Batch 11 migrations, the
+> current inventories are ten postgres-owned definer update/delete writers,
+> thirteen full update/delete writers, and three task insert writers. The
+> ordinary owner branch remains six columns; Edit Event and Edit Active Task
+> have separately pinned exact unions. This file's earlier counts are historical.
+> The updated Step 8 TEST 1 is authoritative. The following historical result
 > lines pin earlier catalog states and are expected to differ or cease proving
 > exactness after Step 8; do not require them to report `PASS` when rerunning
 > the older suites:

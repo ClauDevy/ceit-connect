@@ -6,16 +6,16 @@ Run this paste only in the **Dev** Supabase SQL Editor. It is read-only: every s
 
 Expected result sets, in order:
 
-1. **59 function rows** with columns `function_signature`, `owner`, `security_mode`, `volatility`, `settings`, `public_execute`, `anon_execute`, and `authenticated_execute`. Every `settings` value must contain `search_path=""`; every owner must be `postgres`. Exactly 37 rows should have `authenticated_execute = true`; all `public_execute` and `anon_execute` values must be false. The owner-confirmed Phase 4 gate result remains historical at 57 functions and 35 authenticated-executable functions; Batch 0 added `update_own_profile(text)`, then Batch 3H added `list_home_event_progress(uuid[])`.
+1. **65 function rows** with columns `function_signature`, `owner`, `security_mode`, `volatility`, `settings`, `public_execute`, `anon_execute`, and `authenticated_execute`. Every `settings` value must contain `search_path=""`; every owner must be `postgres`. Exactly 40 rows should have `authenticated_execute = true`; all `public_execute` and `anon_execute` values must be false. The owner-confirmed Phase 4 gate result remains historical; Batch 11 adds six functions and three authenticated execute grants without adding reader overloads.
 2. **8 table rows** with RLS flags and effective authenticated privileges. Every `rls_enabled` value must be true. The four child tables must show `NONE`; the paste deliberately reports existing effective privileges on `events`, `tasks`, `notifications`, and `activity_log` rather than assuming they are empty.
 3. **11 policy rows**: four on `events`, four on `tasks`, two on `notifications`, and one on `activity_log`. The four Phase 4 child tables must contribute none.
-4. **20 trigger rows**. Every `enabled_state` must be `ENABLED`; the three Active-event invariant triggers must show `deferrable = true` and `initially_deferred = true`.
+4. **22 trigger rows**. Every `enabled_state` must be `ENABLED`; the three Active-event invariant triggers must show `deferrable = true` and `initially_deferred = true`. Batch 11 adds the capacity and updated-at triggers.
 5. **0 overload rows**. Any row here means a Phase 4 function name has more than one live signature and must be investigated.
 
 If any count differs, preserve the result and stop; do not change the database.
 
 ```sql
--- RESULT 1: current functions and effective execute privileges (59 rows after Batch 0 and Batch 3H).
+-- RESULT 1: current functions and effective execute privileges (65 rows after Batch 11).
 with phase4_function_names(function_name) as (
   values
     ('accept_task_volunteer'),
@@ -26,9 +26,12 @@ with phase4_function_names(function_name) as (
     ('assign_task_people'),
     ('calculate_effective_task_priority'),
     ('claim_task'),
+    ('count_event_tasks_for_capacity'),
+    ('create_active_event_task'),
     ('delete_task'),
     ('delete_task_comment'),
     ('edit_event_with_tasks'),
+    ('edit_active_event_task'),
     ('edit_task_comment'),
     ('get_archived_task_share_controls'),
     ('get_task'),
@@ -44,6 +47,7 @@ with phase4_function_names(function_name) as (
     ('guard_task_volunteer_writes'),
     ('guard_task_work_link_updates'),
     ('guard_task_work_link_writes'),
+    ('enforce_event_task_capacity'),
     ('list_active_task_assignees_with_workload'),
     ('list_event_board_tasks'),
     ('list_home_event_progress'),
@@ -64,6 +68,7 @@ with phase4_function_names(function_name) as (
     ('set_task_confidentiality'),
     ('set_task_dependency'),
     ('set_task_destination_lane_order'),
+    ('set_task_updated_at'),
     ('task_comment_mentions_are_valid'),
     ('task_comment_trim_body'),
     ('task_content_access'),
@@ -74,6 +79,7 @@ with phase4_function_names(function_name) as (
     ('task_work_link_url_is_canonical'),
     ('unassign_self'),
     ('update_own_profile'),
+    ('validate_active_event_task_payload'),
     ('validate_task_dependency'),
     ('volunteer_for_task'),
     ('withdraw_task_volunteer')
@@ -169,7 +175,7 @@ join reviewed_tables expected on expected.table_name = p.tablename
 where p.schemaname = 'public'
 order by p.tablename, p.policyname;
 
--- RESULT 4: every non-internal trigger on the reviewed tables (20 rows).
+-- RESULT 4: every non-internal trigger on the reviewed tables (22 rows).
 with reviewed_tables(table_name) as (
   values
     ('events'),
@@ -217,15 +223,17 @@ with phase4_function_names(function_name) as (
   values
     ('accept_task_volunteer'), ('add_task_comment'), ('add_task_work_link'),
     ('archive_event'), ('assign_task_creation_metadata'), ('assign_task_people'),
-    ('calculate_effective_task_priority'), ('claim_task'), ('delete_task'),
-    ('delete_task_comment'), ('edit_event_with_tasks'), ('edit_task_comment'),
+    ('calculate_effective_task_priority'), ('claim_task'),
+    ('count_event_tasks_for_capacity'), ('create_active_event_task'),
+    ('delete_task'), ('delete_task_comment'), ('edit_active_event_task'),
+    ('edit_event_with_tasks'), ('edit_task_comment'),
     ('get_archived_task_share_controls'), ('get_task'), ('get_task_backup_state'),
     ('get_task_detail'), ('get_task_edit_controls'), ('get_task_work_links'),
     ('grant_archived_task_viewer'), ('guard_archived_event_task_writes'),
     ('guard_archived_task_viewer_writes'),
     ('guard_referenced_prerequisite_deletion'), ('guard_task_comment_writes'),
     ('guard_task_volunteer_writes'), ('guard_task_work_link_updates'),
-    ('guard_task_work_link_writes'),
+    ('guard_task_work_link_writes'), ('enforce_event_task_capacity'),
     ('list_active_task_assignees_with_workload'), ('list_event_board_tasks'),
     ('list_home_event_progress'), ('list_help_wanted_tasks'), ('list_my_tasks'),
     ('list_task_comment_mention_candidates'), ('list_task_comments'),
@@ -235,11 +243,13 @@ with phase4_function_names(function_name) as (
     ('restrict_assignee_task_updates'), ('revoke_archived_task_viewer'),
     ('set_task_backup_request'), ('set_task_confidentiality'),
     ('set_task_dependency'), ('set_task_destination_lane_order'),
+    ('set_task_updated_at'),
     ('task_comment_mentions_are_valid'), ('task_comment_trim_body'),
     ('task_content_access'), ('task_content_access_for_user'),
     ('task_dependency_allows_forward_move'), ('task_dependency_lock_key'),
     ('task_lane_tail_sort_order'), ('task_work_link_url_is_canonical'),
-    ('unassign_self'), ('update_own_profile'), ('validate_task_dependency'), ('volunteer_for_task'),
+    ('unassign_self'), ('update_own_profile'),
+    ('validate_active_event_task_payload'), ('validate_task_dependency'), ('volunteer_for_task'),
     ('withdraw_task_volunteer')
 )
 select

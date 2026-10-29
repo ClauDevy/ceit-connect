@@ -10,6 +10,7 @@ import {
 const validControls = {
   can_set_dependency: true,
   can_set_confidentiality: true,
+  can_edit_task: true,
   can_assign_people: true,
   can_delete: true,
   can_unassign_self: false,
