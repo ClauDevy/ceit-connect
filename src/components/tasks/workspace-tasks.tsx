@@ -42,9 +42,11 @@ const sortItems = [
 ];
 
 export function WorkspaceTasks({
+  viewerRole,
   initialMyTasksPage,
   initialHelpWantedPage,
 }: {
+  viewerRole: "Admin" | "Co-Admin" | "Member";
   initialMyTasksPage?: OffsetListPage<MyTask>;
   initialHelpWantedPage?: OffsetListPage<HelpWantedTask>;
 }) {
@@ -259,6 +261,7 @@ export function WorkspaceTasks({
         className="space-y-3 focus-visible:outline-none"
       >
         <HelpWantedList
+          viewerRole={viewerRole}
           initialPage={initialHelpWantedPage}
           active={activeTab === "help"}
           onLoadedStateChange={updateHelpWantedState}

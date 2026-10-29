@@ -36,6 +36,7 @@ import {
 } from "@/lib/activity-log";
 
 type TaskViewer = {
+  id: string;
   role: "Admin" | "Co-Admin" | "Member";
   committeeId: string | null;
 };
@@ -198,7 +199,7 @@ async function TaskData({
 export default async function TaskDetailPage({
   params,
 }: PageProps<"/tasks/[taskId]">) {
-  await requireUser();
+  const user = await requireUser();
   const profile = await getActiveProfileForRoles([
     "Admin",
     "Co-Admin",
@@ -213,7 +214,7 @@ export default async function TaskDetailPage({
         taskId={taskId}
         initialTask={null}
         canFetch={false}
-        viewer={{ role: profile.role, committeeId: profile.committee_id }}
+        viewer={{ id: user.id, role: profile.role, committeeId: profile.committee_id }}
         committees={[]}
       />
     );
@@ -223,7 +224,7 @@ export default async function TaskDetailPage({
     <Suspense fallback={<TaskDetailSkeleton />}>
       <TaskData
         taskId={taskId}
-        viewer={{ role: profile.role, committeeId: profile.committee_id }}
+        viewer={{ id: user.id, role: profile.role, committeeId: profile.committee_id }}
       />
     </Suspense>
   );

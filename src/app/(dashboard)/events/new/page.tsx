@@ -76,6 +76,7 @@ export default async function CreateEventPage() {
 
   return (
     <EventForm
+      currentUserId={user.id}
       role={currentProfile.role}
       committees={committees}
       taskCommittees={taskCommittees}

@@ -29,9 +29,15 @@ import {
   type TaskEditViewer,
 } from "@/lib/tasks/edit-controls";
 import { formatWorkloadLabel } from "@/lib/tasks/workload";
+import {
+  getTaskLeaveConfirmationDescription,
+  isMemberLeaveRequestPrediction,
+} from "@/lib/tasks/leave";
 import { preventSearchFormSubmission } from "@/lib/search";
 
 type TaskPeopleControlsProps = {
+  viewerId: string;
+  viewerRole: "Admin" | "Co-Admin" | "Member";
   controls: TaskEditControlData;
   taskTitle: string;
   onAssignPeople: (
@@ -48,6 +54,8 @@ function personName(person: TaskEditViewer) {
 }
 
 export function TaskPeopleControls({
+  viewerId,
+  viewerRole,
   controls,
   taskTitle,
   onAssignPeople,
@@ -79,12 +87,14 @@ export function TaskPeopleControls({
     for (const person of controls.primary_assignees)
       byId.set(person.id, person);
     for (const person of controls.assist_assignees) byId.set(person.id, person);
-    for (const person of controls.assignee_options) byId.set(person.id, person);
+    for (const person of controls.assignee_options) {
+      if (person.id !== viewerId || byId.has(person.id)) byId.set(person.id, person);
+    }
     const query = search.trim().toLocaleLowerCase();
     return [...byId.values()].filter((person) =>
       personName(person).toLocaleLowerCase().includes(query),
     );
-  }, [controls, search]);
+  }, [controls, search, viewerId]);
 
   const assignmentCount = primaryIds.length + assistIds.length;
   const assignmentUnchanged = assigneeIdsAreUnchanged(
@@ -155,10 +165,12 @@ export function TaskPeopleControls({
   }
 
   async function unassignSelf() {
+    if (unassigning) return;
     setUnassigning(true);
     setActionError(null);
     try {
       await onUnassignSelf();
+      window.dispatchEvent(new Event("task-leave-requests:changed"));
       setUnassignOpen(false);
     } catch (error) {
       setActionError(
@@ -175,8 +187,16 @@ export function TaskPeopleControls({
     controls.self_unassign_block_code === "completed"
       ? "Completed tasks cannot be self-unassigned. Ask an Admin or Co-Admin to update the assignees."
       : controls.self_unassign_block_code === "due"
-        ? "This task is due within 72 hours. Ask an Admin or Co-Admin to remove you."
+        ? viewerRole === "Member"
+          ? "This task is due within 72 hours. Leadership must approve your leave request."
+          : "Officers can leave any Active, non-Completed task."
         : null;
+  const canStartLeave =
+    controls.can_unassign_self || controls.self_unassign_block_code === "due";
+  const predictsLeaveRequest = isMemberLeaveRequestPrediction(
+    viewerRole,
+    controls.self_unassign_block_code,
+  );
 
   const showTaskActions =
     controls.can_delete ||
@@ -242,7 +262,7 @@ export function TaskPeopleControls({
             ) : null}
           </CardHeader>
           <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
-            {controls.can_unassign_self || selfUnassignMessage ? (
+            {canStartLeave || selfUnassignMessage ? (
               <div className="space-y-2">
                 <Button
                   type="button"
@@ -254,7 +274,7 @@ export function TaskPeopleControls({
                     setUnassignOpen(true);
                   }}
                   disabled={
-                    !controls.can_unassign_self || unassigning || deleting
+                    !canStartLeave || unassigning || deleting
                   }
                 >
                   <LogOut aria-hidden /> Leave task
@@ -417,13 +437,23 @@ export function TaskPeopleControls({
       <ConfirmDialog
         open={unassignOpen}
         onOpenChange={setUnassignOpen}
-        title="Leave this task?"
-        description={
-          controls.self_unassign_will_lose_access
-            ? "You will be removed from this confidential task and will lose access to its details and work links."
-            : "You will be removed from this task. If you are its last primary assignee, it will return to the To Do Backlog."
+        title={
+          predictsLeaveRequest
+            ? "Request to leave this task?"
+            : "Leave this task?"
         }
-        confirmLabel="Leave task"
+        description={
+          getTaskLeaveConfirmationDescription(
+            viewerRole,
+            controls.self_unassign_block_code,
+            controls.self_unassign_will_lose_access,
+          )
+        }
+        confirmLabel={
+          predictsLeaveRequest
+            ? "Send request"
+            : "Leave task"
+        }
         loading={unassigning}
         onConfirm={() => void unassignSelf()}
       />
