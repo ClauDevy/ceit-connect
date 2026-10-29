@@ -103,7 +103,7 @@ The original Phase 4 review covered 57 effective signatures. The local Batch 11 
 | `task_comments` | Step 9 child | RLS enabled; no authenticated table privilege; no permissive policy | Immutable parent/author; task→event guard; Archived writes frozen. |
 | `archived_task_viewers` | Step 7B child | RLS enabled; no authenticated table privilege; no permissive policy | Archived-only rows; immutable parent/grantor; task→event guard. |
 | `notifications` | Existing boundary | RLS enabled; owner read/update policies only | Phase 4 migrations and app flows create no notification rows. |
-| `activity_log` | Existing boundary | RLS enabled; read policy only; no client write path | Trigger-only writes; current task visibility remains the authorization boundary. |
+| `activity_log` | Batch 12 boundary | RLS enabled; no direct client privilege or SELECT policy | Trigger-only writes; fixed-shape `list_activity_log()` applies current content access and masking without returning raw snapshots. |
 
 ## Policies
 
@@ -121,7 +121,7 @@ The four Phase 4 replacements are marked **P4**. The remaining policies are incl
 | `tasks.tasks_delete` **P4** | DELETE / public | Active leadership only; creator and content-only viewers gain no right. |
 | `notifications.notifications_select_own` | SELECT / public | Owner-only read boundary retained. |
 | `notifications.notifications_update_own` | UPDATE / public | Owner-only read-state update retained. |
-| `activity_log.activity_log_select` | SELECT / public | Access follows hardened current task visibility and hides confidential snapshots. |
+| `activity_log.activity_log_select` | Removed by Batch 12 | The current boundary has no direct client SELECT policy; `list_activity_log()` is the only authenticated read path. |
 
 ## Triggers
 
