@@ -24,6 +24,7 @@ export type TaskDetail = {
   call_time: string | null;
   end_time: string | null;
   created_at: string | null;
+  updated_at: string | null;
   committee_id: string | null;
   committee_name: string | null;
   primary_assignees: BoardAssignee[];
@@ -87,6 +88,7 @@ export function isTaskDetail(value: unknown): value is TaskDetail {
       row.call_time === null &&
       row.end_time === null &&
       row.created_at === null &&
+      row.updated_at === null &&
       row.committee_id === null &&
       row.committee_name === null &&
       row.primary_assignees.length === 0 &&
@@ -110,6 +112,7 @@ export function isTaskDetail(value: unknown): value is TaskDetail {
     isNullableString(row.call_time) &&
     isNullableString(row.end_time) &&
     typeof row.created_at === "string" &&
+    typeof row.updated_at === "string" &&
     typeof row.committee_id === "string" &&
     typeof row.committee_name === "string" &&
     typeof row.is_confidential === "boolean" &&

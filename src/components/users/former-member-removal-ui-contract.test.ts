@@ -9,7 +9,7 @@ import {
 const dialog = readFileSync(
   "src/components/users/former-member-removal-dialog.tsx",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const usersTable = readFileSync("src/components/users/users-table.tsx", "utf8");
 const desktop = readFileSync("src/components/users/members-table.tsx", "utf8");
 const phone = readFileSync("src/components/users/members-cards.tsx", "utf8");
