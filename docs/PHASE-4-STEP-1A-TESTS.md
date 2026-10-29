@@ -147,6 +147,8 @@ $$;
 
 ## TEST 9 — activity log is closed by Step 1A
 
+> Historical activity-log test only. Batch 12 removes direct client table reads and the `activity_log_select` policy; use `docs/phase-4b/step-12-tests.md` for the current raw-denial and fixed-shape reader contract.
+
 Run this post-fix test only after
 `20261016120000_harden_raw_task_access.sql` is on Dev. It reads
 `activity_log.changes` directly and proves that the activity policy's task

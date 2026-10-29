@@ -1,6 +1,6 @@
 # Step 12: Activity Log page
 
-**Status:** Planned | **Branch:** `feature/activity-log-page` | **Reasoning level:** High (security-critical reader, raw-grant removal, and confidential snapshots)
+**Status:** Implemented locally; TypeScript, 669 tests, and lint pass; owner browser verification pending | **Branch:** `feature/activity-log-page` | **Reasoning level:** High (security-critical reader, raw-grant removal, and confidential snapshots)
 
 ## Goal
 
@@ -12,7 +12,7 @@ Build `/activity-log` as a read-only, paged view of the real task `INSERT`, `UPD
 
 - Admins and Co-Admins see the whole log; confidential masking still applies.
 - Members see only their own tasks’ history on the task page.
-- The experience includes sorting, filters, search, and Load more.
+- The experience includes sorting, filters, search, 20-row cursor block pagination on the global page, and Load more in task History.
 
 ### `docs/PHASE-4B-PLAN.md` — Batches and Audit resolutions
 
@@ -23,7 +23,7 @@ Build `/activity-log` as a read-only, paged view of the real task `INSERT`, `UPD
 ### Owner clarifications for Step 12
 
 - Show only real rows already written by the task activity trigger: task `INSERT`, `UPDATE`, and `DELETE`.
-- Support newest/oldest sorting; action, committee, and Philippine-date filters; actor/task/event/committee search; and fetch-21/show-20 Load more.
+- Support newest/oldest sorting; action, committee, and Philippine-date filters; actor/task/event/committee search; and cursor-backed 20-row three-page blocks without a total count or guessed page cursors.
 - Members have history only on `/tasks/[taskId]`, only while they are currently in `primary_assignees` or `assist_assignees`. Ordinary `allowed_viewers`, archive-only viewers, volunteers, and former assignees do not qualify. Access disappears on unassignment.
 - Real details appear only when current `task_content_access` is `real`. Every other case returns a minimal `Confidential Task` entry containing only timestamp and action.
 - Deleted confidential snapshots fail closed because no current task row remains against which to prove real access.
@@ -32,21 +32,21 @@ Build `/activity-log` as a read-only, paged view of the real task `INSERT`, `UPD
 
 - `activity_log` stores `id`, nullable `task_id`, nullable `user_id`, `action`, raw `changes jsonb`, and `created_at`. `changes` contains complete task snapshots: one row for INSERT/DELETE and `old`/`new` snapshots for UPDATE.
 - `log_task_activity()` is a fixed-empty-path postgres-owned `SECURITY DEFINER` trigger function. It records every task insert/delete and every update except one whose only difference is `sort_order`.
-- The first leak fix replaced the original `using (true)` activity policy with task-related visibility. The second leak fix removed backup-only access to confidential snapshots. A later Draft fix repeated lifecycle checks so Members could not read Draft task snapshots.
-- The current policy still grants clients raw `changes` whenever its row predicate succeeds. It cannot satisfy “whole log for Co-Admins” safely because widening the policy would reveal other committees’ confidential snapshots.
+- Earlier leak fixes narrowed the original policy for confidential, backup, and Draft snapshots. Batch 12 now removes that policy and all direct client table privileges rather than widening it.
+- The fixed-shape reader performs masking in PostgreSQL and never serializes raw `changes`; whole-log cardinality for leadership is separated from current task-content authorization.
 - A deleted task’s foreign key becomes null through `ON DELETE SET NULL`. Its old task data remains only inside immutable `changes`, so a reader cannot use a live task row to establish current content access.
-- `/activity-log` exists only as an active-Admin placeholder with a page header. Navigation currently lists the page for Admin only.
+- `/activity-log` is implemented for active Admins and Co-Admins with server-prefetched default results, safe filters/search, 20-row cursor block pagination, a mobile-navigation-aware sticky pager, solid semantic icon-and-text action badges and row accents, and accessible expandable real-row summaries with guarded task links. Compact rows align their shared header grid and show the first safe change summary with a remaining-count indicator. Task detail retains its separate task-scoped newest-first Load-more History section for eligible callers.
 - The activity prototype contains many records and controls the database does not support. It is a visual reference for responsive table/cards, filters, and empty/loading states—not a source of new audit data.
 
 ## Scope: in / out
 
-**In:** fixed-shape `list_activity_log()`; raw authenticated `SELECT` removal; active Admin/Co-Admin whole-log page; current-primary/current-assist task-page history for Members; current-access masking; fail-closed deleted confidential rows; Draft snapshot protection; safe actor/task/event/committee labels; newest/oldest sort; action/committee/Philippine-date filters; safe text search; keyset Load more using 21 fetched/20 shown; refresh, loading, empty, and safe error states; desktop table and phone cards following the Design System.
+**In:** fixed-shape `list_activity_log()`; raw authenticated `SELECT` removal; active Admin/Co-Admin whole-log page; current-primary/current-assist task-page history for Members; current-access masking; fail-closed deleted confidential rows; Draft snapshot protection; safe actor/task/event/committee labels; newest/oldest sort; action/committee/Philippine-date filters; safe text search; 20-row global cursor block pagination; task-History Load more; semantic action badges; accessible plain-text change-summary expansion and guarded task links; refresh, loading, empty, and safe error states; desktop table and phone cards following the Design System.
 
 **Out:** auth failures; user-profile or role changes; invitations; event creation/launch/deletion audit; confidential-view audit; IP addresses; device details; fabricated “system” actors; statistics cards; CSV export; retention windows or automatic deletion; restore controls; “Live” or Realtime behavior; notification creation; rewriting historical snapshots; expanding `activity_log.action` beyond `INSERT | UPDATE | DELETE`.
 
 ## Database impact
 
-Add one tracked security-critical migration. Do not edit either historical leak-fix migration.
+Use the two tracked security-critical Batch 12 migrations: the reader/raw-read removal and the portable final all-privilege revoke. Do not edit either historical leak-fix migration.
 
 Create one authenticated-only, fixed-empty-path, fixed-shape `STABLE SECURITY DEFINER` reader named `list_activity_log(...)`. It derives the caller from `auth.uid()`, requires an active profile, validates every sort/filter/search/limit/cursor input, caps each request at 21 rows, and returns only presentation-safe columns. It must never return the raw `changes` document or an arbitrary caller-selected JSON path.
 
@@ -73,7 +73,9 @@ After the function exists, drop the permissive `activity_log_select` policy and 
 - Search covers only safe normalized actor name, action label, real task title, real event name, and real committee name. Masked fields never enter the searchable document, so search cannot act as a confidential-content oracle.
 - Action filters are the three stored values only. Committee filtering applies to real entries using the stored/live committee id; masked entries are included only when the chosen filter can be applied without revealing their hidden committee. Otherwise they remain absent from that filtered result without exposing a count distinction beyond the result itself.
 - Date inputs use Philippine calendar dates. Newest is the default; Oldest is the only alternate sort.
-- Manual Refresh refetches the settled first window. There is no Realtime, “Live” badge, or background audit-stream claim.
+- When the visible global page has more results, including the server-provided first page on initial load, the client sequentially prefetches at most two following 20-row pages while the tab is visible. Exact RPC cursor strings make only successfully discovered pages clickable; filter changes cancel the chain, and prefetch failures remain quiet.
+- The global pager stays at the bottom of the viewport without overlapping the phone bottom navigation. Its stable-height solid surface keeps the 20-per-page label and known page controls available without scrolling the document or moving it on page changes.
+- Manual Refresh and focus refresh refetch only the current global page. There is no Realtime, “Live” badge, or background audit-stream claim.
 - `/tasks/[taskId]` adds a read-only History section. Leadership and current assigned Members use the same reader with the exact task scope. The section does not replace comments and has no mutation control.
 - A successful assignment change, access change, or focus refresh invalidates/refetches history. If a Member is unassigned, cached rows are cleared before showing the safe unavailable state.
 
@@ -85,7 +87,7 @@ After the function exists, drop the permissive `activity_log_select` policy and 
 - `allowed_viewers`, archived shares, backup requests, volunteer offers, creator provenance, or earlier assignment do not grant Member history.
 - Draft content is never authorized from a historical snapshot. Use the current centralized content-access decision.
 - Deleted confidential rows are always minimal. Broken/malformed snapshots fail closed.
-- Filters and search run before paging and cannot inspect masked values. Load more never duplicates or skips rows within a settled keyset ordering.
+- Filters and search run before paging and cannot inspect masked values. Global three-page block navigation and task-History Load more preserve exact cursor strings and never duplicate or skip rows within a settled keyset ordering; the global pager never guesses an undiscovered page.
 - Activity rows remain immutable and trigger-written. The feature adds no update/delete/restore/retention path.
 - Rank-only changes remain absent from the log. No activity reader or UI reconstructs them.
 - Every database result and client request error is checked; UI mutations elsewhere cannot leave history loading indefinitely.
@@ -124,7 +126,7 @@ For each allowed real entry, verify only whitelisted fields and summaries. For e
 
 ## Manual checklist
 
-- As an Admin, open `/activity-log`; verify INSERT/UPDATE/DELETE rows across committees, newest/oldest sort, every approved filter, search, Refresh, and Load more.
+- As an Admin, open `/activity-log`; verify INSERT/UPDATE/DELETE rows across committees, solid semantic icon-and-text badges and row accents, expandable real-row summaries and guarded Open task links, newest/oldest sort, every approved filter, search, Refresh, and 20-row three-page block pagination.
 - As a Co-Admin, confirm the page shows the whole sequence. Verify real public/currently authorized entries and minimal `Confidential Task` rows for unavailable confidential or Draft content.
 - Search for a known hidden title, event, committee, or actor. Confirm it does not make the masked row discoverable through text matching.
 - Create, edit, move, and delete disposable tasks. Confirm meaningful changes appear, rank-only reorder does not, and deleted confidential content is masked.
@@ -133,9 +135,34 @@ For each allowed real entry, verify only whitelisted fields and summaries. For e
 - Verify date boundaries using records around Philippine midnight and confirm browser timezone changes do not shift the selected day.
 - Confirm there are no statistics, export, retention, restore, auth/user/event audit, IP/device, Realtime, or “Live” features.
 
+## Three-role browser checklist
+
+### Admin
+
+1. Sign in as an active Admin and open `/activity-log`; confirm the default newest-first 20-row page appears, then test oldest-first, each action, committee, date boundary, trimmed search, Clear filters, and Refresh.
+2. Confirm entries from all committees appear. Open a real row's task link, and verify unavailable confidential/Draft content stays a minimal `Confidential Task` row with time and action only.
+3. Search for a known hidden title, event, committee, and actor; confirm none discovers a masked row. Change several filters quickly and confirm an older response never replaces the current filter result.
+4. Confirm Created/Updated/Deleted use equal-weight tonal success/brand/destructive icon-and-text badges and matching green/brand/destructive row accents. Verify the shared header grid aligns with compact rows, task metadata uses a quiet committee chip, masked changes say `Hidden`, and real rows preview the first summary plus any remaining count.
+5. Confirm masked tasks remain neutral and cannot expand. Expand real rows by mouse and keyboard, verify plain-text change lists, and verify Open task appears only for valid live task ids and not for DELETE rows. Then open a task and confirm its unchanged History remains newest-first with only Refresh and Load more.
+6. With at least 61 matching rows, confirm known page buttons 1-3 appear from the initial server page without first navigating, the right block arrow opens page 4 only after its exact cursor is known, and the next block fills as 4-6. Confirm the sticky pager stays above phone navigation, does not shift while prefetch completes, keeps the old page visible without scrolling while navigating, and resets to page 1 after a filter change.
+
+### Co-Admin
+
+1. Sign in as an active Co-Admin; confirm Activity Log appears in navigation and direct `/activity-log` access succeeds.
+2. Confirm the whole-log sequence has the same cardinality as Admin while details are real only where currently authorized; other confidential/Draft rows must be minimal masked entries.
+3. Apply committee and search filters and confirm masked rows cannot reveal hidden committee, task, event, or actor data. Verify Philippine date choices do not change after switching the browser timezone.
+4. Verify the global pager keeps the current page visible while moving, handles short/empty `has_more` pages, resets on filters, exposes only known pages in three-page blocks, and never skips a page while the next block cursor is still loading. Open an accessible task and verify its unchanged History still uses Refresh and Load more with the same sentinel, cursor, dedupe, and quiet-error rules.
+
+### Member
+
+1. Sign in as an active Member; confirm Activity Log is absent from navigation and direct `/activity-log` access follows the existing denial redirect.
+2. Open a task where the Member is currently primary or assist assigned; confirm History appears, is newest-first, and offers only Refresh and Load more.
+3. Remove the Member from both assignment arrays in another authorized session, then refocus or refresh the Member tab; confirm cached History clears to the quiet unavailable state without breaking the rest of the task page.
+4. Repeat with an allowed-viewer-only, archive-only viewer, volunteer, former-assignee, or unassigned account and confirm History stays unavailable. Confirm masked rows, when present for eligible leadership, show only `Confidential Task`, time, and action.
+
 ## Acceptance
 
-`/activity-log` gives active Admins and Co-Admins a stable, searchable, filterable, sorted, Load-more view of every real task audit row without exposing raw snapshots. Current real access controls details; every unavailable entry is a minimal `Confidential Task` row, and deleted confidential history fails closed. Members have no global page and can read only the selected task’s history while currently primary/assist assigned. Draft content, raw `changes`, rank-only noise, and unsupported prototype features remain absent.
+`/activity-log` gives active Admins and Co-Admins a stable, searchable, filterable, sorted, 20-row block-paged view of every real task audit row without exposing raw snapshots. Current real access controls details; every unavailable entry is a minimal `Confidential Task` row, and deleted confidential history fails closed. Members have no global page and can read only the selected task’s history while currently primary/assist assigned. Draft content, raw `changes`, rank-only noise, and unsupported prototype features remain absent.
 
 ## Open questions for the owner
 
