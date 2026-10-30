@@ -4,6 +4,7 @@ import {
   getEventFormSummary,
   getEventPhaseCardKey,
   getEventPhaseControls,
+  getLiveOperationScheduleProblem,
   normalizeEventPhaseName,
   parseImportedDueDate,
   toTaskPayload,
@@ -17,6 +18,7 @@ const taskDraft = {
   dueDate: "2026-10-24",
   callDate: "",
   callTime: "",
+  endDate: "",
   endTime: "",
   priority: "Medium" as const,
   assigneeIds: [],
@@ -25,6 +27,47 @@ const taskDraft = {
 describe("event task due dates", () => {
   it("keeps the yyyy-mm-dd value produced by the date input", () => {
     expect(toTaskPayload("Preparation", taskDraft).due_date).toBe("2026-10-24");
+  });
+
+  it("serializes a Live Operation end time on a later Manila date", () => {
+    expect(
+      toTaskPayload("Operations", {
+        ...taskDraft,
+        taskType: "LiveOperation",
+        callDate: "2026-11-01",
+        callTime: "23:00",
+        endDate: "2026-11-02",
+        endTime: "02:00",
+      }),
+    ).toMatchObject({
+      call_time: "2026-11-01T15:00:00.000Z",
+      end_time: "2026-11-01T18:00:00.000Z",
+    });
+  });
+
+  it("requires an end time only when a new or edited task sets an end date", () => {
+    expect(
+      getLiveOperationScheduleProblem({
+        ...taskDraft,
+        taskType: "LiveOperation",
+        callDate: "2026-11-01",
+        callTime: "23:00",
+        endDate: "2026-11-02",
+      }),
+    ).toEqual({
+      field: "end-time",
+      message: "Choose an end time when setting an end date.",
+    });
+
+    expect(
+      toTaskPayload("Operations", {
+        ...taskDraft,
+        taskType: "LiveOperation",
+        callDate: "2026-11-01",
+        callTime: "23:00",
+        endDate: "2026-11-02",
+      }).end_time,
+    ).toBeNull();
   });
 
   it.each([
@@ -290,6 +333,38 @@ describe("Draft editor phase presentation", () => {
         readOnlyTasks: readerRows,
       }).canRename,
     ).toBe(false);
+  });
+
+  it("locks a Co-Admin template phase containing a server-derived task", () => {
+    const [phase] = buildEventPhaseViews(
+      [
+        {
+          id: "template-phase",
+          name: "Shared phase",
+          originalName: "Shared phase",
+          origin: "local" as const,
+          tasks: [
+            {
+              id: "foreign-template-task",
+              persisted: false,
+              templateEditable: false,
+            },
+          ],
+        },
+      ],
+      [],
+    );
+
+    expect(
+      getEventPhaseControls({
+        role: "Co-Admin",
+        isDraft: false,
+        readerAvailable: true,
+        hasExactlyOneTaskCommittee: true,
+        phase,
+        readOnlyTasks: [],
+      }),
+    ).toMatchObject({ canRename: false, canRemove: false });
   });
 
   it("keeps a blank raw phase name in state and normalizes only for matching and save", () => {

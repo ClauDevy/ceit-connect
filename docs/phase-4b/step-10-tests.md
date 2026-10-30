@@ -521,6 +521,7 @@ begin
     where namespace.nspname='public'
       and procedure.proname=any(array[
         'accept_task_volunteer','assign_task_people','claim_task',
+        'copy_archived_template_tasks','create_event_from_archived_template',
         'create_event_with_tasks','edit_event_with_tasks','unassign_self'
       ]::text[])
   ) as candidate;
@@ -534,14 +535,16 @@ begin
     and procedure.proname in ('move_task','set_task_backup_request');
 
   perform pg_temp.step10_record(
-    'L01_LIVE_CATALOG_8_MATCH_6_WRITE_2_READ_ONLY',
+    'L01_LIVE_CATALOG_10_MATCH_8_WRITE_2_READ_ONLY',
     v_broad = array[
       'accept_task_volunteer','assign_task_people','claim_task',
+      'copy_archived_template_tasks','create_event_from_archived_template',
       'create_event_with_tasks','edit_event_with_tasks','move_task',
       'set_task_backup_request','unassign_self'
     ]::text[]
     and v_true = array[
       'accept_task_volunteer','assign_task_people','claim_task',
+      'copy_archived_template_tasks','create_event_from_archived_template',
       'create_event_with_tasks','edit_event_with_tasks','unassign_self'
     ]::text[]
     and coalesce(v_reader_sources_safe,false)
