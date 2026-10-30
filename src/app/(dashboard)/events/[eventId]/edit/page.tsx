@@ -173,6 +173,7 @@ export default async function EditEventPage({
         dueDate: task.due_date?.slice(0, 10) ?? "",
         callDate: call.date,
         callTime: call.time,
+        endDate: end.date,
         endTime: end.time,
         priority: task.priority,
         assigneeIds: task.primary_assignees,

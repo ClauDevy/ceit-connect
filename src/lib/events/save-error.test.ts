@@ -43,4 +43,17 @@ describe("getEventSaveErrorMessage", () => {
       }),
     ).toBe("A database validation failed.");
   });
+
+  it.each([
+    [
+      "CCT01",
+      "Only an active Co-Admin can create an event from an Archived template.",
+    ],
+    ["CCT02", "The Archived template is unavailable."],
+    ["CCT03", "The template task selection is invalid."],
+  ])("maps %s template failures to fixed copy", (code, expected) => {
+    expect(
+      getEventSaveErrorMessage({ code, message: "sensitive backend details" }),
+    ).toBe(expected);
+  });
 });

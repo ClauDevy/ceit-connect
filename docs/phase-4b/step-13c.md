@@ -8,7 +8,7 @@
 
 Let every active Admin and Co-Admin see every task and phase in a Draft event while preserving confidential masking and keeping every write committee-scoped. Expand visibility only through safe fixed-shape readers; do not expose other committees’ confidential Draft content through raw task rows or turn visibility into mutation authority.
 
-The stable run order for this group is **13, 13c, 13d, 13b**. Batch 13c runs after `fix/task-rules` and before event deletion and phase completion.
+The stable run order for this group is **13, 13c, 13e, 13d, 13b**. Batch 13c runs after `fix/task-rules` and before template import, event deletion, and phase completion.
 
 ## Decisions
 

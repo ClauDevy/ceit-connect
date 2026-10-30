@@ -55,7 +55,7 @@ Activity Log
 
 ## Batches
 
-Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13d, 13b, 4, 14, then Phase 5, then 15.**
+Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13e, 13d, 13b, 4, 14, then Phase 5, then 15.**
 
 0. `fix/users-authz` - remove direct Co-Admin UPDATE on users; make the invite route and Users page use the active-profile guard; preserve narrow own-profile editing without allowing changes to role, committee, or active state.
 1. `fix/ui-bugs` - stable search inputs; whole-box real links and 44px phone targets; first-image crop zoom-out; route-specific skeletons; phone Drive preview; comment-button alignment only; `Asia/Manila` display/parsing audit; unused-package proof; exact lint/navigation/middleware/root-script cleanup. No database changes. See `docs/phase-4b/step-1.md`.
@@ -79,6 +79,8 @@ Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12
 13b. `feature/phase-completion` - see Updates.
 13c. `fix/draft-task-visibility` - all active Admins and Co-Admins read all Draft tasks; confidential masking remains and writes stay committee-scoped.
     - Status: implemented locally, awaiting owner Dev application and SQL verification. No Batch 13c application is claimed.
+13e. `fix/template-import-all-committees` — Archived-template all-committee import (security-critical): replace the archive reader in place, add one authenticated Co-Admin-only atomic writer plus one ungranted internal copier, preserve Admin's existing create path, and keep all foreign task values server-derived. The exact design and 72-line Dev verification are in `docs/phase-4b/step-13e.md` and `step-13e-tests.md`.
+    - Status: implemented locally, awaiting owner Dev application and SQL verification. No Batch 13e application is claimed.
 13d. `feature/event-deletion` - one Admin-only Draft/Archived management page with a year filter; one event requires its name, bulk requires `DELETE <count> EVENTS`; Active deletion stays blocked and activity history keeps task UUIDs without a foreign key.
 14. `fix/hardening-gate` - revoke TRUNCATE/REFERENCES/TRIGGER from `authenticated` on events, tasks,
     notifications, and activity_log; tighten the Prod email domain; verify Step 1 cleanup and `/sandbox` removal; update catalogs/allowlists; enable officer caps before final release.
@@ -128,8 +130,8 @@ Notifications (bell, Discord webhooks, Resend for critical only), Executive Dash
 
 ## Audit resolutions (owner-approved 2026-10-24)
 - Phase 4 gate: Step 10E must be completed or explicitly waived before any 4B code batch.
-- Batch IDs are stable; run order is: 0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13d, 13b, 4, 14, then Phase 5, then 15.
-- Security-critical (High reasoning): 0, 3H, 7, 8, 9, 10, 12, 13, 13c, 13d, 13b, 15.
+- Batch IDs are stable; run order is: 0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13e, 13d, 13b, 4, 14, then Phase 5, then 15.
+- Security-critical (High reasoning): 0, 3H, 7, 8, 9, 10, 12, 13, 13c, 13e, 13d, 13b, 15.
 - Batch 0 `fix/users-authz`: remove direct Co-Admin UPDATE on users; invite route and Users page use the active-profile guard. Own-profile edit keeps working.
 - Batch 0 tests prove own-profile editing cannot change `role`, `committee_id`, or `is_active`.
 - Batch 1 first records the exact lint baseline, then fixes those three warnings plus the root-layout development warning. Successful sign-in/password-reset navigation remains tested. After Batch 1 merges, its `cn`/`p`/lint/script items leave `docs/PROGRESS.md`; Batch 14 only verifies they stay gone.
@@ -149,6 +151,7 @@ Notifications (bell, Discord webhooks, Resend for critical only), Executive Dash
 - Activity Log (batch 12): list_activity_log() RPC masks confidential content; raw SELECT on activity_log is revoked.
 - Catalog: add a new authoritative Phase 4B catalog test after 13b and expand the Step 10 allowlists; old exact counts are historical.
 - Batch 13c catalog handoff: allowlist the fixed-shape Draft editor reader, the sole eleven-argument event editor, the Draft write-scope helper, the shaped task capability readers, and every revoked `*_pre13c` body; do not add a task-writer marker or policy.
+- Batch 13e catalog handoff: allowlist the sole unchanged-shape `get_archived_event_template`, sole public `create_event_from_archived_template`, and revoked internal `copy_archived_template_tasks`; add exactly `create_event_from_archived_template` to the assignment-marker inventory. Pin postgres ownership, definer/path/volatility, exact grants, no overloads, lock order, marker cleanup, and unchanged task policies.
 - Batch 14 must enable `public.app_settings.enforce_officer_role_caps` through a tracked migration before final release and verify Step 1's package/lint/root-script cleanup remains complete.
 - Batch 5 uses the owner-approved expanded contract: 300 ms route/list/overlay entrances; 260 ms user-tab/form-section/small-disclosure motion; 220 ms interactions and exits; and 700 ms determinate-progress reveals at 40% visibility. The SVG-ring `stroke-dashoffset` and small grid-row collapse are documented exceptions. Initial visible rows retain the first-20 capped stagger; below-fold and Load-more rows reveal once without stagger by stable ID. Activity Log, future notifications, and the Phase 5 Executive Dashboard must use the shared motion kit and document/test their reduced-motion states. No animation library is added.
 - Batch 15 `feature/dependencies-v2` (after Phase 5): normalized task_dependencies table, multiple prerequisites, transitive auto-revert of every invalid dependent to To Do at its lane tail (Completed dependents included), activity entry records the initiating user and an automatic-revert reason. Raw forward-status gate already exists and stays a regression requirement.

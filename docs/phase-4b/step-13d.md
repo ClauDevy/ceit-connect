@@ -6,7 +6,7 @@
 
 Add one narrow server-only `delete_event()` RPC for deleting a Draft or Archived event through one Admin-only management page with a year filter. A single deletion requires the exact event name; bulk deletion requires `DELETE <count> EVENTS`. Keep Active deletion blocked, preserve immutable activity history with its original task UUID values after task rows are gone, handle task/child cascades without weakening ordinary Archived immutability, and durably track post-commit banner Storage cleanup through the verified server boundary.
 
-The stable run order for this group is **13, 13c, 13d, 13b**. Batch 13d runs after Draft visibility and before phase completion.
+The stable run order for this group is **13, 13c, 13e, 13d, 13b**. Batch 13d runs after Draft visibility and template import, and before phase completion.
 
 ## Decisions
 
