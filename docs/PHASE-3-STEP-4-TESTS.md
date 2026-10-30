@@ -50,7 +50,9 @@ select public.edit_event_with_tasks(
   p_tasks_to_add => '[]'::jsonb,
   p_tasks_to_update => '[]'::jsonb,
   p_task_ids_to_delete => '{}'::uuid[]
-);
+,
+      p_phase_actions => '[]'::jsonb
+    );
 
 do $$
 begin
@@ -77,6 +79,8 @@ begin
       )),
       p_tasks_to_update => '[]'::jsonb,
       p_task_ids_to_delete => '{}'::uuid[]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
     raise exception 'Expected stale-save rejection but the call succeeded.';
   exception when others then
@@ -169,7 +173,9 @@ select public.edit_event_with_tasks(
     'assignee_ids', jsonb_build_array('33333333-3333-3333-3333-333333333333')
   )),
   p_task_ids_to_delete => '{}'::uuid[]
-);
+,
+      p_phase_actions => '[]'::jsonb
+    );
 
 reset role;
 
@@ -252,6 +258,8 @@ begin
         'assignee_ids', jsonb_build_array('33333333-3333-3333-3333-333333333333')
       )),
       p_task_ids_to_delete => '{}'::uuid[]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
     raise exception 'Expected new inactive-assignee rejection but the call succeeded.';
   exception when others then
@@ -346,7 +354,9 @@ select public.edit_event_with_tasks(
     'assignee_ids', jsonb_build_array()
   )),
   p_task_ids_to_delete => '{}'::uuid[]
-);
+,
+      p_phase_actions => '[]'::jsonb
+    );
 
 reset role;
 
@@ -424,7 +434,9 @@ select public.edit_event_with_tasks(
     'assignee_ids', jsonb_build_array('33333333-3333-3333-3333-333333333333')
   )),
   p_task_ids_to_delete => '{}'::uuid[]
-);
+,
+      p_phase_actions => '[]'::jsonb
+    );
 
 reset role;
 
@@ -543,6 +555,8 @@ begin
         )
       ),
       p_task_ids_to_delete => '{}'::uuid[]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
     raise exception 'Expected cross-committee update rejection but the call succeeded.';
   exception when others then
@@ -580,6 +594,8 @@ begin
         'assignee_ids', jsonb_build_array()
       )),
       p_task_ids_to_delete => array['b2000000-0000-4000-8000-000000000022'::uuid]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
     raise exception 'Expected cross-committee delete rejection but the call succeeded.';
   exception when others then
@@ -669,6 +685,8 @@ begin
       )),
       p_tasks_to_update => '[]'::jsonb,
       p_task_ids_to_delete => array['b3000000-0000-4000-8000-000000000031'::uuid]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
     raise exception 'Expected progressed-task deletion rejection but the call succeeded.';
   exception when others then
@@ -771,7 +789,9 @@ select public.edit_event_with_tasks(
     'assignee_ids', jsonb_build_array()
   )),
   p_task_ids_to_delete => '{}'::uuid[]
-);
+,
+      p_phase_actions => '[]'::jsonb
+    );
 
 reset role;
 
@@ -833,6 +853,8 @@ begin
       p_tasks_to_add => '[]'::jsonb,
       p_tasks_to_update => '[]'::jsonb,
       p_task_ids_to_delete => '{}'::uuid[]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
     raise exception 'Expected Member rejection but the call succeeded.';
   exception when others then
@@ -902,7 +924,9 @@ select public.edit_event_with_tasks(
   )),
   p_tasks_to_update => '[]'::jsonb,
   p_task_ids_to_delete => '{}'::uuid[]
-);
+,
+      p_phase_actions => '[]'::jsonb
+    );
 
 reset role;
 

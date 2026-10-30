@@ -53,7 +53,7 @@ declare
   v_board_oid oid := 'public.list_event_board_tasks(uuid,uuid)'::regprocedure;
   v_guard_oid oid := 'public.restrict_assignee_task_updates()'::regprocedure;
   v_event_guard_oid oid := 'public.guard_event_updates()'::regprocedure;
-  v_edit_oid oid := 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[])'::regprocedure;
+  v_edit_oid oid := 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure;
   v_confidentiality_oid oid := 'public.set_task_confidentiality(uuid,boolean,uuid[])'::regprocedure;
   v_names text[];
   v_count integer;
