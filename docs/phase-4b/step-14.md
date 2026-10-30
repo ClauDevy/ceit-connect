@@ -226,6 +226,7 @@ The new Step 14 test document groups these into reviewable sessions, records exp
 
 - Active Admin: accounts/officer/removal flows; Active-board Add/Edit; whole activity log; task rules; Draft visibility; event deletion; completed-phase/reopen behavior; and every cleanup regression.
 - Active Co-Admin: own-committee user/task authority, whole but masked activity log, own/other committee boundaries, Draft visibility after Batch 13c, leave/volunteer rules, and completed-phase permissions.
+- Batch 13e catalog: sole archive reader and public template writer signatures, revoked internal copier, postgres ownership, exact grants, fixed empty paths, reader/writer volatility, source-event lock order, marker cleanup, unchanged task policies, and exact addition of `create_event_from_archived_template` to the assignee-writer allowlist.
 - Member: login/callback protections, task shell/real access, current-assignee-only history, leave/request rules, comments/work links, My Tasks, mobile board, and completed-phase read-only access.
 - Inactive, profile-less, anonymized, wrong-domain, stale-role, and direct-request negative cases remain part of their owning batch suites and the final security spot-check.
 

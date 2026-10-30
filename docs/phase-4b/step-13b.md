@@ -6,7 +6,7 @@
 
 Derive completion from the tasks in each event phase. When every task in a phase is Completed, show a check and strikethrough on its tab, collapse it by default, and make it read-only while preserving task access and confidential masking. Provide one narrow Reopen RPC that moves one selected task to `In Progress` and unlocks the phase for an authorized Admin or the event-owning Co-Admin.
 
-The stable run order for this group is **13, 13c, 13d, 13b**. Phase completion runs last so its freeze and writer catalog cover every task rule, Draft reader, event-deletion exception, and task writer added earlier.
+The stable run order for this group is **13, 13c, 13e, 13d, 13b**. Phase completion runs last so its freeze and writer catalog cover every task rule, Draft reader, template writer, event-deletion exception, and task writer added earlier.
 
 ## Decisions
 
@@ -63,7 +63,7 @@ Do not add a phase record or completion column. Add one restricted internal help
 
 ## Database freeze
 
-Add one tracked security-critical migration after Batches 13, 13c, and 13d. Do not edit the Archived-freeze or historical task-writer migrations.
+Add one tracked security-critical migration after Batches 13, 13c, 13e, and 13d. Do not edit the Archived-freeze or historical task-writer migrations.
 
 The database guard applies to Draft and Active phases and checks both the source and destination canonical phase where relevant:
 
@@ -180,7 +180,7 @@ Do not invent future numeric catalog or result-line counts before Batches 11–1
 - `docs/PHASE-4-STEP-10-TESTS.md` 10A and relevant 10B–10D allowlists/result-line expectations: recognize the completed-phase helper, guard, Reopen writer, child/table changes, and final writer sets.
 - `docs/phase-4/step-10-database-review.md`: keep the Phase 4 `57 / 8 / 11 / 20 / 0` result as historical and add only reviewed post-13b objects/counts after live Dev output exists.
 - `docs/PHASE-4-STEP-10E-GATE.md`: recalculate any expected result-line counts only after the affected SQL documents are final; do not carry stale numbers forward.
-- Batch 11, 13, 13c, and 13d test documents: add completed-phase denial or approved cascade cases without rewriting their pre-13b historical results.
+- Batch 11, 13, 13c, 13e, and 13d test documents: add completed-phase denial or approved cascade cases without rewriting their pre-13b historical results.
 
 The new authoritative Phase 4B catalog is created after Batch 13b and records the actual live Dev counts; this planning document does not predict them.
 

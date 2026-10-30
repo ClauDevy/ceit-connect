@@ -5,6 +5,7 @@ export type EventFormPhaseOrigin = "persisted" | "local" | "reader-shell";
 export type EventFormTaskRef = {
   id: string;
   persisted: boolean;
+  templateEditable?: boolean;
 };
 
 export type EventFormPhaseRef<TTask extends EventFormTaskRef = EventFormTaskRef> = {
@@ -157,10 +158,16 @@ export function getEventPhaseControls<
     role === "Co-Admin" &&
     isDraft &&
     (!readerAvailable || originalPhaseHasReadOnlyTasks);
+  const coAdminTemplateActionsBlocked =
+    role === "Co-Admin" &&
+    phase.editablePhases.some((candidate) =>
+      candidate.tasks.some((task) => task.templateEditable === false),
+    );
   const canMutatePhase =
     editablePhase !== null &&
     !phase.isReaderShell &&
-    !coAdminDraftActionsBlocked;
+    !coAdminDraftActionsBlocked &&
+    !coAdminTemplateActionsBlocked;
 
   return {
     canAddTask: role === "Admin" || hasExactlyOneTaskCommittee,
@@ -178,10 +185,53 @@ type TaskPayloadDraft = {
   dueDate: string;
   callDate: string;
   callTime: string;
+  endDate: string;
   endTime: string;
   priority: "Low" | "Medium" | "High" | "Critical";
   assigneeIds: string[];
 };
+
+export function getLiveOperationScheduleProblem(
+  task: Pick<
+    TaskPayloadDraft,
+    "taskType" | "callDate" | "callTime" | "endDate" | "endTime"
+  >,
+) {
+  if (task.taskType !== "LiveOperation") return null;
+
+  if (
+    (task.callDate || task.callTime || task.endDate || task.endTime) &&
+    (!task.callDate || !task.callTime)
+  ) {
+    return {
+      field: !task.callDate ? "call-date" : "call-time",
+      message:
+        "Choose both a duty date and call time when adding a live-duty schedule.",
+    } as const;
+  }
+
+  if (task.endDate && !task.endTime) {
+    return {
+      field: "end-time",
+      message: "Choose an end time when setting an end date.",
+    } as const;
+  }
+
+  if (
+    task.callDate &&
+    task.callTime &&
+    task.endTime &&
+    `${task.endDate || task.callDate}T${task.endTime}` <
+      `${task.callDate}T${task.callTime}`
+  ) {
+    return {
+      field: "end-time",
+      message: "End time cannot be before call time.",
+    } as const;
+  }
+
+  return null;
+}
 
 export function parseImportedDueDate(value: string | null) {
   return splitAppTimestamp(value);
@@ -201,7 +251,7 @@ export function toTaskPayload(phaseName: string, task: TaskPayloadDraft) {
         : null,
     end_time:
       task.taskType === "LiveOperation"
-        ? toAppTimestamp(task.callDate, task.endTime)
+        ? toAppTimestamp(task.endDate || task.callDate, task.endTime)
         : null,
     priority: task.priority,
     assignee_ids: task.assigneeIds,

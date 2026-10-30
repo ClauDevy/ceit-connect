@@ -64,14 +64,20 @@ import {
   getEventFormSummary,
   getEventPhaseCardKey,
   getEventPhaseControls,
+  getLiveOperationScheduleProblem,
   normalizeEventPhaseName,
-  parseImportedDueDate,
   toTaskPayload,
 } from "@/lib/events/form";
+import {
+  isTemplateTaskEditable,
+  normalizeTemplateExclusionIds,
+  parseArchivedTemplateTasks,
+  removeTemplateDerivedTasks,
+  shouldUseCoAdminTemplateCreate,
+} from "@/lib/events/template-import";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
 import { preventSearchFormSubmission } from "@/lib/search";
 import { SUCCESS_ANIMATION_NAME } from "@/lib/motion";
-import { splitAppTimestamp } from "@/lib/timezone";
 import type { Committee, Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -104,9 +110,12 @@ type TaskDraft = {
   dueDate: string;
   callDate: string;
   callTime: string;
+  endDate: string;
   endTime: string;
   priority: Priority;
   assigneeIds: string[];
+  sourceTemplateTaskId: string | null;
+  templateEditable: boolean;
 };
 
 type PhaseDraft = {
@@ -159,6 +168,7 @@ export type InitialEventTask = {
   dueDate: string;
   callDate: string;
   callTime: string;
+  endDate: string;
   endTime: string;
   priority: Priority;
   assigneeIds: string[];
@@ -201,23 +211,12 @@ type TemplateImportSummary = {
   importedStartDate: string;
   importedTaskCount: number;
   skippedConfidentialCount: number;
-  skippedUnsupportedScheduleCount: number;
   applied: boolean;
 };
 
 type PendingTemplateImport = {
   template: ArchivedEventTemplate;
   reason: "replace" | "reimport";
-};
-
-type ImportedTaskDraft = {
-  phaseName: string;
-  task: TaskDraft;
-};
-
-type ParsedImportedTasks = {
-  tasks: ImportedTaskDraft[];
-  skippedUnsupportedScheduleCount: number;
 };
 
 const priorities: Priority[] = ["Low", "Medium", "High", "Critical"];
@@ -232,86 +231,6 @@ const taskTypes: { value: TaskType; label: string }[] = [
 
 function makeId() {
   return crypto.randomUUID();
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function parseImportedTasks(value: unknown): ParsedImportedTasks | null {
-  if (!Array.isArray(value)) return null;
-
-  const parsedTasks: ImportedTaskDraft[] = [];
-  let skippedUnsupportedScheduleCount = 0;
-  for (const item of value) {
-    if (!isRecord(item)) return null;
-
-    const {
-      title,
-      description,
-      phase,
-      committee_id: committeeId,
-      task_type: taskType,
-      priority,
-      due_date: dueDate,
-      call_time: callTime,
-      end_time: endTime,
-      status,
-      assignee_ids: assigneeIds,
-    } = item;
-
-    if (
-      typeof title !== "string" ||
-      !(description === null || typeof description === "string") ||
-      !(phase === null || typeof phase === "string") ||
-      typeof committeeId !== "string" ||
-      !(taskType === "Deliverable" || taskType === "LiveOperation") ||
-      !priorities.includes(priority as Priority) ||
-      !(dueDate === null || typeof dueDate === "string") ||
-      !(callTime === null || typeof callTime === "string") ||
-      !(endTime === null || typeof endTime === "string") ||
-      status !== "To Do" ||
-      !Array.isArray(assigneeIds) ||
-      assigneeIds.length !== 0
-    ) {
-      return null;
-    }
-
-    const due = parseImportedDueDate(dueDate);
-    const call = splitAppTimestamp(callTime);
-    const end = splitAppTimestamp(endTime);
-    if (!due || !call || !end) return null;
-
-    if (
-      taskType === "LiveOperation" &&
-      endTime !== null &&
-      (callTime === null || end.date !== call.date)
-    ) {
-      skippedUnsupportedScheduleCount += 1;
-      continue;
-    }
-
-    parsedTasks.push({
-      phaseName: phase?.trim() || "Unphased",
-      task: {
-        id: makeId(),
-        persisted: false,
-        status: "To Do",
-        title,
-        description: description ?? "",
-        committeeId,
-        taskType,
-        dueDate: due.date,
-        callDate: call.date,
-        callTime: call.time,
-        endTime: end.time,
-        priority: priority as Priority,
-        assigneeIds: [],
-      },
-    });
-  }
-
-  return { tasks: parsedTasks, skippedUnsupportedScheduleCount };
 }
 
 function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
@@ -331,9 +250,12 @@ function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
       dueDate: task.dueDate,
       callDate: task.callDate,
       callTime: task.callTime,
+      endDate: task.endDate,
       endTime: task.endTime,
       priority: task.priority,
       assigneeIds: task.assigneeIds,
+      sourceTemplateTaskId: null,
+      templateEditable: true,
     });
     phases.set(phaseName, phaseTasks);
   }
@@ -402,6 +324,9 @@ export function EventForm({
     useState<TemplateImportSummary | null>(null);
   const [pendingTemplateImport, setPendingTemplateImport] =
     useState<PendingTemplateImport | null>(null);
+  const [excludedTemplateTaskIds, setExcludedTemplateTaskIds] = useState<
+    string[]
+  >([]);
   const taskDialogScrollRef = useRef<HTMLDivElement>(null);
 
   const draftReaderQuery = useQuery({
@@ -492,8 +417,12 @@ export function EventForm({
   }, [archivedTemplates, templateSearch]);
 
   const importedStartDateChanged = Boolean(
-    templateSummary?.applied && startDate !== templateSummary.importedStartDate,
+    templateSummary && startDate !== templateSummary.importedStartDate,
   );
+  const callerCommitteeId =
+    role === "Co-Admin" && taskCommittees.length === 1
+      ? taskCommittees[0].id
+      : null;
 
   const committeeItems = taskCommittees.map((committee) => ({
     value: committee.id,
@@ -637,17 +566,36 @@ export function EventForm({
         return;
       }
 
-      const parsedImport = parseImportedTasks(data.tasks);
-      if (
-        !parsedImport ||
-        parsedImport.tasks.length +
-          parsedImport.skippedUnsupportedScheduleCount !==
-          data.imported_task_count
-      ) {
+      const parsedImport = parseArchivedTemplateTasks(data.tasks);
+      if (!parsedImport || parsedImport.length !== data.imported_task_count) {
         setTemplateError("The archive template returned invalid task data.");
         return;
       }
-      const importedTasks = parsedImport.tasks;
+      const importedTasks = parsedImport.map((task) => ({
+        phaseName: task.phaseName,
+        task: {
+          id: makeId(),
+          persisted: false,
+          status: "To Do" as const,
+          title: task.title,
+          description: task.description,
+          committeeId: task.committeeId,
+          taskType: task.taskType,
+          dueDate: task.dueDate,
+          callDate: task.callDate,
+          callTime: task.callTime,
+          endDate: task.endDate,
+          endTime: task.endTime,
+          priority: task.priority,
+          assigneeIds: [],
+          sourceTemplateTaskId: task.sourceTaskId,
+          templateEditable: isTemplateTaskEditable({
+            role,
+            callerCommitteeId,
+            taskCommitteeId: task.committeeId,
+          }),
+        } satisfies TaskDraft,
+      }));
 
       const summary: TemplateImportSummary = {
         template: {
@@ -658,12 +606,13 @@ export function EventForm({
         importedStartDate: startDate,
         importedTaskCount: importedTasks.length,
         skippedConfidentialCount: data.skipped_confidential_count,
-        skippedUnsupportedScheduleCount:
-          parsedImport.skippedUnsupportedScheduleCount,
         applied: importedTasks.length > 0,
       };
 
+      setExcludedTemplateTaskIds([]);
+
       if (importedTasks.length === 0) {
+        setPhases((current) => removeTemplateDerivedTasks(current));
         setTemplateSummary(summary);
         return;
       }
@@ -836,9 +785,12 @@ export function EventForm({
         dueDate: "",
         callDate: "",
         callTime: "",
+        endDate: "",
         endTime: "",
         priority: "Medium",
         assigneeIds: [],
+        sourceTemplateTaskId: null,
+        templateEditable: true,
       },
     });
     setTaskDialogOpen(true);
@@ -858,9 +810,12 @@ export function EventForm({
         dueDate: task.dueDate,
         callDate: task.callDate,
         callTime: task.callTime,
+        endDate: task.endDate,
         endTime: task.endTime,
         priority: task.priority,
         assigneeIds: task.assigneeIds,
+        sourceTemplateTaskId: task.sourceTemplateTaskId,
+        templateEditable: task.templateEditable,
       },
     });
     setTaskDialogOpen(true);
@@ -940,26 +895,9 @@ export function EventForm({
       revealTaskProblem("committee", "Choose a committee.");
       return;
     }
-    if (
-      taskEditor.draft.taskType === "LiveOperation" &&
-      (taskEditor.draft.callDate ||
-        taskEditor.draft.callTime ||
-        taskEditor.draft.endTime) &&
-      (!taskEditor.draft.callDate || !taskEditor.draft.callTime)
-    ) {
-      revealTaskProblem(
-        !taskEditor.draft.callDate ? "call-date" : "call-time",
-        "Choose both a duty date and call time when adding a live-duty schedule.",
-      );
-      return;
-    }
-    if (
-      taskEditor.draft.taskType === "LiveOperation" &&
-      taskEditor.draft.callTime &&
-      taskEditor.draft.endTime &&
-      taskEditor.draft.endTime < taskEditor.draft.callTime
-    ) {
-      revealTaskProblem("end-time", "End time cannot be before call time.");
+    const scheduleProblem = getLiveOperationScheduleProblem(taskEditor.draft);
+    if (scheduleProblem) {
+      revealTaskProblem(scheduleProblem.field, scheduleProblem.message);
       return;
     }
 
@@ -1012,6 +950,13 @@ export function EventForm({
     if (task.persisted) {
       setDeletedTaskIds((current) =>
         current.includes(task.id) ? current : [...current, task.id],
+      );
+    }
+    if (task.sourceTemplateTaskId && !task.templateEditable) {
+      setExcludedTemplateTaskIds((current) =>
+        current.includes(task.sourceTemplateTaskId!)
+          ? current
+          : [...current, task.sourceTemplateTaskId!],
       );
     }
     setPhases((current) =>
@@ -1071,6 +1016,20 @@ export function EventForm({
       setTab("tasks");
       return;
     }
+    if (importedStartDateChanged) {
+      setError("Re-import the template after changing the event start date.");
+      setTab("fundamentals");
+      return;
+    }
+
+    const normalizedExclusions = normalizeTemplateExclusionIds(
+      excludedTemplateTaskIds,
+    );
+    if (!normalizedExclusions) {
+      setError("The template task selection is invalid.");
+      setTab("tasks");
+      return;
+    }
 
     setStatus("saving");
     setError("");
@@ -1087,6 +1046,13 @@ export function EventForm({
       const targetStatus = launch
         ? "Active"
         : (initialEvent?.status ?? "Draft");
+      const coAdminTemplateSummary = shouldUseCoAdminTemplateCreate({
+        hasInitialEvent: Boolean(initialEvent),
+        role,
+        hasTemplateSummary: templateSummary !== null,
+      })
+        ? templateSummary
+        : null;
       const saveResult = initialEvent
         ? await supabase.rpc("edit_event_with_tasks", {
             p_event_id: initialEvent.id,
@@ -1115,14 +1081,27 @@ export function EventForm({
                 : { type: action.type, phase: action.phase },
             ),
           })
-        : await supabase.rpc("create_event_with_tasks", {
-            p_name: name.trim(),
-            p_description: description.trim() || null,
-            p_start_date: startDate,
-            p_end_date: endDate || null,
-            p_status: targetStatus,
-            p_tasks: tasks.map(({ payload }) => payload),
-          });
+        : coAdminTemplateSummary
+          ? await supabase.rpc("create_event_from_archived_template", {
+              p_name: name.trim(),
+              p_description: description.trim() || null,
+              p_start_date: startDate,
+              p_end_date: endDate || null,
+              p_status: targetStatus,
+              p_template_event_id: coAdminTemplateSummary.template.id,
+              p_own_tasks: tasks
+                .filter(({ task }) => task.templateEditable)
+                .map(({ payload }) => payload),
+              p_excluded_template_task_ids: normalizedExclusions,
+            })
+          : await supabase.rpc("create_event_with_tasks", {
+              p_name: name.trim(),
+              p_description: description.trim() || null,
+              p_start_date: startDate,
+              p_end_date: endDate || null,
+              p_status: targetStatus,
+              p_tasks: tasks.map(({ payload }) => payload),
+            });
       const saveError = saveResult.error;
 
       if (saveError) {
@@ -1356,7 +1335,7 @@ export function EventForm({
                   <p>
                     {templateSummary.applied
                       ? `Imported ${templateSummary.importedTaskCount} task${templateSummary.importedTaskCount === 1 ? "" : "s"} from “${templateSummary.template.name}” into the Backlog as To Do.`
-                      : `“${templateSummary.template.name}” has no importable tasks. Your current task setup was left unchanged.`}
+                      : `“${templateSummary.template.name}” has no importable tasks. Non-template tasks were left unchanged.`}
                   </p>
                   {templateSummary.skippedConfidentialCount > 0 && (
                     <p className="font-medium">
@@ -1366,16 +1345,6 @@ export function EventForm({
                         ? " was"
                         : "s were"}{" "}
                       not imported.
-                    </p>
-                  )}
-                  {templateSummary.skippedUnsupportedScheduleCount > 0 && (
-                    <p className="font-medium">
-                      {templateSummary.skippedUnsupportedScheduleCount} task
-                      {templateSummary.skippedUnsupportedScheduleCount === 1
-                        ? " was"
-                        : "s were"}{" "}
-                      not imported because the Live Operation schedule spans
-                      more than one day or has an end time without a call time.
                     </p>
                   )}
                   {importedStartDateChanged && (
@@ -1746,6 +1715,9 @@ export function EventForm({
                                       {task.persisted && (
                                         <TaskStatusBadge status={task.status} />
                                       )}
+                                      {!task.templateEditable && (
+                                        <Badge variant="neutral">Read only</Badge>
+                                      )}
                                       {task.dueDate && (
                                         <span className="inline-flex items-center gap-1">
                                           <CalendarDays className="size-3" />
@@ -1761,17 +1733,19 @@ export function EventForm({
                                     </div>
                                   </div>
                                   <div className="flex shrink-0 gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon-sm"
-                                      aria-label={`Edit ${task.title}`}
-                                      onClick={() =>
-                                        openEditTask(phase.id, task)
-                                      }
-                                    >
-                                      <Pencil />
-                                    </Button>
+                                    {task.templateEditable ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label={`Edit ${task.title}`}
+                                        onClick={() =>
+                                          openEditTask(phase.id, task)
+                                        }
+                                      >
+                                        <Pencil />
+                                      </Button>
+                                    ) : null}
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -2093,7 +2067,7 @@ export function EventForm({
                     This is a live duty — don&apos;t start before Call Time, and
                     be physically ready at that moment.
                   </InlineAlert>
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <FormField label="Duty date" hint="Optional">
                       {(control) => (
                         <Input
@@ -2120,13 +2094,32 @@ export function EventForm({
                         />
                       )}
                     </FormField>
+                    <FormField label="End date" hint="Optional">
+                      {(control) => (
+                        <Input
+                          {...control}
+                          data-task-field="end-date"
+                          type="date"
+                          min={taskEditor.draft.callDate || undefined}
+                          value={taskEditor.draft.endDate}
+                          onChange={(event) =>
+                            updateTaskDraft({ endDate: event.target.value })
+                          }
+                        />
+                      )}
+                    </FormField>
                     <FormField label="End time" hint="Optional">
                       {(control) => (
                         <Input
                           {...control}
                           data-task-field="end-time"
                           type="time"
-                          min={taskEditor.draft.callTime || undefined}
+                          min={
+                            !taskEditor.draft.endDate ||
+                            taskEditor.draft.endDate === taskEditor.draft.callDate
+                              ? taskEditor.draft.callTime || undefined
+                              : undefined
+                          }
                           value={taskEditor.draft.endTime}
                           onChange={(event) =>
                             updateTaskDraft({ endTime: event.target.value })
