@@ -807,6 +807,8 @@ begin
       p_tasks_to_add => '[]'::jsonb,
       p_tasks_to_update => '[]'::jsonb,
       p_task_ids_to_delete => '{}'::uuid[]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
   exception when others then
     v_rpc_ok := false;

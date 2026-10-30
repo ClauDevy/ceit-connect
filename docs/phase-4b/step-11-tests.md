@@ -365,7 +365,7 @@ begin
  select lower(pg_catalog.pg_get_functiondef('public.count_event_tasks_for_capacity(uuid)'::regprocedure)) into helper_body;
  select lower(pg_catalog.pg_get_functiondef('public.create_active_event_task(uuid,text,text,text,uuid,text,text,timestamptz,timestamptz,timestamptz,uuid[],boolean,uuid[])'::regprocedure)) into create_body;
  select lower(pg_catalog.pg_get_functiondef('public.edit_active_event_task(uuid,timestamptz,text,text,text,uuid,text,text,timestamptz,timestamptz,timestamptz,uuid[],boolean,uuid[])'::regprocedure)) into edit_body;
- select lower(pg_catalog.pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[])'::regprocedure)) into event_body;
+ select lower(pg_catalog.pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure)) into event_body;
 
  r:=r||format(E'\nCAP_EVENT_ROW_THEN_ADVISORY_THEN_COUNT: %s',case when strpos(cap_body,'for share')<strpos(cap_body,'pg_advisory_xact_lock') and strpos(cap_body,'pg_advisory_xact_lock')<strpos(cap_body,'count_event_tasks_for_capacity') then 'PASS' else 'FAIL' end);
  r:=r||format(E'\nCAP_COUNTS_ALL_STATUSES: %s',case when helper_body like '%select count(*)%' and helper_body not like '%status =%' then 'PASS' else 'FAIL' end);

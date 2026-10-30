@@ -553,8 +553,8 @@ begin
   perform pg_temp.step10_record('L03_LOCK_ONE_NAMESPACE', (select prosrc ~ 'ceit-connect:task-assignee-user:v1:' from pg_catalog.pg_proc where oid='public.task_assignee_lock_key(uuid)'::regprocedure));
   perform pg_temp.step10_record('L04_NO_PER_USER_THEN_OFFICER', not exists(select 1 from pg_catalog.pg_proc where pronamespace='public'::regnamespace and prosrc ~ 'lock_task_assignee_users' and prosrc ~ 'officer_advisory_lock_key' and pg_catalog.strpos(prosrc,'lock_task_assignee_users') < pg_catalog.strpos(prosrc,'officer_advisory_lock_key')));
   perform pg_temp.step10_record('L05_ANONYMIZE_USER_ROW_TASK_ORDER', (select pg_catalog.strpos(prosrc,'lock_task_assignee_users') < pg_catalog.strpos(prosrc,'for update') and pg_catalog.strpos(prosrc,'for update') < pg_catalog.strpos(prosrc,'from public.tasks') from pg_catalog.pg_proc where oid='public.anonymize_former_member(uuid)'::regprocedure));
-  perform pg_temp.step10_record('L06_EDIT_ZERO_ROW_IS_40001', (select prosrc ~ 'v_affected <> 1' and prosrc ~ '40001' and prosrc ~ 'The task changed[.] Refresh and try again[.]' from pg_catalog.pg_proc where oid='public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[])'::regprocedure));
-  perform pg_temp.step10_record('L07_EDIT_LOCKS_EXISTING_USERS_ONLY', (select prosrc ~ 'join public[.]users as lock_user' from pg_catalog.pg_proc where oid='public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[])'::regprocedure));
+  perform pg_temp.step10_record('L06_EDIT_ZERO_ROW_IS_40001', (select prosrc ~ 'v_affected <> 1' and prosrc ~ '40001' and prosrc ~ 'The task changed[.] Refresh and try again[.]' from pg_catalog.pg_proc where oid='public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure));
+  perform pg_temp.step10_record('L07_EDIT_LOCKS_EXISTING_USERS_ONLY', (select prosrc ~ 'join public[.]users as lock_user' from pg_catalog.pg_proc where oid='public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure));
   perform pg_temp.step10_record('L08_CREATE_LOCKS_EXISTING_USERS_ONLY', (select prosrc ~ 'join public[.]users as lock_user' from pg_catalog.pg_proc where oid='public.create_event_with_tasks(text,text,date,date,text,jsonb)'::regprocedure));
   perform pg_temp.step10_record('L09_ASSIGN_LOCKS_EXISTING_USERS_ONLY', (select prosrc ~ 'join public[.]users as lock_user' from pg_catalog.pg_proc where oid='public.assign_task_people(uuid,uuid[],uuid[])'::regprocedure));
   perform pg_temp.step10_record('L10_ASSIGN_CAP_BEFORE_LOCK', (select pg_catalog.strpos(prosrc,'> 100') < pg_catalog.strpos(prosrc,'lock_task_assignee_users') from pg_catalog.pg_proc where oid='public.assign_task_people(uuid,uuid[],uuid[])'::regprocedure));
@@ -564,22 +564,34 @@ end $$;
 set local role authenticated;
 select pg_catalog.set_config('request.jwt.claims','{"sub":"a2100000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 select pg_temp.step10_probe('L12_CREATE_ADMIN', $$select public.create_event_with_tasks('A2 Create Admin',null,current_date,null,'Draft','[]'::jsonb)$$, true);
-select pg_temp.step10_probe('L13_EDIT_ADMIN', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[])$$, true);
+select pg_temp.step10_probe('L13_EDIT_ADMIN', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[],
+  '[]'::jsonb
+)$$, true);
 select pg_catalog.set_config('request.jwt.claims','{"sub":"a2100000-0000-4000-8000-000000000003","role":"authenticated"}',true);
 select pg_temp.step10_probe('L14_CREATE_CO_OWN', $$select public.create_event_with_tasks('A2 Create Co Own',null,current_date,null,'Draft','[]'::jsonb)$$, true);
-select pg_temp.step10_probe('L15_EDIT_CO_OWN', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[])$$, true);
+select pg_temp.step10_probe('L15_EDIT_CO_OWN', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[],
+  '[]'::jsonb
+)$$, true);
 select pg_catalog.set_config('request.jwt.claims','{"sub":"a2100000-0000-4000-8000-000000000004","role":"authenticated"}',true);
 select pg_temp.step10_probe('L16_CREATE_CO_OTHER', $$select public.create_event_with_tasks('A2 Create Co Other',null,current_date,null,'Draft','[]'::jsonb)$$, true);
-select pg_temp.step10_probe('L17_EDIT_CO_OTHER', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[])$$, true);
+select pg_temp.step10_probe('L17_EDIT_CO_OTHER', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[],
+  '[]'::jsonb
+)$$, true);
 select pg_catalog.set_config('request.jwt.claims','{"sub":"a2100000-0000-4000-8000-000000000005","role":"authenticated"}',true);
 select pg_temp.step10_probe('L18_CREATE_MEMBER', $$select public.create_event_with_tasks('A2 Create Member',null,current_date,null,'Draft','[]'::jsonb)$$, false);
-select pg_temp.step10_probe('L19_EDIT_MEMBER', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[])$$, false);
+select pg_temp.step10_probe('L19_EDIT_MEMBER', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[],
+  '[]'::jsonb
+)$$, false);
 select pg_catalog.set_config('request.jwt.claims','{"sub":"a2100000-0000-4000-8000-000000000006","role":"authenticated"}',true);
 select pg_temp.step10_probe('L20_CREATE_INACTIVE_ADMIN', $$select public.create_event_with_tasks('A2 Create Inactive Admin',null,current_date,null,'Draft','[]'::jsonb)$$, false);
-select pg_temp.step10_probe('L21_EDIT_INACTIVE_ADMIN', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[])$$, false);
+select pg_temp.step10_probe('L21_EDIT_INACTIVE_ADMIN', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[],
+  '[]'::jsonb
+)$$, false);
 select pg_catalog.set_config('request.jwt.claims','{"sub":"a2100000-0000-4000-8000-000000000007","role":"authenticated"}',true);
 select pg_temp.step10_probe('L22_CREATE_INACTIVE_CO', $$select public.create_event_with_tasks('A2 Create Inactive Co',null,current_date,null,'Draft','[]'::jsonb)$$, false);
-select pg_temp.step10_probe('L23_EDIT_INACTIVE_CO', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[])$$, false);
+select pg_temp.step10_probe('L23_EDIT_INACTIVE_CO', $$select public.edit_event_with_tasks('a2102000-0000-4000-8000-000000000004',(select updated_at from public.events where id='a2102000-0000-4000-8000-000000000004'),'A2 Orphan Save',null,current_date,current_date,'Draft','[]'::jsonb,'[]'::jsonb,'{}'::uuid[],
+  '[]'::jsonb
+)$$, false);
 reset role;
 
 -- 116-131: preview caller gate, validation, authoritative shape, and order.
@@ -757,6 +769,8 @@ select pg_temp.step10_probe('M04_ORPHAN_ASSIGNEE_EDIT_SAVE', $$select public.edi
     'call_time',null,'end_time',null,
     'assignee_ids',pg_catalog.jsonb_build_array('a2100000-0000-4000-8000-000000000005')
   )), '{}'::uuid[]
+,
+  '[]'::jsonb
 )$$, true);
 reset role;
 select pg_temp.step10_query('M05_TASK_MARKER_CLEARED_SUCCESS', $$select coalesce(pg_catalog.current_setting('ceit_connect.task_assignee_writer',true),'')=''$$);
