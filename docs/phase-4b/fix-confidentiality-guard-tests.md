@@ -153,8 +153,8 @@ begin
   if v_proc.prosecdef
      or pg_catalog.pg_get_userbyid(v_proc.proowner) <> 'postgres'
      or v_proc.proconfig is distinct from array['search_path=""']::text[]
-     or pg_catalog.position('ceit_connect.task_access_writer' in v_proc.prosrc) = 0
-     or pg_catalog.position('The task confidentiality writer attempted an out-of-scope update.' in v_proc.prosrc) = 0
+     or pg_catalog.strpos(v_proc.prosrc, 'ceit_connect.task_access_writer') = 0
+     or pg_catalog.strpos(v_proc.prosrc, 'The task confidentiality writer attempted an out-of-scope update.') = 0
      or v_public_execute
      or pg_catalog.has_function_privilege('anon', v_proc.oid, 'EXECUTE')
      or pg_catalog.has_function_privilege('authenticated', v_proc.oid, 'EXECUTE') then
@@ -676,10 +676,10 @@ with target as (
 )
 select pg_catalog.jsonb_build_object(
   'has_exact_access_marker_branch',
-    pg_catalog.position('ceit_connect.task_access_writer' in target.prosrc) > 0
-    and pg_catalog.position(
+    pg_catalog.strpos(target.prosrc, 'ceit_connect.task_access_writer') > 0
+    and pg_catalog.strpos(
+      target.prosrc,
       'The task confidentiality writer attempted an out-of-scope update.'
-      in target.prosrc
     ) > 0,
   'owner_is_postgres', pg_catalog.pg_get_userbyid(target.proowner) = 'postgres',
   'empty_search_path', target.proconfig = array['search_path=""']::text[],
