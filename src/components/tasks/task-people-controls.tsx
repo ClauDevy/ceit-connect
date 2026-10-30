@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Ellipsis, LogOut, Search, Trash2, UsersRound } from "lucide-react";
+import { LogOut, Search, Trash2, UsersRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -16,12 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   assigneeIdsAreUnchanged,
   MAX_TASK_ASSIGNEES,
@@ -233,35 +227,27 @@ export function TaskPeopleControls({
 
       {showTaskActions ? (
         <Card className="overflow-hidden">
-          <CardHeader className="flex-row items-center justify-between gap-3 px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
+          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
             <CardTitle className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
               Task actions
             </CardTitle>
-            {controls.can_delete ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label={`More actions for ${taskTitle}`}
-                  disabled={deleting || unassigning}
-                  className="inline-flex size-11 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none sm:size-9"
-                >
-                  <Ellipsis aria-hidden className="size-5" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent aria-label={`Actions for ${taskTitle}`}>
-                  <DropdownMenuItem
-                    className="text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
-                    onClick={() => {
-                      setActionError(null);
-                      setDeleteOpen(true);
-                    }}
-                  >
-                    <Trash2 aria-hidden className="size-4" />
-                    Delete task
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
           </CardHeader>
           <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+            {controls.can_delete ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive active:bg-destructive/15 focus-visible:border-destructive focus-visible:ring-destructive/20 dark:border-destructive/50 dark:hover:bg-destructive/20 dark:focus-visible:ring-destructive/40"
+                onClick={() => {
+                  setActionError(null);
+                  setDeleteOpen(true);
+                }}
+                disabled={deleting || unassigning}
+              >
+                <Trash2 aria-hidden /> Delete task
+              </Button>
+            ) : null}
             {canStartLeave || selfUnassignMessage ? (
               <div className="space-y-2">
                 <Button
