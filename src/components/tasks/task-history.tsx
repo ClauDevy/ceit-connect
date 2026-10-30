@@ -1,141 +1,376 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronsLeft, ChevronsRight, RefreshCw } from "lucide-react";
 import { ActivityLogList } from "@/components/activity-log/activity-log-list";
+import { Collapse } from "@/components/shared/motion";
 import { Button } from "@/components/ui/button";
 import {
   ACTIVITY_LOG_STALE_TIME,
   DEFAULT_ACTIVITY_FILTERS,
+  TASK_HISTORY_PAGE_SIZE,
+  activityBlockArrowTargets,
+  activityCursorForPage,
   activityErrorCode,
+  activityErrorMessage,
   activityFiltersToRpc,
-  activityReplayDepth,
-  appendActivityPage,
   activityLogRetentionNotice,
+  activityPageBlock,
+  activityPagerSlots,
+  createTaskHistoryController,
   normalizeActivityResponse,
-  replayActivityPages,
+  prefetchTaskHistoryPageChain,
+  resetActivityCursorStack,
   taskHistoryOlderPageFailure,
-  taskHistoryQueryKey,
-  unavailableActivityWindow,
+  taskHistoryKnownCursorsAfterPage,
+  taskHistoryPagerVisible,
+  taskHistoryToggleCommand,
   type ActivityCursor,
+  type ActivityCursorStack,
   type ActivityPage,
-  type ActivityWindow,
 } from "@/lib/activity-log";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
-export function TaskHistory({ taskId, initialWindow }: { taskId: string; initialWindow: ActivityWindow }) {
+type RequestReason = "initial" | "navigation" | "refresh" | "focus";
+
+const EMPTY_PAGE: ActivityPage = { rows: [], hasMore: false, cursor: null };
+
+export function TaskHistory({ taskId }: { taskId: string }) {
   const supabase = useMemo(() => createClient(), []);
-  const queryClient = useQueryClient();
-  const busy = useRef(false);
-  const replayDepth = useRef(activityReplayDepth(initialWindow));
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const queryKey = taskHistoryQueryKey(taskId);
+  const [controller] = useState(() => createTaskHistoryController());
+  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState<ActivityPage | null>(null);
+  const [activePage, setActivePage] = useState(1);
+  const [knownCursors, setKnownCursors] = useState<ActivityCursorStack>(
+    resetActivityCursorStack,
+  );
+  const knownCursorsRef = useRef<ActivityCursorStack>(resetActivityCursorStack());
+  const [busyReason, setBusyReason] = useState<RequestReason | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
 
   async function readPage(cursor: ActivityCursor | null): Promise<ActivityPage> {
-    const { data, error } = await supabase.rpc(
+    const { data, error: readError } = await supabase.rpc(
       "list_activity_log",
-      activityFiltersToRpc(DEFAULT_ACTIVITY_FILTERS, cursor, taskId),
+      activityFiltersToRpc(
+        DEFAULT_ACTIVITY_FILTERS,
+        cursor,
+        taskId,
+        TASK_HISTORY_PAGE_SIZE,
+      ),
     );
-    if (error) throw error;
+    if (readError) throw readError;
     return normalizeActivityResponse(data);
   }
 
-  const query = useQuery({
-    queryKey,
-    initialData: initialWindow,
-    staleTime: ACTIVITY_LOG_STALE_TIME,
-    refetchOnWindowFocus: true,
-    retry: false,
-    queryFn: async () => {
-      const pages: ActivityPage[] = [];
-      let cursor: ActivityCursor | null = null;
-      try {
-        for (let index = 0; index < replayDepth.current; index += 1) {
-          const page = await readPage(cursor);
-          pages.push(page);
-          if (!page.hasMore || !page.cursor) break;
-          cursor = page.cursor;
-        }
-      } catch (error) {
-        if (activityErrorCode(error) === "CAL01") return unavailableActivityWindow();
-        throw error;
+  function commitPage(
+    nextPage: ActivityPage,
+    targetPage: number,
+    resetPagesAhead = false,
+  ) {
+    setPage(nextPage);
+    setActivePage(targetPage);
+    setUnavailable(false);
+    const nextCursors = taskHistoryKnownCursorsAfterPage(
+      knownCursorsRef.current,
+      targetPage,
+      nextPage,
+      resetPagesAhead,
+    );
+    knownCursorsRef.current = nextCursors;
+    setKnownCursors(nextCursors);
+  }
+
+  async function runPrefetch(nextPage: ActivityPage, targetPage: number) {
+    const result = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: nextPage,
+      initialPageNumber: targetPage,
+      knownCursors: knownCursorsRef.current,
+      fetchPage: readPage,
+    });
+    if (!result.accepted) return;
+    knownCursorsRef.current = result.knownCursors;
+    setKnownCursors(result.knownCursors);
+  }
+
+  async function runRequest({
+    requestToken,
+    cursor,
+    targetPage,
+    reason,
+  }: {
+    requestToken: number;
+    cursor: ActivityCursor | null;
+    targetPage: number;
+    reason: RequestReason;
+  }) {
+    if (!controller.isCurrent(requestToken)) return;
+    setBusyReason(reason);
+    setError(null);
+    try {
+      const nextPage = await readPage(cursor);
+      if (!controller.settle(requestToken, true, Date.now())) return;
+
+      controller.rememberVisiblePage(targetPage, nextPage);
+      commitPage(
+        nextPage,
+        targetPage,
+        reason === "refresh" || reason === "focus",
+      );
+      setBusyReason(null);
+      void runPrefetch(nextPage, targetPage);
+    } catch (requestError) {
+      if (!controller.isCurrent(requestToken)) return;
+      if (activityErrorCode(requestError) === "CAL01") {
+        if (!controller.settle(requestToken, true, Date.now())) return;
+        setPage(EMPTY_PAGE);
+        setActivePage(1);
+        const resetCursors = resetActivityCursorStack();
+        knownCursorsRef.current = resetCursors;
+        setKnownCursors(resetCursors);
+        setUnavailable(true);
+        setError(null);
+      } else {
+        if (!controller.settle(requestToken, false, Date.now())) return;
+        setError(
+          reason === "navigation"
+            ? taskHistoryOlderPageFailure(requestError).message
+            : reason === "initial"
+              ? activityErrorMessage(requestError)
+              : "History could not refresh. The previous results are still shown.",
+        );
       }
-      return replayActivityPages(initialWindow, pages, null);
-    },
+      setBusyReason(null);
+    }
+  }
+
+  function toggleExpanded() {
+    const transition = taskHistoryToggleCommand(controller);
+    setExpanded(transition.expanded);
+    if (transition.requestToken !== null) {
+      void runRequest({
+        requestToken: transition.requestToken,
+        cursor: null,
+        targetPage: 1,
+        reason: "initial",
+      });
+    } else if (transition.expanded && page) {
+      void runPrefetch(page, activePage);
+    }
+  }
+
+  function navigate(targetPage: number) {
+    if (busyReason !== null || targetPage === activePage) return;
+    const cursor = activityCursorForPage(knownCursors, targetPage);
+    if (cursor === undefined) return;
+    const command = controller.beginNavigationCommand(targetPage, cursor);
+    if (!command) return;
+    if (command.type === "cached") {
+      setError(null);
+      commitPage(command.page, targetPage);
+      void runPrefetch(command.page, targetPage);
+      return;
+    }
+    void runRequest({
+      requestToken: command.requestToken,
+      cursor,
+      targetPage,
+      reason: "navigation",
+    });
+  }
+
+  function refresh() {
+    if (busyReason !== null) return;
+    const cursor = activityCursorForPage(knownCursors, activePage);
+    const requestToken =
+      cursor === undefined
+        ? null
+        : controller.beginManualRefresh(activePage, cursor);
+    if (requestToken === null || cursor === undefined) return;
+    void runRequest({ requestToken, cursor, targetPage: activePage, reason: "refresh" });
+  }
+
+  useEffect(() => {
+    function refreshOnFocus() {
+      if (document.visibilityState === "hidden") return;
+      const cursor = activityCursorForPage(knownCursors, activePage);
+      if (cursor === undefined) return;
+      const requestToken = controller.beginFocusRefresh(
+        Date.now(),
+        ACTIVITY_LOG_STALE_TIME,
+        activePage,
+        cursor,
+      );
+      if (requestToken === null) return;
+      void runRequest({ requestToken, cursor, targetPage: activePage, reason: "focus" });
+    }
+
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
+  });
+
+  const applyMountCommand = useEffectEvent(() => {
+    const command = controller.mount();
+    if (!command) return;
+    queueMicrotask(() => {
+      if (command.type === "clear-busy") {
+        setBusyReason(null);
+        return;
+      }
+      void runRequest(command.request);
+    });
   });
 
   useEffect(() => {
-    if (query.data) replayDepth.current = activityReplayDepth(query.data);
-  }, [query.data]);
+    applyMountCommand();
+    return () => {
+      controller.unmount();
+    };
+  }, [controller]);
 
-  async function refresh() {
-    if (busy.current) return;
-    busy.current = true;
-    setRefreshing(true);
-    try {
-      await query.refetch();
-    } finally {
-      busy.current = false;
-      setRefreshing(false);
-    }
-  }
+  const pageNumbers = activityPageBlock(activePage, knownCursors.length);
+  const pagerSlots = activityPagerSlots(pageNumbers);
+  const arrowTargets = activityBlockArrowTargets(activePage);
+  const previousCursor = arrowTargets.previous
+    ? activityCursorForPage(knownCursors, arrowTargets.previous)
+    : undefined;
+  const nextCursor = activityCursorForPage(knownCursors, arrowTargets.next);
+  const showPager = taskHistoryPagerVisible(
+    activePage,
+    Boolean(page?.hasMore),
+    knownCursors.length,
+  );
+  const contentId = `task-history-${taskId}`;
 
-  async function loadMore() {
-    if (busy.current || !query.data?.cursor) return;
-    busy.current = true;
-    setLoadingMore(true);
-    try {
-      const page = await readPage(query.data.cursor);
-      queryClient.setQueryData<ActivityWindow>(queryKey, (current) =>
-        current ? appendActivityPage(current, page) : initialWindow,
-      );
-      setLoadMoreError(null);
-    } catch (error) {
-      const failure = taskHistoryOlderPageFailure(error);
-      if (failure.unavailable) {
-        queryClient.setQueryData(queryKey, unavailableActivityWindow());
-        setLoadMoreError(null);
-      } else {
-        setLoadMoreError(failure.message);
-      }
-    } finally {
-      busy.current = false;
-      setLoadingMore(false);
-    }
-  }
-
-  const unavailable = query.data?.unavailable;
   return (
-    <section className="space-y-3" aria-labelledby="task-history-heading">
-      <div className="flex items-center justify-between">
-        <h2 id="task-history-heading" className="font-display text-lg font-semibold">History</h2>
-        <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={refreshing || loadingMore}>
-          {refreshing ? "Refreshing…" : "Refresh"}
-        </Button>
-      </div>
-      <p className="text-sm text-muted-foreground">{activityLogRetentionNotice()}</p>
-      {!unavailable && query.error ? (
-        <p className="text-sm text-muted-foreground">
-          History could not refresh. The previous results are still shown.
-        </p>
-      ) : null}
-      {!unavailable && loadMoreError ? (
-        <p className="text-sm text-muted-foreground">{loadMoreError}</p>
-      ) : null}
-      {unavailable ? (
-        <p className="text-sm text-muted-foreground">Activity history is unavailable.</p>
-      ) : query.data?.rows.length ? (
-        <ActivityLogList rows={query.data.rows} settled={!query.isFetching} />
-      ) : (
-        <p className="text-sm text-muted-foreground">No task history yet.</p>
-      )}
-      {!unavailable && query.data?.hasMore ? (
-        <Button variant="outline" onClick={() => void loadMore()} disabled={loadingMore || refreshing}>
-          {loadingMore ? "Loading…" : "Load more"}
-        </Button>
-      ) : null}
+    <section
+      className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
+      aria-labelledby="task-history-heading"
+    >
+      <h2 id="task-history-heading">
+        <button
+          type="button"
+          className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left font-display text-lg font-semibold outline-none transition-colors hover:bg-muted active:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset motion-reduce:transition-none sm:px-5"
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          onClick={toggleExpanded}
+        >
+          <span>History</span>
+          <ChevronDown
+            aria-hidden
+            className={cn(
+              "size-5 shrink-0 text-muted-foreground transition-transform duration-[var(--motion-panel-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none",
+              expanded && "rotate-180",
+            )}
+          />
+        </button>
+      </h2>
+
+      <Collapse open={expanded}>
+        <div id={contentId} className="space-y-3 border-t px-4 py-4 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {activityLogRetentionNotice()}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refresh}
+              disabled={busyReason !== null || page === null}
+            >
+              <RefreshCw
+                aria-hidden
+                className={cn(busyReason === "refresh" && "motion-safe:animate-spin")}
+              />
+              {busyReason === "refresh" ? "Refreshing…" : "Refresh"}
+            </Button>
+          </div>
+
+          {error ? <p className="text-sm text-muted-foreground">{error}</p> : null}
+          {busyReason === "initial" && page === null ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Loading history…
+            </p>
+          ) : unavailable ? (
+            <p className="text-sm text-muted-foreground">
+              Activity history is unavailable.
+            </p>
+          ) : page?.rows.length ? (
+            <ActivityLogList rows={page.rows} settled={busyReason === null} />
+          ) : page ? (
+            <p className="text-sm text-muted-foreground">No task history yet.</p>
+          ) : error ? null : (
+            <p className="text-sm text-muted-foreground">Open History to load activity.</p>
+          )}
+
+          {showPager && !unavailable ? (
+            <div className="grid gap-2 border-t pt-3 sm:grid-cols-[1fr_auto] sm:items-center">
+              <p className="text-center text-sm text-muted-foreground sm:text-left">
+                Showing {TASK_HISTORY_PAGE_SIZE} per page
+              </p>
+              <nav
+                className="flex min-h-11 items-center justify-center gap-2"
+                aria-label="Task history pages"
+              >
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Previous page block"
+                  disabled={
+                    !arrowTargets.previous ||
+                    previousCursor === undefined ||
+                    busyReason !== null
+                  }
+                  onClick={() =>
+                    arrowTargets.previous && navigate(arrowTargets.previous)
+                  }
+                >
+                  <ChevronsLeft aria-hidden />
+                </Button>
+                <div className="grid grid-cols-3 gap-2" aria-label="Known pages">
+                  {pagerSlots.map((slot) => {
+                    const pageNumber = slot.page;
+                    return pageNumber ? (
+                      <Button
+                        key={slot.key}
+                        variant={pageNumber === activePage ? "default" : "outline"}
+                        size="icon"
+                        aria-label={`Page ${pageNumber}`}
+                        aria-current={pageNumber === activePage ? "page" : undefined}
+                        disabled={pageNumber === activePage || busyReason !== null}
+                        onClick={() => navigate(pageNumber)}
+                      >
+                        {pageNumber}
+                      </Button>
+                    ) : (
+                      <span
+                        key={slot.key}
+                        className="size-11 md:size-9"
+                        aria-hidden
+                      />
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Next page block"
+                  disabled={
+                    !page?.hasMore ||
+                    nextCursor === undefined ||
+                    busyReason !== null
+                  }
+                  onClick={() => navigate(arrowTargets.next)}
+                >
+                  <ChevronsRight aria-hidden />
+                </Button>
+              </nav>
+            </div>
+          ) : null}
+        </div>
+      </Collapse>
     </section>
   );
 }

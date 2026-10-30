@@ -4,6 +4,7 @@ export { isCanonicalUuid };
 
 export const ACTIVITY_LOG_PAGE_SIZE = 20;
 export const GLOBAL_ACTIVITY_LOG_PAGE_SIZE = 20;
+export const TASK_HISTORY_PAGE_SIZE = 10;
 export const ACTIVITY_LOG_RETENTION_DAYS = 30;
 export const ACTIVITY_PAGE_BLOCK_SIZE = 3;
 export const ACTIVITY_PREFETCH_PAGES = 2;
@@ -59,6 +60,27 @@ export type ActivityCursor = {
 };
 
 export type ActivityCursorStack = readonly (ActivityCursor | null)[];
+
+export type TaskHistoryRequestReason =
+  | "initial"
+  | "navigation"
+  | "refresh"
+  | "focus";
+
+export type TaskHistoryRequestCommand = {
+  requestToken: number;
+  reason: TaskHistoryRequestReason;
+  targetPage: number;
+  cursor: ActivityCursor | null;
+};
+
+export type TaskHistoryMountCommand =
+  | { type: "restart"; request: TaskHistoryRequestCommand }
+  | { type: "clear-busy" };
+
+export type TaskHistoryNavigationCommand =
+  | { type: "request"; requestToken: number }
+  | { type: "cached"; page: ActivityPage };
 
 export type ActivityRow = {
   activityId: string;
@@ -248,6 +270,33 @@ export function activityPagerState(activePage: number, hasMore: boolean) {
   };
 }
 
+export function taskHistoryPagerVisible(
+  activePage: number,
+  hasMore: boolean,
+  knownPageCount: number,
+) {
+  return activePage > 1 || hasMore || knownPageCount > 1;
+}
+
+export function taskHistoryKnownCursorsAfterPage(
+  cursors: ActivityCursorStack,
+  pageNumber: number,
+  page: Pick<ActivityPage, "hasMore" | "cursor">,
+  resetPagesAhead = false,
+) {
+  let next = resetPagesAhead
+    ? activityCursorStackToPage(cursors, pageNumber)
+    : cursors;
+  if (
+    page.hasMore &&
+    page.cursor &&
+    activityCursorForPage(next, pageNumber + 1) === undefined
+  ) {
+    next = addKnownActivityCursor(next, pageNumber + 1, page.cursor);
+  }
+  return next;
+}
+
 export function addKnownActivityCursor(
   cursors: ActivityCursorStack,
   page: number,
@@ -361,6 +410,242 @@ export function createActivityPrefetchController() {
   };
 }
 
+export function createTaskHistoryController() {
+  const prefetchController = createActivityPrefetchController();
+  const prefetchedPages = new Map<number, ActivityPage>();
+  let mounted = true;
+  let expanded = false;
+  let initialRequested = false;
+  let loaded = false;
+  let nextRequestToken = 0;
+  let activeRequestToken: number | null = null;
+  let activeRequest: TaskHistoryRequestCommand | null = null;
+  let interruptedRequest: Omit<TaskHistoryRequestCommand, "requestToken"> | null =
+    null;
+  let lastLoadedAt: number | null = null;
+  let lastVisibleLoadSucceeded = false;
+  let prefetchAttemptKey: string | null = null;
+
+  function cancelPrefetch() {
+    if (prefetchController.currentChainId() !== null) {
+      prefetchAttemptKey = null;
+    }
+    prefetchController.cancel();
+  }
+
+  function invalidatePrefetch() {
+    cancelPrefetch();
+    prefetchAttemptKey = null;
+    prefetchedPages.clear();
+  }
+
+  function beginRequest(
+    request: Omit<TaskHistoryRequestCommand, "requestToken">,
+  ) {
+    if (!mounted) return null;
+    nextRequestToken += 1;
+    activeRequestToken = nextRequestToken;
+    activeRequest = { ...request, requestToken: activeRequestToken };
+    return activeRequest;
+  }
+
+  return {
+    mount(currentExpanded = expanded) {
+      mounted = true;
+      expanded = currentExpanded;
+      const request = interruptedRequest;
+      interruptedRequest = null;
+      if (!request) return null;
+      if (!expanded) {
+        if (!loaded) initialRequested = false;
+        return request.reason === "initial"
+          ? null
+          : ({ type: "clear-busy" } satisfies TaskHistoryMountCommand);
+      }
+      const restart = beginRequest(request);
+      return restart
+        ? ({ type: "restart", request: restart } satisfies TaskHistoryMountCommand)
+        : null;
+    },
+    toggle() {
+      if (!mounted) {
+        return { expanded: false, requestToken: null };
+      }
+      expanded = !expanded;
+      if (!expanded) cancelPrefetch();
+      let requestToken: number | null = null;
+      if (expanded && !initialRequested) {
+        initialRequested = true;
+        requestToken = beginRequest({
+          reason: "initial",
+          targetPage: 1,
+          cursor: null,
+        })?.requestToken ?? null;
+      }
+      return { expanded, requestToken };
+    },
+    beginNavigation(targetPage: number, cursor: ActivityCursor | null) {
+      cancelPrefetch();
+      return mounted && expanded
+        ? beginRequest({ reason: "navigation", targetPage, cursor })
+            ?.requestToken ?? null
+        : null;
+    },
+    beginNavigationCommand(
+      targetPage: number,
+      cursor: ActivityCursor | null,
+    ): TaskHistoryNavigationCommand | null {
+      if (!mounted || !expanded) return null;
+      cancelPrefetch();
+      const cached = prefetchedPages.get(targetPage);
+      if (cached) {
+        lastVisibleLoadSucceeded = true;
+        return { type: "cached", page: cached };
+      }
+      const requestToken = beginRequest({
+        reason: "navigation",
+        targetPage,
+        cursor,
+      })?.requestToken;
+      return requestToken === undefined
+        ? null
+        : { type: "request", requestToken };
+    },
+    beginManualRefresh(targetPage: number, cursor: ActivityCursor | null) {
+      if (!mounted || !expanded || activeRequestToken !== null) return null;
+      invalidatePrefetch();
+      return beginRequest({ reason: "refresh", targetPage, cursor })
+        ?.requestToken ?? null;
+    },
+    beginFocusRefresh(
+      now: number,
+      staleTime: number,
+      targetPage: number,
+      cursor: ActivityCursor | null,
+    ) {
+      if (
+        !mounted ||
+        !expanded ||
+        !loaded ||
+        activeRequestToken !== null ||
+        lastLoadedAt === null ||
+        now - lastLoadedAt < staleTime
+      ) {
+        return null;
+      }
+      invalidatePrefetch();
+      return beginRequest({ reason: "focus", targetPage, cursor })
+        ?.requestToken ?? null;
+    },
+    settle(requestToken: number, didLoad: boolean, settledAt: number) {
+      if (!mounted || activeRequestToken !== requestToken) return false;
+      activeRequestToken = null;
+      activeRequest = null;
+      if (didLoad) {
+        loaded = true;
+        lastLoadedAt = settledAt;
+      } else if (!loaded) {
+        initialRequested = false;
+      }
+      lastVisibleLoadSucceeded = didLoad;
+      return true;
+    },
+    isCurrent(requestToken: number) {
+      return mounted && activeRequestToken === requestToken;
+    },
+    beginPrefetch(
+      activePage: number,
+      currentPage: Pick<ActivityPage, "hasMore" | "cursor">,
+    ) {
+      if (
+        !mounted ||
+        !expanded ||
+        !loaded ||
+        !lastVisibleLoadSucceeded ||
+        activeRequestToken !== null ||
+        !currentPage.hasMore ||
+        !currentPage.cursor
+      ) {
+        return null;
+      }
+      const attemptKey = [
+        activePage,
+        currentPage.cursor.createdAt,
+        currentPage.cursor.id,
+      ].join(":");
+      if (prefetchAttemptKey === attemptKey) return null;
+      prefetchAttemptKey = attemptKey;
+      return prefetchController.start();
+    },
+    isPrefetchCurrent(chainId: number) {
+      return (
+        mounted &&
+        expanded &&
+        prefetchController.currentChainId() === chainId
+      );
+    },
+    cachePrefetchedPage(chainId: number, pageNumber: number, page: ActivityPage) {
+      if (
+        !mounted ||
+        !expanded ||
+        prefetchController.currentChainId() !== chainId
+      ) {
+        return false;
+      }
+      prefetchedPages.set(pageNumber, page);
+      return true;
+    },
+    prefetchedPage(pageNumber: number) {
+      return prefetchedPages.get(pageNumber) ?? null;
+    },
+    rememberVisiblePage(pageNumber: number, page: ActivityPage) {
+      if (!mounted || !loaded || !lastVisibleLoadSucceeded) return false;
+      prefetchedPages.set(pageNumber, page);
+      return true;
+    },
+    finishPrefetch(chainId: number) {
+      if (prefetchController.currentChainId() !== chainId) return false;
+      prefetchController.cancel();
+      return mounted && expanded;
+    },
+    unmount() {
+      if (activeRequest) {
+        interruptedRequest = {
+          reason: activeRequest.reason,
+          targetPage: activeRequest.targetPage,
+          cursor: activeRequest.cursor,
+        };
+      }
+      mounted = false;
+      activeRequestToken = null;
+      activeRequest = null;
+      cancelPrefetch();
+      prefetchedPages.clear();
+    },
+    snapshot() {
+      return {
+        mounted,
+        expanded,
+        initialRequested,
+        loaded,
+        activeRequestToken,
+        interruptedRequest,
+        lastLoadedAt,
+        lastVisibleLoadSucceeded,
+        prefetchChainId: prefetchController.currentChainId(),
+        prefetchAttemptKey,
+        prefetchedPageNumbers: [...prefetchedPages.keys()],
+      };
+    },
+  };
+}
+
+export function taskHistoryToggleCommand(
+  controller: ReturnType<typeof createTaskHistoryController>,
+) {
+  return controller.toggle();
+}
+
 export async function prefetchActivityPageChain({
   initialPage,
   initialPageNumber,
@@ -421,6 +706,68 @@ export async function prefetchActivityPageChain({
   }
 
   return { cancelled: false, knownCursors: cursors, prefetchCount };
+}
+
+export async function prefetchTaskHistoryPageChain({
+  controller,
+  initialPage,
+  initialPageNumber,
+  knownCursors,
+  fetchPage,
+}: {
+  controller: ReturnType<typeof createTaskHistoryController>;
+  initialPage: ActivityPage;
+  initialPageNumber: number;
+  knownCursors: ActivityCursorStack;
+  fetchPage: (cursor: ActivityCursor) => Promise<ActivityPage>;
+}) {
+  controller.rememberVisiblePage(initialPageNumber, initialPage);
+  const chainId = controller.beginPrefetch(initialPageNumber, initialPage);
+  if (chainId === null) {
+    return {
+      started: false,
+      accepted: false,
+      failed: false,
+      knownCursors,
+      prefetchCount: 0,
+    };
+  }
+
+  let targetPage = initialPageNumber + 1;
+  try {
+    const result = await prefetchActivityPageChain({
+      initialPage: { ...initialPage, unavailable: false },
+      initialPageNumber,
+      knownCursors,
+      isCancelled: () => !controller.isPrefetchCurrent(chainId),
+      fetchPage: async (cursor) => {
+        const pageNumber = targetPage;
+        targetPage += 1;
+        const cached = controller.prefetchedPage(pageNumber);
+        const page = cached ?? await fetchPage(cursor);
+        controller.cachePrefetchedPage(chainId, pageNumber, page);
+        return { ...page, unavailable: false };
+      },
+    });
+    const accepted =
+      !result.cancelled && controller.finishPrefetch(chainId);
+    return {
+      started: true,
+      accepted,
+      failed: false,
+      knownCursors: accepted ? result.knownCursors : knownCursors,
+      prefetchCount: result.prefetchCount,
+    };
+  } catch {
+    controller.finishPrefetch(chainId);
+    return {
+      started: true,
+      accepted: false,
+      failed: true,
+      knownCursors,
+      prefetchCount: targetPage - initialPageNumber - 1,
+    };
+  }
 }
 
 export function activityActorInitials(name: string | null) {

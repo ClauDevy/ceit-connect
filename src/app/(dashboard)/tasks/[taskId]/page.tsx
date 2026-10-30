@@ -25,15 +25,7 @@ import {
 } from "@/lib/tasks/workload";
 import { createClient } from "@/lib/supabase/server";
 import type { BoardCommittee } from "@/lib/events/board";
-import {
-  DEFAULT_ACTIVITY_FILTERS,
-  activityErrorCode,
-  activityFiltersToRpc,
-  activityWindowFromPage,
-  isCanonicalUuid,
-  normalizeActivityResponse,
-  unavailableActivityWindow,
-} from "@/lib/activity-log";
+import { isCanonicalUuid } from "@/lib/activity-log";
 
 type TaskViewer = {
   id: string;
@@ -56,7 +48,6 @@ async function TaskData({
     backupStateResult,
     workloadResult,
     committeesResult,
-    historyResult,
   ] = await Promise.all([
     supabase.rpc("get_task_detail", { p_task_id: taskId }),
     supabase.rpc("get_task_work_links", { p_task_id: taskId }),
@@ -70,10 +61,6 @@ async function TaskData({
           .order("name")
           .returns<BoardCommittee[]>()
       : Promise.resolve({ data: [] as BoardCommittee[], error: null }),
-    supabase.rpc(
-      "list_activity_log",
-      activityFiltersToRpc(DEFAULT_ACTIVITY_FILTERS, null, taskId),
-    ),
   ]);
 
   if (detailResult.error) {
@@ -168,19 +155,6 @@ async function TaskData({
       viewer.role === "Admin" || committee.id === viewer.committeeId,
   );
 
-  let initialHistory = unavailableActivityWindow();
-  if (!historyResult.error) {
-    try {
-      initialHistory = activityWindowFromPage(
-        normalizeActivityResponse(historyResult.data),
-      );
-    } catch (error) {
-      console.error("Task history returned invalid data:", error);
-    }
-  } else if (activityErrorCode(historyResult.error) !== "CAL01") {
-    console.error("Failed to load task history:", historyResult.error);
-  }
-
   return (
     <TaskDetail
       taskId={taskId}
@@ -189,7 +163,6 @@ async function TaskData({
       initialEditControls={initialEditControls}
       initialBackupState={initialBackupState}
       initialWorkloads={initialWorkloads}
-      initialHistory={initialHistory}
       viewer={viewer}
       committees={committees}
     />
