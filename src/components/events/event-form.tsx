@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Archive,
   CalendarDays,
@@ -109,6 +110,31 @@ type PhaseDraft = {
   collapsed: boolean;
   tasks: TaskDraft[];
 };
+
+type DraftEditorTask = {
+  out_task_id: string;
+  out_phase: string;
+  out_status: "To Do" | "In Progress" | "Completed";
+  out_title: string;
+  out_description: string | null;
+  out_committee_name: string | null;
+  out_is_masked: boolean;
+  out_is_editable: boolean;
+};
+
+type PhaseAction =
+  | { key: string; type: "rename"; phase: string; next_phase: string }
+  | { key: string; type: "delete"; phase: string };
+
+function isDraftEditorTask(value: unknown): value is DraftEditorTask {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.out_task_id === "string" &&
+    typeof row.out_phase === "string" &&
+    typeof row.out_title === "string" &&
+    typeof row.out_is_masked === "boolean" &&
+    typeof row.out_is_editable === "boolean";
+}
 
 type TaskEditor = {
   phaseId: string;
@@ -343,6 +369,7 @@ export function EventForm({
   const [phases, setPhases] = useState<PhaseDraft[]>(() =>
     initialEvent ? makeInitialPhases(initialEvent.tasks) : [],
   );
+  const [phaseActions, setPhaseActions] = useState<PhaseAction[]>([]);
   const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
   const [newPhaseName, setNewPhaseName] = useState("");
   const [taskEditor, setTaskEditor] = useState<TaskEditor | null>(null);
@@ -367,6 +394,40 @@ export function EventForm({
   const [pendingTemplateImport, setPendingTemplateImport] =
     useState<PendingTemplateImport | null>(null);
   const taskDialogScrollRef = useRef<HTMLDivElement>(null);
+
+  const draftReaderQuery = useQuery({
+    queryKey: ["draft-event-editor-tasks", initialEvent?.id],
+    enabled: initialEvent?.status === "Draft",
+    queryFn: async ({ signal }) => {
+      const supabase = createClient();
+      let request = supabase.rpc("list_draft_event_editor_tasks", {
+        p_event_id: initialEvent!.id,
+      });
+      request = request.abortSignal(signal);
+      const { data, error } = await request;
+      if (error) throw error;
+      if (!Array.isArray(data) || !data.every(isDraftEditorTask)) {
+        throw new Error("The Draft overview returned an invalid response.");
+      }
+      return data;
+    },
+    refetchOnWindowFocus: true,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+  });
+  const readOnlyTasks = useMemo(
+    () => (draftReaderQuery.data ?? []).filter((task) => !task.out_is_editable),
+    [draftReaderQuery.data],
+  );
+  const readOnlyTasksByPhase = useMemo(() => {
+    const grouped = new Map<string, DraftEditorTask[]>();
+    for (const task of readOnlyTasks) {
+      const rows = grouped.get(task.out_phase) ?? [];
+      rows.push(task);
+      grouped.set(task.out_phase, rows);
+    }
+    return grouped;
+  }, [readOnlyTasks]);
 
   const taskCount = phases.reduce((sum, phase) => sum + phase.tasks.length, 0);
   const nameSet = name.trim().length > 0;
@@ -662,6 +723,20 @@ export function EventForm({
   }
 
   function updatePhaseName(phaseId: string, phaseName: string) {
+    const currentPhase = phases.find((phase) => phase.id === phaseId);
+    if (currentPhase && currentPhase.name !== phaseName) {
+      setPhaseActions((current) => {
+        const existing = current.find(
+          (action) => action.key === phaseId && action.type === "rename",
+        );
+        if (existing?.type === "rename") {
+          return current.map((action) =>
+            action === existing ? { ...existing, next_phase: phaseName } : action,
+          );
+        }
+        return [...current, { key: phaseId, type: "rename", phase: currentPhase.name, next_phase: phaseName }];
+      });
+    }
     setPhases((current) =>
       current.map((phase) =>
         phase.id === phaseId ? { ...phase, name: phaseName } : phase,
@@ -971,6 +1046,11 @@ export function EventForm({
               )
               .map(({ task, payload }) => ({ id: task.id, ...payload })),
             p_task_ids_to_delete: deletedTaskIds,
+            p_phase_actions: phaseActions.map((action) =>
+              action.type === "rename"
+                ? { type: action.type, phase: action.phase, next_phase: action.next_phase }
+                : { type: action.type, phase: action.phase },
+            ),
           })
         : await supabase.rpc("create_event_with_tasks", {
             p_name: name.trim(),
@@ -1456,11 +1536,19 @@ export function EventForm({
 
                 {role === "Co-Admin" && (
                   <p className="text-sm text-muted-foreground">
-                    You can only see and edit your committee&apos;s tasks.
+                    You can edit only your committee&apos;s tasks. Other committees&apos;
+                    Draft tasks appear as read-only cards.
                   </p>
                 )}
 
-                {phases.length === 0 ? (
+                {initialEvent?.status === "Draft" && draftReaderQuery.isError ? (
+                  <InlineAlert>
+                    The read-only Draft overview could not be refreshed. Phase
+                    actions stay unavailable until it reloads.
+                  </InlineAlert>
+                ) : null}
+
+                {phases.length === 0 && readOnlyTasksByPhase.size === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed p-8 text-center">
                     <TigerLogo size={40} className="motion-empty-breathe mx-auto shrink-0 opacity-70 grayscale" />
                     <p className="mt-3 font-semibold">No phases yet</p>
@@ -1470,7 +1558,11 @@ export function EventForm({
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {phases.map((phase) => (
+                    {phases.map((phase) => {
+                      const readOnlyPhaseTasks = readOnlyTasksByPhase.get(phase.name) ?? [];
+                      const phaseActionsDisabled = role === "Co-Admin" && initialEvent?.status === "Draft" &&
+                        (draftReaderQuery.isPending || draftReaderQuery.isError || readOnlyPhaseTasks.length > 0);
+                      return (
                       <section key={phase.id} className="overflow-hidden rounded-2xl border bg-card">
                         <div className="flex min-w-0 items-center gap-2 border-b bg-muted/40 p-3">
                           <Button
@@ -1495,14 +1587,15 @@ export function EventForm({
                             aria-label="Phase name"
                             maxLength={100}
                             value={phase.name}
+                            disabled={phaseActionsDisabled}
                             onChange={(event) =>
                               updatePhaseName(phase.id, event.target.value)
                             }
                             className="h-11 min-w-0 flex-1 border-transparent bg-transparent font-semibold shadow-none hover:border-border md:h-8"
                           />
                           <Badge variant="neutral">
-                            {phase.tasks.length} task
-                            {phase.tasks.length === 1 ? "" : "s"}
+                            {phase.tasks.length + readOnlyPhaseTasks.length} task
+                            {phase.tasks.length + readOnlyPhaseTasks.length === 1 ? "" : "s"}
                           </Badge>
                           <Button
                             type="button"
@@ -1510,6 +1603,7 @@ export function EventForm({
                             size="icon-sm"
                             className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive"
                             aria-label={`Remove ${phase.name}`}
+                            disabled={phaseActionsDisabled}
                             onClick={() => requestRemovePhase(phase)}
                           >
                             <Trash2 />
@@ -1518,6 +1612,11 @@ export function EventForm({
 
                         <Collapse open={!phase.collapsed}>
                           <div className="grid gap-3 p-3">
+                            {readOnlyPhaseTasks.length > 0 ? (
+                              <p className="text-sm text-muted-foreground">
+                                This phase includes read-only tasks from another committee. You can move your committee&apos;s tasks, but you can&apos;t rename or remove this phase.
+                              </p>
+                            ) : null}
                             {phase.tasks.map((task) => {
                               const committee = committees.find(
                                 (item) => item.id === task.committeeId,
@@ -1606,6 +1705,20 @@ export function EventForm({
                               );
                             })}
 
+                            {readOnlyPhaseTasks.map((task) => (
+                              <div key={task.out_task_id} className="rounded-xl border bg-muted/30 p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="font-semibold">{task.out_title}</p>
+                                  <Badge variant="neutral">Read only</Badge>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  {task.out_committee_name ? <Badge variant="outline">{task.out_committee_name}</Badge> : null}
+                                  <TaskStatusBadge status={task.out_status} />
+                                  {task.out_is_masked ? <span>Confidential details are hidden.</span> : null}
+                                </div>
+                              </div>
+                            ))}
+
                             {phase.tasks.length === 0 && (
                               <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
                                 This phase is empty and will not be saved.
@@ -1624,7 +1737,29 @@ export function EventForm({
                           </div>
                         </Collapse>
                       </section>
-                    ))}
+                    )})}
+                    {Array.from(readOnlyTasksByPhase.entries())
+                      .filter(([phaseName]) => !phases.some((phase) => phase.name === phaseName))
+                      .map(([phaseName, tasks]) => (
+                        <section key={`readonly-${phaseName}`} className="overflow-hidden rounded-2xl border bg-card">
+                          <div className="flex items-center justify-between gap-2 border-b bg-muted/40 p-3">
+                            <p className="font-semibold">{phaseName}</p>
+                            <Badge variant="neutral">{tasks.length} read only</Badge>
+                          </div>
+                          <div className="grid gap-3 p-3">
+                            <p className="text-sm text-muted-foreground">This phase belongs to another committee and cannot be renamed or removed.</p>
+                            {tasks.map((task) => (
+                              <div key={task.out_task_id} className="rounded-xl border bg-muted/30 p-4">
+                                <p className="font-semibold">{task.out_title}</p>
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                  <Badge variant="neutral">Read only</Badge>
+                                  <TaskStatusBadge status={task.out_status} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      ))}
                   </div>
                 )}
 
@@ -2146,6 +2281,20 @@ export function EventForm({
         destructive
         onConfirm={() => {
           if (phaseToRemove) {
+            setPhaseActions((current) => {
+              const queuedRename = current.find(
+                (action) =>
+                  action.key === phaseToRemove.id && action.type === "rename",
+              );
+              return [
+                ...current.filter((action) => action.key !== phaseToRemove.id),
+                {
+                  key: phaseToRemove.id,
+                  type: "delete",
+                  phase: queuedRename?.phase ?? phaseToRemove.name,
+                },
+              ];
+            });
             const persistedIds = phaseToRemove.tasks
               .filter((task) => task.persisted)
               .map((task) => task.id);

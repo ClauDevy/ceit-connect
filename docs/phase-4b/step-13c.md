@@ -1,6 +1,8 @@
 # Step 13c: Draft event task visibility
 
-**Status:** Planned | **Branch:** `fix/draft-task-visibility` | **Reasoning level:** High (security-critical readers, masking, and RLS boundaries)
+**Status:** Implemented locally, awaiting owner Dev application and SQL verification. No Batch 13c migration or test paste is claimed as applied or run.
+
+**Status:** Implemented locally; SQL execution pending | **Branch:** `fix/draft-task-visibility` | **Reasoning level:** High (security-critical readers, masking, and RLS boundaries)
 
 ## Goal
 
@@ -77,7 +79,7 @@ Every reader must derive the caller from `auth.uid()`, require an active profile
 - Admin write authority remains unchanged. Co-Admin inserts, updates, deletes, assignment changes, confidentiality changes, dependencies, and Batch 11 Add/Edit remain committee-scoped according to their owning writer.
 - `created_by` remains provenance only. Event creation does not grant cross-committee task writes.
 - Active and Archived reader behavior, archive-only sharing, and the Archived freeze remain unchanged.
-- Batch 13c adds readers or reader changes only; it does not add a general task writer.
+- Batch 13c adds reader changes plus narrow authorization wrappers around existing writers; it does not add a general task writer or writer marker. The wrappers delegate non-Draft and missing-task behavior to the unchanged historical bodies.
 
 ## Security risks
 

@@ -798,7 +798,7 @@ begin
   where n.nspname='public' and p.prosecdef and lower(pg_catalog.pg_get_functiondef(p.oid)) ~ '(insert into|update|delete from) public\.task_comments';
   v_results := v_results || format(E'\nEXACT_DIRECT_COMMENT_WRITER_INVENTORY: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
-  v_ok := to_regprocedure('public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[])') is not null
+  v_ok := to_regprocedure('public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)') is not null
     and to_regprocedure('public.archive_event(uuid,bigint,timestamp with time zone)') is not null
     and to_regprocedure('public.delete_task(uuid)') is not null
     and to_regprocedure('public.claim_task(uuid)') is not null
