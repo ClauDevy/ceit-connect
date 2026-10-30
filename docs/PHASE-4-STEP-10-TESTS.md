@@ -1322,7 +1322,7 @@ do $$ declare ok boolean; b text; r regprocedure; begin
   ok:=true;
   foreach r in array array[
     'public.assign_task_creation_metadata()'::regprocedure,'public.validate_task_dependency()'::regprocedure,
-    'public.set_task_destination_lane_order()'::regprocedure,'public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[])'::regprocedure,
+    'public.set_task_destination_lane_order()'::regprocedure,'public.edit_event_with_tasks(uuid,timestamp with time zone,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure,
     'public.move_task(uuid,text,text,text,uuid,uuid)'::regprocedure,'public.set_task_dependency(uuid,uuid)'::regprocedure,
     'public.assign_task_people(uuid,uuid[],uuid[])'::regprocedure,'public.delete_task(uuid)'::regprocedure,'public.unassign_self(uuid)'::regprocedure
   ] loop
@@ -1775,7 +1775,9 @@ do $$ declare code text; msg text; ok boolean; eid uuid; begin
  select code='P0001' and msg='An Active event requires at least one task.' and count(*)=0 into ok from public.events where name='10D3 Create Empty';
  perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nCREATE_ACTIVE_ZERO_TASKS_P0001_CREATES_NOTHING: %s',case when ok then 'PASS' else 'FAIL' end),true);
 
- code:=''; begin perform public.edit_event_with_tasks('d1031000-0000-4000-8000-000000000001',(select updated_at from public.events where id='d1031000-0000-4000-8000-000000000001'),'10D3 Launch Empty',null,'2027-07-01','2027-07-02','Active','[]','[]','{}'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ code:=''; begin perform public.edit_event_with_tasks('d1031000-0000-4000-8000-000000000001',(select updated_at from public.events where id='d1031000-0000-4000-8000-000000000001'),'10D3 Launch Empty',null,'2027-07-01','2027-07-02','Active','[]','[]','{}',
+  '[]'::jsonb
+); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
  select code='P0001' and msg='An event requires at least one task before it can be launched.' and status='Draft' into ok from public.events where id='d1031000-0000-4000-8000-000000000001';
  perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nDRAFT_TO_ACTIVE_ZERO_TASKS_P0001_STAYS_DRAFT: %s',case when ok then 'PASS' else 'FAIL' end),true);
 
@@ -1795,7 +1797,9 @@ end $$;
 reset role; set local role authenticated;
 select set_config('request.jwt.claims',json_build_object('sub','d1030000-0000-4000-8000-000000000001','role','authenticated')::text,true);
 do $$ declare code text; msg text; ok boolean; begin
- code:=''; begin perform public.edit_event_with_tasks('d1031000-0000-4000-8000-000000000004',(select updated_at from public.events where id='d1031000-0000-4000-8000-000000000004'),'10D3 Edit Delete Changed',null,'2027-07-07','2027-07-08','Active','[]','[]',array['d1032000-0000-4000-8000-000000000004'::uuid]); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ code:=''; begin perform public.edit_event_with_tasks('d1031000-0000-4000-8000-000000000004',(select updated_at from public.events where id='d1031000-0000-4000-8000-000000000004'),'10D3 Edit Delete Changed',null,'2027-07-07','2027-07-08','Active','[]','[]',array['d1032000-0000-4000-8000-000000000004'::uuid],
+  '[]'::jsonb
+); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
  select code='P0001' and msg='An Active event must have at least one task.' and e.name='10D3 Edit Delete'
    and (select count(*) from public.tasks t where t.event_id=e.id)=1
  into ok from public.events e where e.id='d1031000-0000-4000-8000-000000000004';
@@ -1833,8 +1837,12 @@ do $$ declare tasks200 jsonb; tasks201 jsonb; eid uuid; code text; msg text; ok 
  perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nCREATE_200_ACCEPTED_AND_201_EXACT_P0001_CAP: %s',case when ok then 'PASS' else 'FAIL' end),true);
 
  select jsonb_agg(jsonb_build_object('id',t.id,'title',t.title,'description',t.description,'phase',t.phase,'committee_id',t.committee_id,'task_type',t.task_type,'due_date',t.due_date,'call_time',t.call_time,'end_time',t.end_time,'priority',t.priority,'assignee_ids',to_jsonb(t.primary_assignees)) order by t.id) into updates200 from public.tasks t where t.event_id=eid;
- perform public.edit_event_with_tasks(eid,(select updated_at from public.events where id=eid),'10D3 Edit 200',null,'2027-09-01','2027-09-30','Active','[]',updates200,'{}');
- code:=''; begin perform public.edit_event_with_tasks(eid,(select updated_at from public.events where id=eid),'10D3 Edit 201',null,'2027-09-01','2027-09-30','Active',tasks201,'[]','{}'); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
+ perform public.edit_event_with_tasks(eid,(select updated_at from public.events where id=eid),'10D3 Edit 200',null,'2027-09-01','2027-09-30','Active','[]',updates200,'{}',
+  '[]'::jsonb
+);
+ code:=''; begin perform public.edit_event_with_tasks(eid,(select updated_at from public.events where id=eid),'10D3 Edit 201',null,'2027-09-01','2027-09-30','Active',tasks201,'[]','{}',
+  '[]'::jsonb
+); exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text; end;
  select count(*)=200 and code='P0001' and msg='A save cannot add, update, or delete more than 200 tasks.' and e.name='10D3 Edit 200' into ok from public.events e join public.tasks t on t.event_id=e.id where e.id=eid group by e.name;
  perform set_config('test.s10d3_results',current_setting('test.s10d3_results')||format(E'\nEDIT_200_ACCEPTED_AND_201_EXACT_P0001_CAP: %s',case when ok then 'PASS' else 'FAIL' end),true);
 end $$;

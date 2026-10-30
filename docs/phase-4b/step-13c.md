@@ -1,6 +1,8 @@
 # Step 13c: Draft event task visibility
 
-**Status:** Planned | **Branch:** `fix/draft-task-visibility` | **Reasoning level:** High (security-critical readers, masking, and RLS boundaries)
+**Status:** Implemented locally, awaiting owner Dev application and SQL verification. No Batch 13c migration or test paste is claimed as applied or run.
+
+**Status:** Implemented locally; SQL execution pending | **Branch:** `fix/draft-task-visibility` | **Reasoning level:** High (security-critical readers, masking, and RLS boundaries)
 
 ## Goal
 
@@ -63,7 +65,11 @@ Every reader must derive the caller from `auth.uid()`, require an active profile
 - Non-confidential tasks show their real safe reader fields to every active Admin and Co-Admin.
 - A confidential task outside a Co-Admin’s committee appears only as the established `Confidential Task` shell with nullable content fields and no mutation controls.
 - Admins retain full Draft management. A Co-Admin may edit only own-committee task rows, even when all committees are visible together.
+- Phases belong to the event rather than a committee. Every visible phase has Add task for an authorized editor; a Co-Admin's new task is fixed to their one verified committee and may be added to a phase represented only by another committee's rows.
+- Edit Event merges editable and read-only rows into one card per case-sensitive trimmed phase name (`null`/blank becomes `Unphased`). A reader-backed local shell never emits a phase rename/delete action; if its reader rows disappear, an empty shell disappears while a shell with unsaved tasks becomes an ordinary local phase.
+- Phase rename/remove remains unavailable to a Co-Admin when the phase contains another committee's rows. This restriction does not disable Add task.
 - Other-committee rows must not be serialized into an editable Event Form payload that could be accidentally resubmitted, renamed, deleted, or reassigned.
+- Event Summary and launch readiness use the display-only union: distinct normalized phase names, stored tasks deduplicated by id, unsaved tasks by local key, queued deletions excluded, and masked shells included. Reader refetches replace only the read-only side of this union.
 - Empty phases remain unpersisted because phases still live only on task rows.
 - Polling, focus refresh, stale handling, and safe error mapping follow the existing board/detail patterns; no Realtime subscription is added.
 
@@ -77,7 +83,7 @@ Every reader must derive the caller from `auth.uid()`, require an active profile
 - Admin write authority remains unchanged. Co-Admin inserts, updates, deletes, assignment changes, confidentiality changes, dependencies, and Batch 11 Add/Edit remain committee-scoped according to their owning writer.
 - `created_by` remains provenance only. Event creation does not grant cross-committee task writes.
 - Active and Archived reader behavior, archive-only sharing, and the Archived freeze remain unchanged.
-- Batch 13c adds readers or reader changes only; it does not add a general task writer.
+- Batch 13c adds reader changes plus narrow authorization wrappers around existing writers; it does not add a general task writer or writer marker. The wrappers delegate non-Draft and missing-task behavior to the unchanged historical bodies.
 
 ## Security risks
 
@@ -114,6 +120,7 @@ Pin function signatures, shapes, ownership, volatility, security mode, fixed sea
 - As an Admin, open a Draft containing several committees and confirm every phase/task appears with real content and existing management rights.
 - As an owning Co-Admin, confirm own-committee tasks are real and editable, other-committee non-confidential tasks are real but read-only, and other-committee confidential tasks are masked and read-only.
 - As a different Co-Admin, repeat the matrix with ownership reversed.
+- As the non-owning Co-Admin, add an own-committee task to a phase containing only another committee's rows and save. Then sign in as Admin and confirm the new task is in that exact phase while every pre-existing row is untouched.
 - As a Member, inactive officer, and profile-less caller, confirm Draft pages/readers expose no task or phase information.
 - Attempt cross-committee edits through Edit Event, Batch 11 writers, assignment, confidentiality, dependency, and direct RPC/raw paths; each must fail even though the task is visible.
 - Confirm Active boards/details and Archived records retain their established real/masked/hidden behavior.

@@ -95,7 +95,9 @@ begin
   v_new_version := public.edit_event_with_tasks(
     v_event_id, v_version, 'Metadata Event saved', null,
     '2027-01-01', null, 'Draft', '[]'::jsonb, '[]'::jsonb, '{}'::uuid[]
-  );
+  ,
+  '[]'::jsonb
+);
   select updated_at = v_new_version and name = 'Metadata Event saved'
   into v_ok from public.events where id = v_event_id;
   v_results := v_results || format(E'\nAUTHENTICATED_EDIT_RPC_CAN_CALL_LOCK_HELPER_AND_SAVE: %s', case when v_ok then 'PASS' else 'FAIL' end);
@@ -455,7 +457,7 @@ set constraints all immediate;
 do $$
 declare
   v_create_def text := lower(pg_get_functiondef('public.create_event_with_tasks(text,text,date,date,text,jsonb)'::regprocedure));
-  v_edit_def text := lower(pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[])'::regprocedure));
+  v_edit_def text := lower(pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure));
   v_insert_def text := lower(pg_get_functiondef('public.assign_task_creation_metadata()'::regprocedure));
   v_lane_def text := lower(pg_get_functiondef('public.set_task_destination_lane_order()'::regprocedure));
   v_dependency_def text := lower(pg_get_functiondef('public.validate_task_dependency()'::regprocedure));
@@ -492,8 +494,8 @@ begin
     );
   v_ok := v_ok
     and (select count(*) = 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'edit_event_with_tasks')
-    and has_function_privilege('authenticated', 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[])', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[])', 'EXECUTE');
+    and has_function_privilege('authenticated', 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)', 'EXECUTE');
   v_results := v_results || format(E'\nEDIT_RPC_EXACT_SIGNATURE_INVOKER_AUTHENTICATED_ONLY: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
   v_ok := strpos(v_edit_def, 'for update') > 0

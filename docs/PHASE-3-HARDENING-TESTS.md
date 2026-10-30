@@ -198,6 +198,8 @@ begin
       p_status => 'Active', p_tasks_to_add => '[]'::jsonb,
       p_tasks_to_update => '[]'::jsonb,
       p_task_ids_to_delete => array['d3000000-0000-4000-8000-000000000001'::uuid]
+    ,
+      p_phase_actions => '[]'::jsonb
     );
     set constraints all immediate;
     raise exception 'Expected final Active task deletion rejection.';
@@ -227,7 +229,9 @@ select public.edit_event_with_tasks(
   )),
   p_tasks_to_update => '[]'::jsonb,
   p_task_ids_to_delete => array['d3000000-0000-4000-8000-000000000001'::uuid]
-);
+,
+      p_phase_actions => '[]'::jsonb
+    );
 
 set constraints all immediate;
 
