@@ -22,12 +22,14 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
       "const readOnlyTasks = useMemo(",
     );
     expect(eventForm).toContain(".filter((task) => !task.out_is_editable)");
-    expect(eventForm).toContain("readOnlyPhaseTasks.map((task) => (");
-    expect(eventForm).toContain('key={`readonly-${phaseName}`}');
-    expect(eventForm).toContain("Confidential details are hidden.");
+    expect(eventForm).toContain("buildEventPhaseViews(phases, readOnlyTasks)");
+    expect(eventForm).toContain("phaseView.readOnlyTasks.map((task) => (");
     expect(eventForm).toContain(
-      "phases.length === 0 && readOnlyTasksByPhase.size === 0",
+      "<section key={getEventPhaseCardKey(phaseView)}",
     );
+    expect(eventForm).toContain("value={editablePhase.name}");
+    expect(eventForm).toContain("Confidential details are hidden.");
+    expect(eventForm).toContain("phaseViews.length === 0");
   });
 
   it("does not queue a phase deletion when its confirmation is cancelled", () => {
@@ -68,16 +70,35 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
   });
 
   it("blocks rename and delete controls for mixed phases and explains why", () => {
-    expect(eventForm).toMatch(
-      /const phaseActionsDisabled =[\s\S]*?readOnlyPhaseTasks\.length > 0/,
-    );
-    expect(eventForm.match(/disabled=\{phaseActionsDisabled\}/g)).toHaveLength(2);
+    expect(eventForm).toContain("getEventPhaseControls({");
+    expect(eventForm).toContain("disabled={!phaseControls.canRename}");
+    expect(eventForm).toContain("disabled={!phaseControls.canRemove}");
     expect(eventForm).toContain(
       "This phase includes read-only tasks from another committee.",
     );
     expect(eventForm).toContain(
       "you can&apos;t rename or remove this phase.",
     );
+  });
+
+  it("offers Add task on merged phases while failing Co-Admin committee scope closed", () => {
+    expect(eventForm).toContain("disabled={!phaseControls.canAddTask}");
+    expect(eventForm).toContain("editablePhase?.id ?? null");
+    expect(eventForm).toContain('origin: "reader-shell"');
+    expect(eventForm).toContain(
+      'role === "Co-Admin" && taskCommittees.length !== 1',
+    );
+    expect(eventForm).toMatch(
+      /role === "Co-Admin" \? \([\s\S]*?<Input[\s\S]*?\{\.\.\.control\}[\s\S]*?readOnly[\s\S]*?taskCommittees\[0\]\.name/,
+    );
+    expect(eventForm).not.toContain('role="textbox"');
+  });
+
+  it("derives summary and launch readiness from the safe merged union", () => {
+    expect(eventForm).toContain("getEventFormSummary(");
+    expect(eventForm).toContain("eventFormSummary.phaseCount");
+    expect(eventForm).toContain("eventFormSummary.taskCount");
+    expect(eventForm).toContain("eventFormSummary.hasTasks");
   });
 
   it("polls and focus-refetches only reader data without resetting form state", () => {

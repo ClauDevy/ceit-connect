@@ -24,6 +24,17 @@ describe("getEventSaveErrorMessage", () => {
     );
   });
 
+  it("maps the event task cap to fixed copy without echoing database values", () => {
+    const message = getEventSaveErrorMessage({
+      code: "CCP01",
+      message: "event 123 exceeded a stored count",
+    });
+    expect(message).toBe(
+      "This event already has the maximum of 200 tasks.",
+    );
+    expect(message).not.toContain("123");
+  });
+
   it("preserves other database messages", () => {
     expect(
       getEventSaveErrorMessage({
