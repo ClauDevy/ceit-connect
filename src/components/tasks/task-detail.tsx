@@ -5,7 +5,6 @@ import {
   QueryClient,
   QueryClientProvider,
   useQuery,
-  useQueryClient,
 } from "@tanstack/react-query";
 import {
   Archive,
@@ -83,11 +82,6 @@ import {
 } from "@/lib/tasks/workload";
 import { createClient } from "@/lib/supabase/client";
 import { APP_TIME_ZONE } from "@/lib/timezone";
-import {
-  taskHistoryQueryKey,
-  unavailableActivityWindow,
-  type ActivityWindow,
-} from "@/lib/activity-log";
 
 type TaskDetailProps = {
   taskId: string;
@@ -96,7 +90,6 @@ type TaskDetailProps = {
   initialEditControls?: TaskEditControlData | null;
   initialBackupState?: TaskBackupState | null;
   initialWorkloads?: TaskAssigneeWorkload[];
-  initialHistory?: ActivityWindow;
   canFetch?: boolean;
   viewer?: ActiveTaskViewer;
   committees?: BoardCommittee[];
@@ -275,7 +268,6 @@ function RealTask({
   workLinks,
   editControls,
   backup,
-  history,
   onRefreshTask,
   canEditTask,
   onEditTask,
@@ -314,7 +306,6 @@ function RealTask({
     onWithdraw: () => Promise<void>;
     onAccept: (userId: string) => Promise<void>;
   };
-  history: ActivityWindow;
 }) {
   const dependencyName = task.dependency_label ?? "a task you can’t view";
   const taskTypeLabel =
@@ -422,12 +413,12 @@ function RealTask({
             </CardContent>
           </Card>
           <WorkLinksSection {...workLinks} />
-          <TaskHistory taskId={task.id} initialWindow={history} />
           <TaskComments
             taskId={task.id}
             isArchived={task.event_status === "Archived"}
             onRefreshTask={onRefreshTask}
           />
+          <TaskHistory key={task.id} taskId={task.id} />
         </div>
 
         <aside className="space-y-4">
@@ -580,13 +571,11 @@ function TaskDetailContents({
   initialEditControls,
   initialBackupState,
   initialWorkloads,
-  initialHistory = unavailableActivityWindow(),
   canFetch = true,
   viewer = { role: "Member", committeeId: null },
   committees = [],
 }: TaskDetailProps) {
   const supabase = useMemo(() => createClient(), []);
-  const queryClient = useQueryClient();
   const router = useRouter();
   const [backupBusyAction, setBackupBusyAction] =
     useState<BackupBusyAction>(null);
@@ -727,10 +716,6 @@ function TaskDetailContents({
 
   async function refreshAccess() {
     await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: taskHistoryQueryKey(taskId),
-        exact: true,
-      }),
       query.refetch(),
       workLinksQuery.refetch(),
       editControlsQuery.refetch(),
@@ -1117,7 +1102,6 @@ function TaskDetailContents({
             onWithdraw: withdrawVolunteer,
             onAccept: acceptVolunteer,
           }}
-          history={initialHistory}
         />
       )}
       {editDialogOpen && !query.data.is_masked ? (

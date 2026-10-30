@@ -7,6 +7,7 @@ import {
   ACTIVITY_SORT_LABELS,
   DEFAULT_ACTIVITY_FILTERS,
   GLOBAL_ACTIVITY_LOG_PAGE_SIZE,
+  TASK_HISTORY_PAGE_SIZE,
   addKnownActivityCursor,
   activityActorInitials,
   activityBlockArrowTargets,
@@ -27,8 +28,12 @@ import {
   activityLogRetentionNotice,
   canPrefetchActivityPage,
   createActivityPrefetchController,
+  createTaskHistoryController,
   shouldStartActivityPrefetch,
   taskHistoryOlderPageFailure,
+  taskHistoryPagerVisible,
+  taskHistoryKnownCursorsAfterPage,
+  taskHistoryToggleCommand,
   globalActivityLogQueryKey,
   isCanonicalUuid,
   normalizeActivityResponse,
@@ -36,6 +41,7 @@ import {
   activityErrorMessage,
   popActivityCursor,
   prefetchActivityPageChain,
+  prefetchTaskHistoryPageChain,
   pushActivityCursor,
   replayActivityPages,
   resetActivityCursorStack,
@@ -94,14 +100,20 @@ describe("activity log helpers", () => {
     });
   });
 
-  it("keeps Task History task scope and its 20-row page size unchanged", () => {
-    expect(activityFiltersToRpc(DEFAULT_ACTIVITY_FILTERS, null, id1)).toMatchObject({
+  it("keeps Task History task scope and passes its 10-row page size explicitly", () => {
+    expect(activityFiltersToRpc(
+      DEFAULT_ACTIVITY_FILTERS,
+      null,
+      id1,
+      TASK_HISTORY_PAGE_SIZE,
+    )).toMatchObject({
       p_task_id: id1,
       p_sort: "newest",
       p_cursor_created_at: null,
       p_cursor_id: null,
-      p_page_size: 20,
+      p_page_size: 10,
     });
+    expect(GLOBAL_ACTIVITY_LOG_PAGE_SIZE).toBe(20);
   });
 
   it("rejects overlong search and reversed dates before an RPC", () => {
@@ -192,6 +204,652 @@ describe("activity log helpers", () => {
     });
     expect(activityPagerState(2, false)).toEqual({
       show: true, canPrevious: true, canNext: false,
+    });
+  });
+
+  it.each([
+    [0, false],
+    [10, false],
+    [11, true],
+    [21, true],
+  ])("shows the task History pager only beyond one 10-row page (%i entries)", (entries, expected) => {
+    expect(taskHistoryPagerVisible(1, entries > TASK_HISTORY_PAGE_SIZE, entries > TASK_HISTORY_PAGE_SIZE ? 2 : 1)).toBe(expected);
+  });
+
+  it("keeps task History collapsed initially and loads only on the first expansion", () => {
+    const controller = createTaskHistoryController();
+    expect(controller.snapshot()).toMatchObject({
+      expanded: false,
+      initialRequested: false,
+      loaded: false,
+    });
+
+    const firstOpen = controller.toggle();
+    expect(firstOpen.expanded).toBe(true);
+    expect(firstOpen.requestToken).toBe(1);
+    expect(controller.settle(1, true, 1_000)).toBe(true);
+    expect(controller.toggle()).toEqual({ expanded: false, requestToken: null });
+    expect(controller.toggle()).toEqual({ expanded: true, requestToken: null });
+  });
+
+  it("keeps one click command live across a Strict Mode effect replay and double state application", () => {
+    const controller = createTaskHistoryController();
+    controller.unmount();
+    controller.mount();
+
+    const command = taskHistoryToggleCommand(controller);
+    let renderedExpanded = false;
+    for (let invocation = 0; invocation < 2; invocation += 1) {
+      renderedExpanded = command.expanded;
+    }
+
+    expect(renderedExpanded).toBe(true);
+    expect(command.requestToken).toBe(1);
+    expect(controller.snapshot()).toMatchObject({
+      expanded: true,
+      initialRequested: true,
+      activeRequestToken: 1,
+    });
+  });
+
+  it("starts task prefetch only after the first successful expanded load", async () => {
+    const page = { rows: [], hasMore: true, cursor: { createdAt: cursor, id: id1 } };
+    const collapsed = createTaskHistoryController();
+    expect(collapsed.beginPrefetch(1, page)).toBeNull();
+    const failed = collapsed.toggle().requestToken!;
+    expect(collapsed.beginPrefetch(1, page)).toBeNull();
+    expect(collapsed.settle(failed, false, 1_000)).toBe(true);
+    expect(collapsed.beginPrefetch(1, page)).toBeNull();
+
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    expect(controller.toggle()).toEqual({ expanded: false, requestToken: null });
+    expect(controller.beginPrefetch(1, page)).toBeNull();
+    expect(controller.toggle()).toEqual({ expanded: true, requestToken: null });
+    const result = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => ({ rows: [], hasMore: false, cursor: null }),
+    });
+    expect(result).toMatchObject({ started: true, accepted: true, failed: false });
+  });
+
+  it("prefetches two task pages ahead and exposes a 1 2 3 numbered block", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const c3 = { createdAt: `${cursor}-3`, id: id2 };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let requests = 0;
+
+    const result = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: { rows: [], hasMore: true, cursor: c2 },
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async (pageCursor) => {
+        requests += 1;
+        return pageCursor === c2
+          ? { rows: [], hasMore: true, cursor: c3 }
+          : { rows: [], hasMore: false, cursor: null };
+      },
+    });
+
+    expect(requests).toBe(2);
+    expect(result.prefetchCount).toBe(2);
+    expect(activityPageBlock(1, result.knownCursors.length)).toEqual([1, 2, 3]);
+  });
+
+  it("uses a prefetched task page for navigation without another request", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const page2 = { rows: [], hasMore: false, cursor: null };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let requests = 0;
+    await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: { rows: [], hasMore: true, cursor: c2 },
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => {
+        requests += 1;
+        return page2;
+      },
+    });
+
+    expect(controller.beginNavigationCommand(2, c2)).toEqual({
+      type: "cached",
+      page: page2,
+    });
+    expect(requests).toBe(1);
+  });
+
+  it.each([
+    ["1 to 3 to 1", [3, 1]],
+    ["1 to 2 to 1", [2, 1]],
+    ["1 to 3 to 2", [3, 2]],
+  ])("keeps task History pages 1 2 3 known after %s navigation", async (_label, visits) => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const c3 = { createdAt: `${cursor}-3`, id: id2 };
+    const pages = new Map<number, ActivityPage>([
+      [1, { rows: [], hasMore: true, cursor: c2 }],
+      [2, { rows: [], hasMore: true, cursor: c3 }],
+      [3, { rows: [], hasMore: false, cursor: null }],
+    ]);
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    const prefetched = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: pages.get(1)!,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async (pageCursor) =>
+        pageCursor === c2 ? pages.get(2)! : pages.get(3)!,
+    });
+    let known = prefetched.knownCursors;
+
+    for (const pageNumber of visits) {
+      known = taskHistoryKnownCursorsAfterPage(
+        known,
+        pageNumber,
+        pages.get(pageNumber)!,
+      );
+    }
+
+    expect(activityPageBlock(1, known.length)).toEqual([1, 2, 3]);
+  });
+
+  it("restarts a cancelled task prefetch after collapse and re-expand", () => {
+    const page1 = {
+      rows: [],
+      hasMore: true,
+      cursor: { createdAt: `${cursor}-2`, id: id1 },
+    };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    const firstChain = controller.beginPrefetch(1, page1);
+    expect(firstChain).not.toBeNull();
+    expect(controller.toggle().expanded).toBe(false);
+    expect(controller.toggle().expanded).toBe(true);
+
+    const restartedChain = controller.beginPrefetch(1, page1);
+    expect(restartedChain).not.toBeNull();
+    expect(restartedChain).not.toBe(firstChain);
+  });
+
+  it("does not add reader requests when navigating 1 to 3 to 1 to 3", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const c3 = { createdAt: `${cursor}-3`, id: id2 };
+    const pages = new Map<number, ActivityPage>([
+      [1, { rows: [], hasMore: true, cursor: c2 }],
+      [2, { rows: [], hasMore: true, cursor: c3 }],
+      [3, { rows: [], hasMore: false, cursor: null }],
+    ]);
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let requests = 0;
+    await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: pages.get(1)!,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async (pageCursor) => {
+        requests += 1;
+        return pageCursor === c2 ? pages.get(2)! : pages.get(3)!;
+      },
+    });
+
+    expect(controller.beginNavigationCommand(3, c3)?.type).toBe("cached");
+    expect(controller.beginNavigationCommand(1, null)?.type).toBe("cached");
+    expect(controller.beginNavigationCommand(3, c3)?.type).toBe("cached");
+    expect(requests).toBe(2);
+  });
+
+  it("continues two pages ahead from a cached navigation without refetching cached pages", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const c3 = { createdAt: `${cursor}-3`, id: id2 };
+    const c4 = { createdAt: `${cursor}-4`, id: id3 };
+    const page1 = { rows: [], hasMore: true, cursor: c2 };
+    const page2 = { rows: [], hasMore: true, cursor: c3 };
+    const page3 = { rows: [], hasMore: true, cursor: c4 };
+    const page4 = { rows: [], hasMore: false, cursor: null };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let requests = 0;
+    const first = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async (pageCursor) => {
+        requests += 1;
+        return pageCursor === c2 ? page2 : page3;
+      },
+    });
+    expect(requests).toBe(2);
+    expect(controller.beginNavigationCommand(2, c2)).toEqual({
+      type: "cached",
+      page: page2,
+    });
+
+    const continued = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page2,
+      initialPageNumber: 2,
+      knownCursors: first.knownCursors,
+      fetchPage: async () => {
+        requests += 1;
+        return page4;
+      },
+    });
+
+    expect(continued.accepted).toBe(true);
+    expect(requests).toBe(3);
+    expect(controller.prefetchedPage(3)).toBe(page3);
+    expect(controller.prefetchedPage(4)).toBe(page4);
+  });
+
+  it("discards task prefetch results after unmount", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let release!: (page: ActivityPage) => void;
+    const pendingPage = new Promise<ActivityPage>((resolve) => { release = resolve; });
+    const pending = prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: { rows: [], hasMore: true, cursor: c2 },
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => pendingPage,
+    });
+    controller.unmount();
+    release({ rows: [], hasMore: false, cursor: null });
+
+    expect(await pending).toMatchObject({ accepted: false });
+    expect(controller.snapshot().prefetchedPageNumbers).toEqual([]);
+    expect(controller.mount()).toBeNull();
+  });
+
+  it("rejects stale task prefetch writes after manual or focus refresh", () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const page1 = { rows: [], hasMore: true, cursor: c2 };
+
+    const manual = createTaskHistoryController();
+    const manualInitial = manual.toggle().requestToken!;
+    expect(manual.settle(manualInitial, true, 1_000)).toBe(true);
+    const manualChain = manual.beginPrefetch(1, page1)!;
+    expect(manual.beginManualRefresh(1, null)).not.toBeNull();
+    expect(
+      manual.cachePrefetchedPage(manualChain, 2, {
+        rows: [], hasMore: false, cursor: null,
+      }),
+    ).toBe(false);
+
+    const focus = createTaskHistoryController();
+    const focusInitial = focus.toggle().requestToken!;
+    expect(focus.settle(focusInitial, true, 1_000)).toBe(true);
+    const focusChain = focus.beginPrefetch(1, page1)!;
+    expect(focus.beginFocusRefresh(2_000, 500, 1, null)).not.toBeNull();
+    expect(
+      focus.cachePrefetchedPage(focusChain, 2, {
+        rows: [], hasMore: false, cursor: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("Refresh invalidates task prefetch cache and restarts from the refreshed page", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const page1 = { rows: [], hasMore: true, cursor: c2 };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let requests = 0;
+    const fetchPage = async () => {
+      requests += 1;
+      return { rows: [], hasMore: false, cursor: null };
+    };
+    await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage,
+    });
+    expect(controller.snapshot().prefetchedPageNumbers).toEqual([1, 2]);
+
+    const refresh = controller.beginManualRefresh(1, null)!;
+    expect(controller.snapshot().prefetchedPageNumbers).toEqual([]);
+    expect(controller.settle(refresh, true, 2_000)).toBe(true);
+    const restarted = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage,
+    });
+    expect(restarted.started).toBe(true);
+    expect(requests).toBe(2);
+  });
+
+  it("keeps a failed task prefetch silent and does not retry it", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const page1 = { rows: [], hasMore: true, cursor: c2 };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let requests = 0;
+    const failed = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => {
+        requests += 1;
+        throw new Error("prefetch failed");
+      },
+    });
+    const retry = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => {
+        requests += 1;
+        return { rows: [], hasMore: false, cursor: null };
+      },
+    });
+    expect(controller.toggle().expanded).toBe(false);
+    expect(controller.toggle().expanded).toBe(true);
+    const retryAfterReopen = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => {
+        requests += 1;
+        return { rows: [], hasMore: false, cursor: null };
+      },
+    });
+
+    expect(failed).toMatchObject({ started: true, accepted: false, failed: true });
+    expect(retry.started).toBe(false);
+    expect(retryAfterReopen.started).toBe(false);
+    expect(requests).toBe(1);
+  });
+
+  it("does not duplicate a completed task prefetch after collapse and re-expand", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const page1 = { rows: [], hasMore: true, cursor: c2 };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let requests = 0;
+    const fetchPage = async () => {
+      requests += 1;
+      return { rows: [], hasMore: false, cursor: null };
+    };
+    const completed = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage,
+    });
+    expect(completed.accepted).toBe(true);
+    expect(controller.toggle().expanded).toBe(false);
+    expect(controller.toggle().expanded).toBe(true);
+    const duplicate = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: completed.knownCursors,
+      fetchPage,
+    });
+
+    expect(duplicate.started).toBe(false);
+    expect(requests).toBe(1);
+  });
+
+  it("does not prefetch after a failed visible task refresh", () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const page1 = { rows: [], hasMore: true, cursor: c2 };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    const refresh = controller.beginManualRefresh(1, null)!;
+    expect(controller.settle(refresh, false, 2_000)).toBe(true);
+    expect(controller.toggle().expanded).toBe(false);
+    expect(controller.toggle().expanded).toBe(true);
+    expect(controller.beginPrefetch(1, page1)).toBeNull();
+  });
+
+  it("does not restart or duplicate task prefetch during a Strict Mode replay", async () => {
+    const c2 = { createdAt: `${cursor}-2`, id: id1 };
+    const page1 = { rows: [], hasMore: true, cursor: c2 };
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    let release!: (page: ActivityPage) => void;
+    let requests = 0;
+    const pendingPage = new Promise<ActivityPage>((resolve) => { release = resolve; });
+    const first = prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => {
+        requests += 1;
+        return pendingPage;
+      },
+    });
+    const duplicate = await prefetchTaskHistoryPageChain({
+      controller,
+      initialPage: page1,
+      initialPageNumber: 1,
+      knownCursors: resetActivityCursorStack(),
+      fetchPage: async () => {
+        requests += 1;
+        return { rows: [], hasMore: false, cursor: null };
+      },
+    });
+    controller.unmount();
+    expect(controller.mount()).toBeNull();
+    release({ rows: [], hasMore: false, cursor: null });
+
+    expect(duplicate.started).toBe(false);
+    expect((await first).accepted).toBe(false);
+    expect(requests).toBe(1);
+  });
+
+  it("retries a failed first load only after the user collapses and reopens", () => {
+    const controller = createTaskHistoryController();
+    const first = controller.toggle().requestToken!;
+    expect(controller.settle(first, false, 1_000)).toBe(true);
+    expect(controller.snapshot()).toMatchObject({
+      expanded: true,
+      initialRequested: false,
+      loaded: false,
+      activeRequestToken: null,
+    });
+    expect(controller.beginFocusRefresh(31_000, 30_000, 1, null)).toBeNull();
+    expect(controller.toggle()).toEqual({ expanded: false, requestToken: null });
+    expect(controller.toggle()).toEqual({ expanded: true, requestToken: 2 });
+  });
+
+  it("does not reopen initial loading for a stale or post-unmount failed settle", () => {
+    const staleController = createTaskHistoryController();
+    const stale = staleController.toggle().requestToken!;
+    const current = staleController.beginNavigation(2, {
+      createdAt: cursor,
+      id: id1,
+    })!;
+    expect(staleController.settle(stale, false, 1_000)).toBe(false);
+    expect(staleController.snapshot()).toMatchObject({
+      initialRequested: true,
+      activeRequestToken: current,
+    });
+
+    const unmountedController = createTaskHistoryController();
+    const unmounted = unmountedController.toggle().requestToken!;
+    unmountedController.unmount();
+    expect(unmountedController.settle(unmounted, false, 1_000)).toBe(false);
+    expect(unmountedController.snapshot().initialRequested).toBe(true);
+  });
+
+  it("refreshes on focus only while expanded, loaded, idle, and stale", () => {
+    const controller = createTaskHistoryController();
+    const first = controller.toggle().requestToken!;
+    expect(controller.beginFocusRefresh(31_000, 30_000, 1, null)).toBeNull();
+    expect(controller.settle(first, true, 1_000)).toBe(true);
+    expect(controller.beginFocusRefresh(30_999, 30_000, 1, null)).toBeNull();
+    const focus = controller.beginFocusRefresh(31_000, 30_000, 1, null);
+    expect(focus).toBe(2);
+    expect(controller.beginFocusRefresh(61_000, 30_000, 1, null)).toBeNull();
+    expect(controller.settle(focus!, true, 31_000)).toBe(true);
+    controller.toggle();
+    expect(controller.beginFocusRefresh(61_000, 30_000, 1, null)).toBeNull();
+  });
+
+  it("rejects an older response after a newer page request", () => {
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    const olderPage = controller.beginNavigation(2, { createdAt: cursor, id: id1 })!;
+    const newerPage = controller.beginNavigation(3, { createdAt: cursor, id: id2 })!;
+    expect(controller.settle(olderPage, true, 2_000)).toBe(false);
+    expect(controller.settle(newerPage, true, 2_001)).toBe(true);
+  });
+
+  it("rejects an older Refresh response after a newer navigation", () => {
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    const refresh = controller.beginManualRefresh(1, null)!;
+    const navigation = controller.beginNavigation(2, { createdAt: cursor, id: id1 })!;
+    expect(controller.settle(refresh, true, 2_000)).toBe(false);
+    expect(controller.settle(navigation, true, 2_001)).toBe(true);
+  });
+
+  it("rejects an in-flight response after unmount", () => {
+    const controller = createTaskHistoryController();
+    const request = controller.toggle().requestToken!;
+    controller.unmount();
+    expect(controller.isCurrent(request)).toBe(false);
+    expect(controller.settle(request, true, 1_000)).toBe(false);
+  });
+
+  it("restarts an interrupted initial load with a new token and rejects the old response", () => {
+    const controller = createTaskHistoryController();
+    const oldToken = controller.toggle().requestToken!;
+    controller.unmount();
+
+    const restart = controller.mount();
+    expect(restart).toEqual({
+      type: "restart",
+      request: {
+        requestToken: 2,
+        reason: "initial",
+        targetPage: 1,
+        cursor: null,
+      },
+    });
+    if (!restart || restart.type !== "restart") throw new Error("Expected restart");
+    expect(controller.settle(oldToken, true, 1_000)).toBe(false);
+    expect(controller.settle(restart.request.requestToken, true, 1_001)).toBe(true);
+    expect(controller.snapshot()).toMatchObject({
+      loaded: true,
+      activeRequestToken: null,
+      interruptedRequest: null,
+    });
+  });
+
+  it("restarts an interrupted page navigation with the same page and cursor", () => {
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    const pageCursor = { createdAt: cursor, id: id1 };
+    const oldNavigation = controller.beginNavigation(2, pageCursor)!;
+    controller.unmount();
+
+    const restart = controller.mount();
+    expect(restart).toEqual({
+      type: "restart",
+      request: {
+        requestToken: 3,
+        reason: "navigation",
+        targetPage: 2,
+        cursor: pageCursor,
+      },
+    });
+    if (!restart || restart.type !== "restart") throw new Error("Expected restart");
+    expect(controller.settle(oldNavigation, true, 1_001)).toBe(false);
+    expect(controller.settle(restart.request.requestToken, true, 1_002)).toBe(true);
+  });
+
+  it("does not restart ordinary mounts, pre-click Strict Mode replay, or completed loads", () => {
+    const controller = createTaskHistoryController();
+    expect(controller.mount()).toBeNull();
+    controller.unmount();
+    expect(controller.mount()).toBeNull();
+
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    controller.unmount();
+    expect(controller.mount()).toBeNull();
+    expect(controller.snapshot().activeRequestToken).toBeNull();
+  });
+
+  it("mounts without a restart after an ordinary collapsed disconnect", () => {
+    const controller = createTaskHistoryController();
+    controller.unmount();
+    expect(controller.mount()).toBeNull();
+    expect(controller.toggle()).toEqual({ expanded: true, requestToken: 1 });
+  });
+
+  it("drops an interrupted initial load when reconnecting collapsed and expands once later", () => {
+    const controller = createTaskHistoryController();
+    const oldToken = controller.toggle().requestToken!;
+    controller.unmount();
+
+    expect(controller.mount(false)).toBeNull();
+    expect(controller.snapshot()).toMatchObject({
+      expanded: false,
+      initialRequested: false,
+      interruptedRequest: null,
+    });
+    expect(controller.toggle()).toEqual({ expanded: true, requestToken: 2 });
+    expect(controller.settle(oldToken, true, 1_000)).toBe(false);
+  });
+
+  it.each([
+    ["navigation", (controller: ReturnType<typeof createTaskHistoryController>) =>
+      controller.beginNavigation(2, { createdAt: cursor, id: id1 })],
+    ["manual Refresh", (controller: ReturnType<typeof createTaskHistoryController>) =>
+      controller.beginManualRefresh(1, null)],
+    ["focus refresh", (controller: ReturnType<typeof createTaskHistoryController>) =>
+      controller.beginFocusRefresh(2_000, 500, 1, null)],
+  ])("clears busy after an interrupted %s reconnects collapsed", (_label, begin) => {
+    const controller = createTaskHistoryController();
+    const initial = controller.toggle().requestToken!;
+    expect(controller.settle(initial, true, 1_000)).toBe(true);
+    expect(begin(controller)).not.toBeNull();
+    controller.unmount();
+
+    expect(controller.mount(false)).toEqual({ type: "clear-busy" });
+    expect(controller.snapshot()).toMatchObject({
+      expanded: false,
+      loaded: true,
+      activeRequestToken: null,
+      interruptedRequest: null,
     });
   });
 
