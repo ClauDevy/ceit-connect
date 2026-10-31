@@ -17,6 +17,10 @@ vi.mock("@/lib/events/event-storage-cleanup.server", () => ({
 }));
 
 import { POST, maxDuration } from "./route";
+import {
+  CLEANUP_PASS_TIME_BUDGET_MS,
+  EVENT_STORAGE_CLEANUP_ROUTE_MAX_DURATION_SECONDS,
+} from "@/lib/events/event-deletion-limits";
 
 function request(body: unknown) {
   return new Request("http://localhost/api/event-storage-cleanup", {
@@ -45,7 +49,11 @@ beforeEach(() => {
 });
 
 describe("event storage cleanup route", () => {
-  it("has an explicit route duration", () => expect(maxDuration).toBe(30));
+  it("pins the literal route duration to its documented limit", () => {
+    expect(maxDuration).toBe(
+      EVENT_STORAGE_CLEANUP_ROUTE_MAX_DURATION_SECONDS,
+    );
+  });
 
   it.each([
     [null],
@@ -99,6 +107,7 @@ describe("event storage cleanup route", () => {
     const timeBudgetMs = mocks.runEventStorageCleanupPass.mock.calls[0]?.[1]?.timeBudgetMs;
     expect(Number.isFinite(timeBudgetMs)).toBe(true);
     expect(timeBudgetMs).toBeGreaterThan(0);
+    expect(timeBudgetMs).toBe(CLEANUP_PASS_TIME_BUDGET_MS);
     expect(timeBudgetMs).toBeLessThan(maxDuration * 1000);
     expect(mocks.countPendingCleanupJobs).toHaveBeenCalledTimes(1);
     expect(mocks.runEventStorageCleanupPass.mock.invocationCallOrder[0])

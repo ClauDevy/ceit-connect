@@ -1,5 +1,6 @@
 import type { createServiceRoleClient } from "@/lib/supabase/server";
-import { CLEANUP_RETRY_LIMIT, deletionErrorMessage } from "@/lib/events/event-deletion";
+import { CLEANUP_RETRY_LIMIT } from "@/lib/events/event-deletion-limits";
+import { deletionErrorMessage } from "@/lib/events/event-deletion";
 
 type ServiceClient = Awaited<ReturnType<typeof createServiceRoleClient>>;
 
