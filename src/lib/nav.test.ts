@@ -14,6 +14,7 @@ describe("role navigation", () => {
       "/archives",
       "/dashboard",
       "/activity-log",
+      "/event-management",
       "/users",
       "/settings",
     ])
@@ -23,7 +24,7 @@ describe("role navigation", () => {
       "/dashboard",
       "/settings",
     ])
-    expect(hrefs(nav.more)).toEqual(["/archives", "/activity-log", "/users"])
+    expect(hrefs(nav.more)).toEqual(["/archives", "/activity-log", "/event-management", "/users"])
   })
 
   it("keeps the complete Co-Admin navigation inventory", () => {
