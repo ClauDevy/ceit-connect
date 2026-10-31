@@ -114,7 +114,7 @@ The four Phase 4 replacements are marked **P4**. The remaining policies are incl
 | `events.events_select` | SELECT / public | Existing active leadership Draft and public lifecycle visibility retained. |
 | `events.events_insert` | INSERT / public | Existing active leadership and server-derived creator checks retained. |
 | `events.events_update` **P4** | UPDATE / public | Active leadership only; raw transition to Archived removed. |
-| `events.events_delete` | DELETE / public | Active Admin only; Archived rows excluded. |
+| `events.events_delete` | removed by Batch 13d | Raw event DELETE is closed; the service-only `delete_event()` RPC accepts Draft/Archived only. |
 | `tasks.tasks_select` **P4** | SELECT / public | Every branch active-gated; backup/viewer/creator/late-share flags grant no raw access. |
 | `tasks.tasks_insert` | INSERT / public | Existing active Admin/owning Co-Admin boundary retained. |
 | `tasks.tasks_update` **P4** | UPDATE / public | Both `USING` and `WITH CHECK` active-gated; assignee raw branch remains status-only. |
