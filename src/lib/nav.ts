@@ -5,6 +5,7 @@ import {
   House,
   ListTodo,
   Settings,
+  Trash2,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ export interface NavItem {
 
 const EVERYONE: readonly Role[] = ["Admin", "Co-Admin", "Member"];
 const LEADERSHIP: readonly Role[] = ["Admin", "Co-Admin"];
+const ADMIN_ONLY: readonly Role[] = ["Admin"];
 
 // Visibility here is UX polish only. Every route behind these links is
 // still guarded server-side (see ARCHITECTURE §4F: hide the door, lock the door).
@@ -32,6 +34,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/archives", label: "Event Archives", icon: Archive, roles: EVERYONE },
   { href: "/dashboard", label: "Executive Dashboard", icon: ChartColumn, roles: LEADERSHIP, pinnedOnMobile: true },
   { href: "/activity-log", label: "Activity Log", icon: History, roles: LEADERSHIP },
+  { href: "/event-management", label: "Event Management", icon: Trash2, roles: ADMIN_ONLY },
   { href: "/users", label: "User Management", icon: Users, roles: LEADERSHIP },
   { href: "/settings", label: "Settings", icon: Settings, roles: EVERYONE, pinnedOnMobile: true, passwordWarning: true },
 ];

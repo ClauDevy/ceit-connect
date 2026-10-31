@@ -389,8 +389,8 @@ begin
   v_results := v_results || format(E'\nARCHIVED_EVENT_UPDATE_STILL_FROZEN: %s', case when v_denied then 'PASS' else 'FAIL' end);
 
   v_denied := false;
-  begin delete from public.events where id = '7b050000-0000-4000-8000-000000000101'; exception when raise_exception then v_denied := true; end;
-  v_results := v_results || format(E'\nARCHIVED_EVENT_DELETE_STILL_FROZEN: %s', case when v_denied then 'PASS' else 'FAIL' end);
+  begin delete from public.events where id = '7b050000-0000-4000-8000-000000000101'; exception when insufficient_privilege or sqlstate 'CCE01' then v_denied := true; end;
+  v_results := v_results || format(E'\nRAW_ARCHIVED_EVENT_DELETE_CLOSED_BY_13D: %s', case when v_denied then 'PASS' else 'FAIL' end);
 
   perform set_config('request.jwt.claims','{"sub":"7b050000-0000-4000-8000-000000000011","role":"authenticated"}',true);
   perform public.revoke_archived_task_viewer('7b050000-0000-4000-8000-000000000201','7b050000-0000-4000-8000-000000000013');
