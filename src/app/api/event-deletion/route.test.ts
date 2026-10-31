@@ -19,6 +19,10 @@ vi.mock("@/lib/events/event-storage-cleanup.server", () => ({
 }));
 
 import { POST, maxDuration } from "./route";
+import {
+  EVENT_DELETION_ROUTE_MAX_DURATION_SECONDS,
+  PRE_DELETION_CLEANUP_BUDGET_MS,
+} from "@/lib/events/event-deletion-limits";
 
 const eventId = "13de0000-0000-4000-8000-000000000001";
 const secondId = "13de0000-0000-4000-8000-000000000002";
@@ -67,7 +71,9 @@ beforeEach(() => {
 });
 
 describe("event deletion route", () => {
-  it("pins the route to 60 seconds", () => expect(maxDuration).toBe(60));
+  it("pins the literal route duration to its documented limit", () => {
+    expect(maxDuration).toBe(EVENT_DELETION_ROUTE_MAX_DURATION_SECONDS);
+  });
 
   it.each([
     [null],
@@ -116,7 +122,9 @@ describe("event deletion route", () => {
   it("runs the 8-second pre-pass then forwards actor and opaque microsecond version", async () => {
     const { rpc } = service();
     await POST(request(body()));
-    expect(mocks.runEventStorageCleanupPass).toHaveBeenCalledWith(expect.anything(), { timeBudgetMs: 8000 });
+    expect(mocks.runEventStorageCleanupPass).toHaveBeenCalledWith(expect.anything(), {
+      timeBudgetMs: PRE_DELETION_CLEANUP_BUDGET_MS,
+    });
     expect(rpc).toHaveBeenCalledWith("delete_event", {
       p_event_id: eventId, p_actor_id: actorId, p_expected_updated_at: version,
     });

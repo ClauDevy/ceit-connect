@@ -2,9 +2,6 @@ import { isCanonicalUuid } from "@/lib/uuid";
 
 export const MAX_EVENTS_PER_DELETION = 10;
 export const EVENT_MANAGEMENT_PAGE_SIZE = 10;
-export const EVENT_DELETION_MAX_DURATION_SECONDS = 60;
-export const PRE_DELETION_CLEANUP_BUDGET_MS = 8_000;
-export const CLEANUP_RETRY_LIMIT = 20;
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIMESTAMP_PATTERN =

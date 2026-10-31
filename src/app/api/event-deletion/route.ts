@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
-  EVENT_DELETION_MAX_DURATION_SECONDS,
-  PRE_DELETION_CLEANUP_BUDGET_MS,
   deletionErrorMessage,
   parseEventDeletionRequest,
   type EventDeletionResult,
 } from "@/lib/events/event-deletion";
+import { PRE_DELETION_CLEANUP_BUDGET_MS } from "@/lib/events/event-deletion-limits";
 import {
   attemptEventStorageCleanup,
   countPendingCleanupJobs,
   runEventStorageCleanupPass,
 } from "@/lib/events/event-storage-cleanup.server";
 
-export const maxDuration = EVENT_DELETION_MAX_DURATION_SECONDS;
+// must stay a literal for Next static analysis; equals EVENT_DELETION_ROUTE_MAX_DURATION_SECONDS in event-deletion-limits.ts.
+export const maxDuration = 60;
 
 type StoredEvent = {
   id: string;

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { CLEANUP_PASS_TIME_BUDGET_MS } from "@/lib/events/event-deletion-limits";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   countPendingCleanupJobs,
   runEventStorageCleanupPass,
 } from "@/lib/events/event-storage-cleanup.server";
 
+// must stay a literal for Next static analysis; equals EVENT_STORAGE_CLEANUP_ROUTE_MAX_DURATION_SECONDS in event-deletion-limits.ts.
 export const maxDuration = 30;
-const CLEANUP_PASS_TIME_BUDGET_MS = 20_000;
 
 const INVALID_REQUEST_MESSAGE = "Invalid cleanup request.";
 
