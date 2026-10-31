@@ -1,6 +1,6 @@
 # Step 13b: Phase completion
 
-**Status:** Planned | **Branch:** `feature/phase-completion` | **Reasoning level:** High (security-critical derived freeze, writer guards, and tests)
+**Status:** Database implementation authored locally; NOT YET RUN or database-verified | **Branch:** `feature/phase-completion` | **Reasoning level:** High (security-critical derived freeze, writer guards, and tests)
 
 ## Goal
 
@@ -228,7 +228,11 @@ Phase completion is derived from authoritative event+canonical-phase task rows. 
 
 ## Open questions for the owner
 
-None.
+None. The owner approved the database-only implementation with shared locks for non-completion writers, exclusive locks for phase membership/status changes, exact Edit Event no-op filtering, a full Completed-lane rebalance regression, self-contained SQL pastes, and opaque Reopen timestamp handling.
+
+## Local database implementation status
+
+Migration `20261031140000_completed_phase_freeze.sql` is implemented locally and has **not** been applied or SQL-verified on Dev or Prod. The database-only run intentionally excludes board/detail/capability reader shapes and all UI. `reopen_completed_phase_task(uuid,timestamptz)` returns task id, status, `sort_order bigint`, canonical phase key, and `phase_complete = false`. The later UI must pass the reader's timestamp string to the RPC unchanged; constructing a JavaScript `Date` loses PostgreSQL microseconds and can create a false stale-version failure, the same boundary lesson documented for Batch 13d.
 
 ## Docs to update when this lands
 
