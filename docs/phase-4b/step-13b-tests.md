@@ -76,7 +76,7 @@ with bodies as (
   lower(regexp_replace((select prosrc from pg_proc where oid='public.guard_completed_phase_task_writes()'::regprocedure),'\s+',' ','g')) task_guard,
   lower(regexp_replace((select prosrc from pg_proc where oid='public.guard_completed_phase_child_writes()'::regprocedure),'\s+',' ','g')) child_guard,
   lower(regexp_replace((select prosrc from pg_proc where oid='public.move_task(uuid,text,text,text,uuid,uuid)'::regprocedure),'\s+',' ','g')) move_body,
-  lower(regexp_replace((select prosrc from pg_proc where oid='public.reopen_completed_phase_task(uuid,timestamptz)'::regprocedure),'\s+',' ','g')) reopen_body
+  lower(regexp_replace(regexp_replace(regexp_replace((select prosrc from pg_proc where oid='public.reopen_completed_phase_task(uuid,timestamptz)'::regprocedure),E'--[^\n\r]*','','g'),'/[*]([^*]|[*]+[^*/])*[*]+/','','g'),'\s+',' ','g')) reopen_body
 )
 insert into public._13b_a_results values
 (59,'task guard event advisory precedes phase',position('try_task_event_advisory_lock' in (select task_guard from bodies))<position('try_task_phase_lock' in (select task_guard from bodies))),
@@ -84,7 +84,7 @@ insert into public._13b_a_results values
 (61,'child guard has no event advisory wait',position('task_dependency_lock_key' in (select child_guard from bodies))=0),
 (62,'child phase acquisition is shared try',position('try_task_phase_lock(v_event_id, v_phase, false)' in (select child_guard from bodies))>0),
 (63,'move event advisory precedes phase and old body',position('task_dependency_lock_key' in (select move_body from bodies))<position('task_phase_lock_key' in (select move_body from bodies)) and position('task_phase_lock_key' in (select move_body from bodies))<position('move_task_pre13b' in (select move_body from bodies))),
-(64,'Reopen event advisory precedes phase and task row',position('task_dependency_lock_key' in (select reopen_body from bodies))<position('task_phase_lock_key' in (select reopen_body from bodies)) and position('task_phase_lock_key' in (select reopen_body from bodies))<position('for update' in (select reopen_body from bodies)));
+(64,'Reopen authorizes before every lock then preserves lock order',position('completed_phase_reopen_actor_allowed' in (select reopen_body from bodies))>0 and position('completed_phase_reopen_actor_allowed' in (select reopen_body from bodies))<position('for share' in (select reopen_body from bodies)) and position('completed_phase_reopen_actor_allowed' in (select reopen_body from bodies))<position('pg_advisory_xact_lock' in (select reopen_body from bodies)) and position('completed_phase_reopen_actor_allowed' in (select reopen_body from bodies))<position('for update' in (select reopen_body from bodies)) and position('task_dependency_lock_key' in (select reopen_body from bodies))<position('task_phase_lock_key' in (select reopen_body from bodies)) and position('task_phase_lock_key' in (select reopen_body from bodies))<position('for update' in (select reopen_body from bodies)));
 
 set constraints all immediate;
 do $$ declare bad text; begin select string_agg(n||' '||label,', ' order by n) into bad from public._13b_a_results where not passed; if (select count(*) from public._13b_a_results)<>64 or bad is not null then raise exception 'STEP 13B A FAIL: %',coalesce(bad,'wrong result count'); end if; end $$;
@@ -505,10 +505,10 @@ with body as (
  ('phase locked before task row',(select position('task_phase_lock_key' in src)<position('for update' in src) from body)),
  ('task identity revalidated after lock',(select position('public.canonical_task_phase(v_phase) is distinct from v_phase_key' in src)>position('for update' in src) from body)),
  ('event status revalidated after task lock',(select length(src)-length(replace(src,'from public.events as event_row',''))=2*length('from public.events as event_row') from body)),
- ('Co-Admin must own event',(select position('v_event_creator is distinct from v_actor' in src)>0 from body)),
- ('Co-Admin masked shell denied',(select position('task_content_access_for_user(p_task_id, v_actor) is distinct from ''real''' in src)>0 from body)),
- ('Admin bypasses content-reader test',(select position('if v_role = ''co-admin''' in src)>0 from body)),
- ('exact timestamp checked after authority',(select position('v_updated_at is distinct from p_expected_updated_at' in src)>position('if v_role = ''co-admin''' in src) from body)),
+ ('shared helper owns Co-Admin event ownership',(select position('event_row.created_by = user_row.id' in lower(prosrc))>0 from pg_proc where oid='ceit_connect_private.completed_phase_reopen_actor_allowed(uuid,uuid,boolean)'::regprocedure)),
+ ('shared helper denies masked content',(select position('task_content_access_for_user(task_row.id, user_row.id) = ''real''' in lower(prosrc))>0 from pg_proc where oid='ceit_connect_private.completed_phase_reopen_actor_allowed(uuid,uuid,boolean)'::regprocedure)),
+ ('shared helper aligns Admin with real content',(select position('user_row.role = ''admin''' in lower(prosrc))>0 and position('task_content_access_for_user(task_row.id, user_row.id) = ''real''' in lower(prosrc))>0 from pg_proc where oid='ceit_connect_private.completed_phase_reopen_actor_allowed(uuid,uuid,boolean)'::regprocedure)),
+ ('exact timestamp checked after authority',(select position('v_updated_at is distinct from p_expected_updated_at' in src)>position('completed_phase_reopen_actor_allowed' in src) from body)),
  ('exact timestamp reused in guarded update',(select position('task_row.updated_at = p_expected_updated_at' in src)>0 from body)),
  ('timestamp never rounded',(select position('date_trunc' in src)=0 and position('extract(epoch' in src)=0 from body)),
  ('complete phase checked under exclusive lock',(select position('task_phase_is_complete(v_event_id, v_phase_key)' in src)>position('task_phase_lock_key' in src) from body)),
