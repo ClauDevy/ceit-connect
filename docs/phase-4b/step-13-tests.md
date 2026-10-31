@@ -135,13 +135,21 @@ do $$ begin
   exception when sqlstate 'CCD01' then null; end;
   if (select count(*) from public.events where created_by=auth.uid() and status='Draft')<>10 then raise exception '10 boundary failed'; end if;
 end $$;
--- Raw Admin DELETE succeeds for Draft, but an Active row is outside events_delete.
-delete from public.events where name=current_setting('ceit_connect.test_token')||'-draft-10';
+-- Batch 13d closes raw event DELETE for every browser role. Draft removal now
+-- goes only through the verified server route and service-only RPC.
+do $$ begin
+  begin
+    delete from public.events where name=current_setting('ceit_connect.test_token')||'-draft-10';
+    raise exception 'raw Draft delete unexpectedly succeeded';
+  exception when insufficient_privilege then null; end;
+end $$;
 insert into public.events(name,start_date,end_date,status,created_by)
 values(current_setting('ceit_connect.test_token')||'-active',current_date,current_date,'Active',auth.uid());
 do $$ begin
-  delete from public.events where name=current_setting('ceit_connect.test_token')||'-active';
-  if found then raise exception 'raw Active delete unexpectedly succeeded'; end if;
+  begin
+    delete from public.events where name=current_setting('ceit_connect.test_token')||'-active';
+    raise exception 'raw Active delete unexpectedly succeeded';
+  exception when insufficient_privilege then null; end;
   raise exception 'TEST RESULTS: STEP 13 DRAFT CAP 9/10/11 PASS';
 end $$;
 ```

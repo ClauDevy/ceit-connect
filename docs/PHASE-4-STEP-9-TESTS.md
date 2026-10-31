@@ -740,9 +740,11 @@ begin
   v_results := v_results || format(E'\nACTIVE_ADMIN_DELETES_ANY_COMMENT: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
   select out_id into v_member_comment from public.add_task_comment('c9050000-0000-4000-8000-000000000203','Cascade comment');
-  delete from public.events where id='c9050000-0000-4000-8000-000000000103';
-  select count(*)=0 into v_ok from public.task_comments where id=v_member_comment;
-  v_results := v_results || format(E'\nAPPROVED_PARENT_CASCADE_REMOVES_COMMENTS: %s', case when v_ok then 'PASS' else 'FAIL' end);
+  v_denied:=false;
+  begin delete from public.events where id='c9050000-0000-4000-8000-000000000103';
+  exception when insufficient_privilege or sqlstate 'CCE01' then v_denied:=true; end;
+  select v_denied and count(*)=1 into v_ok from public.task_comments where id=v_member_comment;
+  v_results := v_results || format(E'\nRAW_DRAFT_EVENT_DELETE_CLOSED_BY_13D: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
   update public.events set status='Archived' where id='c9050000-0000-4000-8000-000000000102';
   select count(*)=1 into v_ok from public.list_task_comments('c9050000-0000-4000-8000-000000000202');

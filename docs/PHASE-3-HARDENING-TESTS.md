@@ -476,8 +476,19 @@ select set_config(
   json_build_object('sub', '11111111-1111-1111-1111-111111111111')::text,
   true
 );
-delete from public.events
-where id = 'c6000000-0000-4000-8000-000000000002';
+do $$ begin
+  begin
+    delete from public.events
+    where id = 'c6000000-0000-4000-8000-000000000002';
+    raise exception 'Batch 13d raw Active delete unexpectedly succeeded.';
+  exception when insufficient_privilege then null; end;
+  if not exists (
+    select 1 from public.events
+    where id = 'c6000000-0000-4000-8000-000000000002'
+  ) then
+    raise exception 'Batch 13d raw-delete denial did not retain the Active event.';
+  end if;
+end $$;
 set constraints all immediate;
 
 rollback;

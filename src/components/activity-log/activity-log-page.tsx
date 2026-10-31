@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronsLeft, ChevronsRight, LoaderCircle, RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 import { ActivityLogList } from "@/components/activity-log/activity-log-list";
+import { ListPager } from "@/components/shared/list-pager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -568,57 +569,26 @@ export function ActivityLogPageClient({
       )}
 
       {showPager && !accessUnavailable ? (
-        <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 grid min-h-20 items-center gap-3 border-t bg-card px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-sm sm:grid-cols-[1fr_auto] md:bottom-0 md:min-h-16 md:px-4 md:py-2">
-          <p className="text-center text-sm text-muted-foreground sm:text-left">
-            Showing {GLOBAL_ACTIVITY_LOG_PAGE_SIZE} per page
-          </p>
-          <nav className="flex min-h-11 items-center justify-center gap-2" aria-label="Activity log pages">
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Previous page block"
-              title="Previous page block"
-              disabled={!arrowTargets.previous || previousCursor === undefined || navigating}
-              onClick={() => arrowTargets.previous && void navigate(arrowTargets.previous)}
-            >
-              <ChevronsLeft aria-hidden />
-            </Button>
-            <div className="grid grid-cols-3 gap-2" aria-label="Known pages">
-              {pagerSlots.map((slot) => {
-                const page = slot.page;
-                return page ? (
-                  <Button
-                    key={slot.key}
-                    variant={page === activePage ? "default" : "outline"}
-                    size="icon"
-                    aria-label={`Page ${page}`}
-                    aria-current={page === activePage ? "page" : undefined}
-                    disabled={page === activePage || navigating}
-                    onClick={() => void navigate(page)}
-                  >
-                    {page}
-                  </Button>
-                ) : (
-                  <span key={slot.key} className="size-11 md:size-9" aria-hidden />
-                );
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label={nextArrowBusy ? "Preparing next page block" : "Next page block"}
-              title={nextArrowBusy ? "Preparing next page block" : "Next page block"}
-              disabled={!window?.hasMore || nextCursor === undefined || navigating}
-              onClick={() => void navigate(arrowTargets.next)}
-            >
-              {nextArrowBusy ? (
-                <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden />
-              ) : (
-                <ChevronsRight aria-hidden />
-              )}
-            </Button>
-          </nav>
-        </div>
+        <ListPager
+          activePage={activePage}
+          ariaLabel="Activity log pages"
+          className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 min-h-20 items-center gap-3 bg-card px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-sm md:bottom-0 md:min-h-16 md:px-4 md:py-2"
+          navigationDisabled={navigating}
+          nextBusy={nextArrowBusy}
+          nextDisabled={!window?.hasMore || nextCursor === undefined}
+          nextTitle={nextArrowBusy ? "Preparing next page block" : "Next page block"}
+          onNext={() => void navigate(arrowTargets.next)}
+          onPage={(page) => void navigate(page)}
+          onPrevious={() =>
+            arrowTargets.previous && void navigate(arrowTargets.previous)
+          }
+          pageSize={GLOBAL_ACTIVITY_LOG_PAGE_SIZE}
+          previousDisabled={
+            !arrowTargets.previous || previousCursor === undefined
+          }
+          previousTitle="Previous page block"
+          slots={pagerSlots}
+        />
       ) : null}
     </div>
   );

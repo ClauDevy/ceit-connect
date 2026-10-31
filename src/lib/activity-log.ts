@@ -782,11 +782,15 @@ export function activityActorInitials(name: string | null) {
 }
 
 export function activityOpenTaskHref(
-  row: Pick<ActivityRow, "taskId" | "isMasked" | "action">,
+  row: Pick<ActivityRow, "taskId" | "eventName" | "isMasked" | "action">,
 ) {
-  return !row.isMasked && row.action !== "DELETE" && isCanonicalUuid(row.taskId)
+  return !row.isMasked && row.eventName !== null && row.action !== "DELETE" && isCanonicalUuid(row.taskId)
     ? `/tasks/${row.taskId}`
     : null;
+}
+
+export function activityEventLabel(eventName: string | null) {
+  return eventName ?? "Deleted event";
 }
 
 function nullableString(value: unknown) {

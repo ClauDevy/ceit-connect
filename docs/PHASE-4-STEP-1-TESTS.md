@@ -661,10 +661,10 @@ begin
   begin
     delete from public.events
     where id = '45000000-0000-4000-8000-000000000101';
-  exception when others then
-    v_blocked := position('Archived events cannot be deleted.' in sqlerrm) > 0;
+  exception when insufficient_privilege then
+    v_blocked := true;
   end;
-  v_results := v_results || format(E'\nARCHIVED_EVENT_DELETE_GUARD_UNCHANGED: %s',
+  v_results := v_results || format(E'\nRAW_ARCHIVED_EVENT_DELETE_CLOSED_BY_13D: %s',
     case when v_blocked then 'PASS' else 'FAIL' end);
 
   v_blocked := false;

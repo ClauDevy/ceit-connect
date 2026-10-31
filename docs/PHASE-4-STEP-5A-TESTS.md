@@ -340,10 +340,16 @@ begin
   where id = '45320000-0000-4000-8000-000000000005';
   update public.tasks set depends_on_task_id = '45320000-0000-4000-8000-000000000007'
   where id = '45320000-0000-4000-8000-000000000006';
-  delete from public.events where id = '45310000-0000-4000-8000-000000000003';
-  v_ok := not exists (select 1 from public.events where id = '45310000-0000-4000-8000-000000000003')
-    and not exists (select 1 from public.tasks where event_id = '45310000-0000-4000-8000-000000000003');
-  v_results := v_results || format(E'\nDRAFT_EVENT_DELETE_WITH_DEPENDENCY_CHAIN_CASCADES: %s', case when v_ok then 'PASS' else 'FAIL' end);
+  v_failed := false;
+  begin
+    delete from public.events where id = '45310000-0000-4000-8000-000000000003';
+  exception when insufficient_privilege then
+    v_failed := true;
+  end;
+  v_ok := v_failed
+    and exists (select 1 from public.events where id = '45310000-0000-4000-8000-000000000003')
+    and exists (select 1 from public.tasks where event_id = '45310000-0000-4000-8000-000000000003');
+  v_results := v_results || format(E'\nRAW_DRAFT_EVENT_DELETE_CLOSED_BY_13D: %s', case when v_ok then 'PASS' else 'FAIL' end);
 
   raise exception 'TEST RESULTS %', v_results;
 end
