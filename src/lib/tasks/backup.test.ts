@@ -54,13 +54,29 @@ describe("Help Wanted query helpers", () => {
 });
 
 describe("Step 8 response validators", () => {
-  it("validates backup state and rejects inconsistent own-offer state", () => {
+  it("validates backup state while preserving non-capability volunteer state", () => {
     expect(isTaskBackupState(backupState)).toBe(true);
     expect(
       isTaskBackupState({
         ...backupState,
         out_can_volunteer: false,
         out_has_volunteered: true,
+        out_volunteers: [
+          {
+            id: "person-1",
+            full_name: "Volunteer",
+            avatar_url: null,
+            created_at: "2026-11-01T00:00:00Z",
+          },
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      isTaskBackupState({
+        ...backupState,
+        out_can_volunteer: false,
+        out_has_volunteered: true,
+        out_volunteers: [{ id: "person-1" }],
       }),
     ).toBe(false);
   });

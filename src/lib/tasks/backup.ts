@@ -103,8 +103,7 @@ export function isTaskBackupState(value: unknown): value is TaskBackupState {
     typeof row.out_has_volunteered === "boolean" &&
     typeof row.out_can_accept === "boolean" &&
     Array.isArray(row.out_volunteers) &&
-    row.out_volunteers.every(isTaskVolunteer) &&
-    (!row.out_has_volunteered || row.out_can_volunteer)
+    row.out_volunteers.every(isTaskVolunteer)
   );
 }
 
