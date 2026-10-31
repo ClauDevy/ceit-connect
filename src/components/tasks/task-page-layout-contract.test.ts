@@ -46,7 +46,7 @@ describe("task page layout contract", () => {
     expect(history.indexOf("<ActivityLogList")).toBeGreaterThan(
       history.indexOf("<Collapse open={expanded}>"),
     );
-    expect(history.indexOf('aria-label="Task history pages"')).toBeGreaterThan(
+    expect(history.indexOf('ariaLabel="Task history pages"')).toBeGreaterThan(
       history.indexOf("<Collapse open={expanded}>"),
     );
     expect(sharedMotion).toContain("inert={!open ? true : undefined}");

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronsLeft, ChevronsRight, RefreshCw } from "lucide-react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import { ActivityLogList } from "@/components/activity-log/activity-log-list";
+import { ListPager } from "@/components/shared/list-pager";
 import { Collapse } from "@/components/shared/motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -306,68 +307,22 @@ export function TaskHistory({ taskId }: { taskId: string }) {
           )}
 
           {showPager && !unavailable ? (
-            <div className="grid gap-2 border-t pt-3 sm:grid-cols-[1fr_auto] sm:items-center">
-              <p className="text-center text-sm text-muted-foreground sm:text-left">
-                Showing {TASK_HISTORY_PAGE_SIZE} per page
-              </p>
-              <nav
-                className="flex min-h-11 items-center justify-center gap-2"
-                aria-label="Task history pages"
-              >
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Previous page block"
-                  disabled={
-                    !arrowTargets.previous ||
-                    previousCursor === undefined ||
-                    busyReason !== null
-                  }
-                  onClick={() =>
-                    arrowTargets.previous && navigate(arrowTargets.previous)
-                  }
-                >
-                  <ChevronsLeft aria-hidden />
-                </Button>
-                <div className="grid grid-cols-3 gap-2" aria-label="Known pages">
-                  {pagerSlots.map((slot) => {
-                    const pageNumber = slot.page;
-                    return pageNumber ? (
-                      <Button
-                        key={slot.key}
-                        variant={pageNumber === activePage ? "default" : "outline"}
-                        size="icon"
-                        aria-label={`Page ${pageNumber}`}
-                        aria-current={pageNumber === activePage ? "page" : undefined}
-                        disabled={pageNumber === activePage || busyReason !== null}
-                        onClick={() => navigate(pageNumber)}
-                      >
-                        {pageNumber}
-                      </Button>
-                    ) : (
-                      <span
-                        key={slot.key}
-                        className="size-11 md:size-9"
-                        aria-hidden
-                      />
-                    );
-                  })}
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Next page block"
-                  disabled={
-                    !page?.hasMore ||
-                    nextCursor === undefined ||
-                    busyReason !== null
-                  }
-                  onClick={() => navigate(arrowTargets.next)}
-                >
-                  <ChevronsRight aria-hidden />
-                </Button>
-              </nav>
-            </div>
+            <ListPager
+              activePage={activePage}
+              ariaLabel="Task history pages"
+              navigationDisabled={busyReason !== null}
+              nextDisabled={!page?.hasMore || nextCursor === undefined}
+              onNext={() => navigate(arrowTargets.next)}
+              onPage={navigate}
+              onPrevious={() =>
+                arrowTargets.previous && navigate(arrowTargets.previous)
+              }
+              pageSize={TASK_HISTORY_PAGE_SIZE}
+              previousDisabled={
+                !arrowTargets.previous || previousCursor === undefined
+              }
+              slots={pagerSlots}
+            />
           ) : null}
         </div>
       </Collapse>

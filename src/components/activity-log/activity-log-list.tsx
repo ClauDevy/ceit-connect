@@ -21,6 +21,7 @@ import {
   ACTIVITY_ACTION_LABELS,
   ACTIVITY_ACTION_PRESENTATION,
   activityActorInitials,
+  activityEventLabel,
   activityMotionState,
   activityOpenTaskHref,
   type ActivityRow,
@@ -118,7 +119,7 @@ function RowDetails({ row, global }: { row: ActivityRow; global: boolean }) {
     <div>
       <p className="font-medium">{row.taskTitle}</p>
       <p className="text-xs text-muted-foreground">
-        {[row.eventName, row.committeeName].filter(Boolean).join(" · ")}
+        {[activityEventLabel(row.eventName), row.committeeName].filter(Boolean).join(" · ")}
       </p>
     </div>
   );
@@ -166,7 +167,7 @@ function GlobalTask({ row }: { row: ActivityRow }) {
       <p className="truncate font-semibold text-foreground">{row.taskTitle}</p>
       <div className="mt-0.5 flex min-w-0 items-center gap-2">
         <span className="truncate text-xs text-muted-foreground">
-          {row.eventName ?? "—"}
+          {activityEventLabel(row.eventName)}
         </span>
         {row.committeeName ? (
           <Badge variant="neutral" className="max-w-40 truncate py-0 text-[11px] font-medium">

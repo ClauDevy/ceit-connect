@@ -1,6 +1,6 @@
 # Step 13d: Event deletion
 
-**Status:** 13d-DB implemented locally and unapplied; 13d-UI/route not started | **Branch:** `feature/event-deletion` | **Reasoning level:** High (security-critical event/task deletion, archive guards, and immutable history)
+**Status:** 13d-DB applied and SQL-verified on Dev; 13d-UI/routes implemented and automated locally; nothing applied on Prod and browser verification remains | **Branch:** `feature/event-deletion` | **Reasoning level:** High (security-critical event/task deletion, archive guards, and immutable history)
 
 ## Goal
 
@@ -10,11 +10,11 @@ The stable run order for this group is **13, 13c, 13e, 13d, 13b**. Batch 13d run
 
 ## Local database implementation
 
-Migration `20261031130000_event_deletion.sql` implements the database half only. Dev/Prod application and the 64/58/47-line SQL pastes remain owner-run. The dedicated `ceit_event_delete_executor` role is created only when absent and catalog-checked as `NOLOGIN`, `NOINHERIT`, `NOSUPERUSER`, `NOCREATEROLE`, `NOCREATEDB`, `NOREPLICATION`, and `NOBYPASSRLS`. PostgreSQL 16+ must retain only its automatic creator membership for `postgres` with `ADMIN TRUE`, `INHERIT FALSE`, and `SET FALSE`; PostgreSQL 15 must retain no membership. Hosted Supabase's managed postgres migration role can create roles, as already documented for Phase 4; the migration preflight stops before schema changes if that authority is unavailable, so Dev and Prod use the same role creation and validation path. There is no GUC fallback.
+Migration `20261031130000_event_deletion.sql` implements the database half. The owner applied it on Dev and confirmed rollback-safe Pastes A/B/C pass **64/64**, **58/58**, and **47/47**; Prod remains unapplied. The dedicated `ceit_event_delete_executor` role is created only when absent and catalog-checked as `NOLOGIN`, `NOINHERIT`, `NOSUPERUSER`, `NOCREATEROLE`, `NOCREATEDB`, `NOREPLICATION`, and `NOBYPASSRLS`. PostgreSQL 16+ must retain only its automatic creator membership for `postgres` with `ADMIN TRUE`, `INHERIT FALSE`, and `SET FALSE`; PostgreSQL 15 must retain no membership. Hosted Supabase's managed postgres migration role can create roles, as already documented for Phase 4; the migration preflight stops before schema changes if that authority is unavailable, so Dev and Prod use the same role creation and validation path. There is no GUC fallback.
 
 The executor owns only `delete_event(uuid,uuid,timestamptz)`, has schema usage, exact SELECT/INSERT/DELETE access to the RLS-protected transaction-context table, and execute on the postgres-owned actor and deletion helpers. It receives no privilege on `public.users` and no users policy. The actor helper runs before context creation and every lock. The delete helper then locks event row → event dependency advisory key → sorted event task rows → every catalog-enumerated child FK row. Its FK inventory includes the task dependency self-reference and fails closed if `pg_constraint` contains any unreviewed FK referencing `events` or `tasks`.
 
-Banner-job paths use the same event-folder/random-WebP rule as `event_banner_url_is_valid`. A null banner creates no job. A stored non-null banner that is invalid or already missing does not make the event undeletable: deletion succeeds, no cleanup job is inserted, and `out_cleanup_unavailable` is true. The later route must report that warning. Cleanup retry work is separately committed and may never gate a confirmed deletion run, including on retry error or when its 20-job pass reaches the cap.
+Banner-job paths use the same event-folder/random-WebP rule as `event_banner_url_is_valid`. A null banner creates no job. A stored non-null banner that is invalid or already missing does not make the event undeletable: deletion succeeds, no cleanup job is inserted, and `out_cleanup_unavailable` is true. The route reports that warning. Cleanup retry work is separately committed and may never gate a confirmed deletion run, including on retry error or when its 20-job pass reaches the cap.
 
 Repository audit found no application route, component, script, or fixture using raw/service-role event DELETE. The only current Batch 13 raw-Draft path is the SQL verification in `step-13-tests.md`; it is updated to assert denial. Older historical raw-delete fixtures are listed under reruns below and are superseded for whole-event cascade proof by Paste B's service-role RPC coverage. The UI part must not add a second delete control: `/event-management` and its verified route will be the only UI path, so there are no old buttons to retain or redirect. Both parts still ship in one PR before any Prod push.
 
@@ -128,6 +128,15 @@ If the Storage delete succeeds but finalization loses its lease, logs must recor
 - A stale event that became Active is rejected even if it remained selected in the browser.
 - Successful deletion invalidates Home, Archives, event, activity, and relevant task/feed queries. It does not claim that a failed banner cleanup also succeeded.
 
+### Implemented UI and route boundary
+
+- `/event-management` guards itself for an active Admin, reads only Draft/Archived event list fields through the caller session, and adds the Admin-only shared navigation entry. `events.start_date` is a PostgreSQL `date`, so the descending year list is built from unique canonical date-string years; `All years` is the default and a defensive null date appears only there.
+- The management list uses the shared three-slot Task History/Activity Log pager at ten filtered rows per page. Selection persists across pages, remains capped at ten, snapshots each event version without silently adopting refreshed timestamps, and resets with the year filter. Desktop and mobile expose page-scoped tri-state checkboxes; whole-row pointer selection ignores checkbox bubbling and selected-text drags. Compact bulk actions remain clear of the mobile navigation, Draft and Archived use the same neutral readable badge treatment as Home/Archives, successful deletion focuses its result summary, and an authoritative refresh clamps a vanished last page.
+- `POST /api/event-storage-cleanup` accepts exactly `{action:"status"}` or `{action:"retry"}`. Both actions verify the active Admin before service-role construction. Status returns only the pending/failed count; Retry sequentially claims at most 20 jobs.
+- `POST /api/event-deletion` accepts 1-10 unique event ids with opaque formatted `expectedUpdatedAt` strings and the typed confirmation. Bulk confirmation uses the submitted count even when a row is already gone. The route re-reads names and versions, passes each untouched timestamp string and the authenticated actor id to the one-row RPC, and maps errors only by code.
+- Every confirmed deletion run gives old cleanup work an **8-second** pre-pass budget under an explicit **60-second** route maximum. It then performs up to ten sequential deletions and attempts each returned cleanup job only after that deletion commits, for at most 20 old plus 10 new Storage attempts. Unfinished work stays durable for Retry.
+- Activity Log orphan rows now display `Deleted event` and never render an Open task link when the retained task UUID has no live event name.
+
 ## Guards that must remain true
 
 - Only a current active Admin may call the deletion boundary successfully.
@@ -176,7 +185,7 @@ If the Storage delete succeeds but finalization loses its lease, logs must recor
 
 ## Test deliverable
 
-`docs/phase-4b/step-13d-tests.md` now contains independent rollback-safe Dev SQL Pastes A/B/C with **64**, **58**, and **47** named result lines, each ending in an intentional `TEST RESULTS` exception. Route/result tests and the manual destructive-flow run remain part of 13d-UI/route.
+`docs/phase-4b/step-13d-tests.md` contains independent rollback-safe Dev SQL Pastes A/B/C with **64**, **58**, and **47** named result lines, each ending in an intentional `TEST RESULTS` exception; the owner confirmed all three pass on Dev. Route, cleanup-worker, pure-helper, page-guard, navigation, Activity Log orphan, pagination, immutable selection-version, selection-cap, row-click, and reduced-motion contracts are automated locally. The manual destructive-flow/browser run remains pending.
 
 Cover active/inactive/profile-less Admin, Co-Admin, Member, and unauthenticated route callers; direct `delete_event()` calls from `PUBLIC`/`anon`/`authenticated`; forged actor ids; Draft, Active, Archived, unknown, stale, and double-submit cases; raw DELETE denial; exact one-row effects; event/task/work-link/comment/volunteer/archive-viewer/notification cascades; dependency chains; completed and incomplete tasks; concurrent lifecycle change; Archived guard non-regression; retained UUIDs in INSERT/UPDATE/DELETE activity rows; historical null preservation; immutable log grants/policies; confidential orphan masking; year filtering; visible-only bulk selection; typed confirmation; partial results; exact banner object cleanup; wrong-path rejection; and Storage cleanup failure after successful database deletion.
 
@@ -210,7 +219,7 @@ None.
 
 ## Docs to update when this lands
 
-- Update this file and `docs/PROGRESS.md` only after implementation and verification; do not claim Dev/Prod application without owner confirmation.
-- Run `docs/phase-4b/step-13d-tests.md` on Dev after the owner applies the migration; do not claim those results before then.
+- Do not claim Prod application until the owner applies and verifies the migration there.
+- Complete the manual destructive-flow/browser matrix before merge.
 - Update `docs/ARCHITECTURE.md` and `docs/DATABASE.md` with the final service-only deletion RPC, actor re-verification, raw-delete closure, guard exception, activity UUID/no-FK contract, cascade behavior, cleanup-job table, and Storage API retry boundary.
 - Add Batch 13d objects, cleanup-job grants/RLS/constraints, and constraint/trigger changes to the post-13b authoritative Phase 4B catalog and Batch 14 allowlists.

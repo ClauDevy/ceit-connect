@@ -13,6 +13,7 @@ import {
   activityBlockArrowTargets,
   activityCursorStackToPage,
   activityCursorForPage,
+  activityEventLabel,
   activityFiltersToRpc,
   activityCommitteeLabels,
   activityLogQueryKey,
@@ -1042,16 +1043,23 @@ describe("activity log helpers", () => {
   });
 
   it("builds Open task links only for valid visible non-delete rows", () => {
-    expect(activityOpenTaskHref({ taskId: id1, isMasked: false, action: "UPDATE" }))
+    expect(activityOpenTaskHref({ taskId: id1, eventName: "Event", isMasked: false, action: "UPDATE" }))
       .toBe(`/tasks/${id1}`);
-    expect(activityOpenTaskHref({ taskId: id2, isMasked: false, action: "INSERT" }))
+    expect(activityOpenTaskHref({ taskId: id2, eventName: "Event", isMasked: false, action: "INSERT" }))
       .toBe(`/tasks/${id2}`);
-    expect(activityOpenTaskHref({ taskId: "not-a-uuid", isMasked: false, action: "UPDATE" }))
+    expect(activityOpenTaskHref({ taskId: "not-a-uuid", eventName: "Event", isMasked: false, action: "UPDATE" }))
       .toBeNull();
-    expect(activityOpenTaskHref({ taskId: id1, isMasked: true, action: "UPDATE" }))
+    expect(activityOpenTaskHref({ taskId: id1, eventName: "Event", isMasked: true, action: "UPDATE" }))
       .toBeNull();
-    expect(activityOpenTaskHref({ taskId: id1, isMasked: false, action: "DELETE" }))
+    expect(activityOpenTaskHref({ taskId: id1, eventName: "Event", isMasked: false, action: "DELETE" }))
       .toBeNull();
+    expect(activityOpenTaskHref({ taskId: id1, eventName: null, isMasked: false, action: "UPDATE" }))
+      .toBeNull();
+  });
+
+  it("labels orphaned history without offering a missing task page", () => {
+    expect(activityEventLabel(null)).toBe("Deleted event");
+    expect(activityEventLabel("Foundation Week")).toBe("Foundation Week");
   });
 
   it("derives actor initials by Unicode code points", () => {
