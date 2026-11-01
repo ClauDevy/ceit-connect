@@ -1,6 +1,6 @@
 # Step 13b — database verification
 
-> **NOT YET RUN.** These pastes were authored from the local migration source. No result below is a Dev or Prod verification claim.
+> **Status:** All six Step 13b pastes were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). After the UI-reader migration replaced Reopen, Pastes A 64/64, E 46/46, and F 38/38 were rerun and owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). No Prod result is claimed.
 
 Run each paste separately in the **Dev** SQL Editor with **Run without RLS** enabled. Never run them in Prod. Every paste creates its own Auth/profile/event/task fixtures, uses a normal transaction-owned result table (never a temporary table), forces deferred checks with `set constraints all immediate`, and ends in an intentional exception so its fixtures roll back. None touches `storage.objects`.
 
@@ -602,3 +602,20 @@ rollback;
 ## Owner-run manual concurrency notes
 
 The catalog/body proofs above do not claim true two-session execution. For live Dev review, hold an ordinary shared phase lock in session A, start `move_task` in session B and confirm it waits before task rows, then release A and confirm B revalidates. Reverse the order by holding the exclusive phase lock in session A and invoking a comment/link/claim in B; B must return `40001` immediately rather than wait. Repeat with a raw task status update already holding its task row; its event-advisory or phase acquisition must fail fast.
+
+## Run 2 — completed-phase UI
+
+Status: **IMPLEMENTED LOCALLY; MANUAL BROWSER CHECKS NOT YET RUN.** UI Paste A 24/24, UI Paste B 36/36, and UI Paste C 16/16 were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). No Prod result is claimed.
+
+The ordinary Vitest suite covers absent/malformed/contradictory additive fields, strict legacy fields, named-phase completion and Unphased exclusion, masked-safe Reopen filtering, opaque timestamp identity, Draft mutation exclusion, drag reconciliation, and the restartable Active/Draft disclosure controller. Its sequence covers deterministic Strict Mode initialization, server-first collapse, phase switching, explicit expansion surviving same-completion polling, incomplete clearing that choice, re-completion defaulting closed, and user-Reopen expansion/focus intent. Source contracts pin the shared inert `Collapse` plus `aria-expanded`/`aria-controls`. Completed capability-reader shapes are accepted for edit controls, work links, comments, backup state, leave requests, and task detail while malformed legacy fields remain rejected. The task-detail read-only inventory, every fixed phase error, preserved existing mapper copy, and refresh-before-message classification remain covered. `/api/active-task` route tests remain unchanged.
+
+Manual Dev browser checklist:
+
+1. Active Admin: hard-refresh directly onto a complete named phase and confirm the server-rendered and hydrated view has a checked/struck tab, accessible complete text, and one collapsed disclosure with no empty reserved block or opening height transition. Confirm collapsed cards are absent from keyboard and screen-reader navigation. Expand it and confirm readable cards have no drag, Move, Undo, Claim, Add, or Edit. Confirm the explicit expansion survives polling while the phase stays complete, but is cleared after the phase becomes incomplete so a later re-completion defaults closed. Confirm Add/Edit phase suggestions omit it.
+2. Open Reopen: confirm only eligible real-content tasks appear, with no hidden total. Reopen one; it must appear In Progress in an ordinary expanded phase and focus must move to that phase tab.
+3. Repeat as owner Co-Admin. As non-owner Co-Admin and Member, confirm no Reopen. Deactivate the owner in another Admin session and confirm Reopen disappears after refresh.
+4. With confidential/masked content, confirm no identity/count leaks. Confirm Unphased never gets completed styling.
+5. During pointer, touch, and keyboard drags, complete the phase elsewhere. Refresh must cancel drag/optimistic/Undo state and make the phase collapsed/read-only. Polling and focus refresh must never steal focus.
+6. Draft: hard-refresh a completed phase and confirm its existing shared Collapse has no first-render reserved height; its toggle reports and controls the disclosure state accessibly. Make unsaved task edits, complete that phase elsewhere, and wait for refresh. Confirm `Changes to this phase were discarded because it is now complete`, task/phase mutations are omitted, metadata stays unsaved and intact, and a metadata-only save succeeds. Reopen must use server candidates only.
+7. Active and Archived task detail: confirm checked phase badge/read-only notice; description, assignments, links, comments, and History remain readable; every mutation control is absent; Reopen is absent.
+8. Exercise `CCQ01`, `CCQ05`–`CCQ07`, `40001`, `40P01`, plus lifecycle `CCQ02`/`CCQ04`. Readers/capabilities refresh before fixed safe text; a failed refresh still shows the text and never hangs.

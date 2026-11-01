@@ -35,13 +35,13 @@ describe("getEventSaveErrorMessage", () => {
     expect(message).not.toContain("123");
   });
 
-  it("preserves other database messages", () => {
+  it("uses fixed generic copy for unmapped database messages", () => {
     expect(
       getEventSaveErrorMessage({
         code: "23505",
         message: "A database validation failed.",
       }),
-    ).toBe("A database validation failed.");
+    ).toBe("The event could not be saved. Please try again.");
   });
 
   it.each([

@@ -4,7 +4,7 @@ import { TaskDetail } from "@/components/tasks/task-detail";
 import { TaskDetailSkeleton } from "@/components/tasks/task-detail-skeleton";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import {
-  isTaskDetail,
+  parseTaskDetail,
   type TaskDetail as TaskDetailData,
 } from "@/lib/tasks/detail";
 import {
@@ -74,9 +74,9 @@ async function TaskData({
   } else if (
     Array.isArray(detailResult.data) &&
     detailResult.data.length === 1 &&
-    isTaskDetail(detailResult.data[0])
+    parseTaskDetail(detailResult.data[0]) !== null
   ) {
-    initialTask = detailResult.data[0];
+    initialTask = parseTaskDetail(detailResult.data[0]);
   } else {
     console.error("Task detail returned invalid data.");
   }

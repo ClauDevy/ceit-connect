@@ -1,3 +1,5 @@
+import { getPhaseCompletionErrorMessage } from "./phase-completion";
+
 export type TaskLeaveRequest = {
   out_id: string;
   out_task_id: string;
@@ -37,6 +39,8 @@ export function getTaskLeaveErrorMessage(error: unknown) {
   if (code === "CCL20") return "You have reached the pending leave-request limit.";
   if (code === "CCL02") return "This leave request is no longer pending.";
   if (code === "40001") return "This leave request changed. Refresh and try again.";
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return phaseMessage;
   return "The leave request could not be updated. Please try again.";
 }
 

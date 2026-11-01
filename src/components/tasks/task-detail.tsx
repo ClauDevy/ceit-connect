@@ -10,6 +10,7 @@ import {
   Archive,
   ArrowLeft,
   CalendarClock,
+  CheckCircle2,
   LockKeyhole,
   Pencil,
   RefreshCw,
@@ -50,7 +51,7 @@ import {
 } from "@/lib/tasks/active-task-ui";
 import {
   getTaskBackHref,
-  isTaskDetail,
+  parseTaskDetail,
   type TaskDetail as TaskDetailData,
 } from "@/lib/tasks/detail";
 import {
@@ -323,6 +324,12 @@ function RealTask({
           </span>
         </InlineAlert>
       ) : null}
+      {task.phaseComplete ? (
+        <InlineAlert variant="info" className="flex items-start gap-2.5">
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>This phase is complete. Task details remain readable, but changes are disabled.</span>
+        </InlineAlert>
+      ) : null}
 
       {task.is_blocked ? (
         <InlineAlert variant="info" className="flex items-start gap-2.5">
@@ -357,6 +364,11 @@ function RealTask({
                 />
               ) : null}
               <Badge variant="neutral">{taskTypeLabel}</Badge>
+              <Badge variant={task.phaseComplete ? "success" : "outline"}>
+                {task.phaseComplete ? <CheckCircle2 className="size-3.5" aria-hidden /> : null}
+                {task.phase?.trim() || "Unphased"}
+                {task.phaseComplete ? <span className="sr-only"> complete</span> : null}
+              </Badge>
             </div>
             <h1 className="max-w-3xl font-display text-2xl font-semibold tracking-tight sm:text-3xl">
               {task.title}
@@ -365,7 +377,7 @@ function RealTask({
               {task.event_name} · {task.committee_name}
             </p>
           </div>
-          {canEditTask || backup.data?.out_can_toggle_backup ? (
+          {!task.phaseComplete && (canEditTask || backup.data?.out_can_toggle_backup) ? (
             <div className="flex items-center gap-2 sm:shrink-0">
               {canEditTask ? (
                 <Button
@@ -412,18 +424,22 @@ function RealTask({
               </p>
             </CardContent>
           </Card>
-          <WorkLinksSection {...workLinks} />
+          <WorkLinksSection {...workLinks} data={task.phaseComplete && workLinks.data ? {
+            ...workLinks.data,
+            can_add: false,
+            links: workLinks.data.links.map((link) => ({ ...link, can_remove: false })),
+          } : workLinks.data} />
           <TaskComments
             taskId={task.id}
-            isArchived={task.event_status === "Archived"}
+            isArchived={task.event_status === "Archived" || task.phaseComplete}
             onRefreshTask={onRefreshTask}
           />
           <TaskHistory key={task.id} taskId={task.id} />
         </div>
 
         <aside className="space-y-4">
-          <TaskLeaveRequests taskId={task.id} />
-          {backup.data ? (
+          {!task.phaseComplete ? <TaskLeaveRequests taskId={task.id} /> : null}
+          {!task.phaseComplete && backup.data ? (
             <TaskBackupRequestedCard
               state={backup.data}
               busyAction={backup.busyAction}
@@ -448,7 +464,7 @@ function RealTask({
             </CardContent>
           </Card>
 
-          {editControls.data ? (
+          {!task.phaseComplete && editControls.data ? (
             <>
               <TaskEditControls
                 viewerId={viewerId}
@@ -469,7 +485,7 @@ function RealTask({
             </>
           ) : null}
 
-          {task.is_confidential && task.event_status === "Archived" ? (
+          {task.is_confidential && task.event_status === "Archived" && !task.phaseComplete ? (
             <ArchivedTaskSharing taskId={task.id} viewers={task.access_list} />
           ) : task.is_confidential &&
             !editControls.data?.can_set_confidentiality ? (
@@ -593,10 +609,11 @@ function TaskDetailContents({
         throw new Error("The task detail returned an invalid response.");
       }
       if (data.length === 0) return null;
-      if (!isTaskDetail(data[0])) {
+      const parsed = parseTaskDetail(data[0]);
+      if (!parsed) {
         throw new Error("The task detail returned an invalid response.");
       }
-      return data[0];
+      return parsed;
     },
     enabled: canFetch,
     initialData: initialTask,
@@ -786,6 +803,7 @@ function TaskDetailContents({
       }
       setBackupNotice("You volunteered to help.");
     } catch (error) {
+      try { await refreshAccess(); } catch { /* fixed message still appears */ }
       setBackupError(getTaskBackupErrorMessage("volunteer", error));
     } finally {
       try {
@@ -815,6 +833,7 @@ function TaskDetailContents({
       }
       setBackupNotice("Your volunteer offer was withdrawn.");
     } catch (error) {
+      try { await refreshAccess(); } catch { /* fixed message still appears */ }
       setBackupError(getTaskBackupErrorMessage("withdraw", error));
     } finally {
       try {
@@ -842,6 +861,7 @@ function TaskDetailContents({
       }
       setBackupNotice(getAcceptVolunteerOutcomeMessage(result.out_outcome));
     } catch (error) {
+      try { await refreshAccess(); } catch { /* fixed message still appears */ }
       setBackupError(getTaskBackupErrorMessage("accept", error));
     } finally {
       try {
@@ -1104,7 +1124,7 @@ function TaskDetailContents({
           }}
         />
       )}
-      {editDialogOpen && !query.data.is_masked ? (
+      {editDialogOpen && !query.data.is_masked && !query.data.phaseComplete ? (
         <ActiveTaskDialog
           open
           onOpenChange={setEditDialogOpen}

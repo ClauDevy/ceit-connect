@@ -6,8 +6,18 @@ import {
   parseDraftPhaseCompletionState,
   parseTaskDetailPhaseComplete,
   PHASE_COMPLETION_ERROR_MESSAGES,
+  PHASE_COMPLETION_REFRESH_MESSAGES,
+  getEffectiveReopenCandidate,
+  getReopenCandidates,
+  initializePhaseDisclosure,
+  reconcilePhaseDisclosureAfterRefresh,
+  revealReopenedPhase,
+  selectPhaseDisclosure,
+  setPhaseDisclosureExpanded,
+  applySuccessfulReopenState,
   shouldRefetchAfterPhaseCompletionError,
 } from "./phase-completion";
+import { ACTIVE_TASK_EXISTING_ERROR_MESSAGES } from "./active-task";
 
 describe("phase-completion reader parsing", () => {
   it("normalizes missing board fields for the app-before-migration window", () => {
@@ -42,30 +52,159 @@ describe("phase-completion reader parsing", () => {
     expect(parsed?.reopenUpdatedAt).toBe(timestamp);
   });
 
-  it("rejects malformed or internally inconsistent new fields", () => {
-    expect(parseBoardPhaseCompletionState({ phase_complete: "yes" })).toBeNull();
+  it("treats malformed or internally inconsistent new fields as absent", () => {
+    expect(parseBoardPhaseCompletionState({ phase_complete: "yes" })).toEqual({ phaseComplete: false, canReopen: false, reopenUpdatedAt: null });
     expect(parseBoardPhaseCompletionState({
       phase_complete: false,
       can_reopen: true,
       updated_at: "token",
-    })).toBeNull();
+    })).toEqual({ phaseComplete: false, canReopen: false, reopenUpdatedAt: null });
     expect(parseDraftPhaseCompletionState({
       out_phase_complete: true,
       out_can_reopen: true,
       out_updated_at: null,
-    })).toBeNull();
-    expect(parseTaskDetailPhaseComplete({ phase_complete: 1 })).toBeNull();
+    })).toEqual({ phaseComplete: false, canReopen: false, reopenUpdatedAt: null });
+    expect(parseTaskDetailPhaseComplete({ phase_complete: 1 })).toBe(false);
+  });
+
+  it("filters candidates without leaking masked or unavailable tasks and preserves timestamp identity", () => {
+    const timestamp = "opaque-token";
+    expect(getReopenCandidates([
+      { id: "yes", title: "Visible", phase: "Setup", phaseComplete: true, canReopen: true, reopenUpdatedAt: timestamp },
+      { id: "masked", title: "Hidden", phase: "Setup", phaseComplete: true, canReopen: true, reopenUpdatedAt: "hidden", isMasked: true },
+      { id: "no", title: "No", phase: "Setup", phaseComplete: true, canReopen: false, reopenUpdatedAt: null },
+    ], "Setup")).toEqual([{ id: "yes", title: "Visible", phase: "Setup", updatedAt: timestamp }]);
+    expect(getReopenCandidates([{ id: "u", title: "U", phase: null, phaseComplete: true, canReopen: true, reopenUpdatedAt: timestamp }], "Unphased")).toEqual([]);
+  });
+
+  it("falls back to the first current Reopen candidate when the selected id disappears", () => {
+    const candidates = [
+      { id: "first", title: "First", phase: "Setup", updatedAt: "opaque-first" },
+      { id: "second", title: "Second", phase: "Setup", updatedAt: "opaque-second" },
+    ];
+
+    expect(getEffectiveReopenCandidate(candidates, "removed")).toBe(candidates[0]);
+  });
+
+  it("returns null at submit time when there are no current Reopen candidates", () => {
+    expect(getEffectiveReopenCandidate([], "removed")).toBeNull();
+  });
+
+  it("uses the refreshed exact opaque timestamp when the selected Reopen id remains", () => {
+    const oldTimestamp = "2026-11-01T12:34:56.111111+00:00";
+    const newTimestamp = "2026-11-01T12:34:56.222222+00:00";
+    const refreshedCandidates = [
+      { id: "selected", title: "Selected", phase: "Setup", updatedAt: newTimestamp },
+      { id: "other", title: "Other", phase: "Setup", updatedAt: "opaque-other" },
+    ];
+
+    const submittedCandidate = getEffectiveReopenCandidate(
+      refreshedCandidates,
+      "selected",
+    );
+
+    expect(submittedCandidate).toBe(refreshedCandidates[0]);
+    expect(submittedCandidate?.updatedAt).toBe(newTimestamp);
+    expect(submittedCandidate?.updatedAt).not.toBe(oldTimestamp);
+  });
+
+  it("restarts disclosure deterministically across selection, refresh, explicit expansion, and Reopen", () => {
+    const phases = ["Complete", "Open"];
+    const initialized = initializePhaseDisclosure(
+      phases,
+      new Set(["Complete"]),
+    );
+    expect(initialized.activePhase).toBe("Complete");
+    expect([...initialized.collapsedPhases]).toEqual(["Complete"]);
+
+    const switched = selectPhaseDisclosure(initialized, "Open");
+    expect(switched.activePhase).toBe("Open");
+    expect([...switched.collapsedPhases]).toEqual(["Complete"]);
+
+    const expanded = setPhaseDisclosureExpanded(switched, "Complete", true);
+    expect([...expanded.collapsedPhases]).toEqual([]);
+    const switchedBack = selectPhaseDisclosure(expanded, "Complete");
+    expect(switchedBack.activePhase).toBe("Complete");
+    expect([...switchedBack.collapsedPhases]).toEqual([]);
+    const stillComplete = reconcilePhaseDisclosureAfterRefresh(
+      switchedBack,
+      phases,
+      new Set(["Complete"]),
+    );
+    expect([...stillComplete.collapsedPhases]).toEqual([]);
+    expect(stillComplete.focusPhase).toBeNull();
+
+    const incomplete = reconcilePhaseDisclosureAfterRefresh(
+      stillComplete,
+      phases,
+      new Set(),
+    );
+    expect([...incomplete.collapsedPhases]).toEqual([]);
+    const completedAgain = reconcilePhaseDisclosureAfterRefresh(
+      incomplete,
+      phases,
+      new Set(["Complete"]),
+    );
+    expect([...completedAgain.collapsedPhases]).toEqual(["Complete"]);
+
+    const reopened = revealReopenedPhase(completedAgain, "Complete");
+    expect(reopened.activePhase).toBe("Complete");
+    expect([...reopened.collapsedPhases]).toEqual([]);
+    expect([...reopened.completedPhases]).toEqual([]);
+    expect(reopened.focusPhase).toBe("Complete");
+    expect(applySuccessfulReopenState([
+      { id: "chosen", phase: "Complete", status: "Completed", phaseComplete: true },
+      { id: "other", phase: "Complete", status: "Completed", phaseComplete: true },
+    ], { id: "chosen", title: "Chosen", phase: "Complete", updatedAt: "opaque" })).toEqual([
+      { id: "chosen", phase: "Complete", status: "In Progress", phaseComplete: false },
+      { id: "other", phase: "Complete", status: "Completed", phaseComplete: false },
+    ]);
+  });
+
+  it("initializes to the same closed state twice under React Strict Mode", () => {
+    const first = initializePhaseDisclosure(
+      ["Complete", "Open"],
+      new Set(["Complete"]),
+    );
+    const second = initializePhaseDisclosure(
+      ["Complete", "Open"],
+      new Set(["Complete"]),
+    );
+    expect(second.activePhase).toBe(first.activePhase);
+    expect([...second.collapsedPhases]).toEqual([...first.collapsedPhases]);
+    expect([...second.completedPhases]).toEqual([...first.completedPhases]);
+    expect(second.focusPhase).toBe(first.focusPhase);
   });
 });
 
 describe("phase-completion fixed error messages", () => {
+  it("defines the exact refresh-before-message inventory", () => {
+    expect([...PHASE_COMPLETION_REFRESH_MESSAGES]).toEqual([
+      PHASE_COMPLETION_ERROR_MESSAGES.CCQ01,
+      PHASE_COMPLETION_ERROR_MESSAGES.CCQ05,
+      PHASE_COMPLETION_ERROR_MESSAGES.CCQ06,
+      PHASE_COMPLETION_ERROR_MESSAGES.CCQ07,
+      PHASE_COMPLETION_ERROR_MESSAGES["40001"],
+      PHASE_COMPLETION_ERROR_MESSAGES["40P01"],
+      PHASE_COMPLETION_ERROR_MESSAGES.CCQ02,
+      PHASE_COMPLETION_ERROR_MESSAGES.CCQ04,
+    ]);
+  });
+
+  it("keeps shared refresh strings distinct from existing active-task API messages", () => {
+    for (const message of PHASE_COMPLETION_REFRESH_MESSAGES) {
+      expect(ACTIVE_TASK_EXISTING_ERROR_MESSAGES).not.toContain(message);
+    }
+  });
   it.each(Object.entries(PHASE_COMPLETION_ERROR_MESSAGES))(
     "maps %s without using backend text",
     (code, message) => {
       expect(getPhaseCompletionErrorMessage({ code, message: "secret" })).toBe(
         message,
       );
-      expect(shouldRefetchAfterPhaseCompletionError({ code })).toBe(true);
+      expect(shouldRefetchAfterPhaseCompletionError({ code })).toBe(
+        code !== "CCQ03",
+      );
     },
   );
 

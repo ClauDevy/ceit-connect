@@ -1,6 +1,6 @@
 # Step 13b UI readers — Dev SQL tests
 
-**Status:** Additional fixture corrections applied after Dev rerun attempts failed before producing result lines; NOT YET RERUN  
+**Status:** UI Paste A 24/24, UI Paste B 36/36, and UI Paste C 16/16 were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). No Prod result is claimed.  
 **Migration:** `20261101120000_completed_phase_ui_readers.sql`  
 **Rule:** Run each paste independently in Dev. Each paste opens its own transaction,
 creates all of its own fixtures, ends with an intentional `TEST RESULTS` exception,
@@ -126,8 +126,8 @@ the prior body:
   named legacy columns only.
 - Batch 11 task-detail/edit-control behavior tests.
 - Batch 13 leave-reader behavior tests and the confidentiality-guard follow-up.
-- Batch 13b Pastes A, E, and F **must be rerun on Dev after this migration is pushed**
-  because it replaces Reopen. Their counts remain A `64`, E `46`, and F `38`: A/F's
+- Batch 13b Pastes A `64/64`, E `46/46`, and F `38/38` were rerun after this
+  migration replaced Reopen and were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). A/F's
   locked-write order remains event row -> event advisory -> phase -> task row, and
   E's Active-event authority/version/result cases remain identical. The new Paste B
   below owns the newly explicit unauthorized-Archived `CCQ03` versus

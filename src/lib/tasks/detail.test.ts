@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTaskBackHref, isTaskDetail, type TaskDetail } from "./detail";
+import { getTaskBackHref, isTaskDetail, parseTaskDetail, type TaskDetail } from "./detail";
 
 const realTask: TaskDetail = {
   id: "task-1",
@@ -29,6 +29,7 @@ const realTask: TaskDetail = {
   is_blocked: false,
   dependency_label: null,
   access_list: [],
+  phaseComplete: false,
 };
 
 const maskedTask: TaskDetail = {
@@ -57,12 +58,23 @@ const maskedTask: TaskDetail = {
   is_blocked: null,
   dependency_label: null,
   access_list: [],
+  phaseComplete: false,
 };
 
 describe("isTaskDetail", () => {
   it("accepts real and fully masked detail rows", () => {
     expect(isTaskDetail(realTask)).toBe(true);
+    expect(parseTaskDetail({ ...realTask, phase_complete: true, is_confidential: false })?.phaseComplete).toBe(true);
+    expect(parseTaskDetail({ ...realTask, phase_complete: true, is_confidential: true })?.phaseComplete).toBe(true);
     expect(isTaskDetail(maskedTask)).toBe(true);
+  });
+
+  it("normalizes absent or malformed additive completion state without weakening legacy fields", () => {
+    const raw: Record<string, unknown> = { ...realTask };
+    delete raw.phaseComplete;
+    expect(parseTaskDetail(raw)?.phaseComplete).toBe(false);
+    expect(parseTaskDetail({ ...raw, phase_complete: "wrong" })?.phaseComplete).toBe(false);
+    expect(parseTaskDetail({ ...raw, title: 7 })).toBeNull();
   });
 
   it("rejects a masked row that leaks a non-placement field", () => {

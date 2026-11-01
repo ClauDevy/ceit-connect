@@ -5,6 +5,7 @@ import {
   type BoardPriority,
   type BoardStatus,
 } from "../events/board";
+import { parseTaskDetailPhaseComplete } from "./phase-completion";
 
 export type TaskEventStatus = "Draft" | "Active" | "Archived";
 export type TaskType = "Deliverable" | "LiveOperation";
@@ -35,6 +36,7 @@ export type TaskDetail = {
   is_blocked: boolean | null;
   dependency_label: string | null;
   access_list: BoardAssignee[];
+  phaseComplete: boolean;
 };
 
 const EVENT_STATUSES: TaskEventStatus[] = ["Draft", "Active", "Archived"];
@@ -58,8 +60,8 @@ function hasAssigneeArray(value: unknown): value is BoardAssignee[] {
   return Array.isArray(value) && value.every(isAssignee);
 }
 
-export function isTaskDetail(value: unknown): value is TaskDetail {
-  if (!value || typeof value !== "object") return false;
+export function parseTaskDetail(value: unknown): TaskDetail | null {
+  if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
 
   if (
@@ -72,11 +74,11 @@ export function isTaskDetail(value: unknown): value is TaskDetail {
     !hasAssigneeArray(row.assist_assignees) ||
     !hasAssigneeArray(row.access_list)
   ) {
-    return false;
+    return null;
   }
 
   if (row.is_masked) {
-    return (
+    if (!(
       row.title === "Confidential Task" &&
       row.event_id === null &&
       row.event_name === null &&
@@ -98,10 +100,11 @@ export function isTaskDetail(value: unknown): value is TaskDetail {
       row.is_blocked === null &&
       row.dependency_label === null &&
       row.access_list.length === 0
-    );
+    )) return null;
+    return { ...(row as Omit<TaskDetail, "phaseComplete">), phaseComplete: parseTaskDetailPhaseComplete(row) };
   }
 
-  return (
+  if (!(
     typeof row.event_id === "string" &&
     typeof row.event_name === "string" &&
     EVENT_STATUSES.includes(row.event_status as TaskEventStatus) &&
@@ -119,7 +122,12 @@ export function isTaskDetail(value: unknown): value is TaskDetail {
     typeof row.has_dependency === "boolean" &&
     typeof row.is_blocked === "boolean" &&
     isNullableString(row.dependency_label)
-  );
+  )) return null;
+  return { ...(row as Omit<TaskDetail, "phaseComplete">), phaseComplete: parseTaskDetailPhaseComplete(row) };
+}
+
+export function isTaskDetail(value: unknown): value is TaskDetail {
+  return parseTaskDetail(value) !== null;
 }
 
 export function getTaskBackHref(task: TaskDetail | null) {

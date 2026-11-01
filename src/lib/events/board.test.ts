@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBoardTask } from "./board";
+import { isBoardTask, parseBoardTask } from "./board";
 
 const validRealCard = {
   id: "task-1",
@@ -21,6 +21,21 @@ const validRealCard = {
 describe("isBoardTask", () => {
   it("accepts a valid real card", () => {
     expect(isBoardTask(validRealCard)).toBe(true);
+    expect(parseBoardTask(validRealCard)).toMatchObject({
+      phaseComplete: false,
+      canReopen: false,
+      reopenUpdatedAt: null,
+    });
+  });
+
+  it("keeps legacy fields strict while safely ignoring malformed additive fields", () => {
+    expect(parseBoardTask({ ...validRealCard, phase_complete: "wrong", can_reopen: true, updated_at: 7 })).toMatchObject({
+      id: "task-1",
+      phaseComplete: false,
+      canReopen: false,
+      reopenUpdatedAt: null,
+    });
+    expect(parseBoardTask({ ...validRealCard, title: 7 })).toBeNull();
   });
 
   it("accepts a valid masked card", () => {

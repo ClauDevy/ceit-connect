@@ -102,6 +102,7 @@ export function TaskLeaveRequests({ taskId }: { taskId?: string }) {
       await load();
       setPendingAction(null);
     } catch (actionError) {
+      try { await load(); } catch { /* fixed message still appears */ }
       setError(getTaskLeaveErrorMessage(actionError));
     } finally {
       setBusyId(null);

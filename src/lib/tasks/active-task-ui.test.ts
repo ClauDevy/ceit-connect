@@ -15,6 +15,7 @@ import {
   canShowTaskPageEdit,
   formatTaskMetadataTimestamp,
   getActiveTaskBulkPresentation,
+  getCompletedTaskDetailReadOnlyInventory,
   nextActiveTaskPickerLimitAttempt,
   parseStoredTaskPriority,
   prepareActiveTaskEditSubmission,
@@ -61,6 +62,7 @@ const task: TaskDetail = {
   is_blocked: false,
   dependency_label: null,
   access_list: [],
+  phaseComplete: false,
 };
 
 const controls: TaskEditControlData = {
@@ -95,7 +97,17 @@ const boardTask: BoardTask = {
   assist_assignees: [],
   is_backlog: false,
   is_masked: false,
+  phaseComplete: false,
+  canReopen: false,
+  reopenUpdatedAt: null,
 };
+
+describe("completed task detail inventory", () => {
+  it("turns off every mutation surface while retaining a readable detail model", () => {
+    expect(Object.values(getCompletedTaskDetailReadOnlyInventory(true))).toEqual(new Array(10).fill(false));
+    expect(Object.values(getCompletedTaskDetailReadOnlyInventory(false))).toEqual(new Array(10).fill(true));
+  });
+});
 
 describe("active task Edit prefill", () => {
   it("uses stored Low when calculated priority is Critical and preserves Low on a no-op save", () => {
