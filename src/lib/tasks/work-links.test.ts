@@ -18,6 +18,10 @@ describe("isTaskWorkLinks", () => {
   it("accepts a server-computed work-link response", () => {
     expect(isTaskWorkLinks(validResponse)).toBe(true);
     expect(isTaskWorkLinks({ can_add: false, links: [] })).toBe(true);
+    expect(isTaskWorkLinks({
+      can_add: false,
+      links: validResponse.links.map((link) => ({ ...link, can_remove: false })),
+    })).toBe(true);
   });
 
   it("rejects malformed permissions and link rows", () => {

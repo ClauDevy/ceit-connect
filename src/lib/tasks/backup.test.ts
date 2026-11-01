@@ -59,8 +59,10 @@ describe("Step 8 response validators", () => {
     expect(
       isTaskBackupState({
         ...backupState,
+        out_can_toggle_backup: false,
         out_can_volunteer: false,
         out_has_volunteered: true,
+        out_can_accept: false,
         out_volunteers: [
           {
             id: "person-1",

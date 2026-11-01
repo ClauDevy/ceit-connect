@@ -50,10 +50,45 @@ const validControls = {
   ],
 };
 
+function completedControls(isConfidential: boolean) {
+  return {
+    can_set_dependency: false,
+    can_set_confidentiality: false,
+    can_edit_task: false,
+    can_assign_people: false,
+    can_delete: false,
+    can_unassign_self: false,
+    self_unassign_block_code: null,
+    self_unassign_will_lose_access: false,
+    depends_on_task_id: null,
+    is_confidential: isConfidential,
+    allowed_viewers: [],
+    dependency_options: [],
+    viewer_options: [],
+    primary_assignees: [],
+    assist_assignees: [],
+    assignee_options: [],
+  };
+}
+
 describe("isTaskEditControlData", () => {
   it("accepts the safe edit-control shape", () => {
     expect(isTaskEditControlData(validControls)).toBe(true);
   });
+
+  it.each([
+    ["Admin", true],
+    ["Admin", false],
+    ["Co-Admin", true],
+    ["Co-Admin", false],
+    ["Member", true],
+    ["Member", false],
+  ])(
+    "accepts the completed-phase %s reader shape when confidential is %s",
+    (_role, isConfidential) => {
+      expect(isTaskEditControlData(completedControls(isConfidential))).toBe(true);
+    },
+  );
 
   it("rejects a dependency option with an invalid status", () => {
     expect(
@@ -66,7 +101,7 @@ describe("isTaskEditControlData", () => {
     ).toBe(false);
   });
 
-  it("requires confidentiality-only fields to be hidden when denied", () => {
+  it("accepts readable confidentiality state but requires mutation options to be hidden when denied", () => {
     expect(
       isTaskEditControlData({
         ...validControls,
@@ -80,7 +115,16 @@ describe("isTaskEditControlData", () => {
       isTaskEditControlData({
         ...validControls,
         can_set_confidentiality: false,
+        is_confidential: "yes",
+      }),
+    ).toBe(false);
+    expect(
+      isTaskEditControlData({
+        ...validControls,
+        can_set_confidentiality: false,
         is_confidential: true,
+        allowed_viewers: [],
+        viewer_options: validControls.viewer_options,
       }),
     ).toBe(false);
   });
