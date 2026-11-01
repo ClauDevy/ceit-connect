@@ -1,3 +1,5 @@
+import { getPhaseCompletionErrorMessage } from "./phase-completion";
+
 export const TASK_COMMENT_PAGE_SIZE = 25;
 export const MAX_TASK_COMMENT_CODE_POINTS = 4000;
 export const MAX_TASK_COMMENT_MENTIONS = 20;
@@ -202,5 +204,6 @@ export function getTaskCommentErrorMessage(
   action: TaskCommentAction,
 ) {
   const code = getTaskCommentErrorCode(error);
-  return safeCodeMessages[code] ?? actionFallbacks[action];
+  return safeCodeMessages[code] ??
+    getPhaseCompletionErrorMessage(error) ?? actionFallbacks[action];
 }

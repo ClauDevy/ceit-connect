@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   CalendarDays,
@@ -36,6 +36,7 @@ import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { TigerLogo } from "@/components/ui/tiger-logo";
 import { BannerUploader } from "@/components/events/banner-uploader";
+import { CompletedPhaseReopenDialog } from "@/components/tasks/completed-phase-reopen-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +81,14 @@ import { preventSearchFormSubmission } from "@/lib/search";
 import { SUCCESS_ANIMATION_NAME } from "@/lib/motion";
 import type { Committee, Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  initializePhaseDisclosure,
+  parseDraftPhaseCompletionState,
+  reconcilePhaseDisclosureAfterRefresh,
+  revealReopenedPhase,
+  setPhaseDisclosureExpanded,
+  shouldRefetchAfterPhaseCompletionError,
+} from "@/lib/tasks/phase-completion";
 
 type AssigneeOption = {
   id: string;
@@ -136,20 +145,24 @@ type DraftEditorTask = {
   out_committee_name: string | null;
   out_is_masked: boolean;
   out_is_editable: boolean;
+  phaseComplete: boolean;
+  canReopen: boolean;
+  reopenUpdatedAt: string | null;
 };
 
 type PhaseAction =
   | { key: string; type: "rename"; phase: string; next_phase: string }
   | { key: string; type: "delete"; phase: string };
 
-function isDraftEditorTask(value: unknown): value is DraftEditorTask {
-  if (!value || typeof value !== "object") return false;
+function parseDraftEditorTask(value: unknown): DraftEditorTask | null {
+  if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
-  return typeof row.out_task_id === "string" &&
+  if (!(typeof row.out_task_id === "string" &&
     typeof row.out_phase === "string" &&
     typeof row.out_title === "string" &&
     typeof row.out_is_masked === "boolean" &&
-    typeof row.out_is_editable === "boolean";
+    typeof row.out_is_editable === "boolean")) return null;
+  return { ...(row as Omit<DraftEditorTask, "phaseComplete" | "canReopen" | "reopenUpdatedAt">), ...parseDraftPhaseCompletionState(row) };
 }
 
 type TaskEditor = {
@@ -320,6 +333,11 @@ export function EventForm({
     "idle",
   );
   const [templateError, setTemplateError] = useState("");
+  const [completionNotice, setCompletionNotice] = useState("");
+  const [completedPhaseDisclosure, setCompletedPhaseDisclosure] = useState(
+    () => initializePhaseDisclosure([], new Set()),
+  );
+  const queryClient = useQueryClient();
   const [templateSummary, setTemplateSummary] =
     useState<TemplateImportSummary | null>(null);
   const [pendingTemplateImport, setPendingTemplateImport] =
@@ -328,6 +346,7 @@ export function EventForm({
     string[]
   >([]);
   const taskDialogScrollRef = useRef<HTMLDivElement>(null);
+  const previousCompletedDraftPhases = useRef(new Set<string>());
 
   const draftReaderQuery = useQuery({
     queryKey: ["draft-event-editor-tasks", initialEvent?.id],
@@ -340,23 +359,46 @@ export function EventForm({
       request = request.abortSignal(signal);
       const { data, error } = await request;
       if (error) throw error;
-      if (!Array.isArray(data) || !data.every(isDraftEditorTask)) {
+      if (!Array.isArray(data)) {
         throw new Error("The Draft overview returned an invalid response.");
       }
-      return data;
+      const parsed = data.map(parseDraftEditorTask);
+      if (parsed.some((task) => task === null)) {
+        throw new Error("The Draft overview returned an invalid response.");
+      }
+      return parsed as DraftEditorTask[];
     },
     refetchOnWindowFocus: true,
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
+  const completedDraftPhases = useMemo(() => new Set((draftReaderQuery.data ?? []).flatMap((task) =>
+    task.phaseComplete && normalizeEventPhaseName(task.out_phase) !== "Unphased"
+      ? [normalizeEventPhaseName(task.out_phase)] : [])), [draftReaderQuery.data]);
   const readOnlyTasks = useMemo(
-    () => (draftReaderQuery.data ?? []).filter((task) => !task.out_is_editable),
+    () => (draftReaderQuery.data ?? []).filter((task) => !task.out_is_editable || task.phaseComplete),
     [draftReaderQuery.data],
   );
   const phaseViews = useMemo(
     () => buildEventPhaseViews(phases, readOnlyTasks),
     [phases, readOnlyTasks],
   );
+  const completedDraftViewPhases = useMemo(() => new Set(
+    phaseViews.flatMap((phaseView) => {
+      const complete = completedDraftPhases.has(phaseView.name) ||
+        phaseView.editablePhases.some((phase) =>
+          completedDraftPhases.has(normalizeEventPhaseName(phase.originalName)));
+      return complete ? [phaseView.name] : [];
+    }),
+  ), [completedDraftPhases, phaseViews]);
+  const currentCompletedPhaseDisclosure = reconcilePhaseDisclosureAfterRefresh(
+    completedPhaseDisclosure,
+    phaseViews.map((phaseView) => phaseView.name),
+    completedDraftViewPhases,
+  );
+  if (currentCompletedPhaseDisclosure !== completedPhaseDisclosure) {
+    setCompletedPhaseDisclosure(currentCompletedPhaseDisclosure);
+  }
   const eventFormSummary = useMemo(
     () =>
       getEventFormSummary(
@@ -391,6 +433,35 @@ export function EventForm({
       ),
     [initialEvent],
   );
+  useEffect(() => {
+    const newlyComplete = [...completedDraftPhases].filter(
+      (phase) => !previousCompletedDraftPhases.current.has(phase),
+    );
+    const discarded = phases.some((phase) =>
+      newlyComplete.includes(normalizeEventPhaseName(phase.originalName)) &&
+      phase.tasks.some((task) =>
+        !task.persisted ||
+        initialTaskPayloads.get(task.id) !== JSON.stringify(toTaskPayload(phase.name, task)),
+      ),
+    );
+    if (discarded) {
+      setCompletionNotice("Changes to this phase were discarded because it is now complete");
+    }
+    if (newlyComplete.length > 0) {
+      setPhases((current) => current.map((phase) =>
+        newlyComplete.includes(normalizeEventPhaseName(phase.originalName)) && phase.name !== phase.originalName
+          ? { ...phase, name: phase.originalName }
+          : phase));
+      setPhaseActions((current) => current.filter((action) =>
+        !newlyComplete.includes(normalizeEventPhaseName(action.phase))));
+      setTaskEditor((current) => {
+        if (!current) return current;
+        const phase = phases.find((candidate) => candidate.id === current.phaseId);
+        return phase && newlyComplete.includes(normalizeEventPhaseName(phase.originalName)) ? null : current;
+      });
+    }
+    previousCompletedDraftPhases.current = new Set(completedDraftPhases);
+  }, [completedDraftPhases, initialTaskPayloads, phases]);
 
   const datesChanged = Boolean(
     initialEvent &&
@@ -1035,10 +1106,10 @@ export function EventForm({
     setError("");
 
     const tasks = phases.flatMap((phase) =>
-      phase.tasks.map((task) => ({
-        task,
-        payload: toTaskPayload(phase.name, task),
-      })),
+      completedDraftPhases.has(normalizeEventPhaseName(phase.name)) ||
+      completedDraftPhases.has(normalizeEventPhaseName(phase.originalName))
+        ? []
+        : phase.tasks.map((task) => ({ task, payload: toTaskPayload(phase.name, task) })),
     );
 
     try {
@@ -1074,8 +1145,12 @@ export function EventForm({
                   initialTaskPayloads.get(task.id) !== JSON.stringify(payload),
               )
               .map(({ task, payload }) => ({ id: task.id, ...payload })),
-            p_task_ids_to_delete: deletedTaskIds,
-            p_phase_actions: phaseActions.map((action) =>
+            p_task_ids_to_delete: deletedTaskIds.filter((id) =>
+              !(draftReaderQuery.data ?? []).some((task) =>
+                task.out_task_id === id && task.phaseComplete)),
+            p_phase_actions: phaseActions.filter((action) =>
+              !completedDraftPhases.has(normalizeEventPhaseName(action.phase)))
+              .map((action) =>
               action.type === "rename"
                 ? { type: action.type, phase: action.phase, next_phase: action.next_phase }
                 : { type: action.type, phase: action.phase },
@@ -1105,6 +1180,9 @@ export function EventForm({
       const saveError = saveResult.error;
 
       if (saveError) {
+        if (shouldRefetchAfterPhaseCompletionError(saveError)) {
+          try { await draftReaderQuery.refetch(); } catch { /* fixed message still appears */ }
+        }
         setError(getEventSaveErrorMessage(saveError));
         setStatus("idle");
         return;
@@ -1579,6 +1657,11 @@ export function EventForm({
                     actions stay unavailable until it reloads.
                   </InlineAlert>
                 ) : null}
+                {completionNotice ? (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {completionNotice}
+                  </p>
+                ) : null}
 
                 {phaseViews.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed p-8 text-center">
@@ -1590,9 +1673,10 @@ export function EventForm({
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {phaseViews.map((phaseView) => {
+                    {phaseViews.map((phaseView, phaseIndex) => {
+                      const phaseComplete = completedDraftViewPhases.has(phaseView.name);
                       const editablePhase = phaseView.editablePhases[0] ?? null;
-                      const editableTasks = phaseView.editablePhases.flatMap(
+                      const editableTasks = phaseComplete ? [] : phaseView.editablePhases.flatMap(
                         (phase) =>
                           phase.tasks.map((task) => ({ phase, task })),
                       );
@@ -1607,11 +1691,18 @@ export function EventForm({
                         phase: phaseView,
                         readOnlyTasks,
                       });
-                      const phaseCollapsed = editablePhase?.collapsed ?? false;
+                      const phaseCollapsed = phaseComplete
+                        ? currentCompletedPhaseDisclosure.collapsedPhases.has(phaseView.name)
+                        : (editablePhase?.collapsed ?? false);
+                      const phaseContentId = `draft-phase-content-${phaseIndex}`;
+                      const reopenCandidates = phaseView.readOnlyTasks.flatMap((task) =>
+                        task.phaseComplete && task.canReopen && task.reopenUpdatedAt
+                          ? [{ id: task.out_task_id, title: task.out_title, phase: phaseView.name, updatedAt: task.reopenUpdatedAt }]
+                          : []);
                       return (
                       <section key={getEventPhaseCardKey(phaseView)} className="overflow-hidden rounded-2xl border bg-card">
                         <div className="flex min-w-0 items-center gap-2 border-b bg-muted/40 p-3">
-                          {editablePhase ? (
+                          {editablePhase || phaseComplete ? (
                             <Button
                               type="button"
                               variant="ghost"
@@ -1621,7 +1712,20 @@ export function EventForm({
                                   ? "Expand phase"
                                   : "Collapse phase"
                               }
-                              onClick={() => togglePhase(editablePhase.id)}
+                              aria-expanded={!phaseCollapsed}
+                              aria-controls={phaseContentId}
+                              onClick={() => phaseComplete
+                                ? setCompletedPhaseDisclosure((current) =>
+                                    setPhaseDisclosureExpanded(
+                                      reconcilePhaseDisclosureAfterRefresh(
+                                        current,
+                                        phaseViews.map((view) => view.name),
+                                        completedDraftViewPhases,
+                                      ),
+                                      phaseView.name,
+                                      phaseCollapsed,
+                                    ))
+                                : togglePhase(editablePhase!.id)}
                             >
                               <ChevronDown
                                 className={cn(
@@ -1631,7 +1735,7 @@ export function EventForm({
                               />
                             </Button>
                           ) : null}
-                          {editablePhase ? (
+                          {editablePhase && !phaseComplete ? (
                             <Input
                               aria-label="Phase name"
                               maxLength={100}
@@ -1646,15 +1750,31 @@ export function EventForm({
                               className="h-11 min-w-0 flex-1 border-transparent bg-transparent font-semibold shadow-none hover:border-border md:h-8"
                             />
                           ) : (
-                            <p className="min-w-0 flex-1 truncate font-semibold">
-                              {phaseView.name}
+                            <p className={cn("min-w-0 flex-1 truncate font-semibold", phaseComplete && "line-through")}>
+                              {phaseComplete ? <CheckCircle2 className="mr-1 inline size-4" aria-hidden /> : null}{phaseView.name}
+                              {phaseComplete ? <span className="sr-only"> complete</span> : null}
                             </p>
                           )}
                           <Badge variant="neutral">
                             {editableTasks.length + phaseView.readOnlyTasks.length} task
                             {editableTasks.length + phaseView.readOnlyTasks.length === 1 ? "" : "s"}
                           </Badge>
-                          {editablePhase ? (
+                          {phaseComplete ? (
+                            <CompletedPhaseReopenDialog
+                              phase={phaseView.name}
+                              candidates={reopenCandidates}
+                              onRefresh={async () => {
+                                await draftReaderQuery.refetch();
+                                await queryClient.refetchQueries({
+                                  predicate: ({ queryKey }) => ["event-board", "task-detail", "task-edit-controls", "task-work-links", "task-comments", "task-backup-state"].includes(String(queryKey[0])),
+                                  type: "active",
+                                });
+                                window.dispatchEvent(new Event("task-leave-requests:changed"));
+                              }}
+                              onReopened={() => setCompletedPhaseDisclosure((current) =>
+                                revealReopenedPhase(current, phaseView.name))}
+                            />
+                          ) : editablePhase ? (
                             <Button
                               type="button"
                               variant="ghost"
@@ -1670,8 +1790,8 @@ export function EventForm({
                         </div>
 
                         <Collapse open={!phaseCollapsed}>
-                          <div className="grid gap-3 p-3">
-                            {phaseView.readOnlyTasks.length > 0 ? (
+                          <div id={phaseContentId} className="grid gap-3 p-3">
+                            {phaseView.readOnlyTasks.length > 0 && !phaseComplete ? (
                               <p className="text-sm text-muted-foreground">
                                 This phase includes read-only tasks from another committee. You can add tasks for your committee, but you can&apos;t rename or remove this phase.
                               </p>
@@ -1789,13 +1909,13 @@ export function EventForm({
                               </p>
                             )}
 
-                            {!phaseControls.canAddTask && role === "Co-Admin" ? (
+                            {!phaseComplete && !phaseControls.canAddTask && role === "Co-Admin" ? (
                               <p className="text-sm text-muted-foreground">
                                 Add task is unavailable because your committee could not be verified.
                               </p>
                             ) : null}
 
-                            <Button
+                            {!phaseComplete ? <Button
                               type="button"
                               variant="outline"
                               className="w-full border-dashed"
@@ -1809,7 +1929,7 @@ export function EventForm({
                             >
                               <Plus />
                               Add task
-                            </Button>
+                            </Button> : null}
                           </div>
                         </Collapse>
                       </section>

@@ -15,6 +15,13 @@ describe("task leave helpers", () => {
       out_created_at: "2026-10-30T00:00:00Z", out_can_resolve: true,
       out_is_requester: false,
     })).toBe(true);
+    expect(isTaskLeaveRequest({
+      out_id: "completed-request", out_task_id: "task", out_task_title: "Run sheet",
+      out_event_name: "Assembly", out_requester_id: "member",
+      out_requester_name: "Ari", out_due_date: null,
+      out_created_at: "2026-11-01T00:00:00Z", out_can_resolve: false,
+      out_is_requester: false,
+    })).toBe(true);
     expect(isTaskLeaveRequest({ out_id: "request" })).toBe(false);
   });
 

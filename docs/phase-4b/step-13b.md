@@ -1,6 +1,6 @@
 # Step 13b: Phase completion
 
-**Status:** Planned | **Branch:** `feature/phase-completion` | **Reasoning level:** High (security-critical derived freeze, writer guards, and tests)
+**Status:** Database freeze and UI-reader migration applied on Dev; all six Step 13b pastes and UI Pastes A 24/24, B 36/36, and C 16/16 were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). No Prod result is claimed. | **Branch:** `feature/phase-completion` | **Reasoning level:** High (security-critical derived freeze, writer guards, and tests)
 
 ## Goal
 
@@ -228,7 +228,13 @@ Phase completion is derived from authoritative event+canonical-phase task rows. 
 
 ## Open questions for the owner
 
-None.
+None. The owner approved the database-only implementation with shared locks for non-completion writers, exclusive locks for phase membership/status changes, exact Edit Event no-op filtering, a full Completed-lane rebalance regression, self-contained SQL pastes, and opaque Reopen timestamp handling.
+
+## Local database implementation status
+
+Migrations `20261031135000_single_task_delete_child_cascades.sql` and `20261031140000_completed_phase_freeze.sql` are applied on Dev, and all six database pastes were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex); neither is claimed on Prod. `reopen_completed_phase_task(uuid,timestamptz)` returns task id, status, `sort_order bigint`, canonical phase key, and `phase_complete = false`.
+
+UI-reader Run 1 adds migration `20261101120000_completed_phase_ui_readers.sql`, applied on Dev but not claimed on Prod. It recreates the board, Draft editor, and task-detail readers with additive authoritative completion fields; wraps five capability readers without changing their public shapes; and shares one revoked, lifecycle-parameterized authority predicate between `can_reopen` and the real Reopen writer. Every wrapper delegates inactive/unauthorized row and error behavior to its renamed prior body; completion only decorates returned rows or removes capabilities. Reopen performs the actor/owner/content check before any lock, repeats it after locking, then applies Archived precedence and the open-event check. The helper's explicit real-content predicate is not a practical Admin restriction because `task_content_access_for_user` returns `real` for every active Admin on Draft, Active, and Archived events. Completion is materialized once per canonical phase in multi-row readers. Eligible timestamps are returned only as opaque `timestamptz` strings and must never pass through JavaScript `Date`. UI Pastes A 24/24, B 36/36, and C 16/16 (76 total result lines) were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). Step 13b Pastes A 64/64, E 46/46, and F 38/38 were rerun after Reopen was replaced and were owner-confirmed passed on Dev, 2026-11-01 (not run by Codex). No UI component behavior is part of Run 1. Separate hardening proposal: review `move_task()` taking its event row, event advisory, and exclusive phase locks before authorization; no change is made here.
 
 ## Docs to update when this lands
 

@@ -1,4 +1,5 @@
 import { BOARD_STATUSES, type BoardStatus } from "../events/board";
+import { getPhaseCompletionErrorMessage } from "./phase-completion";
 
 export const MAX_TASK_ALLOWED_VIEWERS = 50;
 export const MAX_TASK_ASSIGNEES = 100;
@@ -156,7 +157,7 @@ export function isTaskEditControlData(
   }
 
   return (
-    row.is_confidential === null &&
+    (typeof row.is_confidential === "boolean" || row.is_confidential === null) &&
     row.allowed_viewers.length === 0 &&
     row.viewer_options.length === 0
   );
@@ -234,6 +235,8 @@ export function getTaskEditErrorMessage(
   if (rpcError?.code === "40001") {
     return "The task changed. Refresh the page and try again.";
   }
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return phaseMessage;
 
   if (action === "dependency") {
     return "The dependency could not be saved. Please try again.";

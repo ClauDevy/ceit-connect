@@ -39,6 +39,9 @@ function task(
     assist_assignees: [],
     is_backlog: false,
     is_masked: false,
+    phaseComplete: false,
+    canReopen: false,
+    reopenUpdatedAt: null,
     ...options,
   };
 }

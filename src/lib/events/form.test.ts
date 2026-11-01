@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEventPhaseViews,
+  excludeCompletedPhaseTaskMutations,
   getEventFormSummary,
   getEventPhaseCardKey,
   getEventPhaseControls,
@@ -23,6 +24,16 @@ const taskDraft = {
   priority: "Medium" as const,
   assigneeIds: [],
 };
+
+describe("completed Draft phases", () => {
+  it("excludes every task mutation in a completed phase without touching other phases", () => {
+    const phases = [
+      { id: "a", name: "Done", originalName: "Done", origin: "persisted" as const, tasks: [{ id: "one", persisted: true }] },
+      { id: "b", name: "Open", originalName: "Open", origin: "persisted" as const, tasks: [{ id: "two", persisted: true }] },
+    ];
+    expect(excludeCompletedPhaseTaskMutations(phases, new Set(["Done"])).map(({ task }) => task.id)).toEqual(["two"]);
+  });
+});
 
 describe("event task due dates", () => {
   it("keeps the yyyy-mm-dd value produced by the date input", () => {

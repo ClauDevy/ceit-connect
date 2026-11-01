@@ -21,7 +21,7 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
     expect(eventForm).toContain(
       "const readOnlyTasks = useMemo(",
     );
-    expect(eventForm).toContain(".filter((task) => !task.out_is_editable)");
+    expect(eventForm).toContain(".filter((task) => !task.out_is_editable || task.phaseComplete)");
     expect(eventForm).toContain("buildEventPhaseViews(phases, readOnlyTasks)");
     expect(eventForm).toContain("phaseView.readOnlyTasks.map((task) => (");
     expect(eventForm).toContain(
@@ -112,5 +112,14 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
       /set(Name|Description|StartDate|EndDate|Phases|DeletedTaskIds|EventVersion)\(/,
     );
     expect(eventForm).not.toContain("useEffect(() => setPhases");
+  });
+
+  it("renders completed Draft disclosures closed, inert, and accessibly linked", () => {
+    expect(eventForm).toContain("initializePhaseDisclosure([], new Set())");
+    expect(eventForm).toContain("currentCompletedPhaseDisclosure.collapsedPhases.has(phaseView.name)");
+    expect(eventForm).toContain("<Collapse open={!phaseCollapsed}>");
+    expect(eventForm).toContain("aria-expanded={!phaseCollapsed}");
+    expect(eventForm).toContain("aria-controls={phaseContentId}");
+    expect(eventForm).toContain("id={phaseContentId}");
   });
 });

@@ -23,6 +23,9 @@ function task(overrides: Partial<BoardTask> = {}): BoardTask {
     assist_assignees: [],
     is_backlog: false,
     is_masked: false,
+    phaseComplete: false,
+    canReopen: false,
+    reopenUpdatedAt: null,
     ...overrides,
   };
 }
