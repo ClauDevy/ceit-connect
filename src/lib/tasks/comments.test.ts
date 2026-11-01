@@ -35,6 +35,11 @@ function comment(id: string, createdAt: string, body = id): TaskComment {
 describe("task comments", () => {
   it("validates the fixed reader shapes", () => {
     expect(isTaskComment(comment("one", "2026-10-23T00:00:00Z"))).toBe(true);
+    expect(isTaskComment({
+      ...comment("complete", "2026-11-01T00:00:00Z"),
+      out_can_edit: false,
+      out_can_delete: false,
+    })).toBe(true);
     expect(
       isTaskComment({
         ...comment("one", "2026-10-23T00:00:00Z"),
