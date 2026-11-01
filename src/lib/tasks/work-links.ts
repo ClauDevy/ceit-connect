@@ -1,3 +1,5 @@
+import { getPhaseCompletionErrorMessage } from "./phase-completion";
+
 export type TaskWorkLink = {
   id: string;
   name: string | null;
@@ -57,6 +59,8 @@ export function getWorkLinkErrorMessage(
   if (code === "42501") {
     return `You no longer have permission to ${action} this work link.`;
   }
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return phaseMessage;
 
   return action === "add"
     ? "The link could not be added. Please try again."

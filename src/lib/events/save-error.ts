@@ -1,3 +1,5 @@
+import { getPhaseCompletionErrorMessage } from "../tasks/phase-completion";
+
 type SupabaseSaveError = {
   code?: string;
   message: string;
@@ -22,6 +24,8 @@ export function getEventSaveErrorMessage(error: SupabaseSaveError) {
   if (error.code === "CCT03") {
     return "The template task selection is invalid.";
   }
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return phaseMessage;
 
-  return error.message;
+  return "The event could not be saved. Please try again.";
 }

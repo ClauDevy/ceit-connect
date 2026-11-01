@@ -1,5 +1,6 @@
 import type { BoardStatus, BoardTask } from "@/lib/events/board";
 import type { Role } from "@/lib/types";
+import { getPhaseCompletionErrorMessage } from "../tasks/phase-completion";
 
 export const BOARD_POLL_INTERVAL_MS = 15_000;
 export const BOARD_UNDO_WINDOW_MS = 8_000;
@@ -76,7 +77,7 @@ export function getMovePermission(
   task: BoardTask,
   viewer: BoardViewer,
 ): MovePermission {
-  if (task.is_masked || task.is_backlog) return "none";
+  if (task.is_masked || task.is_backlog || task.phaseComplete) return "none";
   if (viewer.role === "Admin") return "reorder";
   if (
     viewer.role === "Co-Admin" &&
@@ -371,6 +372,8 @@ export function mapMoveError(error: unknown): MoveErrorMessage {
         "You no longer have permission to move this task. The board was refreshed.",
     };
   }
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return { kind: "stale", message: phaseMessage };
   if (
     message ===
     "Complete the prerequisite task before moving this task forward."

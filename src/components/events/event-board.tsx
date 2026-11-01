@@ -51,12 +51,14 @@ import Link from "next/link";
 import { EventBanner } from "@/components/events/event-banner";
 import { EventBoardProgressRing } from "@/components/events/event-board-progress-ring";
 import {
+  Collapse,
   MotionPresence,
   TabPanel,
   useReducedMotionPreference,
 } from "@/components/shared/motion";
 import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
 import { ActiveTaskDialog } from "@/components/tasks/active-task-dialog";
+import { CompletedPhaseReopenDialog } from "@/components/tasks/completed-phase-reopen-dialog";
 import {
   EventBoardTaskCard,
   SortableEventBoardTaskCard,
@@ -76,7 +78,7 @@ import {
 import {
   BOARD_PRIORITIES,
   BOARD_STATUSES,
-  isBoardTask,
+  parseBoardTask,
   type BoardCommittee,
   type BoardEvent,
   type BoardPriority,
@@ -114,6 +116,16 @@ import {
   isClaimTaskResult,
 } from "@/lib/tasks/backup";
 import { canShowBoardTaskEdit } from "@/lib/tasks/active-task-ui";
+import {
+  canonicalPhaseName,
+  getReopenCandidates,
+  initializePhaseDisclosure,
+  isCompletedNamedPhase,
+  reconcilePhaseDisclosureAfterRefresh,
+  revealReopenedPhase,
+  selectPhaseDisclosure,
+  setPhaseDisclosureExpanded,
+} from "@/lib/tasks/phase-completion";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -133,6 +145,19 @@ const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
 
 function formatEventDate(date: string) {
   return eventDateFormatter.format(new Date(`${date}T00:00:00Z`));
+}
+
+function getBoardPhaseNames(tasks: readonly BoardTask[]) {
+  return Array.from(
+    new Set(tasks.map((task) => canonicalPhaseName(task.phase))),
+  );
+}
+
+function getCompleteBoardPhases(tasks: readonly BoardTask[]) {
+  return new Set(tasks.flatMap((task) =>
+    isCompletedNamedPhase(task.phase, task.phaseComplete)
+      ? [canonicalPhaseName(task.phase)]
+      : []));
 }
 
 function formatEventDateRange(event: BoardEvent) {
@@ -243,7 +268,13 @@ function BoardContents({
   const queryClient = useQueryClient();
   const isAdmin = viewer.role === "Admin";
   const [committeeId, setCommitteeId] = useState<string | null>(null);
-  const [activePhase, setActivePhase] = useState<string | null>(null);
+  const [phaseDisclosure, setPhaseDisclosure] = useState(() => {
+    const initialPhaseNames = getBoardPhaseNames(initialTasks ?? []);
+    return initializePhaseDisclosure(
+      initialPhaseNames,
+      getCompleteBoardPhases(initialTasks ?? []),
+    );
+  });
   const [phaseMotionKey, setPhaseMotionKey] = useState(0);
   const [selectedPriorities, setSelectedPriorities] = useState<
     Set<BoardPriority>
@@ -286,6 +317,10 @@ function BoardContents({
   const mobileBoardRef = useRef<HTMLDivElement>(null);
   const laneRefs = useRef(new Map<BoardStatus, HTMLElement>());
   const laneIntersectionRatios = useRef(new Map<BoardStatus, number>());
+  const phaseTabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const previousCompletePhases = useRef(
+    getCompleteBoardPhases(initialTasks ?? []),
+  );
   const reducedMotion = useReducedMotionPreference();
   const boardBusy = pendingTaskId !== null || reconciling;
   const canAddTask = viewer.role === "Admin" || viewer.role === "Co-Admin";
@@ -315,10 +350,14 @@ function BoardContents({
       request = request.abortSignal(signal);
       const { data, error } = await request;
       if (error) throw error;
-      if (!Array.isArray(data) || !data.every(isBoardTask)) {
+      if (!Array.isArray(data)) {
         throw new Error("The event board returned an invalid response.");
       }
-      return data;
+      const parsed = data.map(parseBoardTask);
+      if (parsed.some((task) => task === null)) {
+        throw new Error("The event board returned an invalid response.");
+      }
+      return parsed as BoardTask[];
     },
     initialData: committeeId === null ? initialTasks : undefined,
     refetchOnWindowFocus: () => !boardBusyRef.current,
@@ -328,24 +367,38 @@ function BoardContents({
 
   const tasks = useMemo(() => query.data ?? [], [query.data]);
   const hasTasks = tasks.length > 0;
-  const phases = useMemo(
-    () =>
-      Array.from(
-        new Set(tasks.map((task) => task.phase?.trim() || "Unphased")),
-      ),
-    [tasks],
+  const phases = useMemo(() => getBoardPhaseNames(tasks), [tasks]);
+  const completePhases = useMemo(() => getCompleteBoardPhases(tasks), [tasks]);
+  const currentPhaseDisclosure = reconcilePhaseDisclosureAfterRefresh(
+    phaseDisclosure,
+    phases,
+    completePhases,
   );
-
-  const selectedPhase =
-    activePhase && phases.includes(activePhase)
-      ? activePhase
-      : (phases[0] ?? null);
+  if (currentPhaseDisclosure !== phaseDisclosure) {
+    setPhaseDisclosure(currentPhaseDisclosure);
+  }
+  const selectedPhase = currentPhaseDisclosure.activePhase;
+  const selectedPhaseComplete = selectedPhase !== null && completePhases.has(selectedPhase);
+  const selectedCompletePhaseCollapsed = selectedPhase !== null &&
+    currentPhaseDisclosure.collapsedPhases.has(selectedPhase);
+  const selectedReopenCandidates = useMemo(
+    () => selectedPhase ? getReopenCandidates(tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      phase: task.phase,
+      phaseComplete: task.phaseComplete,
+      canReopen: task.canReopen,
+      reopenUpdatedAt: task.reopenUpdatedAt,
+      isMasked: task.is_masked,
+    })), selectedPhase) : [],
+    [selectedPhase, tasks],
+  );
 
   function selectPhase(phase: string) {
     if (phase === selectedPhase) return;
     cancelActiveDrag();
     if (boardBusyRef.current) return;
-    setActivePhase(phase);
+    setPhaseDisclosure(selectPhaseDisclosure(currentPhaseDisclosure, phase));
     setPhaseMotionKey((current) => current + 1);
   }
 
@@ -426,6 +479,26 @@ function BoardContents({
     if (!dragSessionRef.current) return;
     finishDragSession(true);
   }, [finishDragSession]);
+
+  useEffect(() => {
+    const previous = previousCompletePhases.current;
+    const newlyComplete = [...completePhases].filter((phase) => !previous.has(phase));
+    if (newlyComplete.length > 0) {
+      cancelActiveDrag();
+      for (const entry of undoState.entries) {
+        const task = tasks.find((candidate) => candidate.id === entry.taskId);
+        if (task && completePhases.has(canonicalPhaseName(task.phase))) {
+          dispatchUndo({ type: "clear", taskId: entry.taskId });
+        }
+      }
+      setTaskDialog((current) => {
+        if (current?.mode !== "edit") return current;
+        const task = tasks.find((candidate) => candidate.id === current.taskId);
+        return task && completePhases.has(canonicalPhaseName(task.phase)) ? null : current;
+      });
+    }
+    previousCompletePhases.current = new Set(completePhases);
+  }, [cancelActiveDrag, completePhases, tasks, undoState.entries]);
 
   useEffect(() => {
     const root = mobileBoardRef.current;
@@ -555,11 +628,14 @@ function BoardContents({
       );
       return { previousTasks };
     },
-    onError: (error, variables, context) => {
+    onError: async (error, variables, context) => {
       if (context?.previousTasks) {
         queryClient.setQueryData(queryKey, context.previousTasks);
       }
       const mapped = mapMoveError(error);
+      try {
+        await queryClient.refetchQueries({ queryKey: eventQueryKey, type: "active" });
+      } catch { /* fixed message still appears */ }
       setMoveError(
         variables.undo ? `Undo failed. ${mapped.message}` : mapped.message,
       );
@@ -1007,6 +1083,10 @@ function BoardContents({
             return (
               <button
                 key={phase}
+                ref={(node) => {
+                  if (node) phaseTabRefs.current.set(phase, node);
+                  else phaseTabRefs.current.delete(phase);
+                }}
                 type="button"
                 role="tab"
                 aria-selected={selectedPhase === phase}
@@ -1021,7 +1101,9 @@ function BoardContents({
                 onClick={() => selectPhase(phase)}
               >
                 <span className="flex min-w-0 items-center">
-                  <span className="truncate">{phase}</span>
+                  {completePhases.has(phase) ? <CheckCircle2 className="mr-1.5 size-4 shrink-0" aria-hidden /> : null}
+                  <span className={cn("truncate", completePhases.has(phase) && "line-through")}>{phase}</span>
+                  {completePhases.has(phase) ? <span className="sr-only"> complete</span> : null}
                   <span className="ml-1.5 shrink-0 font-sans text-xs font-normal text-muted-foreground">
                     {formatTaskCount(count)}
                   </span>
@@ -1181,7 +1263,28 @@ function BoardContents({
           ) : null}
         </div>
 
-        {canAddTask ? (
+        {selectedPhaseComplete ? (
+          <CompletedPhaseReopenDialog
+            key={selectedPhase}
+            phase={selectedPhase!}
+            candidates={selectedReopenCandidates}
+            onRefresh={async () => {
+              await queryClient.refetchQueries({ queryKey: eventQueryKey, type: "active" });
+              await queryClient.refetchQueries({
+                predicate: ({ queryKey: key }) => ["draft-event-editor-tasks", "task-detail", "task-edit-controls", "task-work-links", "task-comments", "task-backup-state"].includes(String(key[0])),
+                type: "active",
+              });
+              window.dispatchEvent(new Event("task-leave-requests:changed"));
+            }}
+            onReopened={(candidate) => {
+              setPhaseDisclosure((current) =>
+                revealReopenedPhase(current, candidate.phase));
+              requestAnimationFrame(() => phaseTabRefs.current.get(candidate.phase)?.focus());
+            }}
+          />
+        ) : null}
+
+        {canAddTask && !selectedPhaseComplete ? (
           <Button
             type="button"
             className="ml-auto h-11 min-w-11 transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/80 motion-reduce:transition-none sm:h-10"
@@ -1262,7 +1365,42 @@ function BoardContents({
               </div>
             ) : null}
 
-            <DndContext
+            {selectedPhaseComplete ? (
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center gap-3 border-b bg-muted/40 p-3">
+                  <CheckCircle2 className="size-5 text-primary" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-semibold line-through">{selectedPhase}</h2>
+                    <p className="text-xs text-muted-foreground">Complete · read only</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-expanded={!selectedCompletePhaseCollapsed}
+                    aria-controls="event-board-completed-phase-content"
+                    onClick={() => setPhaseDisclosure((current) =>
+                      setPhaseDisclosureExpanded(
+                        reconcilePhaseDisclosureAfterRefresh(
+                          current,
+                          phases,
+                          completePhases,
+                        ),
+                        selectedPhase!,
+                        selectedCompletePhaseCollapsed,
+                      ))}
+                  >
+                    <ChevronDown className={cn("transition-transform motion-reduce:transition-none", selectedCompletePhaseCollapsed && "-rotate-90")} />
+                    {selectedCompletePhaseCollapsed ? "Expand" : "Collapse"}
+                  </Button>
+                </div>
+                <Collapse open={!selectedCompletePhaseCollapsed}>
+                  <div id="event-board-completed-phase-content" className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {selectedPhaseTasks.map((task) => <EventBoardTaskCard key={task.id} task={task} />)}
+                  </div>
+                </Collapse>
+              </section>
+            ) : <DndContext
               key={dndContextKey}
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -1427,7 +1565,7 @@ function BoardContents({
                   </div>
                 ) : null}
               </DragOverlay>
-            </DndContext>
+            </DndContext>}
           </TabPanel>
         </div>
       )}
@@ -1509,6 +1647,8 @@ function BoardContents({
           eventId={taskDialog.mode === "add" ? event.id : undefined}
           taskId={taskDialog.mode === "edit" ? taskDialog.taskId : undefined}
           defaultPhase={selectedPhase}
+          completedPhaseNames={[...completePhases]}
+          phaseOptions={phases.filter((phase) => !completePhases.has(phase))}
           viewer={viewer}
           committees={committees}
           onSettled={refetchBoardAfterTaskSettlement}

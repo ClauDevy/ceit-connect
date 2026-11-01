@@ -58,6 +58,7 @@ import {
   type TaskCommentMention,
   type TaskCommentMentionCandidate,
 } from "@/lib/tasks/comments";
+import { shouldRefetchAfterPhaseCompletionError } from "@/lib/tasks/phase-completion";
 import { createClient } from "@/lib/supabase/client";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
@@ -563,6 +564,7 @@ export function TaskComments({
         const code = getTaskCommentErrorCode(error);
         if (
           isTaskCommentRetryableError(error) ||
+          shouldRefetchAfterPhaseCompletionError(error) ||
           ["CCC05", "CCC06", "CCC07", "CCC08", "CCC10"].includes(code)
         ) {
           await refreshAfterMutation();

@@ -1,5 +1,6 @@
 import type { BoardPriority, BoardStatus } from "@/lib/events/board";
 import { LIST_FETCH_LIMIT, LIST_PAGE_SIZE } from "@/lib/list-paging";
+import { getPhaseCompletionErrorMessage } from "./phase-completion";
 
 export const HELP_WANTED_PAGE_SIZE = LIST_PAGE_SIZE;
 
@@ -103,8 +104,7 @@ export function isTaskBackupState(value: unknown): value is TaskBackupState {
     typeof row.out_has_volunteered === "boolean" &&
     typeof row.out_can_accept === "boolean" &&
     Array.isArray(row.out_volunteers) &&
-    row.out_volunteers.every(isTaskVolunteer) &&
-    (!row.out_has_volunteered || row.out_can_volunteer)
+    row.out_volunteers.every(isTaskVolunteer)
   );
 }
 
@@ -246,6 +246,8 @@ export function getTaskBackupErrorMessage(
   ) {
     return sharedMessages[code as TaskBackupErrorCode]!;
   }
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return phaseMessage;
 
   return actionFallbacks[action];
 }
