@@ -1,5 +1,6 @@
 import type { BoardPriority, BoardStatus } from "@/lib/events/board";
 import { LIST_FETCH_LIMIT, LIST_PAGE_SIZE } from "@/lib/list-paging";
+import { getPhaseCompletionErrorMessage } from "./phase-completion";
 
 export const HELP_WANTED_PAGE_SIZE = LIST_PAGE_SIZE;
 
@@ -245,6 +246,8 @@ export function getTaskBackupErrorMessage(
   ) {
     return sharedMessages[code as TaskBackupErrorCode]!;
   }
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return phaseMessage;
 
   return actionFallbacks[action];
 }

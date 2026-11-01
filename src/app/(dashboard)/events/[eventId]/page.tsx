@@ -4,7 +4,7 @@ import { EventBoard } from "@/components/events/event-board";
 import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import {
-  isBoardTask,
+  parseBoardTask,
   type BoardCommittee,
   type BoardEvent,
   type BoardTask,
@@ -44,11 +44,12 @@ async function BoardData({
   if (boardResult.error) {
     console.error("Failed to load event board tasks:", boardResult.error);
   }
-  const boardData: BoardTask[] | undefined =
-    !boardResult.error &&
-    Array.isArray(boardResult.data) &&
-    boardResult.data.every(isBoardTask)
-      ? boardResult.data
+  const parsedBoard = Array.isArray(boardResult.data)
+    ? boardResult.data.map(parseBoardTask)
+    : [];
+  const boardData: BoardTask[] | undefined = !boardResult.error &&
+    Array.isArray(boardResult.data) && parsedBoard.every((task) => task !== null)
+      ? parsedBoard as BoardTask[]
       : undefined;
   if (!boardResult.error && boardData === undefined) {
     console.error("Event board tasks returned invalid data.");

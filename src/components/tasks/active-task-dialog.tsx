@@ -58,7 +58,7 @@ import {
   type ActiveTaskPickerLimitAttempt,
   type ActiveTaskViewer,
 } from "@/lib/tasks/active-task-ui";
-import { isTaskDetail } from "@/lib/tasks/detail";
+import { parseTaskDetail } from "@/lib/tasks/detail";
 import {
   isTaskEditControlData,
   MAX_TASK_ALLOWED_VIEWERS,
@@ -86,6 +86,8 @@ type ActiveTaskDialogProps = {
   eventId?: string;
   taskId?: string;
   defaultPhase?: string | null;
+  completedPhaseNames?: readonly string[];
+  phaseOptions?: readonly string[];
   viewer: ActiveTaskViewer;
   committees: BoardCommittee[];
   onSettled: () => Promise<void>;
@@ -368,6 +370,8 @@ export function ActiveTaskDialog({
   eventId,
   taskId,
   defaultPhase,
+  completedPhaseNames = [],
+  phaseOptions = [],
   viewer,
   committees,
   onSettled,
@@ -457,7 +461,7 @@ export function ActiveTaskDialog({
         priorityResult.error ||
         !Array.isArray(detailResult.data) ||
         detailResult.data.length !== 1 ||
-        !isTaskDetail(detailResult.data[0]) ||
+        !parseTaskDetail(detailResult.data[0]) ||
         !Array.isArray(controlsResult.data) ||
         controlsResult.data.length !== 1 ||
         !isTaskEditControlData(controlsResult.data[0])
@@ -468,13 +472,17 @@ export function ActiveTaskDialog({
       if (storedPriority === null || storedPriority === undefined) {
         throw new Error("The task could not be loaded for editing.");
       }
+      const nextDetail = parseTaskDetail(detailResult.data[0])!;
+      if (nextDetail.phaseComplete) {
+        throw new Error("This phase is complete and read-only. The latest state has been loaded.");
+      }
       const nextControls = controlsResult.data[0];
       const nextDraft = buildActiveTaskEditDraft(
-        detailResult.data[0],
+        nextDetail,
         nextControls,
         storedPriority,
       );
-      if (!nextDraft || !detailResult.data[0].updated_at) {
+      if (!nextDraft || !nextDetail.updated_at) {
         throw new Error("The task could not be loaded for editing.");
       }
       if (!committeesRef.current.some((committee) => committee.id === nextDraft.committeeId)) {
@@ -485,7 +493,7 @@ export function ActiveTaskDialog({
       setInitialEditDraft(nextDraft);
       setControls(nextControls);
       setAssistIds(new Set(nextControls.assist_assignees.map((person) => person.id)));
-      setExpectedUpdatedAt(detailResult.data[0].updated_at);
+      setExpectedUpdatedAt(nextDetail.updated_at);
       const candidates = mergePeople(
         activePeople,
         nextControls,
@@ -540,6 +548,10 @@ export function ActiveTaskDialog({
       setError("The event is unavailable.");
       return;
     }
+    if (completedPhaseNames.includes(draft.phase.trim())) {
+      setError("This phase is complete and read-only. Choose another phase.");
+      return;
+    }
     if (!committees.some((committee) => committee.id === draft.committeeId)) {
       setError(
         mode === "edit"
@@ -590,6 +602,7 @@ export function ActiveTaskDialog({
     }
     setBusy(true);
     let saved = false;
+    let pendingError: string | null = null;
     try {
       const response = await fetch("/api/active-task", {
         method: mode === "add" ? "POST" : "PATCH",
@@ -609,15 +622,14 @@ export function ActiveTaskDialog({
       if (saveError instanceof Error && saveError.message === ACTIVE_TASK_STALE_MESSAGE) {
         setRequiresReload(true);
       }
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "The task could not be saved. Please try again.",
-      );
+      pendingError = saveError instanceof Error
+        ? saveError.message
+        : "The task could not be saved. Please try again.";
     } finally {
       try {
         await Promise.allSettled([onSettled(), load(true)]);
       } finally {
+        if (pendingError) setError(pendingError);
         setBusy(false);
       }
     }
@@ -693,7 +705,12 @@ export function ActiveTaskDialog({
                     <div className="grid gap-4 sm:grid-cols-2">
                       <FormField label="Phase">
                         {(control) => (
-                          <Input {...control} data-active-task-field="phase" maxLength={100} value={draft.phase} onChange={(event) => updateDraft({ phase: event.target.value })} />
+                          <>
+                            <Input {...control} list="active-task-phase-options" data-active-task-field="phase" maxLength={100} value={draft.phase} onChange={(event) => updateDraft({ phase: event.target.value })} />
+                            <datalist id="active-task-phase-options">
+                              {phaseOptions.map((phase) => <option key={phase} value={phase} />)}
+                            </datalist>
+                          </>
                         )}
                       </FormField>
                       <FormField label="Priority">

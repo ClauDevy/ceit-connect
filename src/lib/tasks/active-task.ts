@@ -1,5 +1,6 @@
 import { toAppTimestamp } from "../timezone";
 import { isCanonicalUuid } from "../uuid";
+import { getPhaseCompletionErrorMessage } from "./phase-completion";
 
 export const ACTIVE_TASK_RETRY_MESSAGE =
   "Assignments changed while saving. Please try again.";
@@ -57,6 +58,23 @@ export type ActiveTaskValidationResult<T> =
 
 export const ACTIVE_TASK_STALE_MESSAGE =
   "This task changed after you loaded it. Reload and try again.";
+
+export const ACTIVE_TASK_EXISTING_ERROR_MESSAGES = [
+  ACTIVE_TASK_STALE_MESSAGE,
+  "This event already has the maximum of 200 tasks.",
+  "No changes to save.",
+  "The task is unavailable.",
+  "Check the task details and try again.",
+  "The task changed while saving. Refresh and try again.",
+  "The task could not be saved. Please try again.",
+  ACTIVE_TASK_RETRY_MESSAGE,
+] as const;
+
+export const ACTIVE_TASK_RETRYABLE_RESPONSE_MESSAGES = new Set([
+  ACTIVE_TASK_STALE_MESSAGE,
+  ACTIVE_TASK_RETRY_MESSAGE,
+  "The task changed while saving. Refresh and try again.",
+]);
 
 const VALIDATION_MESSAGES = {
   generic: "Review the task details and try again.",
@@ -407,6 +425,8 @@ function mapRpcError(error: RpcError): ActiveTaskRpcFailure {
       message: "The task changed while saving. Refresh and try again.",
     };
   }
+  const phaseMessage = getPhaseCompletionErrorMessage(error);
+  if (phaseMessage) return { ok: false, status: 409, message: phaseMessage };
   return {
     ok: false,
     status: 500,

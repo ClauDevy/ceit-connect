@@ -124,6 +124,10 @@ These are approved plans, not built or live rules. Each batch's own docs step mo
 
 ## Approved deviations from the original document
 
+### Batch 13b completed-phase UI contract
+
+Reader additions are normalized immediately so an app deployed before the Prod migration safely treats absent or malformed fields as incomplete and non-reopenable. Complete named phases are collapsed/read-only on Active and Draft surfaces; task detail remains readable but capability-driven mutations disappear. Reopen candidates are server-authoritative and masked-safe, and the selected timestamp stays opaque. Polling may reconcile interactions but never moves focus; only a successful user Reopen expands and focuses the reopened phase. Archived event-list grouped headings intentionally receive no completion styling in this batch.
+
 - **Sign-in methods:** invited accounts may use a magic link, set their own password, or continue with Google. `/auth/callback` retains a session only for a verified Auth email with the same active profile UUID and normalized email on the environment allowlist; it does not inspect provider metadata or require `password_set`. Forgot-password uses a typed 6-digit emailed code, not a link.
 - **Email:** Supabase custom SMTP through a Gmail App Password (interim) instead of Resend, because Resend needs a verified domain to email arbitrary recipients and the team has no domain yet.
 - **Invites and user management:** Admins retain the all-user/officer surface. Active Co-Admins receive only same-committee Member rows and may invite Members, deactivate/reactivate them, and edit `full_name`; caller-session RPCs enforce every Co-Admin action.

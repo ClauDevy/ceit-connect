@@ -49,7 +49,7 @@ describe("Batch 11 active task UI contract", () => {
     expect(dialog).toContain("setBusy(false)");
     expect(dialog).toContain("shouldApplyActiveTaskLoadResult(mode, background)");
     expect(dialog.indexOf("shouldApplyActiveTaskLoadResult(mode, background)")).toBeLessThan(
-      dialog.indexOf("setExpectedUpdatedAt(detailResult.data[0].updated_at)"),
+      dialog.indexOf("setExpectedUpdatedAt(nextDetail.updated_at)"),
     );
     expect(board).toContain("refetchBoardAfterTaskSettlement");
     expect(detail).toContain("onSettled={refreshAccess}");
@@ -113,6 +113,17 @@ describe("Batch 11 active task UI contract", () => {
     expect(dialog).toContain("MotionPresence");
     expect(dialog).toContain("motion-reduce:");
     expect(card).toContain("motion-reduce:");
+  });
+
+  it("server-renders completed board phases closed with an inert shared disclosure", () => {
+    expect(board).toContain("initializePhaseDisclosure(");
+    expect(board).toContain("getCompleteBoardPhases(initialTasks ?? [])");
+    expect(board).toContain('<Collapse open={!selectedCompletePhaseCollapsed}>');
+    expect(board).toContain('aria-expanded={!selectedCompletePhaseCollapsed}');
+    expect(board).toContain('aria-controls="event-board-completed-phase-content"');
+    expect(board).not.toMatch(
+      /selectedPhaseComplete[\s\S]{0,1800}<MotionPresence open=/,
+    );
   });
 
   it("keeps phone targets and hover, focus-visible, and pressed states", () => {

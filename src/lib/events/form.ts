@@ -19,7 +19,19 @@ export type EventFormPhaseRef<TTask extends EventFormTaskRef = EventFormTaskRef>
 export type EventFormReaderTaskRef = {
   out_task_id: string;
   out_phase: string | null;
+  phaseComplete?: boolean;
 };
+
+export function excludeCompletedPhaseTaskMutations<
+  TTask extends EventFormTaskRef,
+  TPhase extends EventFormPhaseRef<TTask>,
+>(phases: readonly TPhase[], completedPhases: ReadonlySet<string>) {
+  return phases.flatMap((phase) =>
+    completedPhases.has(normalizeEventPhaseName(phase.name))
+      ? []
+      : phase.tasks.map((task) => ({ phase, task })),
+  );
+}
 
 export type EventPhaseView<
   TPhase extends EventFormPhaseRef = EventFormPhaseRef,

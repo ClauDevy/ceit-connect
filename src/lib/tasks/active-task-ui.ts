@@ -249,6 +249,7 @@ export function canShowBoardTaskEdit(
 ) {
   return (
     !task.is_masked &&
+    !task.phaseComplete &&
     (viewer.role === "Admin" ||
       (viewer.role === "Co-Admin" &&
         viewer.committeeId !== null &&
@@ -262,9 +263,25 @@ export function canShowTaskPageEdit(
 ) {
   return (
     !task.is_masked &&
+    !task.phaseComplete &&
     task.event_status === "Active" &&
     controls?.can_edit_task === true
   );
+}
+
+export function getCompletedTaskDetailReadOnlyInventory(phaseComplete: boolean) {
+  return {
+    edit: !phaseComplete,
+    assignment: !phaseComplete,
+    delete: !phaseComplete,
+    dependency: !phaseComplete,
+    confidentiality: !phaseComplete,
+    leave: !phaseComplete,
+    backup: !phaseComplete,
+    volunteer: !phaseComplete,
+    commentMutations: !phaseComplete,
+    workLinkMutations: !phaseComplete,
+  };
 }
 
 const taskMetadataFormatter = new Intl.DateTimeFormat("en-US", {

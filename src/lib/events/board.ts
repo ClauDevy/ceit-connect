@@ -1,3 +1,5 @@
+import { parseBoardPhaseCompletionState } from "../tasks/phase-completion";
+
 export type BoardEvent = {
   id: string;
   name: string;
@@ -31,6 +33,9 @@ export type BoardTask = {
   assist_assignees: BoardAssignee[];
   is_backlog: boolean;
   is_masked: boolean;
+  phaseComplete: boolean;
+  canReopen: boolean;
+  reopenUpdatedAt: string | null;
 };
 
 export const BOARD_STATUSES: BoardStatus[] = [
@@ -55,10 +60,10 @@ function isAssignee(value: unknown): value is BoardAssignee {
   );
 }
 
-export function isBoardTask(value: unknown): value is BoardTask {
-  if (!value || typeof value !== "object") return false;
+export function parseBoardTask(value: unknown): BoardTask | null {
+  if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
-  return (
+  if (!(
     typeof row.id === "string" &&
     typeof row.title === "string" &&
     (typeof row.phase === "string" || row.phase === null) &&
@@ -74,5 +79,10 @@ export function isBoardTask(value: unknown): value is BoardTask {
     row.assist_assignees.every(isAssignee) &&
     typeof row.is_backlog === "boolean" &&
     typeof row.is_masked === "boolean"
-  );
+  )) return null;
+  return { ...(row as Omit<BoardTask, "phaseComplete" | "canReopen" | "reopenUpdatedAt">), ...parseBoardPhaseCompletionState(row) };
+}
+
+export function isBoardTask(value: unknown): value is BoardTask {
+  return parseBoardTask(value) !== null;
 }
