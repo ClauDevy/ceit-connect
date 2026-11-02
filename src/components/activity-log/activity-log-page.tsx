@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { ActivityLogList } from "@/components/activity-log/activity-log-list";
 import { ListPager } from "@/components/shared/list-pager";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ import {
   type ActivityWindow,
 } from "@/lib/activity-log";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 type Committee = { id: string; name: string };
 type Props = {
@@ -62,6 +63,7 @@ export function ActivityLogPageClient({
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_ACTIVITY_FILTERS);
   const [searchInput, setSearchInput] = useState("");
   const [knownCursors, setKnownCursors] = useState<ActivityCursorStack>(() =>
@@ -386,7 +388,8 @@ export function ActivityLogPageClient({
   const window = query.data;
   const rows = window?.rows ?? [];
   const filtered = Boolean(
-    filters.action ||
+    filters.sort !== DEFAULT_ACTIVITY_FILTERS.sort ||
+      filters.action ||
       filters.committeeId ||
       filters.dateFrom ||
       filters.dateTo ||
@@ -407,10 +410,17 @@ export function ActivityLogPageClient({
   const safeError = navigationError ??
     (query.error ? activityErrorMessage(query.error) : null);
   const listResetKey = JSON.stringify(queryKey);
+  const activeFilterCount = [
+    filters.sort !== DEFAULT_ACTIVITY_FILTERS.sort,
+    filters.action,
+    filters.committeeId,
+    filters.dateFrom,
+    filters.dateTo,
+  ].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2 lg:grid-cols-[minmax(180px,1fr)_140px_130px_170px_145px_145px_auto_44px] lg:items-end">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 xl:grid-cols-[minmax(180px,1fr)_140px_130px_170px_145px_145px_auto_44px] xl:items-end">
         <label htmlFor="activity-log-search" className="relative">
           <span className="sr-only">Search activity</span>
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -423,6 +433,40 @@ export function ActivityLogPageClient({
             className="pl-9"
           />
         </label>
+        <Button
+          type="button"
+          variant="outline"
+          className="xl:hidden"
+          aria-expanded={filtersOpen}
+          aria-controls="activity-log-filters"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontal aria-hidden />
+          Filters
+          {activeFilterCount > 0 ? (
+            <span className="ml-0.5 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+              {activeFilterCount}
+            </span>
+          ) : null}
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="xl:order-last"
+          onClick={() => void refresh()}
+          disabled={refreshing || navigating}
+          aria-label="Refresh activity log"
+          title="Refresh activity log"
+        >
+          <RefreshCw className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
+        </Button>
+        <div
+          id="activity-log-filters"
+          className={cn(
+            "col-span-3 grid gap-2 sm:grid-cols-2 xl:contents",
+            !filtersOpen && "hidden",
+          )}
+        >
         <Select
           items={ACTIVITY_SORT_LABELS}
           value={filters.sort}
@@ -507,21 +551,12 @@ export function ActivityLogPageClient({
             }
           />
         </label>
+        </div>
         {showClearFilters ? (
-          <Button variant="ghost" onClick={clearFilters}>Clear filters</Button>
+          <Button variant="ghost" className="col-span-3 xl:col-span-1" onClick={clearFilters}>Clear filters</Button>
         ) : (
-          <span className="hidden lg:block" aria-hidden />
+          <span className="hidden xl:block" aria-hidden />
         )}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => void refresh()}
-          disabled={refreshing || navigating}
-          aria-label="Refresh activity log"
-          title="Refresh activity log"
-        >
-          <RefreshCw className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
-        </Button>
       </div>
 
       {safeError && window && !accessUnavailable ? (
@@ -572,7 +607,7 @@ export function ActivityLogPageClient({
         <ListPager
           activePage={activePage}
           ariaLabel="Activity log pages"
-          className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 min-h-20 items-center gap-3 bg-card px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-sm md:bottom-0 md:min-h-16 md:px-4 md:py-2"
+          className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 mx-auto w-fit max-w-full items-center gap-3 rounded-full border bg-card/95 px-2 py-1.5 shadow-md backdrop-blur sm:mx-0 sm:w-full sm:rounded-xl sm:px-4 sm:py-2 md:bottom-3"
           navigationDisabled={navigating}
           nextBusy={nextArrowBusy}
           nextDisabled={!window?.hasMore || nextCursor === undefined}

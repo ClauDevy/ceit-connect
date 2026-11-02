@@ -467,21 +467,6 @@ export function UsersTable({
 
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
-      {viewerRole === "Admin" ? (
-        <PendingOfficerInvites
-          invites={pendingInvites}
-          visibleAuthUserIds={new Set(paging.items.map((member) => member.id))}
-          loading={pendingInvitesLoading}
-          error={pendingInvitesError}
-          onRetry={() => void refreshPendingInvites()}
-          onCancelled={async () => {
-            await Promise.all([
-              refreshPendingInvites(),
-              paging.refreshFromStart(),
-            ]);
-          }}
-        />
-      ) : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <SegmentedControl
           aria-label="User status"
@@ -542,6 +527,21 @@ export function UsersTable({
         ) : null}
       </div>
 
+      {viewerRole === "Admin" && status === "active" ? (
+        <PendingOfficerInvites
+          invites={pendingInvites}
+          visibleAuthUserIds={new Set(paging.items.map((member) => member.id))}
+          loading={pendingInvitesLoading}
+          error={pendingInvitesError}
+          onRetry={() => void refreshPendingInvites()}
+          onCancelled={async () => {
+            await Promise.all([
+              refreshPendingInvites(),
+              paging.refreshFromStart(),
+            ]);
+          }}
+        />
+      ) : null}
       {!rosterLoading && selectionEnabled && displayedMembers.length > 0 ? (
         <div className="flex min-h-11 flex-wrap items-center gap-2 border-y py-2">
           <label className="motion-control-trigger flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-medium hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none">
@@ -624,6 +624,7 @@ export function UsersTable({
               />
             ) : paging.items.length === 0 ? (
               <EmptyState
+                compact
                 title={
                   search
                     ? "No users match that search"

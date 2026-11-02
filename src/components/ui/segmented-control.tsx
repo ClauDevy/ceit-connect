@@ -10,6 +10,7 @@ type SegmentedControlProps<T extends string> = {
   options: readonly Option<T>[]
   "aria-label": string
   className?: string
+  disabled?: boolean
 }
 
 function SegmentedControl<T extends string>({
@@ -17,6 +18,7 @@ function SegmentedControl<T extends string>({
   onValueChange,
   options,
   className,
+  disabled = false,
   ...props
 }: SegmentedControlProps<T>) {
   return (
@@ -33,9 +35,10 @@ function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
+            disabled={disabled}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+              "rounded-lg px-3 py-1.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-60",
               selected
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

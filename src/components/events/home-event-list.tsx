@@ -33,14 +33,8 @@ import {
   type OffsetListPage,
 } from "@/lib/list-paging";
 import { createClient } from "@/lib/supabase/client";
+import { formatShortDateRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-});
 
 const exactTimestampFormatter = new Intl.DateTimeFormat("en-PH", {
   year: "numeric",
@@ -57,14 +51,8 @@ const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
   numeric: "auto",
 });
 
-function formatDate(date: string) {
-  return dateFormatter.format(new Date(`${date}T00:00:00Z`));
-}
-
 function formatDateRange(event: HomeEvent) {
-  if (!event.end_date) return `Starts ${formatDate(event.start_date)}`;
-  if (event.start_date === event.end_date) return formatDate(event.start_date);
-  return `${formatDate(event.start_date)} – ${formatDate(event.end_date)}`;
+  return formatShortDateRange(event.start_date, event.end_date);
 }
 
 function formatLastEdited(value: string | null | undefined) {
@@ -129,13 +117,6 @@ function ActiveEventCard({
         href={`/events/${event.id}`}
         label={`Open ${event.name}`}
       />
-      <EventBanner
-        src={event.banner_url}
-        alt={`${event.name} banner`}
-        loading="lazy"
-        decoding="async"
-        className="aspect-video w-full"
-      />
       <EventCardMenu
         eventId={event.id}
         eventName={event.name}
@@ -144,19 +125,31 @@ function ActiveEventCard({
         incompleteTaskCount={event.incompleteTaskCount}
         eventUpdatedAt={event.updated_at}
       />
-      <CardContent className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg font-semibold leading-snug">
-            {event.name}
-          </h3>
-          <Badge variant="outline">Active</Badge>
+      <CardContent className="space-y-3 p-3.5 sm:p-4">
+        <div className="flex items-start gap-3 pr-11 md:pr-10">
+          <EventBanner
+            src={event.banner_url}
+            alt={`${event.name} banner`}
+            compact
+            loading="lazy"
+            decoding="async"
+            className="aspect-video w-24 shrink-0 rounded-xl sm:w-32"
+          />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-display text-base leading-snug font-semibold break-words line-clamp-2 sm:text-lg">
+              {event.name}
+            </h3>
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
+              <CalendarDays className="size-3.5 shrink-0" aria-hidden />
+              <span>{formatDateRange(event)}</span>
+            </p>
+            <Badge variant="outline" className="mt-1.5">
+              Active
+            </Badge>
+          </div>
         </div>
-        <p className="flex items-start gap-2 text-sm text-muted-foreground">
-          <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{formatDateRange(event)}</span>
-        </p>
         {event.description ? (
-          <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+          <p className="line-clamp-1 text-sm text-muted-foreground">
             {event.description}
           </p>
         ) : null}
@@ -164,8 +157,8 @@ function ActiveEventCard({
           eventName={event.name}
           progress={event.progress}
         />
-        <div className="text-sm font-semibold text-primary group-hover:text-foreground group-focus-within:text-foreground">
-          View board <span className="motion-arrow inline-block" aria-hidden>→</span>
+        <div className="flex items-center justify-end text-sm font-semibold text-primary group-hover:text-foreground group-focus-within:text-foreground">
+          View board <span className="motion-arrow ml-1 inline-block" aria-hidden>→</span>
         </div>
       </CardContent>
     </Card>
@@ -185,9 +178,7 @@ function DraftEventCard({
   return (
     <Card
       {...revealProps}
-      className={cn(
-        "relative border-2 border-dashed bg-card/70",
-      )}
+      className={cn("relative border-2 border-dashed bg-card/70")}
     >
       {canEdit ? (
         <StretchedLink
@@ -195,52 +186,55 @@ function DraftEventCard({
           label={`Edit ${event.name}`}
         />
       ) : null}
-      <CardContent className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <div className="flex min-w-0 items-start gap-3.5">
-          <EventBanner
-            src={event.banner_url}
-            alt={`${event.name} banner`}
-            compact
-            loading="lazy"
-            decoding="async"
-            className="size-11 shrink-0 rounded-xl"
-          />
-          <div className="min-w-0">
-            <h3 className="font-display font-semibold leading-snug">
+      <CardContent className="flex items-center gap-3 p-3 sm:p-3.5">
+        <EventBanner
+          src={event.banner_url}
+          alt={`${event.name} banner`}
+          compact
+          loading="lazy"
+          decoding="async"
+          className="size-11 shrink-0 rounded-xl"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="min-w-0 truncate font-display font-semibold leading-snug">
               {event.name}
             </h3>
-            <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground">
-              <CalendarDays className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              <span>{formatDateRange(event)}</span>
-            </p>
-            <div className="mt-2 grid gap-0.5 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">Not launched</p>
-              {lastEdited ? (
-                <time
-                  suppressHydrationWarning
-                  dateTime={lastEdited.iso}
-                  title={`${lastEdited.exact} (Philippine time)`}
-                  aria-label={`Last edited ${lastEdited.exact}, Philippine time`}
-                >
-                  Last edited {lastEdited.relative}
-                </time>
-              ) : null}
-            </div>
+            <Badge variant="neutral" className="shrink-0">
+              Draft
+            </Badge>
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays className="size-3.5 shrink-0" aria-hidden />
+              {formatDateRange(event)}
+            </span>
+            <span className="font-medium text-foreground">Not launched</span>
+            {lastEdited ? (
+              <time
+                suppressHydrationWarning
+                dateTime={lastEdited.iso}
+                title={`${lastEdited.exact} (Philippine time)`}
+                aria-label={`Last edited ${lastEdited.exact}, Philippine time`}
+              >
+                Edited {lastEdited.relative}
+              </time>
+            ) : null}
           </div>
         </div>
-        <div className="relative z-20 flex flex-wrap items-center gap-2 sm:justify-end">
-          <Badge variant="neutral" className="shrink-0">
-            Draft
-          </Badge>
-          {canEdit ? (
-            <Link
-              href={`/events/${event.id}/edit`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Pencil aria-hidden /> Edit
-            </Link>
-          ) : null}
-        </div>
+        {canEdit ? (
+          <Link
+            href={`/events/${event.id}/edit`}
+            aria-label={`Edit ${event.name}`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "relative z-20 shrink-0",
+            )}
+          >
+            <Pencil aria-hidden />
+            <span className="hidden sm:inline">Edit</span>
+          </Link>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -440,7 +434,7 @@ export function HomeEventList({
               {activeEvents.length}
             </Badge>
           </div>
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
             {activeEvents.map((event) => (
               <ActiveEventCard
                 key={event.id}
