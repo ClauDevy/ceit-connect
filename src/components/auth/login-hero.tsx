@@ -9,8 +9,8 @@ export function LoginHero() {
     <section className="relative hidden flex-col items-center justify-center overflow-hidden border-r bg-muted px-8 py-10 text-center md:flex md:w-[42%] md:shrink-0 dark:bg-card">
       <div className="flex max-w-sm flex-col items-center">
         <div className="relative mb-8 grid place-items-center">
-          <div aria-hidden className="absolute size-60 rounded-full bg-accent/70 dark:bg-primary/10" />
-          <TigerMascot size={200} className="relative" />
+          <span aria-hidden className="brand-shield-art absolute h-80 w-70 -translate-y-6" />
+          <TigerMascot size={200} mark className="relative" />
         </div>
 
         <p className="font-display text-2xl font-semibold tracking-tight">CEIT Connect</p>

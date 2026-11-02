@@ -1,6 +1,6 @@
 # Step 4: Branding
 
-**Status:** Planned | **Branch:** `feature/branding` | **Reasoning level:** Medium
+**Status:** Implemented locally; owner gate and browser checks pending | **Branch:** `feature/branding` | **Reasoning level:** Medium
 
 ## Goal
 
@@ -25,6 +25,16 @@ This batch keeps its Step 4 identifier but runs **after Batch 13b and before Bat
 - The shield replaces the current paw-print page background; the two patterns do not coexist.
 - Exact shield placement, scale, and opacity are visual-tuning decisions to make after the clean SVG exists.
 
+## Owner-approved decisions (2026-11-02)
+
+- **App-shell logo:** `public/brand/app-logo.svg` replaces the tiger-head mark in `brand.tsx` (34px tall, desktop and collapsed sidebar) and `mobile-topbar.tsx` (28px tall, phone header). Text, link target, collapse behavior, and the hidden-from-screen-readers treatment are unchanged. Decorative tiger heads (empty states, event banner, event form) and the unused `sidebar.tsx` stay as they are.
+- **Background:** one fixed decorative layer with 11 shields on desktop and 6 on phones; faint gold in light, faint white in dark; two soft corner glows from the primary token.
+- **Login hero:** a large faint shield behind the tiger (desktop and phone) and a small orange shield mark on the tiger's tummy that scales with the mascot. The tiger drawing is not redrawn.
+- **Login footer:** static, in normal flow under the form on phone and desktop. Line 1: team logo (theme-swapped) and "Built by eduCache.on". Line 2: "© 2026 CEIT Student Council, Cavite State University. All rights reserved." No links.
+- **Favicon:** `src/app/icon.svg` plus a generated `src/app/favicon.ico` (16/32/48), gold shield on a dark rounded square. Next.js picks both up by file convention.
+- **Assets:** the owner supplied clean transparent SVGs in `public/brand/`. `app-logo.svg` was slimmed by rounding coordinates; `shield-mark.svg` is `shield-color.svg` recolored to the tiger's dark fur color.
+- **Docs reconciled:** Batches 13b, 13c, 13e, and 12b are merged and live on Dev and Prod, and 13d is merged and live on Prod, all owner-confirmed. The deferred list now has one section in `docs/PROGRESS.md`.
+
 ## Current state
 
 - `src/app/globals.css` applies a repeated, embedded paw-print background to `body`, with separate light- and dark-theme colors and opacity.
@@ -38,7 +48,7 @@ This batch keeps its Step 4 identifier but runs **after Batch 13b and before Bat
 
 **In:** obtain and add one clean shield SVG using the approved source order; replace the global paw-print background with scattered, faint, fixed shield placements; tune placement, scale, and opacity once the asset exists; create readable light- and dark-theme treatments; apply the approved shield treatment to the existing login layout; replace the favicon with a legible shield-derived icon; retain semantic design tokens and responsive behavior.
 
-**Out:** changing authentication behavior or copy; replacing the tiger mascot or app-shell logo unless separately approved; redesigning the dashboard shell or unrelated pages; adding remote image storage; changing database records; inventing a new council logo; keeping the paw-print pattern underneath the shields.
+**Out:** changing authentication behavior or copy; replacing the login tiger mascot (the owner approved swapping only the app-shell mark in `brand.tsx` and `mobile-topbar.tsx`); redesigning the dashboard shell or unrelated pages; adding remote image storage; changing database records; inventing a new council logo; keeping the paw-print pattern underneath the shields.
 
 ## Database impact
 
@@ -83,12 +93,12 @@ Create `docs/phase-4b/step-4-tests.md` when the batch lands. Record the final as
 
 ## Acceptance
 
-A sanitized clean shield SVG obtained through the approved source order drives the branding treatment. The shield replaces the paw-print background with visually tuned scattered, faint, fixed placements; the login page and favicon use the approved treatment; and phone and desktop layouts remain readable in both themes. No authentication behavior, application permission, or database contract changes.
+A sanitized clean shield SVG obtained through the approved source order drives the branding treatment. The shield replaces the paw-print background with visually tuned scattered, faint, fixed placements; the login page and favicon use the approved treatment; and phone and desktop layouts remain readable in both themes. No authentication behavior, application permission, or database contract changes. The app-shell mark uses `app-logo.svg`, the login page shows the credit footer and tummy mark, and the favicon is the gold shield.
 
 ## Open questions for the owner
 
-- The plan requires a “login page treatment” but does not define the final composition beyond using the shield branding and retaining the existing responsive auth structure. Approve the proposed composition during implementation after the clean SVG can be previewed.
-- Whether the app-shell tiger logo should ever be replaced by the council shield is not decided and remains outside this batch unless the owner explicitly adds it.
+- Resolved 2026-11-02: the login composition is the faint shield behind the tiger plus a tiny tummy mark, with the credit footer. Final opacities and shield placements are first-pass numbers to tune after the owner sees the real screens.
+- Resolved 2026-11-02: the app-shell mark is replaced by `app-logo.svg` (the council shield with the tiger), not by the bare shield.
 
 ## Docs to update when this lands
 

@@ -3,6 +3,7 @@ import { Fredoka, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { BrandBackground } from "@/components/brand/brand-background";
 
 const body = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="flex min-h-full flex-col">
+        <BrandBackground />
         {children}
       </body>
     </html>
