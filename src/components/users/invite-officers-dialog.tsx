@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Mail, Plus, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Collapse, MotionPresence } from "@/components/shared/motion";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { IconInput } from "@/components/ui/icon-input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,11 @@ const newRow = (clientId: string): Row => ({
   role: "Co-Admin",
   committeeId: null,
 });
+
+const OFFICER_ROLES = [
+  { value: "Co-Admin", label: "Co-Admin" },
+  { value: "Admin", label: "Admin" },
+] as const;
 
 function statusVariant(state: OfficerInviteState) {
   if (state === "failed") return "destructive" as const;
@@ -171,7 +177,7 @@ export function InviteOfficersDialog({
           else requestClose();
         }}
       >
-        <DialogTrigger render={<Button size="lg" variant="outline" />}>
+        <DialogTrigger render={<Button variant="outline" className="flex-1 sm:flex-none" />}>
           <ShieldCheck aria-hidden />
           Invite officers
         </DialogTrigger>
@@ -180,24 +186,38 @@ export function InviteOfficersDialog({
           aria-hidden={!open || undefined}
           inert={!open ? true : undefined}
         >
-          <DialogHeader>
+          <DialogHeader className="grid-cols-[auto_1fr] items-center gap-x-3 gap-y-0.5">
+            <span
+              aria-hidden
+              className="row-span-2 flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"
+            >
+              <ShieldCheck className="size-5" />
+            </span>
             <DialogTitle>Invite officers</DialogTitle>
             <DialogDescription>
               Invite 1–10 Admins or committee Co-Admins. Emails are sent one at a time.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
             {rows.map((row, index) => {
               const prefix = `officer-${row.clientId}`;
               return (
                 <section
                   key={row.clientId}
-                  className="motion-card-interaction grid gap-2 rounded-xl border border-border bg-card p-3 motion-reduce:transform-none"
+                  className="motion-card-interaction grid gap-3 rounded-xl border border-border bg-card p-3.5 motion-reduce:transform-none"
                   aria-label={`Officer ${index + 1}`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold">Officer {index + 1}</p>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        aria-hidden
+                        className="flex size-8 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-semibold text-primary"
+                      >
+                        {index + 1}
+                      </span>
+                      <p className="text-sm font-semibold">Officer {index + 1}</p>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -214,13 +234,16 @@ export function InviteOfficersDialog({
                       <Trash2 aria-hidden />
                     </Button>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="grid gap-1">
-                      <label className="text-xs font-medium" htmlFor={`${prefix}-name`}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <label className="text-xs font-semibold text-secondary-foreground" htmlFor={`${prefix}-name`}>
                         Full name
                       </label>
-                      <Input
+                      <IconInput
+                        icon={UserRound}
                         id={`${prefix}-name`}
+                        placeholder="e.g. Juan Dela Cruz"
+                        autoComplete="off"
                         value={row.fullName}
                         disabled={busy || row.state === "sent"}
                         onChange={(event) =>
@@ -228,13 +251,16 @@ export function InviteOfficersDialog({
                         }
                       />
                     </div>
-                    <div className="grid gap-1">
-                      <label className="text-xs font-medium" htmlFor={`${prefix}-email`}>
+                    <div className="grid gap-1.5">
+                      <label className="text-xs font-semibold text-secondary-foreground" htmlFor={`${prefix}-email`}>
                         Email
                       </label>
-                      <Input
+                      <IconInput
+                        icon={Mail}
                         id={`${prefix}-email`}
                         type="email"
+                        placeholder="name@cvsu.edu.ph"
+                        autoComplete="off"
                         value={row.email}
                         disabled={busy || row.state === "sent"}
                         onChange={(event) =>
@@ -242,35 +268,26 @@ export function InviteOfficersDialog({
                         }
                       />
                     </div>
-                    <div className="grid gap-1">
-                      <label className="text-xs font-medium" htmlFor={`${prefix}-role`}>
+                    <div className="grid content-start gap-1.5">
+                      <span className="text-xs font-semibold text-secondary-foreground">
                         Role
-                      </label>
-                      <Select
-                        items={[
-                          { value: "Admin", label: "Admin" },
-                          { value: "Co-Admin", label: "Co-Admin" },
-                        ]}
+                      </span>
+                      <SegmentedControl
+                        aria-label={`Officer ${index + 1} role`}
+                        options={OFFICER_ROLES}
                         value={row.role}
                         disabled={busy || row.state === "sent"}
                         onValueChange={(value) =>
                           updateRow(row.clientId, {
-                            role: value === "Admin" ? "Admin" : "Co-Admin",
+                            role: value,
                             committeeId: value === "Admin" ? null : row.committeeId,
                           })
                         }
-                      >
-                        <SelectTrigger id={`${prefix}-role`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="Co-Admin">Co-Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        className="min-h-11 md:min-h-10"
+                      />
                     </div>
-                    <Collapse open={row.role === "Co-Admin"} className="grid gap-1">
-                      <label className="text-xs font-medium" htmlFor={`${prefix}-committee`}>
+                    <Collapse open={row.role === "Co-Admin"} className="grid gap-1.5">
+                      <label className="text-xs font-semibold text-secondary-foreground" htmlFor={`${prefix}-committee`}>
                         Committee
                       </label>
                       <Select

@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle2, Mail } from "lucide-react"
+import { CheckCircle2, Mail, UserRound, UsersRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { IconInput } from "@/components/ui/icon-input"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Committee, Role } from "@/lib/types"
 
@@ -85,7 +84,21 @@ export function InviteUserForm({
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
-      <FormField label="Email">
+      <FormField label="Full name">
+        {(control) => (
+          <IconInput
+            icon={UserRound}
+            required
+            autoComplete="off"
+            placeholder="e.g. Juan Dela Cruz"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            {...control}
+          />
+        )}
+      </FormField>
+
+      <FormField label="Email" hint="They'll sign in with this email.">
         {(control) => (
           <IconInput
             icon={Mail}
@@ -95,18 +108,6 @@ export function InviteUserForm({
             placeholder="name@cvsu.edu.ph"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            {...control}
-          />
-        )}
-      </FormField>
-
-      <FormField label="Full name">
-        {(control) => (
-          <Input
-            required
-            autoComplete="off"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
             {...control}
           />
         )}
@@ -136,7 +137,8 @@ export function InviteUserForm({
       ) : (
         <FormField label="Committee">
           {(control) => (
-            <Input
+            <IconInput
+              icon={UsersRound}
               {...control}
               value={committeeName ?? "No committee assigned"}
               readOnly

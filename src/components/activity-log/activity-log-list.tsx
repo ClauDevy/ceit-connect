@@ -419,10 +419,10 @@ function GlobalActivityLogList({
                 <ActionBadge row={row} global={global} />
                 <GlobalDate value={row.activityCreatedAt} />
               </div>
-              <div className="mt-3">
+              <div className="mt-1.5">
                 <GlobalTask row={row} />
               </div>
-              <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="mt-2 flex items-center justify-between gap-3">
                 <GlobalActor name={row.isMasked ? null : row.actorName} />
                 <GlobalChangePreview
                   row={row}
@@ -442,7 +442,7 @@ function GlobalActivityLogList({
               {expandable ? (
                 <button
                   type="button"
-                  className="min-h-11 w-full px-4 py-3 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-secondary motion-reduce:transition-none"
+                  className="min-h-11 w-full px-3.5 py-2.5 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-secondary motion-reduce:transition-none"
                   aria-expanded={isExpanded}
                   aria-controls={detailsId}
                   onClick={() => toggle(row)}
@@ -450,7 +450,7 @@ function GlobalActivityLogList({
                   {content}
                 </button>
               ) : (
-                <div className="px-4 py-3">{content}</div>
+                <div className="px-3.5 py-2.5">{content}</div>
               )}
               {expandable && isExpanded ? (
                 <div id={detailsId} className="border-t bg-secondary/60 px-4 py-3">
