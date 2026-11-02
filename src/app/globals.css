@@ -465,12 +465,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Faint paw-print backdrop from the prototype; sits behind cards only. */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='%23EC6608' fill-opacity='0.05'%3E%3Cellipse cx='60' cy='74' rx='15' ry='13'/%3E%3Ccircle cx='42' cy='48' r='6.5'/%3E%3Ccircle cx='60' cy='38' r='7'/%3E%3Ccircle cx='78' cy='48' r='6.5'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: 130px 130px;
-  }
-  .dark body {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='%23FFDDBB' fill-opacity='0.035'%3E%3Cellipse cx='60' cy='74' rx='15' ry='13'/%3E%3Ccircle cx='42' cy='48' r='6.5'/%3E%3Ccircle cx='60' cy='38' r='7'/%3E%3Ccircle cx='78' cy='48' r='6.5'/%3E%3C/g%3E%3C/svg%3E");
   }
   html {
     @apply font-sans;
@@ -480,4 +474,84 @@
 @layer base {
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+}
+
+/* Council shield branding (Batch 4).
+   The page backdrop and login art are decorative: opacity tokens live here so both
+   themes are tuned in one place. Only the active theme's image is ever downloaded
+   (an element's background-image is fetched only while its rule applies). */
+:root {
+  --brand-shield-bg-opacity: 0.16;
+  --brand-shield-hero-opacity: 0.22;
+}
+
+.dark {
+  --brand-shield-bg-opacity: 0.055;
+  --brand-shield-hero-opacity: 0.06;
+}
+
+.brand-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 45%),
+    radial-gradient(circle at 100% 100%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 45%);
+}
+
+.brand-bg-shield {
+  position: absolute;
+  left: var(--px);
+  top: var(--py);
+  height: var(--ps);
+  aspect-ratio: 1799 / 2056;
+  transform: translate(-50%, -50%) rotate(var(--pr));
+  background: center / contain no-repeat url("/brand/shield-color.svg");
+  opacity: var(--brand-shield-bg-opacity);
+}
+
+.dark .brand-bg-shield {
+  background-image: url("/brand/shield-white.svg");
+}
+
+@media (min-width: 768px) {
+  .brand-bg-shield {
+    left: var(--x);
+    top: var(--y);
+    height: var(--s);
+    transform: translate(-50%, -50%) rotate(var(--r));
+  }
+}
+
+@media (forced-colors: active), print {
+  .brand-bg {
+    display: none;
+  }
+}
+
+/* Large faint shield behind the login mascot. */
+.brand-shield-art {
+  pointer-events: none;
+  background: center / contain no-repeat url("/brand/shield-color.svg");
+  opacity: var(--brand-shield-hero-opacity);
+}
+
+.dark .brand-shield-art {
+  background-image: url("/brand/shield-white.svg");
+}
+
+/* eduCache.on team logo in the login footer (aspect 2400 : 1342, 32px tall so its wordmark is readable). */
+.brand-team-logo {
+  display: inline-block;
+  height: 32px;
+  width: 57px;
+  flex-shrink: 0;
+  background: center / contain no-repeat url("/brand/team-logo.svg");
+}
+
+.dark .brand-team-logo {
+  background-image: url("/brand/team-logo-dark.svg");
 }
