@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { Archive, CalendarDays, ChevronRight, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { CalendarDays, ChevronRight, RefreshCw, Search } from "lucide-react";
 import { EventBanner } from "@/components/events/event-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
@@ -9,8 +9,16 @@ import { useListReveal } from "@/components/shared/motion";
 import { StretchedLink } from "@/components/shared/stretched-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { IconInput } from "@/components/ui/icon-input";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
 import {
@@ -19,24 +27,18 @@ import {
 } from "@/lib/events/list-paging";
 import { LIST_FETCH_LIMIT, type OffsetListPage } from "@/lib/list-paging";
 import { createClient } from "@/lib/supabase/client";
+import { formatShortDateRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-function formatDate(date: string) {
-  return dateFormatter.format(new Date(`${date}T00:00:00Z`));
-}
+const ARCHIVE_SORT_LABELS = {
+  newest: "Newest first",
+  oldest: "Oldest first",
+  name: "Name A–Z",
+} as const;
+type ArchiveSort = keyof typeof ARCHIVE_SORT_LABELS;
 
 function formatDateRange(event: ArchivedEvent) {
-  if (!event.end_date || event.end_date === event.start_date) {
-    return formatDate(event.start_date);
-  }
-  return `${formatDate(event.start_date)} – ${formatDate(event.end_date)}`;
+  return formatShortDateRange(event.start_date, event.end_date);
 }
 
 export function ArchiveEventList({
@@ -45,35 +47,48 @@ export function ArchiveEventList({
   initialPage?: OffsetListPage<ArchivedEvent>;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<ArchiveSort>("newest");
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
   const fetchPage = useCallback(
     async (offset: number, signal: AbortSignal) => {
       let request = supabase
         .from("events")
         .select("id, name, description, start_date, end_date, banner_url")
-        .eq("status", "Archived")
-        .order(ARCHIVED_EVENT_ORDER[0].column, {
-          ascending: ARCHIVED_EVENT_ORDER[0].ascending,
-        })
-        .order(ARCHIVED_EVENT_ORDER[1].column, {
-          ascending: ARCHIVED_EVENT_ORDER[1].ascending,
-        })
-        .order(ARCHIVED_EVENT_ORDER[2].column, {
-          ascending: ARCHIVED_EVENT_ORDER[2].ascending,
-        })
+        .eq("status", "Archived");
+      if (search) {
+        request = request.ilike("name", `%${search.replace(/[\\%_]/g, "\\$&")}%`);
+      }
+      if (sort === "name") {
+        request = request
+          .order("name", { ascending: true })
+          .order("id", { ascending: true });
+      } else {
+        const ascending = sort === "oldest";
+        request = request
+          .order(ARCHIVED_EVENT_ORDER[0].column, { ascending })
+          .order(ARCHIVED_EVENT_ORDER[1].column, { ascending })
+          .order(ARCHIVED_EVENT_ORDER[2].column, { ascending });
+      }
+      const { data, error } = await request
         .range(offset, offset + LIST_FETCH_LIMIT - 1)
+        .abortSignal(signal)
         .returns<ArchivedEvent[]>();
-      request = request.abortSignal(signal);
-      const { data, error } = await request;
       if (error) throw error;
       return data ?? [];
     },
-    [supabase],
+    [supabase, search, sort],
   );
+  const filtered = Boolean(search) || sort !== "newest";
   const paging = useOffsetListPaging({
     active: true,
     fetchPage,
     getId: (event: ArchivedEvent) => event.id,
-    identity: "archived-events",
+    identity: `archived-events:${sort}:${search}`,
     initialPage,
     singularLabel: "event",
     pluralLabel: "events",
@@ -86,8 +101,37 @@ export function ArchiveEventList({
     getId: (event: ArchivedEvent) => event.id,
   });
 
+  const controls = (
+    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_200px]">
+      <IconInput
+        icon={Search}
+        type="search"
+        aria-label="Search archived events"
+        placeholder="Search archived events…"
+        value={searchInput}
+        onChange={(event) => setSearchInput(event.target.value)}
+      />
+      <Select
+        items={ARCHIVE_SORT_LABELS}
+        value={sort}
+        onValueChange={(value) => setSort((value as ArchiveSort | null) ?? "newest")}
+      >
+        <SelectTrigger aria-label="Sort archived events">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.keys(ARCHIVE_SORT_LABELS) as ArchiveSort[]).map((key) => (
+            <SelectItem key={key} value={key}>
+              {ARCHIVE_SORT_LABELS[key]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+  let body: ReactNode = null;
   if (paging.isInitialLoading) {
-    return (
+    body = (
       <Skeleton
         className="h-48 w-full rounded-xl"
         aria-label="Loading archived events"
@@ -95,7 +139,7 @@ export function ArchiveEventList({
     );
   }
   if (paging.error && paging.items.length === 0) {
-    return (
+    body = (
       <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
         <span>Archived events could not be loaded.</span>
         <Button
@@ -110,17 +154,17 @@ export function ArchiveEventList({
     );
   }
   if (paging.settled && paging.items.length === 0) {
-    return (
+    body = (
       <Card>
         <EmptyState
-          title="No archived events yet"
-          description="Events will appear here after an Admin archives them."
+          title={filtered ? "No archived events match" : "No archived events yet"}
+          description={filtered ? "Try a different search or sort." : "Events will appear here after an Admin archives them."}
         />
       </Card>
     );
   }
 
-  return (
+  if (body === null) body = (
     <div className="space-y-4">
       {paging.error && paging.failedMode !== "append" ? (
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
@@ -152,43 +196,36 @@ export function ArchiveEventList({
               label={`View ${event.name} archive`}
               className="transition-colors duration-[var(--motion-interaction-duration)] active:bg-muted/60 motion-reduce:transition-none"
             />
-            <div className="flex flex-col sm:flex-row">
+            <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-3.5">
               <EventBanner
                 src={event.banner_url}
                 alt={`${event.name} banner`}
+                compact
                 loading="lazy"
                 decoding="async"
-                className="aspect-video w-full shrink-0 sm:w-52 lg:w-60"
+                className="aspect-video w-24 shrink-0 rounded-xl sm:w-36"
               />
-              <CardContent className="flex min-w-0 flex-1 items-start gap-3 p-4 sm:items-center">
-                <span className="hidden size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground lg:flex">
-                  <Archive className="size-4" aria-hidden />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <h2 className="font-display text-base font-semibold leading-snug sm:text-lg">
-                      {event.name}
-                    </h2>
-                    <Badge variant="neutral">Archived</Badge>
-                  </div>
-                  <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground sm:text-sm">
-                    <CalendarDays
-                      className="mt-0.5 size-3.5 shrink-0"
-                      aria-hidden
-                    />
-                    <span>{formatDateRange(event)}</span>
-                  </p>
-                  {event.description ? (
-                    <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                      {event.description}
-                    </p>
-                  ) : null}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <h2 className="min-w-0 font-display text-base leading-snug font-semibold break-words line-clamp-2 sm:text-lg">
+                    {event.name}
+                  </h2>
+                  <Badge variant="neutral">Archived</Badge>
                 </div>
-                <ChevronRight
-                  className="motion-arrow mt-1 size-4 shrink-0 text-muted-foreground group-hover:text-foreground sm:mt-0"
-                  aria-hidden
-                />
-              </CardContent>
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
+                  <CalendarDays className="size-3.5 shrink-0" aria-hidden />
+                  <span>{formatDateRange(event)}</span>
+                </p>
+                {event.description ? (
+                  <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+                    {event.description}
+                  </p>
+                ) : null}
+              </div>
+              <ChevronRight
+                className="motion-arrow size-4 shrink-0 text-muted-foreground group-hover:text-foreground"
+                aria-hidden
+              />
             </div>
           </Card>
         ))}
@@ -206,6 +243,12 @@ export function ArchiveEventList({
         onLoadMore={() => void paging.loadMore()}
         onRetry={() => void paging.retry()}
       />
+    </div>
+  );
+  return (
+    <div className="space-y-4">
+      {controls}
+      {body}
     </div>
   );
 }

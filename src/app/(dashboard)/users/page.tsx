@@ -49,6 +49,7 @@ export default async function UsersPage() {
   return (
     <div className="motion-content-ready">
       <PageHeader
+        stackActions
         title="User management"
         description={
           profile.role === "Admin"
@@ -57,7 +58,7 @@ export default async function UsersPage() {
         }
         actions={
           loadFailed ? null : (
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex w-full items-center gap-2">
               {profile.role === "Admin" ? (
                 <InviteOfficersDialog committees={allCommittees} />
               ) : null}

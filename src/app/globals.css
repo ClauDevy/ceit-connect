@@ -476,6 +476,60 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
 }
 
+/* Branded checkboxes: native ones render as plain white squares in dark mode.
+   Size comes from each usage's own size-* class; colors come from semantic tokens only. */
+@layer base {
+  input[type="checkbox"] {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    cursor: pointer;
+    border: 1.5px solid color-mix(in oklab, var(--foreground) 35%, transparent);
+    border-radius: 0.375rem;
+    background-color: var(--card);
+  }
+  input[type="checkbox"]::before {
+    content: "";
+    width: 0.75rem;
+    height: 0.75rem;
+    transform: scale(0);
+    background-color: var(--primary-foreground);
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+  input[type="checkbox"]:hover:not(:disabled) {
+    border-color: var(--primary);
+  }
+  input[type="checkbox"]:checked,
+  input[type="checkbox"]:indeterminate {
+    border-color: var(--primary);
+    background-color: var(--primary);
+  }
+  input[type="checkbox"]:checked::before {
+    transform: scale(1);
+  }
+  input[type="checkbox"]:indeterminate::before {
+    transform: scale(1);
+    clip-path: polygon(0 38%, 100% 38%, 100% 62%, 0 62%);
+  }
+  input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  input[type="checkbox"] {
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  input[type="checkbox"]::before {
+    transition: transform 0.15s ease;
+  }
+}
+
 /* Council shield branding (Batch 4).
    The page backdrop and login art are decorative: opacity tokens live here so both
    themes are tuned in one place. Only the active theme's image is ever downloaded

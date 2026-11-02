@@ -40,7 +40,6 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  ChevronsUpDown,
   Filter,
   Inbox,
   Plus,
@@ -543,9 +542,12 @@ function BoardContents({
       { root, threshold: [0, 0.25, 0.5, 0.75, 1] },
     );
 
+    laneIntersectionRatios.current.clear();
     for (const lane of laneRefs.current.values()) observer.observe(lane);
     return () => observer.disconnect();
-  }, [hasTasks, query.isPending]);
+    // The board node is recreated when the phase changes (or the drag context resets),
+    // so the observer has to be rebuilt too or "Column x of 3" stops updating.
+  }, [hasTasks, query.isPending, selectedPhase, selectedPhaseComplete, dndContextKey]);
 
   useEffect(() => {
     const snapshot = dragSessionRef.current;
@@ -1114,13 +1116,18 @@ function BoardContents({
         </div>
       </div>
 
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
-        <div className="flex max-w-full flex-wrap items-center gap-2">
+      <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <div
+          className={cn(
+            "col-span-2 grid gap-2 sm:flex sm:max-w-full sm:flex-wrap sm:items-center",
+            isAdmin ? "grid-cols-2" : "grid-cols-1",
+          )}
+        >
           <div className="relative max-w-full">
             <Button
               ref={priorityTriggerRef}
               variant="outline"
-              className="h-11 w-auto max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+              className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
               aria-haspopup="dialog"
               aria-expanded={priorityOpen}
               aria-controls="priority-filter-panel"
@@ -1132,7 +1139,9 @@ function BoardContents({
             >
               <Filter aria-hidden />
               <span className="min-w-0 max-w-44 truncate text-left">
-                {priorityButtonLabel}
+                {selectedPriorities.size > 0
+                  ? `Priority (${selectedPriorities.size})`
+                  : "Priority"}
               </span>
               <ChevronDown
                 className={cn(
@@ -1193,7 +1202,7 @@ function BoardContents({
               <Button
                 ref={committeeTriggerRef}
                 variant="outline"
-                className="h-11 w-auto max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10"
+                className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
                 aria-haspopup="listbox"
                 aria-expanded={committeeOpen}
                 aria-controls="committee-filter-panel"
@@ -1287,7 +1296,7 @@ function BoardContents({
         {canAddTask && !selectedPhaseComplete ? (
           <Button
             type="button"
-            className="ml-auto h-11 min-w-11 transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/80 motion-reduce:transition-none sm:h-10"
+            className="h-11 w-full min-w-11 transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/80 motion-reduce:transition-none sm:ml-auto sm:h-10 sm:w-auto"
             disabled={boardBusy}
             onClick={() => setTaskDialog({ mode: "add" })}
           >
@@ -1300,14 +1309,14 @@ function BoardContents({
           ref={backlogButtonRef}
           variant="outline"
           className={cn(
-            "h-11 w-auto min-w-11 shrink-0 px-2.5 transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-10 sm:min-w-10",
-            !canAddTask && "ml-auto",
+            "h-11 w-full min-w-11 shrink-0 px-2.5 transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto sm:min-w-10",
+            !canAddTask && "col-span-2 sm:col-span-1 sm:ml-auto",
           )}
           aria-label={`Open Backlog, ${formatTaskCount(backlogTasks.length)}`}
           onClick={() => setBacklogOpen(true)}
         >
           <Inbox aria-hidden />
-          <span className="sr-only sm:not-sr-only">Backlog</span>
+          <span>Backlog</span>
           <Badge variant="neutral" className="px-1.5">
             {backlogTasks.length}
           </Badge>
@@ -1434,7 +1443,7 @@ function BoardContents({
                       className="w-[calc(100%-1.5rem)] shrink-0 snap-start md:w-auto md:min-w-0 md:shrink md:[scroll-snap-align:none]"
                       aria-labelledby={laneId}
                     >
-                      <div className="mb-3 flex min-h-11 items-center gap-2 px-0.5">
+                      <div className="mb-3 flex min-h-11 items-center gap-2 rounded-xl bg-muted/50 py-0.5 pr-0.5 pl-3">
                         <div className="flex min-w-0 flex-1 items-center gap-2">
                           <span
                             className={cn(
@@ -1464,7 +1473,10 @@ function BoardContents({
                           aria-label={`${collapsed ? "Expand" : "Collapse"} ${status}`}
                           onClick={() => toggleLane(status)}
                         >
-                          <ChevronsUpDown aria-hidden />
+                          <ChevronDown
+                            className={cn("transition-transform duration-[var(--motion-interaction-duration)] motion-reduce:transition-none", collapsed && "-rotate-90")}
+                            aria-hidden
+                          />
                         </Button>
                       </div>
                       <SortableContext
@@ -1522,7 +1534,7 @@ function BoardContents({
                             </div>
                           </MotionPresence>
                           {collapsed ? (
-                            <div className="grid min-h-20 place-items-center rounded-xl border-2 border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
+                            <div className="grid min-h-11 place-items-center rounded-xl border border-dashed px-3 py-1.5 text-center text-xs text-muted-foreground">
                               {activeTaskId
                                 ? `Drop to move to ${status}`
                                 : `${status} is collapsed`}
