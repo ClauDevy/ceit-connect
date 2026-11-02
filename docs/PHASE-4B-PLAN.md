@@ -67,6 +67,8 @@ Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12
 3H. `feature/home-event-progress` - after 3P, add a lightweight safe per-event reader so Home Active event cards can show current phase, progress percentage, open backup requests visible to the caller, and backlog counts while preserving RLS, Draft visibility, and confidential masking. Current phase is the first incomplete canonical phase in the board's first-seen `sort_order, id` order; completed Unphased tasks count toward an all-complete Home label without changing 13b's no-lock rule. Needs a tracked migration, SQL tests, and High reasoning. See `docs/phase-4b/step-3h.md`.
 4. `feature/branding` - runs after batch 13b and before batch 14; add the council shield background
    (scattered, faint, fixed placement), login page treatment, light-mode version, and favicon. Needs a clean shield SVG.
+    - Owner-approved additions (2026-11-02): the app-shell mark in `brand.tsx` and `mobile-topbar.tsx` becomes `public/brand/app-logo.svg`; the login page gets a static credit footer; the login mascot gets a faint shield behind it and a small tummy shield mark.
+    - Status: implemented locally (built in Claude chat); owner gate, browser checks, and merge pending. No Dev or Prod result is claimed. See `docs/phase-4b/step-4.md` and `docs/phase-4b/step-4-tests.md`.
 5. `feature/motion-polish` - shared route, tab, form, disclosure, stable-ID scroll reveal, progress, close-path, and interaction motion; reduced-motion fallback, measurable phone budget, and no new animation library.
 6. `feature/mobile-board` - phone scroll-snap columns, independent collapse, and dedicated-handle touch drag-and-drop; a plain swipe never moves a task and task cards remain real links.
 7. `feature/accounts-polish` - Active/Deactivated tabs; Users paging; Settings warning dot until a password is set; no temporary password; secure invited-user Google sign-in.
@@ -78,9 +80,9 @@ Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12
 13. `fix/task-rules` - read-only loophole audit first; approved leave/request/cancel rules plus leadership actions at the top of `/workspace` and on task detail; auto-helper; picker rules; caps of 10 Draft events, 20 pending leave requests, and 20 pending volunteer offers per person.
 13b. `feature/phase-completion` - see Updates.
 13c. `fix/draft-task-visibility` - all active Admins and Co-Admins read all Draft tasks; confidential masking remains and writes stay committee-scoped.
-    - Status: implemented locally, awaiting owner Dev application and SQL verification. No Batch 13c application is claimed.
+    - Status: merged and live on Dev and Prod (owner-confirmed; matches `docs/PROGRESS.md`).
 13e. `fix/template-import-all-committees` — Archived-template all-committee import (security-critical): replace the archive reader in place, add one authenticated Co-Admin-only atomic writer plus one ungranted internal copier, preserve Admin's existing create path, and keep all foreign task values server-derived. The exact design and 72-line Dev verification are in `docs/phase-4b/step-13e.md` and `step-13e-tests.md`.
-    - Status: implemented locally, awaiting owner Dev application and SQL verification. No Batch 13e application is claimed.
+    - Status: merged and live on Dev and Prod (owner-confirmed; matches `docs/PROGRESS.md`).
 13d. `feature/event-deletion` - one Admin-only Draft/Archived management page with a year filter; one event requires its name, bulk requires `DELETE <count> EVENTS`; Active deletion stays blocked and activity history keeps task UUIDs without a foreign key.
 14. `fix/hardening-gate` - revoke TRUNCATE/REFERENCES/TRIGGER from `authenticated` on events, tasks,
     notifications, and activity_log; tighten the Prod email domain; verify Step 1 cleanup and `/sandbox` removal; update catalogs/allowlists; enable officer caps before final release.
