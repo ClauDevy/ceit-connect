@@ -55,9 +55,6 @@ export function GoogleButton() {
         {pending ? "Connecting…" : "Continue with Google"}
       </Button>
       {error && <InlineAlert>{error}</InlineAlert>}
-      <p className="text-center text-xs text-muted-foreground">
-        Works after your first sign-in and setting a password.
-      </p>
     </div>
   )
 }

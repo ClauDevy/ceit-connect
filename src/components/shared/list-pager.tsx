@@ -42,10 +42,10 @@ export function ListPager({
 }: ListPagerProps) {
   return (
     <div className={cn("grid gap-2 border-t pt-3 sm:grid-cols-[1fr_auto] sm:items-center", className)}>
-      <p className="text-center text-sm text-muted-foreground sm:text-left">
+      <p className="hidden text-sm text-muted-foreground sm:block">
         Showing {pageSize} per page
       </p>
-      <nav className="flex min-h-11 items-center justify-center gap-2" aria-label={ariaLabel}>
+      <nav className="flex min-h-11 items-center justify-center gap-1.5 sm:gap-2" aria-label={ariaLabel}>
         <Button
           variant="outline"
           size="icon"
@@ -56,7 +56,7 @@ export function ListPager({
         >
           <ChevronsLeft aria-hidden />
         </Button>
-        <div className="grid grid-cols-3 gap-2" aria-label="Known pages">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2" aria-label="Known pages">
           {slots.map((slot) => {
             const page = slot.page;
             return page ? (

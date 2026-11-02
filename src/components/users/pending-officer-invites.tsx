@@ -91,7 +91,7 @@ export function PendingOfficerInvites({
           </Button>
         ) : null}
       </div>
-      <Card className="divide-y overflow-hidden rounded-xl">
+      <Card className="divide-y overflow-hidden rounded-xl border-dashed">
         {loading ? (
           <p className="p-4 text-sm text-muted-foreground" role="status">
             Loading pending invitations…
@@ -104,17 +104,26 @@ export function PendingOfficerInvites({
           standalone.map((invite) => (
             <div
               key={invite.id}
-              className="motion-card-interaction flex items-center gap-3 p-3"
+              className="motion-card-interaction flex items-start gap-3 p-3"
             >
+              <span
+                aria-hidden
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+              >
+                <MailX className="size-4" />
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{invite.full_name}</p>
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="truncate text-sm font-semibold">{invite.full_name}</p>
+                <p className="text-xs break-all text-muted-foreground">
                   {invite.email}
                 </p>
+                <Badge
+                  variant={invite.cleanup_pending ? "destructive" : "neutral"}
+                  className="mt-1.5"
+                >
+                  {invite.cleanup_pending ? "Cleanup pending" : "Invitation pending"}
+                </Badge>
               </div>
-              <Badge variant={invite.cleanup_pending ? "destructive" : "neutral"}>
-                {invite.cleanup_pending ? "Cleanup pending" : "Invitation pending"}
-              </Badge>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   aria-label={`More actions for ${invite.full_name}`}

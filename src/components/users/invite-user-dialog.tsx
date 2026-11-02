@@ -39,7 +39,7 @@ export function InviteUserDialog({
         else closeDialog()
       }}
     >
-      <DialogTrigger render={<Button size="lg" />}>
+      <DialogTrigger render={<Button className="flex-1 sm:flex-none" />}>
         <UserPlus />
         Invite user
       </DialogTrigger>
@@ -48,7 +48,13 @@ export function InviteUserDialog({
         aria-hidden={!open || undefined}
         inert={!open ? true : undefined}
       >
-        <DialogHeader>
+        <DialogHeader className="grid-cols-[auto_1fr] items-center gap-x-3 gap-y-0.5">
+          <span
+            aria-hidden
+            className="row-span-2 flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"
+          >
+            <UserPlus className="size-5" />
+          </span>
           <DialogTitle>Invite a council member</DialogTitle>
           <DialogDescription>
             They&apos;ll get an email link to set up their account. There are no public sign-ups.

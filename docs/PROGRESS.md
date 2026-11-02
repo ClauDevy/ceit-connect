@@ -227,3 +227,15 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - Write `docs/BACKUP.md`.
 
 Batch 12 and Batch 12b are merged and live, and their migrations are applied on Dev and Prod (owner-confirmed; 12b confirmed 2026-11-02). The 12b 19-case rollback-safe Dev paste passed. Scheduler run-history checks were not separately reported.
+
+## UI polish pass (pre-presentation)
+
+- Compact Home event cards (thumbnail + content), 3 columns on very wide screens; skeleton matched.
+- Event Management: stat tiles, status icons, tidier toolbar and phone cards (all behaviour unchanged).
+- Activity Log: filters collapse behind a Filters button on phones; slimmer sticky pager and phone rows.
+- Tasks board: "Priority (N)" label, Add Task/Backlog share a row on phones, slim collapsed lane.
+- User management: invite buttons side by side, pending invitations moved into the Active tab, compact empty state.
+- Invite forms: same order (Full name, Email, Role, Committee), icon inputs, Role as a toggle for officers.
+- PageHeader actions share the title row; branded checkboxes (globals.css); removed the Google sign-in caption.
+- Activity Log now counts a non-default sort as an active filter, showing the phone badge and Clear filters action while leaving the default newest-first sort uncounted.
+- Not done: event-form.tsx rework, motion/animation pass (next), watermark opacity (pinned by branding test).
