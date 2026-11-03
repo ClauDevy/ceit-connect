@@ -140,7 +140,7 @@ function CardBody({
         <StretchedLink
           href={`/tasks/${task.id}`}
           label={`Open ${task.title}`}
-          className="transition-colors duration-150 hover:bg-muted/40 active:bg-muted/60 motion-reduce:transition-none"
+          className="transition-colors duration-300 hover:bg-muted/40 active:bg-muted/60 motion-reduce:transition-none"
         />
       ) : null}
       <CardContent className="space-y-2.5 p-3.5">
@@ -165,7 +165,7 @@ function CardBody({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      className="size-11 rounded-full transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none md:size-8"
+                      className="size-11 rounded-full transition-colors duration-300 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none md:size-8"
                       aria-label={`Task actions for ${task.title}`}
                       onClick={(event) => event.stopPropagation()}
                     />
@@ -213,7 +213,7 @@ function CardBody({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="inline-flex size-11 cursor-grab touch-none select-none transition-colors duration-150 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:hidden"
+                  className="inline-flex size-11 cursor-grab touch-none select-none transition-colors duration-300 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:hidden"
                   disabled={busy}
                   {...dragAttributes}
                   {...dragListeners}
@@ -229,7 +229,7 @@ function CardBody({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="hidden cursor-grab touch-none select-none transition-colors duration-150 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:inline-flex"
+                  className="hidden cursor-grab touch-none select-none transition-colors duration-300 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:inline-flex"
                   disabled={busy}
                   {...dragAttributes}
                   {...dragListeners}
@@ -275,7 +275,7 @@ function CardBody({
         {backlog && isClaimableBacklogTask(task) && onClaim ? (
           <Button
             type="button"
-            className="relative z-20 w-full transition-colors duration-150 active:bg-primary/70 motion-reduce:transition-none"
+            className="relative z-20 w-full transition-colors duration-300 active:bg-primary/70 motion-reduce:transition-none"
             disabled={busy || claimBusy}
             onClick={() => onClaim(task)}
           >
@@ -324,7 +324,7 @@ function CardBody({
               }}
             >
               <SelectTrigger
-                className="h-11 w-full text-xs transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-9"
+                className="h-11 w-full text-xs transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:h-9"
                 aria-label={`Move ${task.title} to another status`}
               >
                 <span className="text-muted-foreground">Move to</span>
@@ -381,6 +381,8 @@ export function SortableEventBoardTaskCard({
     id: task.id,
     disabled: dragDisabled,
     data: { type: "task", status: task.status, phase: task.phase },
+    // dnd-kit's default 250ms shuffle is too quick to follow; ease it a little slower.
+    transition: { duration: 380, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
   });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -391,7 +393,7 @@ export function SortableEventBoardTaskCard({
   const dragListeners = dragDisabled ? undefined : listeners;
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} data-motion-replay="" data-motion-sortable="">
       <CardBody
         task={task}
         permission={permission}

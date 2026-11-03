@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { MailCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { InlineAlert } from "@/components/ui/inline-alert"
+import { AuthAlert } from "@/components/auth/auth-alert"
 import { SegmentedControl } from "@/components/ui/segmented-control"
 import { GoogleButton } from "@/components/auth/google-button"
 import { MagicLinkForm } from "@/components/auth/magic-link-form"
@@ -23,6 +23,11 @@ export function SignInPanel({ initialError }: { initialError?: string }) {
   const [view, setView] = useState<View>("sign-in")
   const [mode, setMode] = useState<Mode>("password")
   const [email, setEmail] = useState("")
+  const [initialErrorVisible, setInitialErrorVisible] = useState(Boolean(initialError))
+
+  function suppressInitialError() {
+    setInitialErrorVisible(false)
+  }
 
   async function startPasswordReset() {
     const supabase = createClient()
@@ -53,13 +58,17 @@ export function SignInPanel({ initialError }: { initialError?: string }) {
   }
 
   return (
-    <div className="grid gap-4 sm:gap-5">
+    <div className="grid gap-3 sm:gap-5">
       <div className="text-center md:text-left">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sign in with your council email.</p>
+        <h1 className="font-display text-lg font-semibold tracking-tight md:text-2xl">Sign in</h1>
+        <p className="mt-1 hidden text-sm text-muted-foreground md:block">
+          For council officers and members. Use the email your Admin invited.
+        </p>
       </div>
 
-      {initialError && <InlineAlert>{initialError}</InlineAlert>}
+      {initialError && initialErrorVisible && (
+        <AuthAlert onDismiss={suppressInitialError}>{initialError}</AuthAlert>
+      )}
 
       <SegmentedControl
         aria-label="Sign-in method"
@@ -69,12 +78,18 @@ export function SignInPanel({ initialError }: { initialError?: string }) {
       />
 
       {mode === "magic" ? (
-        <MagicLinkForm email={email} onEmailChange={setEmail} onSent={() => setView("link-sent")} />
+        <MagicLinkForm
+          email={email}
+          onEmailChange={setEmail}
+          onSent={() => setView("link-sent")}
+          onAttempt={suppressInitialError}
+        />
       ) : (
         <PasswordSignInForm
           email={email}
           onEmailChange={setEmail}
           onForgotPassword={startPasswordReset}
+          onAttempt={suppressInitialError}
         />
       )}
 
@@ -84,7 +99,7 @@ export function SignInPanel({ initialError }: { initialError?: string }) {
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <GoogleButton />
+      <GoogleButton onAttempt={suppressInitialError} />
     </div>
   )
 }

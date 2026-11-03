@@ -158,6 +158,12 @@ describe("mobile board source contracts", () => {
 
   it("restarts lane observation when an empty board receives tasks", () => {
     expect(boardSource).toContain("!hasTasks ||");
-    expect(boardSource).toContain("}, [hasTasks, query.isPending]);");
+    const observerEffect = boardSource.slice(
+      boardSource.indexOf("const root = mobileBoardRef.current"),
+      boardSource.indexOf("const snapshot = dragSessionRef.current"),
+    );
+    const dependencies = observerEffect.match(/\}, \[([^\]]+)\]\);/)?.[1] ?? "";
+    expect(dependencies).toMatch(/\bhasTasks\b/);
+    expect(dependencies).toMatch(/\bquery\.isPending\b/);
   });
 });

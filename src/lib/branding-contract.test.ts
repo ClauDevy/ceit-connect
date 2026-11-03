@@ -128,10 +128,16 @@ describe("branding wiring", () => {
     const hero = read("src/components/auth/login-hero.tsx");
 
     expect(shell).toContain("<LoginFooter />");
-    expect(shell).toContain("<TigerMascot size={88} mark />");
+    const mascotUsages = `${shell}\n${hero}`.match(/<TigerMascot\b[^>]*\/>/g) ?? [];
+    expect(mascotUsages).toHaveLength(3);
+    expect(mascotUsages.every((usage) => /\bmark\b/.test(usage))).toBe(true);
+    expect(shell).toContain("<TigerMascot size={104} mark />");
+    expect(shell).toContain("<TigerMascot size={60} mark />");
     expect(shell).toContain("brand-shield-art");
-    expect(hero).toContain("<TigerMascot size={200} mark");
+    expect(hero).toContain('<TigerMascot size={200} mark className="relative" />');
     expect(hero).toContain("brand-shield-art");
+    expect(shell).toContain('aria-label="CEIT Connect tiger mascot"');
+    expect(hero).toContain('aria-label="CEIT Connect tiger mascot"');
   });
 
   it("keeps the tummy mark opt-in and inside the mascot drawing", () => {

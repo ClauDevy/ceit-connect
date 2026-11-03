@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type MouseEvent } from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "@/hooks/use-theme"
 import { cn } from "@/lib/utils"
@@ -19,9 +19,11 @@ export function ThemeToggle({ variant = "icon", collapsed, className }: ThemeTog
   const dark = theme === "dark"
   const Icon = dark ? Moon : Sun
   const label = dark ? "Dark mode" : "Light mode"
-  const handleToggle = () => {
+  const handleToggle = (event: MouseEvent<HTMLButtonElement>) => {
+    // Use the button's centre (not the pointer) so keyboard activation also grows from the toggle.
+    const rect = event.currentTarget.getBoundingClientRect()
     setHasToggled(true)
-    toggleTheme()
+    toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
   }
 
   if (variant === "icon") {

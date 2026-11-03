@@ -237,7 +237,7 @@ function BoardLaneDropZone({
       id={id}
       ref={setNodeRef}
       className={cn(
-        "min-h-20 space-y-3 rounded-xl transition-colors duration-150 motion-reduce:transition-none",
+        "min-h-20 space-y-3 rounded-xl transition-colors duration-300 motion-reduce:transition-none",
         isOver && !disabled && "bg-primary/5 ring-2 ring-primary/30",
       )}
     >
@@ -995,7 +995,7 @@ function BoardContents({
         href="/home"
         className={cn(
           buttonVariants({ variant: "ghost", size: "sm" }),
-          "transition-colors duration-150 active:bg-muted motion-reduce:transition-none",
+          "transition-colors duration-300 active:bg-muted motion-reduce:transition-none",
         )}
       >
         <ArrowLeft aria-hidden /> Home
@@ -1094,7 +1094,7 @@ function BoardContents({
                 aria-selected={selectedPhase === phase}
                 title={phase}
                 className={cn(
-                  "flex h-11 max-w-[75vw] shrink-0 items-center rounded-t-md border-b-2 px-1 font-display text-sm font-semibold whitespace-nowrap transition-colors duration-150 hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none sm:h-10 sm:max-w-xs sm:text-base",
+                  "flex h-11 max-w-[75vw] shrink-0 items-center rounded-t-md border-b-2 px-1 font-display text-sm font-semibold whitespace-nowrap transition-colors duration-300 hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none sm:h-10 sm:max-w-xs sm:text-base",
                   selectedPhase === phase
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground",
@@ -1127,7 +1127,7 @@ function BoardContents({
             <Button
               ref={priorityTriggerRef}
               variant="outline"
-              className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
+              className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
               aria-haspopup="dialog"
               aria-expanded={priorityOpen}
               aria-controls="priority-filter-panel"
@@ -1202,7 +1202,7 @@ function BoardContents({
               <Button
                 ref={committeeTriggerRef}
                 variant="outline"
-                className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
+                className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
                 aria-haspopup="listbox"
                 aria-expanded={committeeOpen}
                 aria-controls="committee-filter-panel"
@@ -1296,7 +1296,7 @@ function BoardContents({
         {canAddTask && !selectedPhaseComplete ? (
           <Button
             type="button"
-            className="h-11 w-full min-w-11 transition-colors duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/80 motion-reduce:transition-none sm:ml-auto sm:h-10 sm:w-auto"
+            className="h-11 w-full min-w-11 transition-colors duration-300 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/80 motion-reduce:transition-none sm:ml-auto sm:h-10 sm:w-auto"
             disabled={boardBusy}
             onClick={() => setTaskDialog({ mode: "add" })}
           >
@@ -1309,7 +1309,7 @@ function BoardContents({
           ref={backlogButtonRef}
           variant="outline"
           className={cn(
-            "h-11 w-full min-w-11 shrink-0 px-2.5 transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto sm:min-w-10",
+            "h-11 w-full min-w-11 shrink-0 px-2.5 transition-colors duration-300 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto sm:min-w-10",
             !canAddTask && "col-span-2 sm:col-span-1 sm:ml-auto",
           )}
           aria-label={`Open Backlog, ${formatTaskCount(backlogTasks.length)}`}
@@ -1467,7 +1467,7 @@ function BoardContents({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          className="size-11 shrink-0 transition-colors duration-150 active:bg-muted motion-reduce:transition-none md:size-8 md:min-w-0"
+                          className="size-11 shrink-0 transition-colors duration-300 active:bg-muted motion-reduce:transition-none md:size-8 md:min-w-0"
                           aria-expanded={!collapsed}
                           aria-controls={contentId}
                           aria-label={`${collapsed ? "Expand" : "Collapse"} ${status}`}
@@ -1561,7 +1561,7 @@ function BoardContents({
                     <li
                       key={status}
                       className={cn(
-                        "h-1.5 rounded-full transition-[width,background-color] duration-150 motion-reduce:transition-none",
+                        "h-1.5 rounded-full transition-[width,background-color] duration-300 motion-reduce:transition-none",
                         status === activeMobileStatus
                           ? "w-6 bg-primary"
                           : "w-2 bg-muted-foreground/35",
@@ -1570,7 +1570,13 @@ function BoardContents({
                   ))}
                 </ol>
               </div>
-              <DragOverlay dropAnimation={reducedMotion ? null : undefined}>
+              <DragOverlay
+                dropAnimation={
+                  reducedMotion
+                    ? null
+                    : { duration: 400, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+                }
+              >
                 {activeDragTask ? (
                   <div className="w-80 max-w-[calc(100vw-2rem)]">
                     <EventBoardTaskCard task={activeDragTask} overlay />
@@ -1614,7 +1620,7 @@ function BoardContents({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-11 transition-colors duration-150 active:bg-muted motion-reduce:transition-none sm:size-8"
+                  className="size-11 transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:size-8"
                   aria-label="Close backlog"
                 />
               }

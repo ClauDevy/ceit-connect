@@ -160,7 +160,7 @@ function ActionMenu({
       <DropdownMenuTrigger
         aria-label={`More actions for ${member.full_name}`}
         disabled={pending}
-        className="inline-flex size-11 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none md:size-9"
+        className="inline-flex size-11 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-300 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none md:size-9"
       >
         <Ellipsis className="size-5" aria-hidden />
       </DropdownMenuTrigger>
@@ -180,7 +180,7 @@ function DestructiveItem({
 }) {
   return (
     <DropdownMenuItem
-      className="text-destructive transition-colors duration-150 active:bg-destructive/20 data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive motion-reduce:transition-none"
+      className="text-destructive transition-colors duration-300 active:bg-destructive/20 data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive motion-reduce:transition-none"
       onClick={onClick}
     >
       {children}

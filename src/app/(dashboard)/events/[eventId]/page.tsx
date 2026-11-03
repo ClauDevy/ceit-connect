@@ -103,7 +103,7 @@ export default async function EventBoardPage({
   if (!event) redirect("/home");
 
   return (
-    <div className="w-full min-w-0">
+    <div className="motion-content-ready w-full min-w-0">
       <Suspense fallback={<EventBoardSkeleton />}>
         <BoardData
           event={event}
