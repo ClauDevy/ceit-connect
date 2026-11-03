@@ -10,5 +10,9 @@ export default async function DashboardPage() {
     redirect("/home");
   }
 
-  return <PageHeader title="Executive Dashboard" />;
+  return (
+    <div className="motion-content-ready">
+      <PageHeader title="Executive Dashboard" />
+    </div>
+  );
 }

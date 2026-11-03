@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
-import { InlineAlert } from "@/components/ui/inline-alert"
+import { AuthAlert } from "@/components/auth/auth-alert"
 import { PasswordInput } from "@/components/ui/password-input"
 import { createClient } from "@/lib/supabase/client"
 import { finishAuthentication } from "@/lib/auth-navigation"
@@ -103,7 +103,7 @@ export function ResetPasswordFlow({ email, onBack }: ResetPasswordFlowProps) {
               />
             )}
           </FormField>
-          {error && <InlineAlert>{error}</InlineAlert>}
+          {error && <AuthAlert onDismiss={() => setError("")}>{error}</AuthAlert>}
           <Button type="submit" size="lg" disabled={busy} className="w-full">
             {busy ? "Checking…" : "Verify code"}
           </Button>
@@ -122,7 +122,7 @@ export function ResetPasswordFlow({ email, onBack }: ResetPasswordFlowProps) {
               />
             )}
           </FormField>
-          {error && <InlineAlert>{error}</InlineAlert>}
+          {error && <AuthAlert onDismiss={() => setError("")}>{error}</AuthAlert>}
           <Button type="submit" size="lg" disabled={busy} className="w-full">
             {busy ? "Saving…" : "Set new password"}
           </Button>

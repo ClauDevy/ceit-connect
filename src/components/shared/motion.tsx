@@ -13,8 +13,13 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import {
+  ENTRANCE_DURATION_MS,
+  ENTRANCE_EASING,
+  ENTRANCE_STAGGER_MS,
   LIST_ENTRANCE_ANIMATION_NAME,
   LIST_REVEAL_ANIMATION_NAME,
+  PANEL_DURATION_MS,
+  PANEL_REPLAY_ITEM_LIMIT,
   PROGRESS_VISIBILITY_THRESHOLD,
   claimReveal,
   capturedPrefixIsStable,
@@ -61,12 +66,20 @@ export function useReducedMotionPreference() {
 export function useVisibilityAnimation<T extends Element = HTMLElement>({
   className,
   threshold = PROGRESS_VISIBILITY_THRESHOLD,
+  observeParent = false,
 }: {
   className: string;
   threshold?: number;
+  /**
+   * Watch the node's parent instead of the node. Required for fills that sit inside an
+   * overflow-hidden track: while waiting, the fill is collapsed or shifted, so the browser
+   * reports it as never visible and it would otherwise never reveal.
+   */
+  observeParent?: boolean;
 }) {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const nodeRef = useRef<T | null>(null);
+  const targetRef = useRef<Element | null>(null);
   const revealedRef = useRef(false);
 
   const reveal = useCallback(() => {
@@ -75,7 +88,7 @@ export function useVisibilityAnimation<T extends Element = HTMLElement>({
     revealedRef.current = true;
     node.removeAttribute("data-motion-pending");
     node.classList.add(className);
-    observerRef.current?.unobserve(node);
+    observerRef.current?.unobserve(targetRef.current ?? node);
   }, [className]);
 
   const ref = useCallback(
@@ -83,9 +96,12 @@ export function useVisibilityAnimation<T extends Element = HTMLElement>({
       observerRef.current?.disconnect();
       observerRef.current = null;
       nodeRef.current = node;
+      targetRef.current = null;
       if (!node || revealedRef.current || motionIsReduced()) return;
       if (typeof IntersectionObserver === "undefined") return;
 
+      const target = observeParent ? (node.parentElement ?? node) : node;
+      targetRef.current = target;
       try {
         observerRef.current = new IntersectionObserver(
           ([entry]) => {
@@ -98,16 +114,16 @@ export function useVisibilityAnimation<T extends Element = HTMLElement>({
               node.setAttribute("data-motion-pending", "");
             }
           },
-          { threshold },
+          { threshold: [0, threshold] },
         );
-        observerRef.current.observe(node);
+        observerRef.current.observe(target);
       } catch {
         observerRef.current?.disconnect();
         observerRef.current = null;
         node.removeAttribute("data-motion-pending");
       }
     },
-    [reveal, threshold],
+    [reveal, threshold, observeParent],
   );
 
   useEffect(() => () => observerRef.current?.disconnect(), []);
@@ -306,12 +322,59 @@ export function TabPanel({
   motionKey: number;
   opacityOnly?: boolean;
 }) {
-  const animationClass =
-    motionKey > 0
-      ? `motion-panel-enter-${motionKey % 2 === 0 ? "a" : "b"}${opacityOnly ? "-opacity" : ""}`
-      : undefined;
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Panels that are hidden/shown (Workspace tabs) replay through plain CSS: a panel coming back
+  // from display:none restarts its items' animation by itself, which is exactly the first-visit
+  // stacking. Panels that stay on screen (event board phases) are restarted from script below.
+  const cssReplay = props.hidden !== undefined;
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (cssReplay || !panel || motionKey <= 0) return;
+    if (motionIsReduced() || typeof panel.animate !== "function") return;
+
+    const items = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        "[data-motion-reveal-id], [data-motion-replay]",
+      ),
+    )
+      .filter((node) => !node.hasAttribute("data-motion-pending"))
+      .slice(0, PANEL_REPLAY_ITEM_LIMIT);
+
+    panel.animate(
+      items.length === 0 && !opacityOnly
+        ? [
+            { opacity: 0, transform: "translateY(14px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ]
+        : [{ opacity: 0 }, { opacity: 1 }],
+      { duration: PANEL_DURATION_MS, easing: ENTRANCE_EASING },
+    );
+    items.forEach((node, index) => {
+      const keyframes = node.hasAttribute("data-motion-sortable")
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { opacity: 0, transform: "translateY(16px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ];
+      node.animate(
+        keyframes,
+        {
+          duration: ENTRANCE_DURATION_MS,
+          delay: index * ENTRANCE_STAGGER_MS,
+          easing: ENTRANCE_EASING,
+          fill: "backwards",
+        },
+      );
+    });
+  }, [motionKey, opacityOnly, cssReplay]);
+
   return (
-    <div className={cn(animationClass, className)} {...props}>
+    <div
+      ref={panelRef}
+      className={cn(cssReplay && motionKey > 0 && "motion-tab-replay", className)}
+      {...props}
+    >
       {children}
     </div>
   );
@@ -326,7 +389,7 @@ export function SectionEnter({
 }: HTMLAttributes<HTMLElement> & { index?: number; as?: "div" | "section" }) {
   const style = {
     ...props.style,
-    "--motion-section-delay": `${Math.min(Math.max(index, 0), 3) * 40}ms`,
+    "--motion-section-delay": `${Math.min(Math.max(index, 0), 3) * 80}ms`,
   } as CSSProperties;
   return (
     <Tag

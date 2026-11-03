@@ -15,6 +15,7 @@ export function EventBoardProgressRing({ percentage }: { percentage: number }) {
   const boundedPercentage = Math.min(100, Math.max(0, percentage));
   const progressRevealRef = useVisibilityAnimation<SVGCircleElement>({
     className: "motion-progress-ring",
+    observeParent: true,
   });
 
   return (
@@ -39,7 +40,7 @@ export function EventBoardProgressRing({ percentage }: { percentage: number }) {
             cy="32"
             r={RADIUS}
             fill="none"
-            className="stroke-primary"
+            className="motion-progress-ring-target stroke-primary"
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}

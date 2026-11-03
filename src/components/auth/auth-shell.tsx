@@ -16,11 +16,26 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       <LoginHero />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex flex-1 flex-col items-center justify-center px-6 py-8 [@media(max-height:700px)]:py-4">
+        <main className="flex flex-1 flex-col items-center justify-center px-6 py-4 md:py-8">
           <div className="w-full max-w-sm">
-            <div className="relative mb-4 grid place-items-center md:hidden [@media(max-height:700px)]:mb-2">
-              <span aria-hidden className="brand-shield-art absolute h-32 w-28 -translate-y-1" />
-              <TigerMascot size={88} mark />
+            <div
+              role="img"
+              aria-label="CEIT Connect tiger mascot"
+              className="relative mb-5 grid place-items-center md:hidden [@media(max-height:700px)]:mb-3"
+            >
+              <span aria-hidden className="brand-shield-art absolute h-36 w-32 -translate-y-1 [@media(max-height:700px)]:h-20 [@media(max-height:700px)]:w-16 [@media(max-height:560px)]:hidden" />
+              <div className="hidden [@media(min-height:701px)]:block">
+                <TigerMascot size={104} mark />
+              </div>
+              <div className="hidden [@media(max-height:700px)]:block [@media(max-height:560px)]:hidden">
+                <TigerMascot size={60} mark />
+              </div>
+              <p className="mt-2 font-display text-3xl leading-tight font-semibold tracking-tight [@media(max-height:700px)]:text-2xl">
+                CEIT Connect
+              </p>
+              <p className="mt-0.5 text-xs font-semibold tracking-wider text-accent-foreground uppercase">
+                CEIT Student Council
+              </p>
             </div>
             {children}
           </div>
