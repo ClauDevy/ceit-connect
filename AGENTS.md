@@ -51,6 +51,8 @@ Phase 4B "Remove former member" anonymizes the account and never deletes it.
 
 Read `docs/PHASE-4B-PLAN.md` first and ask up to 5 grouped questions about anything unclear or conflicting before planning. Plans use Medium reasoning; security-critical migrations use High. UI batches also read `docs/DESIGN-SYSTEM.md`. Use Philippine time only.
 
+The owner-approved motion contract is 520 ms entrances, 450 ms panels/disclosures, 320 ms interactions and exits, and 1100 ms determinate-progress reveals. Keep CSS variables and TypeScript constants covered by parity tests, and preserve the complete reduced-motion fallback.
+
 ## Conventions
 
 - Server Components by default; add `"use client"` only when a file needs hooks or event handlers.

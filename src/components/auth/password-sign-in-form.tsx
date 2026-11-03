@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
-import { InlineAlert } from "@/components/ui/inline-alert"
+import { AuthAlert } from "@/components/auth/auth-alert"
 import { PasswordInput } from "@/components/ui/password-input"
 import { EmailField } from "@/components/auth/email-field"
 import { createClient } from "@/lib/supabase/client"
@@ -15,9 +15,15 @@ type PasswordSignInFormProps = {
   onEmailChange: (email: string) => void
   /** Starts the emailed-code reset flow for the typed email. */
   onForgotPassword: () => Promise<void>
+  onAttempt?: () => void
 }
 
-export function PasswordSignInForm({ email, onEmailChange, onForgotPassword }: PasswordSignInFormProps) {
+export function PasswordSignInForm({
+  email,
+  onEmailChange,
+  onForgotPassword,
+  onAttempt,
+}: PasswordSignInFormProps) {
   const [password, setPassword] = useState("")
   const [signingIn, setSigningIn] = useState(false)
   const [startingReset, setStartingReset] = useState(false)
@@ -26,6 +32,7 @@ export function PasswordSignInForm({ email, onEmailChange, onForgotPassword }: P
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    onAttempt?.()
     setSigningIn(true)
     setError("")
 
@@ -91,7 +98,7 @@ export function PasswordSignInForm({ email, onEmailChange, onForgotPassword }: P
         )}
       </FormField>
 
-      {error && <InlineAlert>{error}</InlineAlert>}
+      {error && <AuthAlert onDismiss={() => setError("")}>{error}</AuthAlert>}
 
       <Button type="submit" size="lg" disabled={signingIn} className="w-full">
         {signingIn ? "Signing in…" : "Sign in"}

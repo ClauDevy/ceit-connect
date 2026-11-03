@@ -262,7 +262,7 @@ export function YourWorkCard({
                               aria-label={`More actions for ${displayName}`}
                               aria-busy={removingId === link.id}
                               disabled={removingId !== null}
-                              className="relative z-20 inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-150 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none sm:size-9"
+                              className="relative z-20 inline-flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground outline-none transition-colors duration-300 hover:bg-accent hover:text-accent-foreground active:bg-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none sm:size-9"
                             >
                               {removingId === link.id ? (
                                 <LoaderCircle

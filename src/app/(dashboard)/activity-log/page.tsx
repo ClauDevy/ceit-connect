@@ -45,5 +45,5 @@ export default async function ActivityLogPage() {
     try { initialWindow = activityWindowFromPage(normalizeActivityResponse(activityResult.data)); }
     catch (error) { console.error("Activity log returned invalid initial data:", error); }
   }
-  return <div className="space-y-5"><PageHeader title="Activity Log" description="A secure, read-only history of task activity." /><p className="text-sm text-muted-foreground">{activityLogRetentionNotice()}</p><ActivityLogPageClient initialWindow={initialWindow} initialLoadFailed={initialLoadFailed} committees={committeesResult.data ?? []} /></div>;
+  return <div className="motion-content-ready space-y-5"><PageHeader title="Activity Log" description="A secure, read-only history of task activity." /><p className="text-sm text-muted-foreground">{activityLogRetentionNotice()}</p><ActivityLogPageClient initialWindow={initialWindow} initialLoadFailed={initialLoadFailed} committees={committeesResult.data ?? []} /></div>;
 }

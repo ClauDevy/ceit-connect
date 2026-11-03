@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { InlineAlert } from "@/components/ui/inline-alert"
+import { AuthAlert } from "@/components/auth/auth-alert"
 import { createClient } from "@/lib/supabase/client"
 
 function GoogleMark() {
@@ -16,11 +16,12 @@ function GoogleMark() {
   )
 }
 
-export function GoogleButton() {
+export function GoogleButton({ onAttempt }: { onAttempt?: () => void }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
 
   async function handleClick() {
+    onAttempt?.()
     setPending(true)
     setError("")
 
@@ -54,7 +55,7 @@ export function GoogleButton() {
         <GoogleMark />
         {pending ? "Connecting…" : "Continue with Google"}
       </Button>
-      {error && <InlineAlert>{error}</InlineAlert>}
+      {error && <AuthAlert onDismiss={() => setError("")}>{error}</AuthAlert>}
     </div>
   )
 }
