@@ -52,7 +52,7 @@ export default async function WorkspacePage() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-7">
+    <div className="motion-content-ready space-y-6 md:space-y-7">
       <PageHeader
         title="Workspace"
         description="Everything assigned to you, and everywhere the council needs a hand."

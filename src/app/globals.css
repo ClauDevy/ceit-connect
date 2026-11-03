@@ -66,13 +66,15 @@
   --animate-blink-closed: mascot-blink-closed 4.6s ease-in-out infinite;
   --animate-nav-progress: nav-progress 1.1s ease-in-out infinite;
 
-  --motion-enter-duration: 300ms;
-  --motion-interaction-duration: 220ms;
-  --motion-progress-duration: 700ms;
-  --motion-panel-duration: 260ms;
-  --motion-exit-duration: 220ms;
-  --motion-success-duration: 400ms;
-  --motion-hover-duration: 200ms;
+  --motion-enter-duration: 520ms;
+  --motion-interaction-duration: 320ms;
+  --motion-progress-duration: 1100ms;
+  --motion-panel-duration: 450ms;
+  --motion-exit-duration: 320ms;
+  --motion-success-duration: 600ms;
+  --motion-hover-duration: 300ms;
+  --motion-page-duration: 600ms;
+  --motion-theme-duration: 900ms;
   --motion-enter-easing: cubic-bezier(0.16, 1, 0.3, 1);
 
   @keyframes mascot-float {
@@ -108,20 +110,24 @@
   @keyframes cc-list-item-enter {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(16px);
     }
   }
 
   @keyframes cc-list-item-reveal {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(16px); }
+  }
+
+  @keyframes cc-alert-enter {
+    from { opacity: 0; transform: translateY(-14px) scale(0.98); }
   }
 
   @keyframes cc-panel-enter {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(14px); }
   }
 
   @keyframes cc-panel-enter-alt {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(14px); }
   }
 
   @keyframes cc-panel-opacity-enter { from { opacity: 0; } }
@@ -155,7 +161,7 @@
   }
 
   @keyframes cc-toast-enter {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(16px); }
   }
 
   @keyframes cc-breathe {
@@ -165,6 +171,27 @@
 
 .motion-route-enter {
   animation: cc-route-enter var(--motion-enter-duration) var(--motion-enter-easing) backwards;
+}
+
+/* Floating sign-in alert: fixed, so showing it never changes the page height. */
+.motion-alert-enter { animation: cc-alert-enter var(--motion-enter-duration) var(--motion-enter-easing) backwards; }
+
+/* Theme switch. With View Transitions the new theme grows from the toggle as a circle
+   (the circle itself is driven from use-theme.ts); without them every colour fades. */
+html[data-theme-transition]::view-transition-old(root),
+html[data-theme-transition]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html[data-theme-transition]::view-transition-old(root) { z-index: 1; }
+html[data-theme-transition]::view-transition-new(root) { z-index: 2; }
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition: background-color var(--motion-theme-duration) ease, color var(--motion-theme-duration) ease,
+    border-color var(--motion-theme-duration) ease, fill var(--motion-theme-duration) ease,
+    stroke var(--motion-theme-duration) ease !important;
 }
 
 .motion-list-item-enter {
@@ -177,7 +204,7 @@
 
 [data-motion-pending] {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(16px);
 }
 
 .motion-panel-enter-a,
@@ -198,10 +225,25 @@
   animation-name: cc-panel-enter;
   animation-delay: var(--motion-section-delay, 0ms);
 }
-.motion-content-ready {
-  animation-name: cc-panel-opacity-enter;
-  animation-duration: var(--motion-exit-duration);
+.motion-tab-replay [data-motion-reveal-id] {
+  animation: cc-list-item-enter var(--motion-enter-duration) var(--motion-enter-easing) backwards;
 }
+.motion-tab-replay [data-motion-reveal-id]:nth-child(2) { animation-delay: 70ms; }
+.motion-tab-replay [data-motion-reveal-id]:nth-child(3) { animation-delay: 140ms; }
+.motion-tab-replay [data-motion-reveal-id]:nth-child(4) { animation-delay: 210ms; }
+.motion-tab-replay [data-motion-reveal-id]:nth-child(5) { animation-delay: 280ms; }
+.motion-tab-replay [data-motion-reveal-id]:nth-child(6) { animation-delay: 350ms; }
+.motion-tab-replay [data-motion-reveal-id]:nth-child(7) { animation-delay: 420ms; }
+.motion-tab-replay [data-motion-reveal-id]:nth-child(n + 8) { animation-delay: 490ms; }
+.motion-content-ready { animation: none; }
+.motion-content-ready > * {
+  animation: cc-panel-enter var(--motion-page-duration) var(--motion-enter-easing) backwards;
+}
+.motion-content-ready > :nth-child(2) { animation-delay: 90ms; }
+.motion-content-ready > :nth-child(3) { animation-delay: 180ms; }
+.motion-content-ready > :nth-child(4) { animation-delay: 270ms; }
+.motion-content-ready > :nth-child(5) { animation-delay: 360ms; }
+.motion-content-ready > :nth-child(n + 6) { animation-delay: 450ms; }
 .motion-success-enter {
   animation: cc-success-enter var(--motion-success-duration) var(--motion-enter-easing) backwards;
 }
@@ -222,7 +264,10 @@
   pointer-events: none;
 }
 
+.motion-progress-target { transform-origin: left; }
+.motion-progress-target[data-motion-pending],
 .motion-progress-fill[data-motion-pending] { transform: scaleX(0); opacity: 1; }
+.motion-progress-ring-target[data-motion-pending],
 .motion-progress-ring[data-motion-pending] {
   stroke-dashoffset: var(--motion-ring-empty-offset);
   opacity: 1;
@@ -230,13 +275,13 @@
 }
 
 .motion-list-delay-0 { animation-delay: 0ms; }
-.motion-list-delay-1 { animation-delay: 40ms; }
-.motion-list-delay-2 { animation-delay: 80ms; }
-.motion-list-delay-3 { animation-delay: 120ms; }
-.motion-list-delay-4 { animation-delay: 160ms; }
-.motion-list-delay-5 { animation-delay: 200ms; }
-.motion-list-delay-6 { animation-delay: 240ms; }
-.motion-list-delay-7 { animation-delay: 280ms; }
+.motion-list-delay-1 { animation-delay: 70ms; }
+.motion-list-delay-2 { animation-delay: 140ms; }
+.motion-list-delay-3 { animation-delay: 210ms; }
+.motion-list-delay-4 { animation-delay: 280ms; }
+.motion-list-delay-5 { animation-delay: 350ms; }
+.motion-list-delay-6 { animation-delay: 420ms; }
+.motion-list-delay-7 { animation-delay: 490ms; }
 
 .motion-progress-fill {
   transform-origin: left;
@@ -285,15 +330,16 @@
 
 .motion-card-interaction:active { translate: 0 0; scale: 0.99; }
 .motion-button-interaction:not(:disabled):not([aria-disabled="true"]):active { translate: 0 0; scale: 0.97; }
-.motion-theme-icon-enter { animation: cc-theme-icon-enter 300ms var(--motion-enter-easing) backwards; }
+.motion-theme-icon-enter { animation: cc-theme-icon-enter 600ms var(--motion-enter-easing) backwards; }
 .motion-nav-active::before { animation: cc-nav-accent-enter var(--motion-interaction-duration) var(--motion-enter-easing) backwards; }
 .motion-control-pop:active,
-.motion-control-trigger:active .motion-control-pop { animation: cc-control-pop 300ms var(--motion-enter-easing); }
-.motion-toast-enter { animation: cc-toast-enter 300ms var(--motion-enter-easing) backwards; }
+.motion-control-trigger:active .motion-control-pop { animation: cc-control-pop 450ms var(--motion-enter-easing); }
+.motion-toast-enter { animation: cc-toast-enter 520ms var(--motion-enter-easing) backwards; }
 .motion-empty-breathe { animation: cc-breathe 3.4s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .motion-route-enter,
+  .motion-alert-enter,
   .motion-list-item-enter,
   .motion-list-item-reveal,
   .motion-panel-enter-a,
@@ -302,6 +348,8 @@
   .motion-panel-enter-b-opacity,
   .motion-section-enter,
   .motion-content-ready,
+  .motion-content-ready > *,
+  .motion-tab-replay [data-motion-reveal-id],
   .motion-success-enter,
   .motion-presence,
   .motion-progress-fill,
@@ -604,6 +652,10 @@
   width: 57px;
   flex-shrink: 0;
   background: center / contain no-repeat url("/brand/team-logo.svg");
+}
+
+@media (max-width: 767px) {
+  .brand-team-logo { height: 24px; width: 43px; }
 }
 
 .dark .brand-team-logo {

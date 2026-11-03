@@ -167,7 +167,7 @@ function BackLink({ task }: { task: TaskDetailData | null }) {
   return (
     <Link
       href={getTaskBackHref(task)}
-      className="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground active:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+      className="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground active:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
     >
       <ArrowLeft className="size-4" aria-hidden /> {label}
     </Link>
@@ -384,7 +384,7 @@ function RealTask({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-11 transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-9"
+                  className="h-11 transition-colors duration-300 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-9"
                   onClick={onEditTask}
                 >
                   <Pencil aria-hidden /> Edit
@@ -1025,7 +1025,7 @@ function TaskDetailContents({
 
   if (query.error && query.data === undefined) {
     return (
-      <div className="space-y-5 [&_button]:transition-colors [&_button]:duration-150 motion-reduce:[&_button]:transition-none">
+      <div className="space-y-5 [&_button]:transition-colors [&_button]:duration-300 motion-reduce:[&_button]:transition-none">
         <BackLink task={null} />
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
           <span>Task details could not be loaded.</span>
@@ -1043,7 +1043,7 @@ function TaskDetailContents({
 
   if (query.data === null) {
     return (
-      <div className="space-y-5 [&_button]:transition-colors [&_button]:duration-150 motion-reduce:[&_button]:transition-none">
+      <div className="space-y-5 [&_button]:transition-colors [&_button]:duration-300 motion-reduce:[&_button]:transition-none">
         <BackLink task={null} />
         <Card>
           <EmptyState
@@ -1064,7 +1064,7 @@ function TaskDetailContents({
   }
 
   return (
-    <div className="[&_button]:transition-colors [&_button]:duration-150 motion-reduce:[&_button]:transition-none">
+    <div className="motion-content-ready [&_button]:transition-colors [&_button]:duration-300 motion-reduce:[&_button]:transition-none">
       {query.error ? (
         <InlineAlert className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <span>

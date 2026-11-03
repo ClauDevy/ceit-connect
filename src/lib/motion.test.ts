@@ -9,10 +9,12 @@ import {
   ENTRANCE_STAGGER_MS,
   INTERACTION_DURATION_MS,
   EXIT_DURATION_MS,
+  PAGE_ENTER_DURATION_MS,
   PANEL_DURATION_MS,
   PROGRESS_DURATION_MS,
   PROGRESS_VISIBILITY_THRESHOLD,
   SUCCESS_DURATION_MS,
+  THEME_TRANSITION_MS,
   claimReveal,
   capturedPrefixIsStable,
   createEntranceCapture,
@@ -47,17 +49,38 @@ describe("motion entrance policy", () => {
   });
 
   it("pins the approved timing and first-20 limit", () => {
-    expect(ENTRANCE_DURATION_MS).toBe(300);
+    expect(ENTRANCE_DURATION_MS).toBe(520);
     expect(ENTRANCE_EASING).toBe("cubic-bezier(0.16, 1, 0.3, 1)");
     expect(ENTRANCE_ITEM_LIMIT).toBe(20);
     expect(ENTRANCE_STAGGER_ITEM_LIMIT).toBe(8);
-    expect(ENTRANCE_STAGGER_MS).toBe(40);
-    expect(INTERACTION_DURATION_MS).toBe(220);
-    expect(PROGRESS_DURATION_MS).toBe(700);
-    expect(PANEL_DURATION_MS).toBe(260);
-    expect(EXIT_DURATION_MS).toBe(220);
-    expect(SUCCESS_DURATION_MS).toBe(400);
+    expect(ENTRANCE_STAGGER_MS).toBe(70);
+    expect(INTERACTION_DURATION_MS).toBe(320);
+    expect(PROGRESS_DURATION_MS).toBe(1100);
+    expect(PANEL_DURATION_MS).toBe(450);
+    expect(EXIT_DURATION_MS).toBe(320);
+    expect(SUCCESS_DURATION_MS).toBe(600);
     expect(PROGRESS_VISIBILITY_THRESHOLD).toBe(0.4);
+  });
+
+  it("keeps CSS duration variables aligned with the TypeScript motion contract", () => {
+    const globals = readFileSync(
+      resolve(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    const cssDuration = (name: string) => {
+      const value = globals.match(new RegExp(`${name}:\\s*(\\d+)ms`))?.[1];
+      expect(value, `${name} must be defined in milliseconds`).toBeDefined();
+      return Number(value);
+    };
+
+    expect(cssDuration("--motion-enter-duration")).toBe(ENTRANCE_DURATION_MS);
+    expect(cssDuration("--motion-interaction-duration")).toBe(INTERACTION_DURATION_MS);
+    expect(cssDuration("--motion-progress-duration")).toBe(PROGRESS_DURATION_MS);
+    expect(cssDuration("--motion-panel-duration")).toBe(PANEL_DURATION_MS);
+    expect(cssDuration("--motion-exit-duration")).toBe(EXIT_DURATION_MS);
+    expect(cssDuration("--motion-success-duration")).toBe(SUCCESS_DURATION_MS);
+    expect(cssDuration("--motion-page-duration")).toBe(PAGE_ENTER_DURATION_MS);
+    expect(cssDuration("--motion-theme-duration")).toBe(THEME_TRANSITION_MS);
   });
 
   it("claims each stable reveal id once across reorder, filtering, and later pages", () => {
@@ -124,9 +147,9 @@ describe("motion entrance policy", () => {
     expect(globals).toContain(
       "animation: cc-route-enter var(--motion-enter-duration) var(--motion-enter-easing) backwards",
     );
-    expect(globals).toContain("transform: translateY(10px)");
+    expect(globals).toContain("transform: translateY(16px)");
     expect(globals).toContain(
-      ".motion-list-delay-7 { animation-delay: 280ms; }",
+      ".motion-list-delay-7 { animation-delay: 490ms; }",
     );
     expect(button).toContain("motion-button-interaction");
     expect(globals).toContain(
@@ -141,8 +164,8 @@ describe("motion entrance policy", () => {
     expect(
       Array.from({ length: 20 }, (_, index) => getEntranceDelayMs(index)),
     ).toEqual([
-      0, 40, 80, 120, 160, 200, 240, 280, 280, 280, 280, 280, 280, 280, 280,
-      280, 280, 280, 280, 280,
+      0, 70, 140, 210, 280, 350, 420, 490, 490, 490, 490, 490, 490, 490, 490,
+      490, 490, 490, 490, 490,
     ]);
     const capture = createEntranceCapture({
       initialItems: items(21),
@@ -176,7 +199,7 @@ describe("motion entrance policy", () => {
       "utf8",
     );
 
-    expect(globals).toContain("--motion-progress-duration: 700ms");
+    expect(globals).toContain("--motion-progress-duration: 1100ms");
     expect(globals).toContain(
       "animation: cc-progress-fill var(--motion-progress-duration) ease-out backwards",
     );
@@ -233,8 +256,8 @@ describe("motion entrance policy", () => {
       "utf8",
     );
 
-    expect(globals).toContain("--motion-panel-duration: 260ms");
-    expect(globals).toContain("--motion-exit-duration: 220ms");
+    expect(globals).toContain("--motion-panel-duration: 450ms");
+    expect(globals).toContain("--motion-exit-duration: 320ms");
     expect(globals).toContain("grid-template-rows: 0fr");
     expect(globals).toContain(
       '.motion-collapse[data-open="true"] { grid-template-rows: 1fr; }',
@@ -370,5 +393,30 @@ describe("motion entrance policy", () => {
     expect(failed.phase).toBe("done");
     expect(retried).toBe(failed);
     expect(retried.ids.size).toBe(0);
+  });
+
+  it("keeps a clipped progress fill observable and replays tab motion every switch", () => {
+    const globals = readFileSync(
+      resolve(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    const shared = readFileSync(
+      resolve(process.cwd(), "src/components/shared/motion.tsx"),
+      "utf8",
+    );
+    const bar = readFileSync(
+      resolve(process.cwd(), "src/components/events/home-event-progress.tsx"),
+      "utf8",
+    );
+
+    // The waiting state must not translate the fill out of its overflow-hidden track.
+    expect(globals).toContain(".motion-progress-target[data-motion-pending]");
+    expect(bar).toContain("observeParent: true");
+    expect(bar).toContain("motion-progress-target");
+    expect(shared).toContain("observeParent");
+    expect(shared).toContain("panel.animate(");
+    expect(shared).toContain('node.hasAttribute("data-motion-sortable")');
+    expect(shared).toContain("? [{ opacity: 0 }, { opacity: 1 }]");
+    expect(THEME_TRANSITION_MS).toBe(900);
   });
 });

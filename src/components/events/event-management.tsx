@@ -133,12 +133,12 @@ function StatTile({
   value: number;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5">
+    <div className="flex min-w-0 flex-col items-start gap-1.5 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3">
       <span
         aria-hidden
-        className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+        className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-9"
       >
-        <Icon className="size-4" />
+        <Icon className="size-3.5 sm:size-4" />
       </span>
       <div className="min-w-0">
         <p className="font-display text-xl leading-none font-semibold">
@@ -392,7 +392,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
     >
       <Card className="overflow-hidden border-border/70">
         <CardContent className="space-y-4 p-4 sm:p-5">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <StatTile icon={Layers} label="Deletable" value={filteredEvents.length} />
             <StatTile icon={FileText} label="Drafts" value={draftCount} />
             <StatTile icon={Archive} label="Archived" value={archivedCount} />
@@ -617,41 +617,54 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
             </Table>
           </Card>
 
-          <label
-            htmlFor="event-page-selection-mobile"
-            data-event-selection-control
-            className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border bg-card px-3 py-2 text-sm font-medium outline-none transition-colors hover:bg-muted active:bg-secondary has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 motion-reduce:transition-none md:hidden"
-          >
-            <input
-              id="event-page-selection-mobile"
-              type="checkbox"
+          <div className="overflow-hidden rounded-2xl border bg-card shadow-xs md:hidden">
+            <label
+              htmlFor="event-page-selection-mobile"
               data-event-selection-control
-              className="size-5 rounded accent-primary focus-visible:outline-none"
-              {...pageCheckboxProps}
-            />
-            Select this page
-          </label>
-
-          <div className="space-y-2 md:hidden">
-            {pageEvents.map((event) => {
-              const selected = selection.has(event.id);
-              const checkboxId = `event-selection-mobile-${event.id}`;
-              return (
-                <Card
-                  key={event.id}
-                  aria-selected={selected}
-                  onClick={(clickEvent) => handleRowClick(clickEvent, event)}
-                  className={cn(
-                    "cursor-pointer transition-colors active:bg-secondary/70 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 motion-reduce:transition-none",
-                    selected
-                      ? "border-primary/40 bg-primary/10"
-                      : "hover:bg-primary/5",
-                  )}
-                  {...mobileReveal.getRevealProps(
-                    `event-management-mobile-${event.id}`,
-                  )}
-                >
-                  <CardContent className="flex items-center gap-2 p-2.5">
+              className="flex min-h-12 cursor-pointer items-center gap-3 border-b bg-muted/50 px-4 py-2 text-sm font-semibold outline-none transition-colors duration-300 active:bg-secondary has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 has-[:focus-visible]:ring-inset motion-reduce:transition-none"
+            >
+              <input
+                id="event-page-selection-mobile"
+                type="checkbox"
+                data-event-selection-control
+                className="size-5 rounded accent-primary focus-visible:outline-none"
+                {...pageCheckboxProps}
+              />
+              <span className="flex-1">Select this page</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {selection.size > 0
+                  ? `${selection.size} selected`
+                  : `${pageEvents.length} ${pageEvents.length === 1 ? "event" : "events"}`}
+              </span>
+            </label>
+            <ul className="divide-y">
+              {pageEvents.map((event) => {
+                const selected = selection.has(event.id);
+                const checkboxId = `event-selection-mobile-${event.id}`;
+                return (
+                  <li
+                    key={event.id}
+                    data-selected={selected}
+                    onClick={(clickEvent) => handleRowClick(clickEvent, event)}
+                    className={cn(
+                      "relative flex cursor-pointer items-center gap-2 py-2.5 pr-4 pl-3 transition-colors duration-300 active:bg-secondary/70 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 has-[:focus-visible]:ring-inset motion-reduce:transition-none",
+                      selected ? "bg-primary/10" : "hover:bg-primary/5",
+                    )}
+                    {...mobileReveal.getRevealProps(
+                      `event-management-mobile-${event.id}`,
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute inset-y-0 left-0 w-1 transition-colors duration-300 motion-reduce:transition-none",
+                        selected
+                          ? "bg-primary"
+                          : event.status === "Draft"
+                            ? "bg-muted-foreground/30"
+                            : "bg-primary/50",
+                      )}
+                    />
                     <div
                       data-event-selection-control
                       className="flex size-11 shrink-0 items-center justify-center"
@@ -665,28 +678,27 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
                         className="size-5 rounded accent-primary focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                       />
                     </div>
-                    <StatusTile status={event.status} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <label
-                          htmlFor={checkboxId}
-                          data-event-selection-control
-                          className="min-w-0 cursor-pointer truncate font-medium"
-                          title={event.name}
-                        >
-                          {event.name}
-                        </label>
+                      <label
+                        htmlFor={checkboxId}
+                        data-event-selection-control
+                        className="block min-w-0 cursor-pointer truncate font-semibold"
+                        title={event.name}
+                      >
+                        {event.name}
+                      </label>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                         <EventStatusBadge status={event.status} />
+                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <CalendarDays className="size-3.5" aria-hidden />
+                          {formatStartDate(event.start_date)}
+                        </span>
                       </div>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <CalendarDays className="size-3.5" aria-hidden />
-                        {formatStartDate(event.start_date)}
-                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
           {selectionHint ? (

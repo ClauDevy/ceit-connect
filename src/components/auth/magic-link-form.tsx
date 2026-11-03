@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { InlineAlert } from "@/components/ui/inline-alert"
+import { AuthAlert } from "@/components/auth/auth-alert"
 import { EmailField } from "@/components/auth/email-field"
 import { createClient } from "@/lib/supabase/client"
 
@@ -10,41 +10,49 @@ type MagicLinkFormProps = {
   email: string
   onEmailChange: (email: string) => void
   onSent: () => void
+  onAttempt?: () => void
 }
 
-export function MagicLinkForm({ email, onEmailChange, onSent }: MagicLinkFormProps) {
+export function MagicLinkForm({ email, onEmailChange, onSent, onAttempt }: MagicLinkFormProps) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState("")
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    onAttempt?.()
     setSending(true)
     setError("")
 
-    const supabase = createClient()
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    try {
+      const supabase = createClient()
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
 
-    setSending(false)
-
-    if (otpError) {
+      if (otpError) {
+        setError(
+          "That email isn't recognized. If you're a council member, ask an Admin to invite you first."
+        )
+        return
+      }
+      onSent()
+    } catch {
       setError(
         "That email isn't recognized. If you're a council member, ask an Admin to invite you first."
       )
-      return
+    } finally {
+      setSending(false)
     }
-    onSent()
   }
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
       <EmailField value={email} onChange={onEmailChange} />
-      {error && <InlineAlert>{error}</InlineAlert>}
+      {error && <AuthAlert onDismiss={() => setError("")}>{error}</AuthAlert>}
       <Button type="submit" size="lg" disabled={sending} className="w-full">
         {sending ? "Sending…" : "Send sign-in link"}
       </Button>

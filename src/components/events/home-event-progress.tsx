@@ -13,6 +13,7 @@ export function HomeEventProgressSummary({
 }) {
   const progressRevealRef = useVisibilityAnimation<HTMLDivElement>({
     className: "motion-progress-fill",
+    observeParent: true,
   });
 
   if (!progress) {
@@ -42,7 +43,7 @@ export function HomeEventProgressSummary({
         >
           <div
             ref={progressRevealRef}
-            className="h-full rounded-full bg-primary"
+            className="motion-progress-target h-full rounded-full bg-primary"
             style={{ width: `${progress.percentage}%` }}
           />
         </div>
