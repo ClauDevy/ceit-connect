@@ -90,7 +90,7 @@ export default async function ArchivedEventPage({
     );
   }
 
-  const [tasksResult, assigneesResult] = await Promise.all([
+  const [tasksResult, assigneesResult, phaseOrderResult] = await Promise.all([
     supabase
       .from("tasks")
       .select(
@@ -100,9 +100,20 @@ export default async function ArchivedEventPage({
       .order("created_at", { ascending: true })
       .returns<ArchivedTask[]>(),
     supabase.rpc("list_archived_event_assignees", { p_event_id: event.id }),
+    supabase.rpc("list_event_phase_order", { p_event_id: event.id }),
   ]);
 
-  const { data: tasks, error: tasksError } = tasksResult;
+  const phasePositions = new Map(
+    (Array.isArray(phaseOrderResult.data) ? phaseOrderResult.data : []).map((row) => [
+      String((row as { phase_key: unknown }).phase_key),
+      Number((row as { position: unknown }).position),
+    ]),
+  );
+  const { data: unsortedTasks, error: tasksError } = tasksResult;
+  const tasks = [...(unsortedTasks ?? [])].sort((left, right) =>
+    (phasePositions.get(left.phase?.trim() || "Unphased") ?? Number.MAX_SAFE_INTEGER) -
+    (phasePositions.get(right.phase?.trim() || "Unphased") ?? Number.MAX_SAFE_INTEGER),
+  );
   const assigneeRows: unknown = assigneesResult.data;
   const assigneeDataInvalid =
     !assigneesResult.error &&
@@ -116,6 +127,9 @@ export default async function ArchivedEventPage({
 
   if (tasksError) {
     console.error("Failed to load Archived event tasks:", tasksError);
+  }
+  if (phaseOrderResult.error) {
+    console.error("Failed to load Archived event phase order:", phaseOrderResult.error);
   }
   if (assigneesResult.error) {
     console.error(

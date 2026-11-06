@@ -93,17 +93,11 @@ export async function POST(request: Request) {
   if (targetError || !target) {
     return json({ error: "The selected user could not be found" }, 404);
   }
-  if (target.role === "Admin") {
-    return json(
-      { error: "Admin accounts cannot be activated or deactivated here" },
-      403,
-    );
-  }
   if (isActive && target.anonymized_at !== null) {
     return json({ error: "This account cannot be reactivated" }, 409);
   }
 
-  if (target.role === "Co-Admin") {
+  if (target.role === "Co-Admin" || target.role === "Admin") {
     const { error: officerError } = await supabase.rpc("set_officer_active", {
       p_user_id: userId,
       p_is_active: isActive,
@@ -114,6 +108,8 @@ export async function POST(request: Request) {
           ? "Use Cancel invitation for an unaccepted officer invite."
           : officerError.code === "CCO04"
             ? "That officer seat is currently full."
+            : officerError.code === "CCO05"
+              ? "At least one other active confirmed Admin is required."
             : "The officer status could not be changed.";
       return json({ error: message }, 409);
     }

@@ -41,7 +41,7 @@ describe("removed-member roster UI contract", () => {
     }
     expect(status).toContain(">Removed</Badge>");
     expect(actions).toContain("Re-run cleanup");
-    expect(actions).toContain('if (viewerRole === "Co-Admin") return null');
+    expect(actions).toContain("Anonymized accounts cannot be reactivated.");
   });
 
   it("does not render a checkbox for removed rows on desktop or phone", () => {

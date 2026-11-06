@@ -8,6 +8,10 @@ const migration = readFileSync(
   join(migrationsDirectory, migrationName),
   "utf8",
 ).toLowerCase();
+const batchAMigration = readFileSync(
+  join(migrationsDirectory, "20261106120000_event_phase_positions.sql"),
+  "utf8",
+).toLowerCase();
 const allMigrations = readdirSync(migrationsDirectory)
   .filter((name) => name.endsWith(".sql"))
   .map((name) => readFileSync(join(migrationsDirectory, name), "utf8"))
@@ -15,12 +19,12 @@ const allMigrations = readdirSync(migrationsDirectory)
   .toLowerCase();
 
 describe("tracked Home event progress contract", () => {
-  it("adds one bounded fixed-shape reader without an overload", () => {
+  it("keeps one signature while replacing the reader in Batch A", () => {
     expect(
       allMigrations.match(
         /create(?: or replace)? function public\.list_home_event_progress\s*\(/g,
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(migration).toContain(
       "create function public.list_home_event_progress(p_event_ids uuid[])",
     );
@@ -28,6 +32,15 @@ describe("tracked Home event progress contract", () => {
     expect(migration).toContain("out_phase_label text");
     expect(migration).not.toContain("out_task_id");
     expect(migration).not.toContain("out_title");
+    expect(batchAMigration).toContain(
+      "create or replace function public.list_home_event_progress(p_event_ids uuid[])",
+    );
+    expect(batchAMigration).toContain("event_phase_positions");
+    const batchAHomeBody = batchAMigration.slice(
+      batchAMigration.indexOf("create or replace function public.list_home_event_progress"),
+    );
+    expect(batchAHomeBody.match(/task_content_access_for_user/g)).toHaveLength(1);
+    expect(batchAHomeBody).toContain("task_access as materialized");
   });
 
   it("pins the owner, fixed path, stable definer mode, and grants", () => {
