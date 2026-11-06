@@ -14,7 +14,9 @@ import {
   canShowBoardTaskEdit,
   canShowTaskPageEdit,
   formatTaskMetadataTimestamp,
+  getActiveTaskDateInputMax,
   getActiveTaskBulkPresentation,
+  getActiveTaskEventEndProblem,
   getCompletedTaskDetailReadOnlyInventory,
   nextActiveTaskPickerLimitAttempt,
   parseStoredTaskPriority,
@@ -174,6 +176,44 @@ describe("active task Edit prefill", () => {
     expect(shouldApplyActiveTaskLoadResult("edit", true)).toBe(false);
     expect(shouldApplyActiveTaskLoadResult("edit", false)).toBe(true);
     expect(shouldApplyActiveTaskLoadResult("add", true)).toBe(true);
+  });
+
+  it("submits a title-only edit for a grandfathered out-of-range schedule", () => {
+    const initial = buildActiveTaskEditDraft(task, controls, "Low")!;
+    initial.dueDate = "2026-11-12";
+    initial.dutyDate = "2026-11-13";
+    const edited = { ...initial, title: "Changed title" };
+    const prepared = prepareActiveTaskEditSubmission(edited, initial, []);
+    const submit = vi.fn();
+
+    expect(
+      getActiveTaskDateInputMax({
+        mode: "edit",
+        value: initial.dueDate,
+        initialValue: initial.dueDate,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toBeUndefined();
+    expect(
+      getActiveTaskDateInputMax({
+        mode: "edit",
+        value: initial.dutyDate,
+        initialValue: initial.dutyDate,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toBeUndefined();
+    expect(
+      getActiveTaskEventEndProblem({
+        mode: "edit",
+        draft: prepared!,
+        initialDraft: initial,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toBeNull();
+    if (prepared) submit(prepared);
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Changed title" }),
+    );
   });
 
   it("accepts only a valid stored priority and treats null as unavailable", () => {

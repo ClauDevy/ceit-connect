@@ -56,6 +56,13 @@ type UsersTableProps = {
   viewerRole: Extract<Role, "Admin" | "Co-Admin">;
 };
 
+type AdminLifecycleContext = {
+  confirmed_active_admin_count: number;
+  caps_enabled: boolean;
+  active_admin_count: number;
+  preparing_admin_count: number;
+};
+
 const TABS = [
   { value: "active", label: "Active" },
   { value: "deactivated", label: "Deactivated" },
@@ -114,6 +121,20 @@ export function UsersTable({
     initialPendingError ? "Pending invitations could not be loaded." : "",
   );
   const [pendingInvitesLoading, setPendingInvitesLoading] = useState(false);
+  const [adminLifecycleContext, setAdminLifecycleContext] = useState<AdminLifecycleContext | null>(null);
+
+  const refreshAdminLifecycleContext = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase.rpc("get_admin_lifecycle_context");
+    const row = Array.isArray(data) ? data[0] as AdminLifecycleContext | undefined : undefined;
+    if (!error && row) setAdminLifecycleContext(row);
+  }, [supabase]);
+
+  useEffect(() => {
+    if (viewerRole === "Admin") {
+      void Promise.resolve().then(refreshAdminLifecycleContext);
+    }
+  }, [refreshAdminLifecycleContext, viewerRole]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setSearch(query.trim()), 250);
@@ -176,10 +197,11 @@ export function UsersTable({
     const refresh = () => {
       void refreshPendingInvites();
       void refreshUsers();
+      void refreshAdminLifecycleContext();
     };
     window.addEventListener("officer-invites-changed", refresh);
     return () => window.removeEventListener("officer-invites-changed", refresh);
-  }, [refreshPendingInvites, refreshUsers, viewerRole]);
+  }, [refreshAdminLifecycleContext, refreshPendingInvites, refreshUsers, viewerRole]);
 
   useEffect(() => {
     const refresh = () => {
@@ -227,7 +249,10 @@ export function UsersTable({
   async function confirmToggle() {
     if (!target) return;
     const ok = await toggle.setActive(target, reactivating);
-    if (ok) setConfirmOpen(false);
+    if (ok) {
+      setConfirmOpen(false);
+      await refreshAdminLifecycleContext();
+    }
   }
 
   function handleAction(action: MemberActionName, member: Member) {
@@ -285,7 +310,11 @@ export function UsersTable({
         return;
       }
       setCancelInviteTarget(null);
-      await Promise.all([refreshPendingInvites(), paging.refreshFromStart()]);
+      await Promise.all([
+        refreshPendingInvites(),
+        paging.refreshFromStart(),
+        refreshAdminLifecycleContext(),
+      ]);
     } catch {
       setCancelInviteError("Network error. Try again.");
     } finally {
@@ -333,13 +362,17 @@ export function UsersTable({
         return;
       }
       if (transitionAction === "step-down") {
+        await refreshAdminLifecycleContext();
         router.replace("/home");
         router.refresh();
         return;
       }
       setTransitionAction(null);
       setTransitionTarget(null);
-      await paging.refreshFromStart();
+      await Promise.all([
+        paging.refreshFromStart(),
+        refreshAdminLifecycleContext(),
+      ]);
     } catch {
       setTransitionError("Network error. Try again.");
     } finally {
@@ -370,7 +403,9 @@ export function UsersTable({
     paging.isIdentityLoading || searchDebouncing || forceRosterSkeleton;
   const selectionEnabled = viewerRole === "Admin" && status === "deactivated";
   const visibleSelectableIds = selectionEnabled
-    ? getSelectableFormerMemberIds(displayedMembers)
+    ? getSelectableFormerMemberIds(displayedMembers).filter(
+        (id) => !pendingInvites.some((invite) => invite.auth_user_id === id),
+      )
     : [];
   const visibleSelectableIdSet = new Set(visibleSelectableIds);
   const effectiveSelectedIds = new Set(
@@ -402,7 +437,8 @@ export function UsersTable({
   function toggleMemberSelection(member: Member, selected: boolean) {
     if (
       !selectionEnabled ||
-      member.role === "Admin" ||
+      member.is_active ||
+      pendingInvites.some((invite) => invite.auth_user_id === member.id) ||
       member.anonymized_at !== null
     )
       return;
@@ -433,6 +469,18 @@ export function UsersTable({
         .map((invite) => [invite.auth_user_id as string, invite]),
     ),
     viewerRole,
+    getPeerAdminBlockedReason: (member: Member) => {
+      if (viewerRole !== "Admin" || member.role !== "Admin" || member.id === currentUserId) return null;
+      if (!adminLifecycleContext) return "Checking Admin safeguards…";
+      if (member.is_active && adminLifecycleContext.confirmed_active_admin_count <= 1) {
+        return "At least one other active confirmed Admin is required.";
+      }
+      if (!member.is_active && adminLifecycleContext.caps_enabled &&
+          adminLifecycleContext.active_admin_count + adminLifecycleContext.preparing_admin_count >= 2) {
+        return "Admin role capacity is currently full.";
+      }
+      return null;
+    },
     selectionEnabled,
     selectedIds: effectiveSelectedIds,
     allVisibleSelected,
@@ -539,6 +587,7 @@ export function UsersTable({
             await Promise.all([
               refreshPendingInvites(),
               paging.refreshFromStart(),
+              refreshAdminLifecycleContext(),
             ]);
           }}
         />

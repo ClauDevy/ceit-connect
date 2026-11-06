@@ -94,6 +94,73 @@ export function prepareActiveTaskEditSubmission(
     : normalized;
 }
 
+export function getActiveTaskDateInputMax({
+  mode,
+  value,
+  initialValue,
+  eventEndDate,
+}: {
+  mode: "add" | "edit";
+  value: string;
+  initialValue: string | null;
+  eventEndDate: string | null;
+}) {
+  if (!eventEndDate) return undefined;
+  if (
+    mode === "edit" &&
+    value === initialValue &&
+    value > eventEndDate
+  ) {
+    return undefined;
+  }
+  return eventEndDate;
+}
+
+export function getActiveTaskEventEndProblem({
+  mode,
+  draft,
+  initialDraft,
+  eventEndDate,
+}: {
+  mode: "add" | "edit";
+  draft: ActiveTaskDraft;
+  initialDraft: ActiveTaskDraft | null;
+  eventEndDate: string | null;
+}) {
+  if (!eventEndDate) return null;
+  const dueDateChanged =
+    mode === "add" || !initialDraft || draft.dueDate !== initialDraft.dueDate;
+  if (dueDateChanged && draft.dueDate > eventEndDate) {
+    return {
+      field: "dueDate" as const,
+      message: `The due date cannot be after the event end date (${eventEndDate}).`,
+    };
+  }
+  const dutyDateChanged =
+    mode === "add" ||
+    !initialDraft ||
+    draft.dutyDate !== initialDraft.dutyDate;
+  const callTimeChanged =
+    mode === "add" ||
+    !initialDraft ||
+    draft.callTime !== initialDraft.callTime;
+  const endTimeChanged =
+    mode === "add" ||
+    !initialDraft ||
+    draft.endTime !== initialDraft.endTime;
+  if (
+    draft.taskType === "LiveOperation" &&
+    draft.dutyDate > eventEndDate &&
+    (dutyDateChanged || callTimeChanged || endTimeChanged)
+  ) {
+    return {
+      field: "schedule" as const,
+      message: `The Live Operation date cannot be after the event end date (${eventEndDate}).`,
+    };
+  }
+  return null;
+}
+
 export function shouldApplyActiveTaskLoadResult(
   mode: "add" | "edit",
   background: boolean,

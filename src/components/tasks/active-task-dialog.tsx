@@ -49,7 +49,9 @@ import {
   buildActiveTaskEditDraft,
   buildBulkPersonSelection,
   buildSinglePersonSelection,
+  getActiveTaskDateInputMax,
   getActiveTaskBulkPresentation,
+  getActiveTaskEventEndProblem,
   nextActiveTaskPickerLimitAttempt,
   normalizeActiveTaskDraft,
   parseStoredTaskPriority,
@@ -84,6 +86,7 @@ type ActiveTaskDialogProps = {
   onOpenChange: (open: boolean) => void;
   mode: "add" | "edit";
   eventId?: string;
+  eventEndDate?: string | null;
   taskId?: string;
   defaultPhase?: string | null;
   completedPhaseNames?: readonly string[];
@@ -368,6 +371,7 @@ export function ActiveTaskDialog({
   onOpenChange,
   mode,
   eventId,
+  eventEndDate = null,
   taskId,
   defaultPhase,
   completedPhaseNames = [],
@@ -390,6 +394,7 @@ export function ActiveTaskDialog({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedEventEndDate, setResolvedEventEndDate] = useState<string | null>(eventEndDate);
   const [pickerLimitAttempt, setPickerLimitAttempt] =
     useState<ActiveTaskPickerLimitAttempt | null>(null);
   const [assigneeSearch, setAssigneeSearch] = useState("");
@@ -422,6 +427,7 @@ export function ActiveTaskDialog({
       const activePeople = workloadPeople(workloadResult.data);
 
       if (mode === "add") {
+        setResolvedEventEndDate(eventEndDate);
         const fixedCommittee =
           viewer.role === "Co-Admin" ? viewer.committeeId ?? "" : "";
         if (!background) {
@@ -476,6 +482,16 @@ export function ActiveTaskDialog({
       if (nextDetail.phaseComplete) {
         throw new Error("This phase is complete and read-only. The latest state has been loaded.");
       }
+      if (!nextDetail.event_id) throw new Error("The task's event is unavailable.");
+      const eventResult = await supabase
+        .from("events")
+        .select("end_date")
+        .eq("id", nextDetail.event_id)
+        .single<{ end_date: string | null }>();
+      if (eventResult.error || !eventResult.data) {
+        throw new Error("The task's event date could not be loaded.");
+      }
+      setResolvedEventEndDate(eventResult.data.end_date);
       const nextControls = controlsResult.data[0];
       const nextDraft = buildActiveTaskEditDraft(
         nextDetail,
@@ -517,7 +533,7 @@ export function ActiveTaskDialog({
     } finally {
       if (!background) setLoading(false);
     }
-  }, [defaultPhase, mode, open, supabase, taskId, viewer.committeeId, viewer.id, viewer.role]);
+  }, [defaultPhase, eventEndDate, mode, open, supabase, taskId, viewer.committeeId, viewer.id, viewer.role]);
 
   useEffect(() => {
     if (!open) return;
@@ -598,6 +614,21 @@ export function ActiveTaskDialog({
     if (!validation.ok) {
       setError(validation.message);
       focusActiveTaskValidationField(validation.field);
+      return;
+    }
+    const eventEndProblem = getActiveTaskEventEndProblem({
+      mode,
+      draft: normalizedDraft,
+      initialDraft: initialEditDraft,
+      eventEndDate: resolvedEventEndDate,
+    });
+    if (eventEndProblem) {
+      setError(eventEndProblem.message);
+      if (eventEndProblem.field === "dueDate") {
+        focusActiveTaskValidationField("dueDate");
+      } else {
+        focusActiveTaskValidationField("schedule");
+      }
       return;
     }
     setBusy(true);
@@ -746,12 +777,12 @@ export function ActiveTaskDialog({
                       )}
                     </FormField>
                     <FormField label="Due date" hint="Optional">
-                      {(control) => <Input {...control} data-active-task-field="dueDate" type="date" value={draft.dueDate} onChange={(event) => updateDraft({ dueDate: event.target.value })} />}
+                      {(control) => <Input {...control} data-active-task-field="dueDate" type="date" max={getActiveTaskDateInputMax({ mode, value: draft.dueDate, initialValue: initialEditDraft?.dueDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dueDate} onChange={(event) => updateDraft({ dueDate: event.target.value })} />}
                     </FormField>
                     <MotionPresence open={draft.taskType === "LiveOperation"}>
                       {draft.taskType === "LiveOperation" ? (
                         <div data-active-task-field="schedule" className="grid gap-3 border-l-2 border-primary/40 pl-3 sm:grid-cols-3">
-                          <FormField label="Philippine duty date">{(control) => <Input {...control} type="date" value={draft.dutyDate} onChange={(event) => updateDraft({ dutyDate: event.target.value })} />}</FormField>
+                          <FormField label="Philippine duty date">{(control) => <Input {...control} type="date" max={getActiveTaskDateInputMax({ mode, value: draft.dutyDate, initialValue: initialEditDraft?.dutyDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dutyDate} onChange={(event) => updateDraft({ dutyDate: event.target.value })} />}</FormField>
                           <FormField label="Call time">{(control) => <Input {...control} type="time" value={draft.callTime} onChange={(event) => updateDraft({ callTime: event.target.value })} />}</FormField>
                           <FormField label="End time" hint="Optional">{(control) => <Input {...control} type="time" min={draft.callTime || undefined} value={draft.endTime} onChange={(event) => updateDraft({ endTime: event.target.value })} />}</FormField>
                         </div>

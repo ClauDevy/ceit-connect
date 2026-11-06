@@ -25,6 +25,7 @@ type MembersListProps = {
   onAction: (action: MemberActionName, member: Member) => void;
   pendingInviteByAuthUserId: ReadonlyMap<string, PendingOfficerInvite>;
   viewerRole: Extract<Role, "Admin" | "Co-Admin">;
+  getPeerAdminBlockedReason?: (member: Member) => string | null;
   selectionEnabled: boolean;
   selectedIds: ReadonlySet<string>;
   allVisibleSelected: boolean;
@@ -45,6 +46,7 @@ export function MembersTable({
   onAction,
   pendingInviteByAuthUserId,
   viewerRole,
+  getPeerAdminBlockedReason = () => null,
   selectionEnabled,
   selectedIds,
   allVisibleSelected,
@@ -91,7 +93,7 @@ export function MembersTable({
                   <input
                     type="checkbox"
                     checked={selectedIds.has(member.id)}
-                    disabled={member.role === "Admin" || pendingId !== null}
+                    disabled={pendingInviteByAuthUserId.has(member.id) || pendingId !== null}
                     aria-label={`Select ${member.full_name}`}
                     className="motion-control-pop size-4 rounded border-input accent-primary disabled:cursor-not-allowed disabled:opacity-50"
                     onChange={(event) =>
@@ -144,6 +146,7 @@ export function MembersTable({
                 pending={pendingId !== null}
                 pendingInvite={pendingInviteByAuthUserId.get(member.id)}
                 viewerRole={viewerRole}
+                peerAdminBlockedReason={getPeerAdminBlockedReason(member)}
                 onAction={onAction}
               />
             </TableCell>

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
+  ArrowDown,
+  ArrowUp,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -62,10 +64,13 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadEventBanner } from "@/lib/event-banner";
 import {
   buildEventPhaseViews,
+  buildCompleteEventPhaseOrder,
+  eventFormPhasesAreValid,
   getEventFormSummary,
   getEventPhaseCardKey,
   getEventPhaseControls,
   getLiveOperationScheduleProblem,
+  getSavableEventPhaseName,
   normalizeEventPhaseName,
   toTaskPayload,
 } from "@/lib/events/form";
@@ -197,6 +202,7 @@ export type InitialEvent = {
   status: "Draft" | "Active";
   updatedAt: string;
   bannerUrl: string | null;
+  phaseOrder: string[];
   tasks: InitialEventTask[];
 };
 
@@ -314,6 +320,7 @@ export function EventForm({
     initialEvent ? makeInitialPhases(initialEvent.tasks) : [],
   );
   const [phaseActions, setPhaseActions] = useState<PhaseAction[]>([]);
+  const [phaseOrderChanged, setPhaseOrderChanged] = useState(false);
   const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
   const [newPhaseName, setNewPhaseName] = useState("");
   const [taskEditor, setTaskEditor] = useState<TaskEditor | null>(null);
@@ -321,6 +328,7 @@ export function EventForm({
   const [taskEditorError, setTaskEditorError] = useState("");
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [phaseToRemove, setPhaseToRemove] = useState<PhaseDraft | null>(null);
+  const [phaseRemovalWarnings, setPhaseRemovalWarnings] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState("");
   const [templateMode, setTemplateMode] = useState<"scratch" | "archive">(
@@ -413,9 +421,7 @@ export function EventForm({
   const startSet = startDate.length > 0;
   const datesSet = startSet && endDate.length > 0;
   const datesOutOfOrder = datesSet && endDate < startDate;
-  const phasesValid = phases.every(
-    (phase) => phase.tasks.length === 0 || phase.name.trim().length > 0,
-  );
+  const phasesValid = eventFormPhasesAreValid(phases);
   const readyToLaunch =
     nameSet &&
     datesSet &&
@@ -463,19 +469,17 @@ export function EventForm({
     previousCompletedDraftPhases.current = new Set(completedDraftPhases);
   }, [completedDraftPhases, initialTaskPayloads, phases]);
 
-  const datesChanged = Boolean(
-    initialEvent &&
-    (startDate !== initialEvent.startDate || endDate !== initialEvent.endDate),
-  );
-  const tasksOutsideDateRange = datesChanged
+  const endDateTightened = Boolean(endDate && (!initialEvent?.endDate || endDate < initialEvent.endDate));
+  const tasksAfterEventEnd = endDateTightened
     ? phases.flatMap((phase) =>
-        phase.tasks.filter(
-          (task) =>
-            task.dueDate &&
-            startDate &&
-            (task.dueDate < startDate ||
-              Boolean(endDate && task.dueDate > endDate)),
-        ),
+        phase.tasks.flatMap((task) => {
+          const fields = [
+            task.dueDate > endDate ? `due date ${task.dueDate}` : null,
+            task.callDate > endDate ? `call date ${task.callDate}` : null,
+            task.endDate > endDate ? `end date ${task.endDate}` : null,
+          ].filter((value): value is string => Boolean(value));
+          return fields.length > 0 ? [{ ...task, fields }] : [];
+        }),
       )
     : [];
 
@@ -813,6 +817,23 @@ export function EventForm({
     );
   }
 
+  function movePhase(phaseId: string, direction: -1 | 1) {
+    setPhases((current) => {
+      const index = current.findIndex((phase) => phase.id === phaseId);
+      const destination = index + direction;
+      if (index < 0 || destination < 0 || destination >= current.length) return current;
+      const next = [...current];
+      [next[index], next[destination]] = [next[destination], next[index]];
+      return next;
+    });
+    setPhaseOrderChanged(true);
+    setPhaseRemovalWarnings((current) => {
+      const next = { ...current };
+      delete next[phaseId];
+      return next;
+    });
+  }
+
   function openNewTask(phaseId: string | null, phaseName?: string) {
     if (taskCount >= 200) {
       setError("An event can contain at most 200 tasks.");
@@ -971,12 +992,36 @@ export function EventForm({
       revealTaskProblem(scheduleProblem.field, scheduleProblem.message);
       return;
     }
-
-    const existingTask = taskEditor.taskId
+    const originalTask = taskEditor.taskId
       ? phases
           .find((phase) => phase.id === taskEditor.phaseId)
           ?.tasks.find((task) => task.id === taskEditor.taskId)
       : null;
+    const scheduleAfterEnd = endDate
+      ? [
+          taskEditor.draft.dueDate > endDate &&
+          (!originalTask || taskEditor.draft.dueDate !== originalTask.dueDate)
+            ? "due date"
+            : null,
+          taskEditor.draft.callDate > endDate &&
+          (!originalTask || taskEditor.draft.callDate !== originalTask.callDate || taskEditor.draft.callTime !== originalTask.callTime)
+            ? "call date"
+            : null,
+          taskEditor.draft.endDate > endDate &&
+          (!originalTask || taskEditor.draft.endDate !== originalTask.endDate || taskEditor.draft.endTime !== originalTask.endTime)
+            ? "end date"
+            : null,
+        ].filter((field): field is string => Boolean(field))
+      : [];
+    if (scheduleAfterEnd.length > 0) {
+      revealTaskProblem(
+        scheduleAfterEnd[0] === "due date" ? "due-date" : scheduleAfterEnd[0] === "call date" ? "call-date" : "end-date",
+        `The task ${scheduleAfterEnd.join(" and ")} cannot be after the event end date (${endDate}).`,
+      );
+      return;
+    }
+
+    const existingTask = originalTask;
     const savedTask: TaskDraft = {
       id: taskEditor.taskId ?? makeId(),
       persisted: existingTask?.persisted ?? false,
@@ -1044,15 +1089,21 @@ export function EventForm({
   }
 
   function requestRemovePhase(phase: PhaseDraft) {
-    const progressedTask = phase.tasks.find((task) => task.status !== "To Do");
-    if (progressedTask) {
-      setError(
-        `This phase cannot be removed because “${progressedTask.title}” is ${progressedTask.status}.`,
-      );
+    const progressedTasks = phase.tasks.filter((task) => task.status !== "To Do");
+    if (progressedTasks.length > 0) {
+      const completedCount = progressedTasks.filter((task) => task.status === "Completed").length;
+      const names = progressedTasks.slice(0, 3).map((task) => task.title).join(", ");
+      const more = progressedTasks.length > 3 ? `, and ${progressedTasks.length - 3} more` : "";
+      const summary = completedCount === progressedTasks.length
+        ? `${completedCount} completed task${completedCount === 1 ? "" : "s"}`
+        : `${progressedTasks.length} progressed tasks (${completedCount} completed)`;
+      setPhaseRemovalWarnings((current) => ({
+        ...current,
+        [phase.id]: `This phase cannot be removed because it contains ${summary}: ${names}${more}.`,
+      }));
       setTab("tasks");
       return;
     }
-
     setPhaseToRemove(phase);
   }
 
@@ -1092,6 +1143,11 @@ export function EventForm({
       setTab("fundamentals");
       return;
     }
+    if (tasksAfterEventEnd.length > 0) {
+      setError("Move the listed task schedules on or before the new event end date before saving.");
+      setTab("fundamentals");
+      return;
+    }
 
     const normalizedExclusions = normalizeTemplateExclusionIds(
       excludedTemplateTaskIds,
@@ -1109,7 +1165,10 @@ export function EventForm({
       completedDraftPhases.has(normalizeEventPhaseName(phase.name)) ||
       completedDraftPhases.has(normalizeEventPhaseName(phase.originalName))
         ? []
-        : phase.tasks.map((task) => ({ task, payload: toTaskPayload(phase.name, task) })),
+        : phase.tasks.map((task) => ({
+            task,
+            payload: toTaskPayload(getSavableEventPhaseName(phase), task),
+          })),
     );
 
     try {
@@ -1148,13 +1207,28 @@ export function EventForm({
             p_task_ids_to_delete: deletedTaskIds.filter((id) =>
               !(draftReaderQuery.data ?? []).some((task) =>
                 task.out_task_id === id && task.phaseComplete)),
-            p_phase_actions: phaseActions.filter((action) =>
-              !completedDraftPhases.has(normalizeEventPhaseName(action.phase)))
-              .map((action) =>
-              action.type === "rename"
-                ? { type: action.type, phase: action.phase, next_phase: action.next_phase }
-                : { type: action.type, phase: action.phase },
-            ),
+            p_phase_actions: [
+              ...phaseActions.filter((action) =>
+                !completedDraftPhases.has(normalizeEventPhaseName(action.phase)) &&
+                (action.type !== "rename" || action.next_phase.trim().length > 0))
+                .map((action) => action.type === "rename"
+                  ? { type: action.type, phase: action.phase, next_phase: action.next_phase }
+                  : { type: action.type, phase: action.phase }),
+              {
+                type: "reorder",
+                phases: buildCompleteEventPhaseOrder({
+                  serverOrder: initialEvent.phaseOrder,
+                  visibleOrder: phaseViews
+                  .filter((view) => view.editablePhases.some((phase) => phase.tasks.length > 0) || view.readOnlyTasks.length > 0)
+                  .map((view) => {
+                    const editable = view.editablePhases[0];
+                    return editable ? getSavableEventPhaseName(editable) : view.name;
+                  }),
+                  phaseActions,
+                  applyVisibleOrder: phaseOrderChanged,
+                }),
+              },
+            ],
           })
         : coAdminTemplateSummary
           ? await supabase.rpc("create_event_from_archived_template", {
@@ -1573,17 +1647,17 @@ export function EventForm({
                   </FormField>
                 </div>
 
-                <MotionPresence open={tasksOutsideDateRange.length > 0}>
-                  {tasksOutsideDateRange.length > 0 ? <InlineAlert variant="info">
+                <MotionPresence open={tasksAfterEventEnd.length > 0}>
+                  {tasksAfterEventEnd.length > 0 ? <InlineAlert>
                     <div className="grid gap-1">
                       <p>
-                        These task due dates fall outside the new event range.
-                        Saving will leave them unchanged:
+                        The event cannot end on {endDate} because these retained
+                        task schedules are later:
                       </p>
                       <ul className="list-disc pl-5">
-                        {tasksOutsideDateRange.map((task) => (
+                        {tasksAfterEventEnd.map((task) => (
                           <li key={task.id}>
-                            {task.title} — {task.dueDate}
+                            {task.title} — {task.fields.join(", ")}
                           </li>
                         ))}
                       </ul>
@@ -1759,6 +1833,32 @@ export function EventForm({
                             {editableTasks.length + phaseView.readOnlyTasks.length} task
                             {editableTasks.length + phaseView.readOnlyTasks.length === 1 ? "" : "s"}
                           </Badge>
+                          {editablePhase ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Move ${phaseView.name} up`}
+                                className={phaseIndex === 0 ? "invisible" : undefined}
+                                tabIndex={phaseIndex === 0 ? -1 : undefined}
+                                onClick={() => movePhase(editablePhase.id, -1)}
+                              >
+                                <ArrowUp />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Move ${phaseView.name} down`}
+                                className={phaseIndex === phaseViews.length - 1 ? "invisible" : undefined}
+                                tabIndex={phaseIndex === phaseViews.length - 1 ? -1 : undefined}
+                                onClick={() => movePhase(editablePhase.id, 1)}
+                              >
+                                <ArrowDown />
+                              </Button>
+                            </>
+                          ) : null}
                           {phaseComplete ? (
                             <CompletedPhaseReopenDialog
                               phase={phaseView.name}
@@ -1791,6 +1891,11 @@ export function EventForm({
 
                         <Collapse open={!phaseCollapsed}>
                           <div id={phaseContentId} className="grid gap-3 p-3">
+                            {editablePhase && phaseRemovalWarnings[editablePhase.id] ? (
+                              <InlineAlert>
+                                {phaseRemovalWarnings[editablePhase.id]}
+                              </InlineAlert>
+                            ) : null}
                             {phaseView.readOnlyTasks.length > 0 && !phaseComplete ? (
                               <p className="text-sm text-muted-foreground">
                                 This phase includes read-only tasks from another committee. You can add tasks for your committee, but you can&apos;t rename or remove this phase.
@@ -2172,7 +2277,9 @@ export function EventForm({
                   {(control) => (
                     <Input
                       {...control}
+                      data-task-field="due-date"
                       type="date"
+                      max={endDate || undefined}
                       value={taskEditor.draft.dueDate}
                       onChange={(event) =>
                         updateTaskDraft({ dueDate: event.target.value })
@@ -2194,6 +2301,7 @@ export function EventForm({
                           {...control}
                           data-task-field="call-date"
                           type="date"
+                          max={endDate || undefined}
                           value={taskEditor.draft.callDate}
                           onChange={(event) =>
                             updateTaskDraft({ callDate: event.target.value })
@@ -2221,6 +2329,7 @@ export function EventForm({
                           data-task-field="end-date"
                           type="date"
                           min={taskEditor.draft.callDate || undefined}
+                          max={endDate || undefined}
                           value={taskEditor.draft.endDate}
                           onChange={(event) =>
                             updateTaskDraft({ endDate: event.target.value })

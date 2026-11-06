@@ -92,7 +92,7 @@ export default async function EditEventPage({
     redirect("/home");
   }
 
-  const [currentProfileResult, committeesResult, assigneesResult, tasksResult] =
+  const [currentProfileResult, committeesResult, assigneesResult, tasksResult, phaseOrderResult] =
     await Promise.all([
       supabase
         .from("users")
@@ -109,13 +109,15 @@ export default async function EditEventPage({
         .eq("event_id", eventId)
         .order("created_at", { ascending: true })
         .returns<EditableTaskMetadata[]>(),
+      supabase.rpc("list_event_phase_order", { p_event_id: eventId }),
     ]);
 
   const loadError =
     currentProfileResult.error ??
     committeesResult.error ??
     assigneesResult.error ??
-    tasksResult.error;
+    tasksResult.error ??
+    phaseOrderResult.error;
 
   const workloadRows: unknown = assigneesResult.data;
   const workloadDataInvalid =
@@ -157,6 +159,15 @@ export default async function EditEventPage({
       .map((task) => [task.id, task]),
   );
 
+  const phasePositions = new Map(
+    (Array.isArray(phaseOrderResult.data) ? phaseOrderResult.data : []).map((row) => [
+      String((row as { phase_key: unknown }).phase_key),
+      Number((row as { position: unknown }).position),
+    ]),
+  );
+  const phaseOrder = [...phasePositions.entries()]
+    .sort((left, right) => left[1] - right[1])
+    .map(([phase]) => phase);
   const initialTasks: InitialEventTask[] = (tasksResult.data ?? []).map(
     (task) => {
       const details = taskDetails.get(task.id);
@@ -180,6 +191,9 @@ export default async function EditEventPage({
         status: task.status,
       };
     },
+  ).sort((left, right) =>
+    (phasePositions.get(left.phase) ?? Number.MAX_SAFE_INTEGER) -
+      (phasePositions.get(right.phase) ?? Number.MAX_SAFE_INTEGER),
   );
 
   const currentProfile = currentProfileResult.data;
@@ -216,6 +230,7 @@ export default async function EditEventPage({
         // Preserve the exact Supabase string; never round-trip through Date.
         updatedAt: eventResult.data.updated_at,
         bannerUrl: eventResult.data.banner_url,
+        phaseOrder,
         tasks: initialTasks,
       }}
     />
