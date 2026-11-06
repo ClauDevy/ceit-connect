@@ -1,4 +1,5 @@
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { IndeterminateCheckbox } from "@/components/users/indeterminate-checkbox";
 import {
   MemberAction,
   type MemberActionName,
@@ -58,12 +59,9 @@ export function MembersTable({
         <TableRow className="hover:bg-transparent">
           {selectionEnabled ? (
             <TableHead className="w-px pl-4 pr-0">
-              <input
-                type="checkbox"
+              <IndeterminateCheckbox
                 checked={allVisibleSelected}
-                aria-checked={
-                  someVisibleSelected ? "mixed" : allVisibleSelected
-                }
+                indeterminate={someVisibleSelected}
                 aria-label="Select all visible former members"
                 className="motion-control-pop size-4 rounded border-input accent-primary"
                 onChange={onToggleVisibleSelection}

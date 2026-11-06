@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
 import { TabPanel, useListReveal } from "@/components/shared/motion";
+import { IndeterminateCheckbox } from "@/components/users/indeterminate-checkbox";
 import { MembersCards } from "@/components/users/members-cards";
 import { MembersTable } from "@/components/users/members-table";
 import { type MemberActionName } from "@/components/users/member-actions";
@@ -545,48 +546,14 @@ export function UsersTable({
       {!rosterLoading && selectionEnabled && displayedMembers.length > 0 ? (
         <div className="flex min-h-11 flex-wrap items-center gap-2 border-y py-2">
           <label className="motion-control-trigger flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-medium hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none">
-            <input
-              type="checkbox"
+            <IndeterminateCheckbox
               checked={allVisibleSelected}
-              aria-checked={someVisibleSelected ? "mixed" : allVisibleSelected}
+              indeterminate={someVisibleSelected}
               className="motion-control-pop size-4 rounded border-input accent-primary"
               onChange={toggleVisibleSelection}
             />
             Select all visible
           </label>
-          <span className="text-sm text-muted-foreground">
-            {selectedVisibleCount} selected
-          </span>
-          {selectedVisibleCount > 0 ? (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedIds(new Set());
-                  setSelectionMessage("Selection cleared.");
-                }}
-              >
-                Clear
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="ml-auto"
-                onClick={() =>
-                  openRemoval(
-                    visibleSelectableIds.filter((id) =>
-                      effectiveSelectedIds.has(id),
-                    ),
-                  )
-                }
-              >
-                Remove selected
-              </Button>
-            </>
-          ) : null}
         </div>
       ) : null}
 
@@ -607,9 +574,11 @@ export function UsersTable({
         {rosterLoading ? (
           <UsersRosterSkeleton />
         ) : (
-          <Card className="min-w-0 overflow-hidden rounded-xl">
+          <>
             {initialError ? (
               <EmptyState
+                pose="oops"
+                compact
                 title="Users could not be loaded"
                 description="Try the request again."
                 action={
@@ -625,6 +594,7 @@ export function UsersTable({
             ) : paging.items.length === 0 ? (
               <EmptyState
                 compact
+                pose={search ? "searching" : "sleeping"}
                 title={
                   search
                     ? "No users match that search"
@@ -640,6 +610,7 @@ export function UsersTable({
               />
             ) : displayedMembers.length === 0 && removedLoadedCount > 0 ? (
               <EmptyState
+                compact
                 title="All loaded members are removed"
                 description={
                   paging.hasMore
@@ -648,16 +619,16 @@ export function UsersTable({
                 }
               />
             ) : (
-              <>
+              <Card className="min-w-0 overflow-hidden">
                 <div className="hidden min-w-0 lg:block">
                   <MembersTable {...listProps} />
                 </div>
                 <div className="lg:hidden">
                   <MembersCards {...listProps} />
                 </div>
-              </>
+              </Card>
             )}
-          </Card>
+          </>
         )}
       </TabPanel>
 
@@ -677,6 +648,46 @@ export function UsersTable({
         onLoadMore={() => void paging.loadMore()}
         onRetry={() => void paging.retry()}
       />
+
+      {!rosterLoading && selectionEnabled && selectedVisibleCount > 0 ? (
+        <div
+          role="region"
+          aria-label="Selected users"
+          className="motion-alert-enter sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 flex items-center justify-between gap-2 rounded-xl border bg-card/95 px-3 py-2 shadow-lg backdrop-blur md:bottom-4"
+        >
+          <p className="text-sm font-semibold">
+            {selectedVisibleCount} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedIds(new Set());
+                setSelectionMessage("Selection cleared.");
+              }}
+            >
+              <X aria-hidden /> Clear
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              aria-label={`Remove ${selectedVisibleCount} selected ${selectedVisibleCount === 1 ? "user" : "users"}`}
+              onClick={() =>
+                openRemoval(
+                  visibleSelectableIds.filter((id) =>
+                    effectiveSelectedIds.has(id),
+                  ),
+                )
+              }
+            >
+              <Trash2 aria-hidden /> Remove
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <ConfirmDialog
         open={confirmOpen}

@@ -8,7 +8,6 @@ import { useListReveal } from "@/components/shared/motion";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { APP_TIME_ZONE } from "@/lib/timezone";
-import { cn } from "@/lib/utils";
 
 export type ArchivedTask = {
   id: string;
@@ -147,11 +146,10 @@ export function ArchivedTaskList({
 
                 return (
                   <Card
+                    interactive
                     key={task.id}
                     {...reveal.getRevealProps(task.id)}
-                    className={cn(
-                      "motion-card-interaction group relative overflow-hidden rounded-xl hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50",
-                    )}
+                    className="group relative overflow-hidden hover:bg-muted/20"
                   >
                     <StretchedLink
                       href={`/tasks/${task.id}`}

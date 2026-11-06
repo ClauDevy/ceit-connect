@@ -1225,7 +1225,7 @@ export function EventForm({
         }
       }
 
-      router.replace("/home");
+      router.replace(launch ? "/home?launched=1" : "/home");
       router.refresh();
     } catch {
       setError("Network error, please try again.");
@@ -1259,8 +1259,8 @@ export function EventForm({
 
       {!initialEvent && (
         <SectionEnter>
-        <Card className="mb-6 overflow-hidden border-border/70">
-          <CardHeader className="border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
+        <Card className="mb-6 overflow-hidden">
+          <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
             <CardTitle>Choose a starting point</CardTitle>
             <p className="text-sm text-muted-foreground">
               Build a fresh task list or copy the structure of an Archived
@@ -1459,9 +1459,9 @@ export function EventForm({
       )}
 
       <div className="grid min-w-0 gap-6 lg:items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card className="min-w-0 overflow-hidden border-border/70">
+        <Card className="min-w-0 overflow-hidden">
           <div
-            className="flex gap-1 overflow-x-auto border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card px-5 pt-3 sm:px-6"
+            className="flex gap-1 overflow-x-auto border-b bg-gradient-to-r from-primary/10 via-muted/30 to-card px-5 pt-3 sm:px-6"
           >
             <button
               type="button"
@@ -1498,7 +1498,7 @@ export function EventForm({
                 id="event-fundamentals-panel"
                 className="grid gap-5"
               >
-                <SectionEnter index={0} className="flex items-start gap-3 rounded-xl border border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
+                <SectionEnter index={0} className="flex items-start gap-3 rounded-xl border bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <CalendarDays aria-hidden className="size-5" />
                   </span>
@@ -1628,7 +1628,7 @@ export function EventForm({
                 id="event-tasks-panel"
                 className="grid gap-5"
               >
-                <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
+                <div className="flex items-start gap-3 rounded-xl border bg-gradient-to-r from-primary/10 via-muted/30 to-card p-4">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <ListChecks aria-hidden className="size-5" />
                   </span>
@@ -1961,8 +1961,8 @@ export function EventForm({
           </CardContent>
         </Card>
 
-        <Card className="h-fit overflow-hidden border-border/70 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7.5rem)] lg:overflow-y-auto">
-          <CardHeader className="border-b border-border/70 bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
+        <Card className="h-fit overflow-hidden lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7.5rem)] lg:overflow-y-auto">
+          <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-muted/30 to-card pb-4 sm:pb-4">
             <p className="text-[11px] font-bold tracking-wide text-accent-foreground uppercase">
               Event summary
             </p>
@@ -2036,11 +2036,11 @@ export function EventForm({
             >
               Cancel
             </Link>
-            <p className="order-4 text-xs text-muted-foreground">
-              {initialEvent
-                ? "Every successful save advances the event version so concurrent edits cannot overwrite each other."
-                : "Launch requires valid dates and at least one task. Drafts may be saved without tasks."}
-            </p>
+            {initialEvent ? null : (
+              <p className="order-4 text-xs text-muted-foreground">
+                Launch requires valid dates and at least one task. Drafts may be saved without tasks.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -2068,7 +2068,7 @@ export function EventForm({
             }
           }}
         >
-          <DialogHeader className="shrink-0 border-b border-border/70 px-4 py-3.5 pr-12 sm:px-5 sm:py-4 sm:pr-14">
+          <DialogHeader className="shrink-0 border-b px-4 py-3.5 pr-12 sm:px-5 sm:py-4 sm:pr-14">
             <DialogTitle>
               {taskEditor?.taskId ? "Edit task" : "Add task"}
             </DialogTitle>
@@ -2082,7 +2082,7 @@ export function EventForm({
               ref={taskDialogScrollRef}
               className="grid min-h-0 min-w-0 gap-5 overflow-y-auto px-4 py-5 sm:px-5"
             >
-              <SectionEnter as="section" index={0} className="grid gap-4 border-b border-border/70 pb-5">
+              <SectionEnter as="section" index={0} className="grid gap-4 border-b pb-5">
                 <SectionHeading
                   icon={<FileText aria-hidden />}
                   title="Details"
@@ -2163,7 +2163,7 @@ export function EventForm({
               </div>
               </SectionEnter>
 
-              <SectionEnter as="section" index={1} className="grid gap-4 border-b border-border/70 pb-5">
+              <SectionEnter as="section" index={1} className="grid gap-4 border-b pb-5">
                 <SectionHeading
                   icon={<CalendarDays aria-hidden />}
                   title="When"
@@ -2421,7 +2421,7 @@ export function EventForm({
             </div>
           )}
 
-          <div className="grid shrink-0 gap-3 border-t border-border/70 bg-popover p-4 sm:px-5">
+          <div className="grid shrink-0 gap-3 border-t bg-popover p-4 sm:px-5">
             <MotionPresence open={Boolean(taskEditorError)}>
               {taskEditorError ? <InlineAlert>{taskEditorError}</InlineAlert> : null}
             </MotionPresence>

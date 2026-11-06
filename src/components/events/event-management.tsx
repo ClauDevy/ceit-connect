@@ -123,20 +123,28 @@ function StatusTile({ status }: Pick<EventDeletionListItem, "status">) {
   );
 }
 
+const statTones = {
+  rose: { box: "bg-destructive/5", icon: "bg-destructive/10 text-destructive" },
+  amber: { box: "bg-primary/5", icon: "bg-primary/10 text-primary" },
+  violet: { box: "bg-muted/40", icon: "bg-muted text-muted-foreground" },
+} as const;
+
 function StatTile({
   icon: Icon,
   label,
   value,
+  tone,
 }: {
   icon: typeof Layers;
   label: string;
   value: number;
+  tone: keyof typeof statTones;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1.5 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+    <div className={`flex min-w-0 flex-col items-start gap-1.5 rounded-xl border px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3 ${statTones[tone].box}`}>
       <span
         aria-hidden
-        className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:size-9"
+        className={`flex size-7 shrink-0 items-center justify-center rounded-lg sm:size-9 ${statTones[tone].icon}`}
       >
         <Icon className="size-3.5 sm:size-4" />
       </span>
@@ -390,14 +398,14 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
       data-motion-state={eventManagementMotionState(reducedMotion)}
       data-event-count={events.length}
     >
-      <Card className="overflow-hidden border-border/70">
+      <Card className="overflow-hidden">
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <StatTile icon={Layers} label="Deletable" value={filteredEvents.length} />
-            <StatTile icon={FileText} label="Drafts" value={draftCount} />
-            <StatTile icon={Archive} label="Archived" value={archivedCount} />
+            <StatTile tone="rose" icon={Layers} label="Deletable" value={filteredEvents.length} />
+            <StatTile tone="amber" icon={FileText} label="Drafts" value={draftCount} />
+            <StatTile tone="violet" icon={Archive} label="Archived" value={archivedCount} />
           </div>
-          <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="grid gap-1.5 sm:w-56">
               <label
                 htmlFor="event-management-year"
@@ -617,7 +625,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
             </Table>
           </Card>
 
-          <div className="overflow-hidden rounded-2xl border bg-card shadow-xs md:hidden">
+          <div className="overflow-hidden rounded-2xl border bg-card md:hidden">
             <label
               htmlFor="event-page-selection-mobile"
               data-event-selection-control

@@ -28,7 +28,6 @@ import {
 import { LIST_FETCH_LIMIT, type OffsetListPage } from "@/lib/list-paging";
 import { createClient } from "@/lib/supabase/client";
 import { formatShortDateRange } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 const ARCHIVE_SORT_LABELS = {
   newest: "Newest first",
@@ -155,12 +154,11 @@ export function ArchiveEventList({
   }
   if (paging.settled && paging.items.length === 0) {
     body = (
-      <Card>
-        <EmptyState
+      <EmptyState
+          pose={filtered ? "searching" : "sleeping"}
           title={filtered ? "No archived events match" : "No archived events yet"}
           description={filtered ? "Try a different search or sort." : "Events will appear here after an Admin archives them."}
         />
-      </Card>
     );
   }
 
@@ -185,11 +183,10 @@ export function ArchiveEventList({
       <div className="grid gap-3">
         {paging.items.map((event) => (
           <Card
+            interactive
             key={event.id}
             {...reveal.getRevealProps(event.id)}
-            className={cn(
-              "motion-card-interaction group relative overflow-hidden hover:border-primary/40 hover:bg-muted/20 has-[a:focus-visible]:border-primary/50",
-            )}
+            className="group relative overflow-hidden hover:bg-muted/20"
           >
             <StretchedLink
               href={`/archives/${event.id}`}

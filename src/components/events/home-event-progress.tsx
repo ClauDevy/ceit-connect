@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { CircleHelp, ListTodo } from "lucide-react";
 import { useVisibilityAnimation } from "@/components/shared/motion";
 import type { HomeEventProgress } from "@/lib/events/list-paging";
@@ -51,16 +52,49 @@ export function HomeEventProgressSummary({
           {progress.percentage}%
         </span>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <CircleHelp className="size-3.5 shrink-0" aria-hidden />
-          Backup requests you can see: {progress.visibleBackupRequestCount}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <ListTodo className="size-3.5 shrink-0" aria-hidden />
-          Backlog: {progress.backlogCount}
-        </span>
+      <div className="flex flex-wrap gap-2 text-xs">
+        <StatChip
+          icon={<CircleHelp className="size-4 shrink-0" aria-hidden />}
+          label={`Backup requests you can see: ${progress.visibleBackupRequestCount}`}
+          active={progress.visibleBackupRequestCount > 0}
+          tone="amber"
+        />
+        <StatChip
+          icon={<ListTodo className="size-4 shrink-0" aria-hidden />}
+          label={`Backlog: ${progress.backlogCount}`}
+          active={progress.backlogCount > 0}
+          tone="sky"
+        />
       </div>
     </div>
+  );
+}
+
+// A count above zero is highlighted (amber for backup requests that need a reply, blue for
+// open backlog) so it stands out; zero stays quiet.
+function StatChip({
+  icon,
+  label,
+  active,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  active: boolean;
+  tone: "amber" | "sky";
+}) {
+  return (
+    <span
+      className={
+        active
+          ? tone === "amber"
+            ? "inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/15 px-2.5 py-1 font-semibold text-amber-800 dark:text-amber-200"
+            : "inline-flex items-center gap-1.5 rounded-full border border-sky-500/50 bg-sky-500/15 px-2.5 py-1 font-semibold text-sky-800 dark:text-sky-200"
+          : "inline-flex items-center gap-1.5 rounded-full border border-transparent bg-muted/60 px-2.5 py-1 text-muted-foreground"
+      }
+    >
+      {icon}
+      {label}
+    </span>
   );
 }

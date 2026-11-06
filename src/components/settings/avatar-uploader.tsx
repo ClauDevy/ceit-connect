@@ -6,13 +6,15 @@ import imageCompression from "browser-image-compression"
 import { Button } from "@/components/ui/button"
 import { InlineAlert } from "@/components/ui/inline-alert"
 import { UserAvatar } from "@/components/shared/user-avatar"
-import { MotionPresence, SectionEnter } from "@/components/shared/motion"
+import { MotionPresence } from "@/components/shared/motion"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AvatarCropper } from "@/components/settings/avatar-cropper"
 import { nextAvatarCleanupWarning } from "@/lib/avatar"
 import { createClient } from "@/lib/supabase/client"
 import { getCroppedBlob, type CropArea } from "@/lib/image"
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 export function AvatarUploader({
   userId,
@@ -41,6 +43,11 @@ export function AvatarUploader({
     // Reset so picking the same file again still fires onChange.
     e.target.value = ""
     if (!file) return
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError("Use a JPEG, PNG, or WebP image.")
+      return
+    }
 
     if (file.size > MAX_UPLOAD_BYTES) {
       setError("Image must be under 2MB.")
@@ -155,8 +162,7 @@ export function AvatarUploader({
             {preview ? "Your current photo" : "Add a profile photo"}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Square photos crop best. Images must be under 2MB and are compressed
-            before upload.
+            JPG, PNG or WebP, up to 2 MB.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
@@ -189,15 +195,16 @@ export function AvatarUploader({
           <input
             ref={fileInput}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileSelect}
             className="hidden"
           />
         </div>
       </div>
 
-      <MotionPresence open={Boolean(error)}>
-        {error ? <p role="alert" className="text-sm text-destructive">
+      {/* While the crop dialog is open, save errors show inside it instead (below). */}
+      <MotionPresence open={Boolean(error) && !imageSrc}>
+        {error && !imageSrc ? <p role="alert" className="text-sm text-destructive">
           {error}
         </p> : null}
       </MotionPresence>
@@ -206,17 +213,31 @@ export function AvatarUploader({
         {cleanupWarning ? <InlineAlert variant="info">{cleanupWarning}</InlineAlert> : null}
       </MotionPresence>
 
-      <MotionPresence open={Boolean(imageSrc)}>
-        {imageSrc ? <SectionEnter>
-        <AvatarCropper
-          key={imageSrc}
-          imageSrc={imageSrc}
-          saving={status === "saving"}
-          onSave={handleSave}
-          onCancel={closeCropper}
-        />
-        </SectionEnter> : null}
-      </MotionPresence>
+      <Dialog open={Boolean(imageSrc)} onOpenChange={(next) => !next && status !== "saving" && closeCropper()}>
+        <DialogContent
+          showCloseButton={status !== "saving"}
+          className="data-[ending-style]:scale-100 data-[starting-style]:scale-100"
+        >
+          <DialogHeader>
+            <DialogTitle>Crop profile photo</DialogTitle>
+            <DialogDescription>Drag to position your photo.</DialogDescription>
+          </DialogHeader>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          {imageSrc ? (
+            <AvatarCropper
+              key={imageSrc}
+              imageSrc={imageSrc}
+              saving={status === "saving"}
+              onSave={handleSave}
+              onCancel={closeCropper}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

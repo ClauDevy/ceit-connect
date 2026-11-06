@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateSafe } from "@/lib/safe-date";
 import { useMemo, useState } from "react";
 import {
   QueryClient,
@@ -539,17 +540,13 @@ function RealTask({
                   <DetailRow
                     label="Call time"
                     value={
-                      task.call_time
-                        ? dateTimeFormatter.format(new Date(task.call_time))
-                        : "Not set"
+                      formatDateSafe(dateTimeFormatter, task.call_time, "Not set")
                     }
                   />
                   <DetailRow
                     label="End time"
                     value={
-                      task.end_time
-                        ? dateTimeFormatter.format(new Date(task.end_time))
-                        : "Not set"
+                      formatDateSafe(dateTimeFormatter, task.end_time, "Not set")
                     }
                   />
                 </>
@@ -557,9 +554,7 @@ function RealTask({
                 <DetailRow
                   label="Deadline"
                   value={
-                    task.due_date
-                      ? dateTimeFormatter.format(new Date(task.due_date))
-                      : "Not set"
+                    formatDateSafe(dateTimeFormatter, task.due_date, "Not set")
                   }
                 />
               )}
@@ -1045,8 +1040,8 @@ function TaskDetailContents({
     return (
       <div className="space-y-5 [&_button]:transition-colors [&_button]:duration-300 motion-reduce:[&_button]:transition-none">
         <BackLink task={null} />
-        <Card>
-          <EmptyState
+        <EmptyState
+            pose="oops"
             title="This task is no longer available"
             description="It may have been removed, returned to Draft, or your access may have changed."
             action={
@@ -1058,7 +1053,6 @@ function TaskDetailContents({
               </Link>
             }
           />
-        </Card>
       </div>
     );
   }

@@ -103,12 +103,13 @@ describe("mobile board source contracts", () => {
     "utf8",
   );
 
-  it("keeps the phone handle outside the real link and limits touch suppression to the handle", () => {
+  it("keeps the drag handle outside the real link, visible on touch screens, and limits touch suppression to the handle", () => {
     expect(cardSource.indexOf("<StretchedLink")).toBeLessThan(
       cardSource.indexOf("aria-label={`Drag ${task.title}`}"),
     );
-    expect(cardSource).toContain("md:hidden");
-    expect(cardSource).toContain("size-11 cursor-grab touch-none select-none");
+    expect(cardSource).not.toContain("pointer-coarse:hidden");
+    expect(cardSource).toContain("h-11 w-8");
+    expect(cardSource).toContain("cursor-grab touch-none select-none");
     expect(cardSource).toContain("[-webkit-touch-callout:none]");
     expect(cardSource).toContain("event.preventDefault()");
     expect(cardSource).toContain("event.stopPropagation()");

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { HomeEventList } from "@/components/events/home-event-list";
+import { EventLaunchedMoment } from "@/components/events/event-launched-moment";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -18,8 +19,13 @@ import {
 import { getActiveProfileForRoles, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ launched?: string | string[] }>;
+}) {
   await requireUser();
+  const { launched } = await searchParams;
 
   const supabase = await createClient();
   const [leadershipProfile, eventsResult] = await Promise.all([
@@ -109,6 +115,7 @@ export default async function HomePage() {
           ) : null
         }
       />
+      {launched === "1" ? <EventLaunchedMoment /> : null}
       <HomeEventList
         initialPage={initialPage}
         canEdit={canEdit}
