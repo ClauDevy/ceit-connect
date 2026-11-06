@@ -25,7 +25,7 @@ export default async function EventManagementPage() {
     <div className="motion-content-ready">
       <PageHeader
         title="Event management"
-        description="Permanently delete Draft or Archived events and retry pending banner cleanup. Active events cannot be deleted."
+        description="Permanently delete Draft or Archived events. Active events cannot be deleted."
       />
       {error ? (
         <InlineAlert>Event Management could not be loaded. Refresh the page to try again.</InlineAlert>

@@ -108,10 +108,10 @@ function ActiveEventCard({
 }) {
   return (
     <Card
+      interactive
+      tone="primary"
       {...revealProps}
-      className={cn(
-        "motion-card-interaction group relative isolate overflow-hidden border-border/70 hover:border-primary/40 focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-ring/30",
-      )}
+      className="group relative isolate overflow-hidden"
     >
       <StretchedLink
         href={`/events/${event.id}`}
@@ -143,8 +143,8 @@ function ActiveEventCard({
               <CalendarDays className="size-3.5 shrink-0" aria-hidden />
               <span>{formatDateRange(event)}</span>
             </p>
-            <Badge variant="outline" className="mt-1.5">
-              Active
+            <Badge variant="outline" className="mt-1.5 border-primary/40 bg-primary/10 text-primary">
+              <span className="size-1.5 rounded-full bg-primary" aria-hidden /> Active
             </Badge>
           </div>
         </div>
@@ -157,8 +157,10 @@ function ActiveEventCard({
           eventName={event.name}
           progress={event.progress}
         />
-        <div className="flex items-center justify-end text-sm font-semibold text-primary group-hover:text-foreground group-focus-within:text-foreground">
-          View board <span className="motion-arrow ml-1 inline-block" aria-hidden>→</span>
+        <div className="flex items-center justify-end">
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors duration-500 group-hover:bg-primary group-hover:text-primary-foreground group-focus-within:bg-primary group-focus-within:text-primary-foreground motion-reduce:transition-none">
+            View board <span className="motion-arrow ml-1 inline-block" aria-hidden>→</span>
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -176,10 +178,7 @@ function DraftEventCard({
 }) {
   const lastEdited = formatLastEdited(event.updated_at);
   return (
-    <Card
-      {...revealProps}
-      className={cn("relative border-2 border-dashed bg-card/70")}
-    >
+    <Card dashed {...revealProps} className="relative border-2 bg-card/70">
       {canEdit ? (
         <StretchedLink
           href={`/events/${event.id}/edit`}
@@ -381,12 +380,10 @@ export function HomeEventList({
   }
   if (paging.settled && paging.items.length === 0) {
     return (
-      <Card>
-        <EmptyState
+      <EmptyState
           title="No events yet"
           description="When an event is launched—or you save your own draft—it will appear here."
         />
-      </Card>
     );
   }
 
@@ -415,25 +412,9 @@ export function HomeEventList({
       ) : null}
       {activeEvents.length ? (
         <section aria-labelledby="active-events-heading">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <h2
-                id="active-events-heading"
-                className="font-display text-lg font-semibold sm:text-xl"
-              >
-                Active events
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Open an event to view its task board.
-              </p>
-            </div>
-            <Badge
-              variant="neutral"
-              aria-label={`${activeEvents.length} active events`}
-            >
-              {activeEvents.length}
-            </Badge>
-          </div>
+          <h2 id="active-events-heading" className="sr-only">
+            Active events
+          </h2>
           <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
             {activeEvents.map((event) => (
               <ActiveEventCard
@@ -449,24 +430,25 @@ export function HomeEventList({
       ) : null}
       {draftEvents.length ? (
         <section aria-labelledby="draft-events-heading">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <h2
-                id="draft-events-heading"
-                className="font-display text-lg font-semibold sm:text-xl"
-              >
-                Drafts
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Draft — visible to Admins and Co-Admins
-              </p>
-            </div>
-            <Badge
-              variant="neutral"
-              aria-label={`${draftEvents.length} draft events`}
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <h2
+              id="draft-events-heading"
+              className={
+                activeEvents.length
+                  ? "font-display text-base font-semibold"
+                  : "sr-only"
+              }
             >
-              {draftEvents.length}
-            </Badge>
+              Drafts
+            </h2>
+            {activeEvents.length ? (
+              <Badge
+                variant="neutral"
+                aria-label={`${draftEvents.length} draft events`}
+              >
+                {draftEvents.length}
+              </Badge>
+            ) : null}
           </div>
           <div className="grid gap-4">
             {draftEvents.map((event) => (

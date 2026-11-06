@@ -243,7 +243,7 @@ function HistoryActivityLogList({
   });
   return (
     <div data-motion-state={activityMotionState(reduced)}>
-      <div className="hidden overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm md:block">
+      <div className="hidden overflow-hidden rounded-2xl border bg-card text-card-foreground md:block">
         <Table>
           <TableHeader className="bg-secondary">
             <TableRow>
@@ -278,7 +278,7 @@ function HistoryActivityLogList({
           <article
             key={row.activityId}
             {...getRevealProps(row.activityId)}
-            className="rounded-xl border bg-card px-4 py-3"
+            className="rounded-2xl border bg-card px-4 py-3"
           >
             <div className="flex items-start justify-between gap-3">
               <ActionBadge row={row} global={false} />
@@ -334,7 +334,7 @@ function GlobalActivityLogList({
 
   return (
     <div data-motion-state={motionState}>
-      <div className="hidden overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm md:block">
+      <div className="hidden overflow-hidden rounded-2xl border bg-card text-card-foreground md:block">
         <Table>
           <TableHeader className="bg-secondary">
             <TableRow>

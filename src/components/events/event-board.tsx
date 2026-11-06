@@ -1,5 +1,8 @@
 "use client";
 
+import { formatDateSafe } from "@/lib/safe-date";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Mascot } from "@/components/ui/mascot";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -31,6 +34,7 @@ import {
   QueryClient,
   QueryClientProvider,
   useMutation,
+  keepPreviousData,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -65,7 +69,6 @@ import {
 import { getPriorityDotClass } from "@/components/shared/priority-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   Sheet,
@@ -143,7 +146,7 @@ const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function formatEventDate(date: string) {
-  return eventDateFormatter.format(new Date(`${date}T00:00:00Z`));
+  return formatDateSafe(eventDateFormatter, `${date}T00:00:00Z`);
 }
 
 function getBoardPhaseNames(tasks: readonly BoardTask[]) {
@@ -290,9 +293,6 @@ function BoardContents({
   const [collapsedLanes, setCollapsedLanes] = useState<Set<BoardStatus>>(
     () => new Set(),
   );
-  const [touchedCollapseLanes, setTouchedCollapseLanes] = useState<
-    Set<BoardStatus>
-  >(() => new Set());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [dndContextKey, setDndContextKey] = useState(0);
   const [snapSuspended, setSnapSuspended] = useState(false);
@@ -359,12 +359,18 @@ function BoardContents({
       return parsed as BoardTask[];
     },
     initialData: committeeId === null ? initialTasks : undefined,
+    // Switching committee keeps the current cards on screen while the new list loads,
+    // instead of flashing the skeleton.
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: () => !boardBusyRef.current,
     refetchInterval: () => getBoardRefetchInterval(boardBusyRef.current),
     refetchIntervalInBackground: false,
   });
 
   const tasks = useMemo(() => query.data ?? [], [query.data]);
+  // While the previous committee's cards are still shown as placeholder data, the lane is
+  // partial, so dragging stays off until the real list for this filter has loaded.
+  const reorderBlocked = committeeId !== null || query.isPlaceholderData;
   const hasTasks = tasks.length > 0;
   const phases = useMemo(() => getBoardPhaseNames(tasks), [tasks]);
   const completePhases = useMemo(() => getCompleteBoardPhases(tasks), [tasks]);
@@ -590,7 +596,6 @@ function BoardContents({
   function toggleLane(status: BoardStatus) {
     cancelActiveDrag();
     if (boardBusyRef.current) return;
-    setTouchedCollapseLanes((current) => new Set(current).add(status));
     setCollapsedLanes((current) => toggleCollapsedLane(current, status));
   }
 
@@ -874,7 +879,7 @@ function BoardContents({
   function handleDragStart(event: DragStartEvent) {
     const taskId = String(event.active.id);
     const task = tasks.find((candidate) => candidate.id === taskId);
-    if (!task || committeeId !== null) return;
+    if (!task || reorderBlocked) return;
     const permission = getMovePermission(task, viewer);
     if (permission === "none" || !tryAcquireBoardOperation(boardBusyRef))
       return;
@@ -898,7 +903,7 @@ function BoardContents({
       !snapshot ||
       snapshot.taskId !== String(event.active.id) ||
       !event.over ||
-      committeeId !== null ||
+      reorderBlocked ||
       shouldCancelBoardDrag({
         snapshot,
         tasks,
@@ -1001,7 +1006,7 @@ function BoardContents({
         <ArrowLeft aria-hidden /> Home
       </Link>
 
-      <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xs">
+      <section className="overflow-hidden rounded-2xl border bg-card">
         <div className="flex flex-col md:flex-row">
           <EventBanner
             src={event.banner_url}
@@ -1117,6 +1122,7 @@ function BoardContents({
       </div>
 
       <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        {!selectedPhaseComplete || !isUnfilteredSelectedPhase ? (
         <div
           className={cn(
             "col-span-2 grid gap-2 sm:flex sm:max-w-full sm:flex-wrap sm:items-center",
@@ -1271,6 +1277,7 @@ function BoardContents({
             </div>
           ) : null}
         </div>
+        ) : null}
 
         {selectedPhaseComplete ? (
           <CompletedPhaseReopenDialog
@@ -1334,39 +1341,40 @@ function BoardContents({
       {query.isPending ? (
         <EventBoardSkeleton />
       ) : tasks.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="font-display font-semibold">No tasks are available</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try another committee filter or refresh the board.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          pose="searching"
+          title="No tasks are available"
+          description="Try another committee filter or refresh the board."
+        />
       ) : (
-        <div className="motion-content-ready">
+        <div className="motion-content-ready" aria-busy={query.isPlaceholderData}>
           <TabPanel motionKey={phaseMotionKey} opacityOnly>
             {isUnfilteredBacklogOnlyPhase || isUnfilteredMixedPhase ? (
               <div
                 role="status"
-                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"
+                className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-900 dark:text-amber-100"
               >
-                <span>
-                  {isUnfilteredBacklogOnlyPhase ? (
-                    <>
-                      {formatTaskCount(selectedPhaseTasks.length)} in this phase{" "}
-                      {selectedPhaseTasks.length === 1 ? "is" : "are"}{" "}
-                      unassigned.
-                    </>
-                  ) : (
-                    <>
-                      {unassignedSelectedPhaseTasks.length} of{" "}
-                      {formatTaskCount(selectedPhaseTasks.length)} unassigned.
-                    </>
-                  )}
+                <span className="flex min-w-0 items-center gap-2">
+                  <Inbox className="size-4 shrink-0" aria-hidden />
+                  <span>
+                    {isUnfilteredBacklogOnlyPhase ? (
+                      <>
+                        {formatTaskCount(selectedPhaseTasks.length)} in this phase{" "}
+                        {selectedPhaseTasks.length === 1 ? "is" : "are"}{" "}
+                        unassigned.
+                      </>
+                    ) : (
+                      <>
+                        {unassignedSelectedPhaseTasks.length} of{" "}
+                        {formatTaskCount(selectedPhaseTasks.length)} unassigned.
+                      </>
+                    )}
+                  </span>
                 </span>
                 <Button
-                  variant="link"
-                  className="h-11 px-0 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring sm:h-10"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 shrink-0 border-amber-500/50 bg-transparent px-3 text-xs font-semibold transition-colors duration-300 hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                   onClick={() => setBacklogOpen(true)}
                 >
                   Open Backlog
@@ -1374,6 +1382,12 @@ function BoardContents({
               </div>
             ) : null}
 
+            {selectedPhaseComplete ? (
+              <div className="mb-3 flex flex-col items-center gap-0.5 text-center">
+                <Mascot pose="celebrating" size={72} />
+                <p className="text-sm font-semibold">Phase complete. Great work, team!</p>
+              </div>
+            ) : null}
             {selectedPhaseComplete ? (
               <section className="rounded-2xl border bg-card">
                 <div className="flex items-center gap-3 border-b bg-muted/40 p-3">
@@ -1405,7 +1419,7 @@ function BoardContents({
                 </div>
                 <Collapse open={!selectedCompletePhaseCollapsed}>
                   <div id="event-board-completed-phase-content" className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {selectedPhaseTasks.map((task) => <EventBoardTaskCard key={task.id} task={task} />)}
+                    {selectedPhaseTasks.filter(matchesPriority).map((task) => <EventBoardTaskCard key={task.id} task={task} />)}
                   </div>
                 </Collapse>
               </section>
@@ -1487,15 +1501,9 @@ function BoardContents({
                           id={contentId}
                           status={status}
                           collapsed={collapsed}
-                          disabled={boardBusy || committeeId !== null}
+                          disabled={boardBusy || reorderBlocked}
                         >
-                          <MotionPresence
-                            open={!collapsed}
-                            className={cn(
-                              !touchedCollapseLanes.has(status) &&
-                                "[animation:none]",
-                            )}
-                          >
+                          <Collapse open={!collapsed}>
                             <div className="space-y-3">
                               {laneTasks.map((task) => {
                                 const permission = getMovePermission(
@@ -1510,7 +1518,8 @@ function BoardContents({
                                     busy={boardBusy}
                                     dragDisabled={
                                       boardBusy ||
-                                      committeeId !== null ||
+                                      collapsed ||
+                                      reorderBlocked ||
                                       permission === "none"
                                     }
                                     onMoveStatus={handleStatusMove}
@@ -1532,7 +1541,7 @@ function BoardContents({
                                 </div>
                               ) : null}
                             </div>
-                          </MotionPresence>
+                          </Collapse>
                           {collapsed ? (
                             <div className="grid min-h-11 place-items-center rounded-xl border border-dashed px-3 py-1.5 text-center text-xs text-muted-foreground">
                               {activeTaskId

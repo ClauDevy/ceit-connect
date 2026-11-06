@@ -1,3 +1,4 @@
+import { formatDateSafe } from "@/lib/safe-date";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, LockKeyhole } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -42,7 +43,7 @@ const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function formatEventDate(date: string) {
-  return eventDateFormatter.format(new Date(`${date}T00:00:00Z`));
+  return formatDateSafe(eventDateFormatter, `${date}T00:00:00Z`);
 }
 
 function formatEventDateRange(event: ArchivedEvent) {

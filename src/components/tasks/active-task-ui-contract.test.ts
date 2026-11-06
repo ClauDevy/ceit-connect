@@ -121,9 +121,14 @@ describe("Batch 11 active task UI contract", () => {
     expect(board).toContain('<Collapse open={!selectedCompletePhaseCollapsed}>');
     expect(board).toContain('aria-expanded={!selectedCompletePhaseCollapsed}');
     expect(board).toContain('aria-controls="event-board-completed-phase-content"');
-    expect(board).not.toMatch(
-      /selectedPhaseComplete[\s\S]{0,1800}<MotionPresence open=/,
+    const branchStart = board.lastIndexOf(
+      "{selectedPhaseComplete ? (",
+      board.indexOf('aria-controls="event-board-completed-phase-content"'),
     );
+    const branchEnd = board.indexOf(") : <DndContext", branchStart);
+    expect(branchStart).toBeGreaterThan(-1);
+    expect(branchEnd).toBeGreaterThan(branchStart);
+    expect(board.slice(branchStart, branchEnd)).not.toContain("<MotionPresence");
   });
 
   it("keeps phone targets and hover, focus-visible, and pressed states", () => {
@@ -131,7 +136,7 @@ describe("Batch 11 active task UI contract", () => {
     expect(dialog).toContain("hover:");
     expect(dialog).toContain("focus-visible:");
     expect(dialog).toContain("active:");
-    expect(card).toContain("size-11");
+    expect(card).toContain("h-11");
     expect(dialog).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
 

@@ -1,9 +1,12 @@
 "use client";
 
+import { formatDateSafe } from "@/lib/safe-date";
 import type { CSSProperties } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  ArrowRight,
+  CalendarDays,
   Check,
   GripVertical,
   LoaderCircle,
@@ -16,20 +19,13 @@ import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardMeta, type CardAccent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   BOARD_STATUSES,
   type BoardStatus,
@@ -45,6 +41,11 @@ const dueDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: APP_TIME_ZONE.iana,
 });
+
+// An unreadable or odd date must never crash the board: it simply shows no chip.
+function formatDueDate(value: string | null): string | null {
+  return value ? formatDateSafe(dueDateFormatter, value, "") || null : null;
+}
 
 function TaskAssignees({ task }: { task: BoardTask }) {
   const assignees = [
@@ -120,18 +121,28 @@ function CardBody({
   const showBacklogFooter =
     task.is_masked ||
     task.status === "Completed" ||
+    (!task.is_masked && task.effective_priority !== null) ||
     task.due_date !== null ||
     task.primary_assignees.length > 0 ||
     task.assist_assignees.length > 0;
   const canMove = permission !== "none" && !task.is_masked && !overlay;
+  const showMenu = !overlay && ((canEdit && Boolean(onEdit)) || canMove);
+  const completed = task.status === "Completed" && !task.is_masked;
+  const priority = !task.is_masked ? task.effective_priority : null;
+  const dueLabel =
+    !task.is_masked && !completed ? formatDueDate(task.due_date) : null;
 
   return (
     <Card
+      accent={completed ? "success" : priority ? (priority.toLowerCase() as CardAccent) : "muted"}
+      interactive={!overlay}
       className={cn(
         "relative p-0",
-        !overlay &&
-          "motion-card-interaction hover:border-primary/40 focus-within:border-primary/40",
-        task.status === "Completed" && !task.is_masked && "opacity-70",
+        completed
+          ? "bg-priority-low-soft/20 opacity-70"
+          : priority
+            ? priorityTint[priority.toLowerCase() as keyof typeof priorityTint]
+            : null,
         overlay &&
           "cursor-grabbing scale-[1.02] opacity-90 shadow-xl motion-reduce:scale-100 motion-reduce:transition-none",
       )}
@@ -143,21 +154,20 @@ function CardBody({
           className="transition-colors duration-300 hover:bg-muted/40 active:bg-muted/60 motion-reduce:transition-none"
         />
       ) : null}
-      <CardContent className="space-y-2.5 p-3.5">
-        <div className="flex items-start justify-between gap-2.5">
-          {!task.is_masked && task.effective_priority ? (
-            <PriorityBadge
-              priority={task.effective_priority}
-              className={cn(backlog && "px-2 text-xs")}
-            />
-          ) : (
-            <Badge variant="neutral">
-              <LockKeyhole aria-hidden /> Confidential
-            </Badge>
-          )}
+      <CardContent className="space-y-1.5 p-2.5 sm:p-3.5">
+        <div className="flex items-start gap-2.5">
+          <p
+            className={cn(
+              "min-w-0 flex-1 text-sm leading-snug font-semibold",
+              "line-clamp-2",
+              completed && "line-through decoration-muted-foreground",
+            )}
+          >
+            {task.title}
+          </p>
 
-          <div className="relative z-20 flex items-center gap-1">
-            {canEdit && onEdit && !overlay ? (
+          <div className="relative z-20 -mr-1.5 flex shrink-0 items-center">
+            {showMenu ? (
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -165,8 +175,9 @@ function CardBody({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      className="size-11 rounded-full transition-colors duration-300 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none md:size-8"
+                      className="-my-2 h-11 w-9 rounded-full transition-colors duration-300 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none md:my-0 md:size-8"
                       aria-label={`Task actions for ${task.title}`}
+                      aria-busy={busy}
                       onClick={(event) => event.stopPropagation()}
                     />
                   }
@@ -174,89 +185,57 @@ function CardBody({
                   <MoreHorizontal aria-hidden />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => onEdit(task)}>
-                    <Pencil aria-hidden /> Edit task
-                  </DropdownMenuItem>
+                  {canEdit && onEdit ? (
+                    <DropdownMenuItem onClick={() => onEdit(task)}>
+                      <Pencil aria-hidden /> Edit task
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canMove ? (
+                    <>
+                      <p className="px-2.5 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
+                        Move to
+                      </p>
+                      {BOARD_STATUSES.map((status) => (
+                        <DropdownMenuItem
+                          key={status}
+                          disabled={busy || status === task.status}
+                          onClick={() => {
+                            if (status !== task.status) onMoveStatus?.(task, status);
+                          }}
+                        >
+                          {status === task.status ? (
+                            <Check aria-hidden />
+                          ) : (
+                            <ArrowRight aria-hidden />
+                          )}
+                          {status}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
-            {task.status === "Completed" && !task.is_masked ? (
-              <Check
-                className="size-4 text-emerald-600"
-                aria-label="Completed"
-              />
-            ) : null}
-            {canMove && task.status !== "Completed" ? (
+            {dragAttributes && dragListeners ? (
               <Button
                 type="button"
                 variant="ghost"
-                size="icon-lg"
-                className="motion-control-pop size-11 rounded-full border-2 border-border active:bg-muted md:hidden"
-                aria-label={`Mark ${task.title} Completed`}
-                aria-busy={busy}
+                size="icon-sm"
+                className="-my-2 h-11 w-8 cursor-grab touch-none select-none rounded-full text-muted-foreground transition-colors duration-300 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:my-0 md:size-8"
                 disabled={busy}
-                onClick={() => onMoveStatus?.(task, "Completed")}
+                {...dragAttributes}
+                {...dragListeners}
+                aria-label={`Drag ${task.title}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
               >
-                {busy ? (
-                  <LoaderCircle
-                    className="motion-safe:animate-spin"
-                    aria-hidden
-                  />
-                ) : (
-                  <span className="size-3 rounded-full" aria-hidden />
-                )}
+                <GripVertical aria-hidden />
               </Button>
-            ) : null}
-            {dragAttributes && dragListeners ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="inline-flex size-11 cursor-grab touch-none select-none transition-colors duration-300 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:hidden"
-                  disabled={busy}
-                  {...dragAttributes}
-                  {...dragListeners}
-                  aria-label={`Drag ${task.title}`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                >
-                  <GripVertical aria-hidden />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="hidden cursor-grab touch-none select-none transition-colors duration-300 [-webkit-touch-callout:none] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing active:bg-muted aria-pressed:cursor-grabbing aria-pressed:bg-muted motion-reduce:transition-none md:inline-flex"
-                  disabled={busy}
-                  {...dragAttributes}
-                  {...dragListeners}
-                  aria-label={`Drag ${task.title}`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                >
-                  <GripVertical aria-hidden />
-                </Button>
-              </>
             ) : null}
           </div>
         </div>
-
-        <p
-          className={cn(
-            "text-sm leading-snug font-semibold",
-            backlog && "line-clamp-2",
-            task.status === "Completed" &&
-              !task.is_masked &&
-              "line-through decoration-muted-foreground",
-          )}
-        >
-          {task.title}
-        </p>
 
         {backlog && !task.is_masked ? (
           <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
@@ -294,60 +273,45 @@ function CardBody({
         ) : null}
 
         {!backlog || showBacklogFooter ? (
-          <div className="flex min-h-6 items-center justify-between gap-3">
+          <CardMeta className="min-h-6 justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              {priority ? (
+                <PriorityBadge
+                  priority={priority}
+                  className="px-2 py-0 text-[11px] leading-5"
+                />
+              ) : (
+                <Badge variant="neutral" className="px-2 py-0 text-[11px]">
+                  <LockKeyhole aria-hidden /> Confidential
+                </Badge>
+              )}
+              {completed ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+                  <Check className="size-3 text-emerald-600" aria-hidden />
+                  Completed
+                </span>
+              ) : null}
+              {dueLabel ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+                  <CalendarDays className="size-3" aria-hidden />
+                  Due {dueLabel}
+                </span>
+              ) : null}
+            </div>
             <TaskAssignees task={task} />
-            <span className="text-xs text-muted-foreground">
-              {task.is_masked
-                ? null
-                : task.status === "Completed"
-                  ? "Completed"
-                  : task.due_date
-                    ? `Due ${dueDateFormatter.format(new Date(task.due_date))}`
-                    : null}
-            </span>
-          </div>
-        ) : null}
-
-        {canMove ? (
-          <div className="relative z-20">
-            <Select
-              value={task.status}
-              disabled={busy}
-              onValueChange={(value) => {
-                if (
-                  value &&
-                  BOARD_STATUSES.includes(value as BoardStatus) &&
-                  value !== task.status
-                ) {
-                  onMoveStatus?.(task, value as BoardStatus);
-                }
-              }}
-            >
-              <SelectTrigger
-                className="h-11 w-full text-xs transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:h-9"
-                aria-label={`Move ${task.title} to another status`}
-              >
-                <span className="text-muted-foreground">Move to</span>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BOARD_STATUSES.map((status) => (
-                  <SelectItem
-                    key={status}
-                    value={status}
-                    disabled={status === task.status}
-                  >
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          </CardMeta>
         ) : null}
       </CardContent>
     </Card>
   );
 }
+
+const priorityTint = {
+  critical: "bg-priority-critical-soft/40",
+  high: "bg-priority-high-soft/40",
+  medium: "bg-priority-medium-soft/40",
+  low: "bg-priority-low-soft/40",
+} as const;
 
 export function EventBoardTaskCard(props: CardBodyProps) {
   return <CardBody {...props} />;
