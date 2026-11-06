@@ -5,5 +5,5 @@
 3. Cards on Home, Archives, My Tasks, Help Wanted, Users, Settings, Activity Log look consistent; hover lift only with a mouse; pressing shrinks slightly.
 4. Each tab has one heading; Home has no "Active events" caption; Create button unchanged.
 5. Mascot: empty Home, My Tasks, Help Wanted, Archives, Users; search with no results; /nothing (404); a forced error page; Launch Event shows the celebrating tiger once on Home; completed phase shows it above the collapsed card. Never inside a card, never on Delete phase.
-6. Cropper (avatar and banner): zoom slider reaches the whole image; Fit makes the image as wide as the frame; dragging never shows blank space around the frame.
+6. Cropper (avatar and banner): zoom slider reaches the whole image; Fit makes the image cover the frame (no blank space inside it); dragging never shows blank space around the frame.
 7. Users: tick some rows then Select all visible shows a dash; the bottom bar shows "N selected, Clear, Remove" and Remove opens the same dialog.

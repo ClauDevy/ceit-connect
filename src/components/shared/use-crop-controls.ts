@@ -5,7 +5,7 @@ import {
   CROP_FREE_MIN_ZOOM,
   CROP_MAX_ZOOM,
   clampCropOffset,
-  fitWidthZoom,
+  fitCoverZoom,
   minimumContainZoom,
   type CropArea,
   type ImageSize,
@@ -25,8 +25,15 @@ export function useCropControls() {
   const [mediaSize, setMediaSize] = useState<ImageSize | null>(null);
   const [cropSize, setCropSize] = useState<ImageSize | null>(null);
 
-  const minZoom = fit ? containZoom : Math.min(CROP_FREE_MIN_ZOOM, containZoom);
-  const maxZoom = Math.max(CROP_MAX_ZOOM, containZoom);
+  // Fit means the picture covers the frame, so no blank margin can end up in the saved image.
+  const coverZoom =
+    mediaSize && cropSize
+      ? fitCoverZoom(mediaSize, cropSize, containZoom, Number.POSITIVE_INFINITY)
+      : containZoom;
+  const minZoom = fit ? coverZoom : Math.min(CROP_FREE_MIN_ZOOM, containZoom);
+  const maxZoom = Math.max(CROP_MAX_ZOOM, containZoom, coverZoom);
+  // With Fit on, a frame resize can raise the minimum above the stored zoom; never go below it.
+  const effectiveZoom = fit ? Math.max(zoom, minZoom) : zoom;
   const mode = fit ? "inside" : "free";
 
   const onCropComplete = useCallback(
@@ -63,6 +70,18 @@ export function useCropControls() {
     [applyInitialFitWhenReady],
   );
 
+  // The cropper re-measures the image whenever it is resized and reports it here, while
+  // onMediaLoaded only fires once per image. Keep the cached size current and refresh the
+  // contain zoom, but never repeat the initial fit.
+  const handleMediaSizeChange = useCallback((nextMediaSize: ImageSize) => {
+    mediaSizeRef.current = nextMediaSize;
+    setMediaSize(nextMediaSize);
+    const frame = cropSizeRef.current;
+    if (initialFitDoneRef.current && frame) {
+      setContainZoom(minimumContainZoom(nextMediaSize, frame));
+    }
+  }, []);
+
   const handleCropSizeChange = useCallback(
     (nextCropSize: ImageSize) => {
       cropSizeRef.current = nextCropSize;
@@ -92,24 +111,26 @@ export function useCropControls() {
 
   const setCrop = useCallback(
     (next: { x: number; y: number }) =>
-      setCropState(clampCropOffset(next, mediaSize, cropSize, zoom, mode)),
-    [cropSize, mediaSize, zoom, mode],
+      setCropState(clampCropOffset(next, mediaSize, cropSize, effectiveZoom, mode)),
+    [cropSize, mediaSize, effectiveZoom, mode],
   );
 
   const toggleFit = useCallback(() => {
     if (!mediaSize || !cropSize) return;
     if (fit) {
+      // Keep the zoom Fit was actually showing, so turning Fit off does not jump back.
+      setZoomState(effectiveZoom);
       setFit(false);
       return;
     }
     setFit(true);
-    setZoomState(fitWidthZoom(mediaSize, cropSize, containZoom, maxZoom));
+    setZoomState(coverZoom);
     setCropState({ x: 0, y: 0 });
-  }, [containZoom, cropSize, fit, maxZoom, mediaSize]);
+  }, [coverZoom, cropSize, effectiveZoom, fit, mediaSize]);
 
   return {
     area,
-    zoom,
+    zoom: effectiveZoom,
     minZoom,
     maxZoom,
     fit,
@@ -120,7 +141,7 @@ export function useCropControls() {
     // zoomed-out image, so the clamp above does the work instead.
     cropperProps: {
       crop,
-      zoom,
+      zoom: effectiveZoom,
       minZoom,
       maxZoom,
       restrictPosition: false,
@@ -128,6 +149,7 @@ export function useCropControls() {
       onZoomChange: setZoom,
       onCropComplete,
       onMediaLoaded: handleMediaLoaded,
+      setMediaSize: handleMediaSizeChange,
       onCropSizeChange: handleCropSizeChange,
     },
   };
