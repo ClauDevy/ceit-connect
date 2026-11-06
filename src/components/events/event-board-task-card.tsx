@@ -121,6 +121,7 @@ function CardBody({
   const showBacklogFooter =
     task.is_masked ||
     task.status === "Completed" ||
+    (!task.is_masked && task.effective_priority !== null) ||
     task.due_date !== null ||
     task.primary_assignees.length > 0 ||
     task.assist_assignees.length > 0;

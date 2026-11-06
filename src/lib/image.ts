@@ -20,10 +20,17 @@ export function minimumContainZoom(media: ImageSize, crop: ImageSize) {
   return Math.min(1, crop.width / media.width, crop.height / media.height)
 }
 
+/** Longest side the crop canvas may have, so a zoomed-out crop cannot ask for a huge canvas. */
+export const MAX_CROP_OUTPUT_SIDE = 4096
+
 export function getCropDrawPlan(image: ImageSize, crop: CropArea): CropDrawPlan {
+  // Zoomed far out, the crop area can be several times larger than the picture. Shrink the
+  // output (the picture and its blank padding scale together through scaleX/scaleY below).
+  const longestSide = Math.max(crop.width, crop.height)
+  const limit = longestSide > MAX_CROP_OUTPUT_SIDE ? MAX_CROP_OUTPUT_SIDE / longestSide : 1
   const output = {
-    width: Math.max(1, Math.round(crop.width)),
-    height: Math.max(1, Math.round(crop.height)),
+    width: Math.max(1, Math.round(crop.width * limit)),
+    height: Math.max(1, Math.round(crop.height * limit)),
   }
   const sourceX = Math.max(0, crop.x)
   const sourceY = Math.max(0, crop.y)
@@ -128,13 +135,19 @@ export function clampCropOffset(
   }
 }
 
-/** Zoom at which the picture is exactly as wide as the frame, kept inside the allowed range. */
-export function fitWidthZoom(
+/**
+ * Zoom at which the picture just covers the frame (no blank margin on either axis), kept
+ * inside the allowed range. For a picture with the frame's shape this is "as wide as the frame".
+ */
+export function fitCoverZoom(
   media: ImageSize,
   frame: ImageSize,
   minZoom: number,
   maxZoom: number = CROP_MAX_ZOOM,
 ) {
-  if (media.width <= 0 || frame.width <= 0) return Math.max(minZoom, 1)
-  return Math.min(Math.max(frame.width / media.width, minZoom), Math.max(minZoom, maxZoom))
+  if (media.width <= 0 || media.height <= 0 || frame.width <= 0 || frame.height <= 0) {
+    return Math.max(minZoom, 1)
+  }
+  const cover = Math.max(frame.width / media.width, frame.height / media.height)
+  return Math.min(Math.max(cover, minZoom), Math.max(minZoom, maxZoom))
 }

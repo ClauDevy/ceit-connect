@@ -432,7 +432,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
               </Select>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              {pendingCount !== null && pendingCount > 0 ? (
+              {pendingCount !== null ? (
                 <span
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",

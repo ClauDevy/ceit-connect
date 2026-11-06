@@ -368,6 +368,9 @@ function BoardContents({
   });
 
   const tasks = useMemo(() => query.data ?? [], [query.data]);
+  // While the previous committee's cards are still shown as placeholder data, the lane is
+  // partial, so dragging stays off until the real list for this filter has loaded.
+  const reorderBlocked = committeeId !== null || query.isPlaceholderData;
   const hasTasks = tasks.length > 0;
   const phases = useMemo(() => getBoardPhaseNames(tasks), [tasks]);
   const completePhases = useMemo(() => getCompleteBoardPhases(tasks), [tasks]);
@@ -876,7 +879,7 @@ function BoardContents({
   function handleDragStart(event: DragStartEvent) {
     const taskId = String(event.active.id);
     const task = tasks.find((candidate) => candidate.id === taskId);
-    if (!task || committeeId !== null) return;
+    if (!task || reorderBlocked) return;
     const permission = getMovePermission(task, viewer);
     if (permission === "none" || !tryAcquireBoardOperation(boardBusyRef))
       return;
@@ -900,7 +903,7 @@ function BoardContents({
       !snapshot ||
       snapshot.taskId !== String(event.active.id) ||
       !event.over ||
-      committeeId !== null ||
+      reorderBlocked ||
       shouldCancelBoardDrag({
         snapshot,
         tasks,
@@ -1119,7 +1122,7 @@ function BoardContents({
       </div>
 
       <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-        {!selectedPhaseComplete ? (
+        {!selectedPhaseComplete || !isUnfilteredSelectedPhase ? (
         <div
           className={cn(
             "col-span-2 grid gap-2 sm:flex sm:max-w-full sm:flex-wrap sm:items-center",
@@ -1416,7 +1419,7 @@ function BoardContents({
                 </div>
                 <Collapse open={!selectedCompletePhaseCollapsed}>
                   <div id="event-board-completed-phase-content" className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {selectedPhaseTasks.map((task) => <EventBoardTaskCard key={task.id} task={task} />)}
+                    {selectedPhaseTasks.filter(matchesPriority).map((task) => <EventBoardTaskCard key={task.id} task={task} />)}
                   </div>
                 </Collapse>
               </section>
@@ -1498,7 +1501,7 @@ function BoardContents({
                           id={contentId}
                           status={status}
                           collapsed={collapsed}
-                          disabled={boardBusy || committeeId !== null}
+                          disabled={boardBusy || reorderBlocked}
                         >
                           <Collapse open={!collapsed}>
                             <div className="space-y-3">
@@ -1516,7 +1519,7 @@ function BoardContents({
                                     dragDisabled={
                                       boardBusy ||
                                       collapsed ||
-                                      committeeId !== null ||
+                                      reorderBlocked ||
                                       permission === "none"
                                     }
                                     onMoveStatus={handleStatusMove}

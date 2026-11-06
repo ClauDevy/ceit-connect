@@ -202,8 +202,9 @@ export function AvatarUploader({
         </div>
       </div>
 
-      <MotionPresence open={Boolean(error)}>
-        {error ? <p role="alert" className="text-sm text-destructive">
+      {/* While the crop dialog is open, save errors show inside it instead (below). */}
+      <MotionPresence open={Boolean(error) && !imageSrc}>
+        {error && !imageSrc ? <p role="alert" className="text-sm text-destructive">
           {error}
         </p> : null}
       </MotionPresence>
@@ -221,6 +222,11 @@ export function AvatarUploader({
             <DialogTitle>Crop profile photo</DialogTitle>
             <DialogDescription>Drag to position your photo.</DialogDescription>
           </DialogHeader>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           {imageSrc ? (
             <AvatarCropper
               key={imageSrc}
