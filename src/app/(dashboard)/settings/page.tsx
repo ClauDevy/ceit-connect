@@ -21,7 +21,6 @@ export default async function SettingsPage() {
     <div className="motion-content-ready mx-auto w-full max-w-4xl">
       <PageHeader
         title="Settings"
-        description="Your profile photo and sign-in options."
       />
 
       <div className="grid gap-5 lg:grid-cols-2">

@@ -247,7 +247,7 @@ export function TaskHistory({ taskId }: { taskId: string }) {
 
   return (
     <section
-      className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
+      className="overflow-hidden rounded-2xl border bg-card text-card-foreground"
       aria-labelledby="task-history-heading"
     >
       <h2 id="task-history-heading">

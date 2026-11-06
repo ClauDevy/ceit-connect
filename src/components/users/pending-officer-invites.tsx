@@ -91,7 +91,7 @@ export function PendingOfficerInvites({
           </Button>
         ) : null}
       </div>
-      <Card className="divide-y overflow-hidden rounded-xl border-dashed">
+      <Card dashed className="divide-y overflow-hidden">
         {loading ? (
           <p className="p-4 text-sm text-muted-foreground" role="status">
             Loading pending invitations…

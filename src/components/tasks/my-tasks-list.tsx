@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDueLabel } from "@/lib/safe-date";
 import { useCallback, useEffect, useMemo } from "react";
 import {
   ChevronRight,
@@ -187,8 +188,8 @@ function MyTasksContents({
       ) : null}
 
       {hideTaskList ? null : tasks.length === 0 ? (
-        <Card className="border-dashed">
-          <EmptyState
+        <EmptyState
+            pose={status ? "searching" : "sleeping"}
             title={status ? "No tasks match this status" : "No tasks assigned"}
             description={
               status
@@ -196,7 +197,6 @@ function MyTasksContents({
                 : "Primary and assist assignments from active events will appear here."
             }
           />
-        </Card>
       ) : (
         <Card className="overflow-hidden p-0">
           <div className="divide-y">
@@ -232,9 +232,7 @@ function MyTasksContents({
                       {task.out_event_name} · {task.out_committee_name} ·{" "}
                       {task.out_status === "Completed"
                         ? "Completed"
-                        : task.out_due_date
-                          ? `Due ${dueDateFormatter.format(new Date(task.out_due_date))}`
-                          : "No deadline"}
+                        : formatDueLabel(dueDateFormatter, task.out_due_date)}
                     </p>
                   </div>
                   <ChevronRight
