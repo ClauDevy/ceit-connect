@@ -1,3 +1,4 @@
+import { formatDateSafe } from "../safe-date";
 import type { BoardTask } from "../events/board";
 import { splitAppTimestamp, APP_TIME_ZONE } from "../timezone";
 import {
@@ -294,5 +295,5 @@ const taskMetadataFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export function formatTaskMetadataTimestamp(value: string) {
-  return taskMetadataFormatter.format(new Date(value));
+  return formatDateSafe(taskMetadataFormatter, value, "Time unavailable");
 }

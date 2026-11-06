@@ -94,3 +94,47 @@ export async function getCroppedBlob(imageSrc: string, crop: CropArea): Promise<
     }, "image/webp", 0.9)
   })
 }
+
+export const CROP_MAX_ZOOM = 3
+
+type CropOffset = { x: number; y: number }
+
+export const CROP_FREE_MIN_ZOOM = 0.2
+
+/**
+ * Limits how far the image can be dragged (react-easy-crop's `crop` offset, in screen px).
+ * - "inside" (Fit on): the frame never leaves the picture. On an axis where the zoomed image
+ *   is smaller than the frame, the image stays centred.
+ * - "free" (Fit off): the image may be zoomed out and moved so black shows around it, but a
+ *   quarter of the frame always still overlaps the picture so it cannot be lost.
+ */
+export function clampCropOffset(
+  offset: CropOffset,
+  media: ImageSize | null,
+  frame: ImageSize | null,
+  zoom: number,
+  mode: "inside" | "free" = "inside",
+): CropOffset {
+  if (!media || !frame) return offset
+  const limit = (mediaLength: number, frameLength: number) =>
+    mode === "inside"
+      ? Math.max(0, (mediaLength * zoom - frameLength) / 2)
+      : Math.max(0, (mediaLength * zoom + frameLength) / 2 - frameLength * 0.25)
+  const limitX = limit(media.width, frame.width)
+  const limitY = limit(media.height, frame.height)
+  return {
+    x: Math.min(limitX, Math.max(-limitX, offset.x)),
+    y: Math.min(limitY, Math.max(-limitY, offset.y)),
+  }
+}
+
+/** Zoom at which the picture is exactly as wide as the frame, kept inside the allowed range. */
+export function fitWidthZoom(
+  media: ImageSize,
+  frame: ImageSize,
+  minZoom: number,
+  maxZoom: number = CROP_MAX_ZOOM,
+) {
+  if (media.width <= 0 || frame.width <= 0) return Math.max(minZoom, 1)
+  return Math.min(Math.max(frame.width / media.width, minZoom), Math.max(minZoom, maxZoom))
+}

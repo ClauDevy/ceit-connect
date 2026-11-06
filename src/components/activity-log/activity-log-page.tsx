@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Search, SlidersHorizontal } from "lucide-react";
@@ -566,9 +567,7 @@ export function ActivityLogPageClient({
       {validationError ? (
         <p className="text-sm text-destructive">{validationError}</p>
       ) : accessUnavailable || window?.unavailable ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          Activity history is unavailable.
-        </p>
+        <EmptyState compact pose="oops" title="Activity history is unavailable" />
       ) : query.isPending ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           Loading activity…
@@ -582,8 +581,8 @@ export function ActivityLogPageClient({
           No visible activity on this page. Continue to the next known page.
         </p>
       ) : rows.length === 0 && activePage === 1 ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          <p>{filtered ? "No activity matches these filters." : "No activity yet."}</p>
+        <div className="text-center text-sm text-muted-foreground">
+          <EmptyState compact pose={filtered ? "searching" : "sleeping"} title={filtered ? "No activity matches these filters." : "No activity yet."} />
           {showClearFilters ? (
             <Button variant="ghost" className="mt-2" onClick={clearFilters}>
               Clear filters

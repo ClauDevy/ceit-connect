@@ -301,8 +301,7 @@ export function BannerUploader({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        JPEG, PNG, or WebP. Near-16:9 images are used as-is; you can still
-        adjust the crop. The saved banner is compressed below 1.5 MB.
+        JPEG, PNG or WebP.
       </p>
       {error ? <InlineAlert>{error}</InlineAlert> : null}
 

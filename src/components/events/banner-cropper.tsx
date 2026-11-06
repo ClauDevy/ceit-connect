@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import Cropper from "react-easy-crop";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,11 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  minimumContainZoom,
-  type CropArea,
-  type ImageSize,
-} from "@/lib/image";
+import { cn } from "@/lib/utils";
+import { CropZoomRow } from "@/components/shared/crop-zoom-row";
+import { useCropControls } from "@/components/shared/use-crop-controls";
+import { type CropArea } from "@/lib/image";
 
 export function BannerCropper({
   imageSrc,
@@ -28,26 +27,9 @@ export function BannerCropper({
   onSave: (area: CropArea) => Promise<boolean>;
   onCancel: () => void;
 }) {
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [minZoom, setMinZoom] = useState(1);
-  const [area, setArea] = useState<CropArea | null>(null);
-  const [mediaSize, setMediaSize] = useState<ImageSize | null>(null);
-  const [cropSize, setCropSize] = useState<ImageSize | null>(null);
+  const controls = useCropControls();
+  const { area, zoom, minZoom, maxZoom } = controls;
   const [open, setOpen] = useState(true);
-  const onCropComplete = useCallback(
-    (_: CropArea, pixels: CropArea) => setArea(pixels),
-    [],
-  );
-  const applyContainZoom = useCallback(
-    (media: ImageSize, viewport: ImageSize) => {
-      const nextMinZoom = minimumContainZoom(media, viewport);
-      setMinZoom(nextMinZoom);
-      setZoom(nextMinZoom);
-      setCrop({ x: 0, y: 0 });
-    },
-    [],
-  );
 
   function closeCropper() {
     setOpen(false);
@@ -67,67 +49,46 @@ export function BannerCropper({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && requestClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => !nextOpen && requestClose()}
+      // Tell the parent once the closing animation has finished, so the cropper is removed
+      // and a new image can open it again. This does not rely on a CSS transition event.
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onCancel();
+      }}
+    >
       <DialogContent
-        className={!open ? "pointer-events-none max-w-3xl" : "max-w-3xl"}
+        className={cn(
+          "max-w-3xl data-[ending-style]:scale-100 data-[starting-style]:scale-100",
+          !open && "pointer-events-none",
+        )}
         showCloseButton={!processing}
         aria-hidden={!open || undefined}
         inert={!open ? true : undefined}
-        onTransitionEnd={(event) => {
-          if (
-            event.target === event.currentTarget &&
-            event.propertyName === "opacity" &&
-            !open
-          ) onCancel();
-        }}
       >
         <DialogHeader>
           <DialogTitle>Crop event banner</DialogTitle>
           <DialogDescription>
-            Position the image inside the 16:9 frame. It will be converted to
-            WebP and compressed below 1.5 MB.
+            Drag to position the image in the frame.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-primary/15 via-muted to-accent/30">
-          <Cropper
-            image={imageSrc}
-            crop={crop}
-            zoom={zoom}
-            minZoom={minZoom}
-            aspect={16 / 9}
-            restrictPosition={false}
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            onCropComplete={onCropComplete}
-            onMediaLoaded={(nextMediaSize) => {
-              setMediaSize(nextMediaSize);
-              if (cropSize) applyContainZoom(nextMediaSize, cropSize);
-            }}
-            onCropSizeChange={(nextCropSize) => {
-              setCropSize(nextCropSize);
-              if (mediaSize) applyContainZoom(mediaSize, nextCropSize);
-            }}
-          />
+        <div className="relative isolate h-[min(52dvh,24rem)] min-h-56 w-full overflow-hidden rounded-xl bg-black">
+          <Cropper image={imageSrc} aspect={16 / 9} {...controls.cropperProps} />
         </div>
 
-        <label
-          htmlFor="banner-zoom"
-          className="grid gap-1.5 text-sm font-semibold text-secondary-foreground"
-        >
-          Zoom
-          <input
-            id="banner-zoom"
-            type="range"
-            min={minZoom}
-            max={3}
-            step={0.1}
-            value={zoom}
-            disabled={processing}
-            onChange={(event) => setZoom(Number(event.target.value))}
-            className="w-full accent-primary"
-          />
-        </label>
+        <CropZoomRow
+          id="banner-zoom"
+          zoom={zoom}
+          minZoom={minZoom}
+          maxZoom={maxZoom}
+          fit={controls.fit}
+          canFit={controls.canFit}
+          disabled={processing}
+          onZoom={controls.setZoom}
+          onToggleFit={controls.toggleFit}
+        />
 
         <DialogFooter>
           <Button variant="outline" disabled={processing} onClick={requestClose}>

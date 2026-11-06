@@ -34,6 +34,17 @@ This guide turns the existing tokens, shared components, and approved prototype 
 - Home Draft events remain visually compact and distinct from Active cards: dashed boundary, small banner thumbnail, visible Draft badge, “Not launched” metadata, and a single-column list. Badge and Edit must wrap without overlap at every width.
 - Long form dialogs may pin their header and action footer around one internal scroll region. Validation remains visible beside the actions, and an invalid submit focuses or reveals the first problem without changing validation rules.
 
+## Shared card (Batch C)
+
+- ONE `Card` (`src/components/ui/card.tsx`) styles every card: soft `border`, no heavy shadow, optional `accent` left stripe (status or priority, always paired with text), `interactive` (slow hover lift and press via `motion-card-interaction`), `dashed` for drafts and pending panels. `CardMeta`, `CardIcon` and `CardProgress` cover the optional meta row, icon badge and progress row.
+- `tone` is "neutral" (default quiet grey) or "primary" (warm Council Orange glow, used on Home event cards); other tone names are aliases of primary. No blue, violet or green card tints, except the Settings section headers (own hue each) and the Home count chips (amber Backup requests, blue Backlog) where colour carries meaning. The orange left stripe is only for task priority on board cards; do not use `accent` elsewhere.
+- Do not add per-feature card borders, shadows or radii. Rows in a long list or activity log may stay plain `rounded-2xl border bg-card` elements when `Card` cannot be the tag (article, section).
+
+## Mascot (Batch C)
+
+- `Mascot` (`src/components/ui/mascot.tsx`) has five poses built from the logo head: `sleeping` (empty lists), `celebrating` (event launched, phase complete), `searching` (no results), `oops` (404, errors), `waving` (login, first-time welcome). Motion is `motion-safe:` only.
+- The tiger sits OUTSIDE cards with one friendly line under it (`EmptyState`, `OopsPanel`). Never on dense task cards or danger warnings (for example Delete phase). Keep it small (about 72 px) on data-heavy screens.
+
 ## Contrast and states
 
 - In both themes, normal text uses `foreground`; supporting copy uses `muted-foreground`; interactive emphasis uses token-paired foregrounds such as `primary-foreground` and `accent-foreground`.
