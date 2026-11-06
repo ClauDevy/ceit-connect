@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEventPhaseViews,
+  buildCompleteEventPhaseOrder,
+  eventFormPhasesAreValid,
   excludeCompletedPhaseTaskMutations,
   getEventFormSummary,
   getEventPhaseCardKey,
   getEventPhaseControls,
   getLiveOperationScheduleProblem,
+  getSavableEventPhaseName,
   normalizeEventPhaseName,
   parseImportedDueDate,
   toTaskPayload,
@@ -391,5 +394,70 @@ describe("Draft editor phase presentation", () => {
     expect(view.name).toBe("Unphased");
     expect(view.editablePhases[0].name).toBe("");
     expect(toTaskPayload("", taskDraft).phase).toBe("");
+  });
+
+  it("uses stable identity for Unphased and permits an in-progress persisted rename", () => {
+    const namedPhase = {
+      id: "planning",
+      name: "",
+      originalName: "Planning",
+      origin: "persisted" as const,
+      tasks: [{ id: "task", persisted: true }],
+    };
+    const [namedView] = buildEventPhaseViews([namedPhase], []);
+    expect(
+      getEventPhaseControls({
+        role: "Admin",
+        isDraft: false,
+        readerAvailable: true,
+        hasExactlyOneTaskCommittee: false,
+        phase: namedView,
+        readOnlyTasks: [],
+      }).canRename,
+    ).toBe(true);
+    expect(getSavableEventPhaseName(namedPhase)).toBe("Planning");
+    expect(eventFormPhasesAreValid([namedPhase])).toBe(true);
+
+    const unphased = { ...namedPhase, originalName: "Unphased" };
+    const [unphasedView] = buildEventPhaseViews([unphased], []);
+    expect(
+      getEventPhaseControls({
+        role: "Admin",
+        isDraft: false,
+        readerAvailable: true,
+        hasExactlyOneTaskCommittee: false,
+        phase: unphasedView,
+        readOnlyTasks: [],
+      }).canRename,
+    ).toBe(false);
+  });
+
+  it("builds reorder actions from the complete server sequence", () => {
+    expect(
+      buildCompleteEventPhaseOrder({
+        serverOrder: ["Visible A", "Hidden", "Visible B", "Unphased"],
+        visibleOrder: ["Visible B", "Visible A"],
+        phaseActions: [],
+      }),
+    ).toEqual(["Visible B", "Hidden", "Visible A", "Unphased"]);
+    expect(
+      buildCompleteEventPhaseOrder({
+        serverOrder: ["Visible A", "Hidden", "Visible B"],
+        visibleOrder: ["Renamed", "Visible B", "New"],
+        phaseActions: [
+          { type: "rename", phase: "Visible A", next_phase: "Renamed" },
+        ],
+      }),
+    ).toEqual(["Renamed", "Hidden", "Visible B", "New"]);
+    expect(
+      buildCompleteEventPhaseOrder({
+        serverOrder: ["A", "B", "C"],
+        visibleOrder: ["C", "B"],
+        phaseActions: [
+          { type: "rename", phase: "A", next_phase: "C" },
+        ],
+        applyVisibleOrder: false,
+      }),
+    ).toEqual(["B", "C"]);
   });
 });

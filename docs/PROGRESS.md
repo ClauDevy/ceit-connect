@@ -231,6 +231,8 @@ Batch 12 and Batch 12b are merged and live, and their migrations are applied on 
 
 ## UI polish pass (pre-presentation)
 
+- **Batch A — real-phone testing fixes (2026-11-06)** is implemented locally on `fix/phone-testing-bugs`; migrations are not applied. It adds explicit event phase positions and consistent Home/board/Edit/Archive ordering, a phase-local accurate deletion blocker, pending/deactivated/peer-Admin action coverage, database-safe peer-Admin lifecycle operations, and Asia/Manila event-end schedule enforcement with per-field grandfathering. Review fixes reserve `CCD05` for `due_date`, use a compatible event `FOR SHARE` reconciliation lock, protect Archived confidential-only phase names, preserve malformed phase actions for the prior validator, and compute Home content access once. The first Dev push rolled back cleanly on an unquoted `position` OUT name; migration 1 now quotes that name without changing its public shape, and all three migrations have a documented CREATE-time signature/syntax scan plus a regression test. End-date extensions never block. SQL verification expects 62 + 58 + 57 = 177 PASS result lines and intentional rollback exceptions. Local verification passes: `npx.cmd tsc --noEmit`, 1,020 Vitest tests, and lint with zero errors plus the pre-existing unused-`INK` warning. Batch 14 catalog/allowlist absorption remains deferred. See `docs/phase-4b/step-a.md`.
+
 - Compact Home event cards (thumbnail + content), 3 columns on very wide screens; skeleton matched.
 - Event Management: stat tiles, status icons, tidier toolbar and phone cards (all behaviour unchanged).
 - Activity Log: filters collapse behind a Filters button on phones; slimmer sticky pager and phone rows.

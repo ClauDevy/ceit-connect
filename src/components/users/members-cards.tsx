@@ -16,6 +16,7 @@ type MembersListProps = {
   onAction: (action: MemberActionName, member: Member) => void;
   pendingInviteByAuthUserId: ReadonlyMap<string, PendingOfficerInvite>;
   viewerRole: Extract<Role, "Admin" | "Co-Admin">;
+  getPeerAdminBlockedReason?: (member: Member) => string | null;
   selectionEnabled: boolean;
   selectedIds: ReadonlySet<string>;
   onToggleSelection: (member: Member, selected: boolean) => void;
@@ -33,6 +34,7 @@ export function MembersCards({
   onAction,
   pendingInviteByAuthUserId,
   viewerRole,
+  getPeerAdminBlockedReason = () => null,
   selectionEnabled,
   selectedIds,
   onToggleSelection,
@@ -54,7 +56,7 @@ export function MembersCards({
               <input
                 type="checkbox"
                 checked={selectedIds.has(member.id)}
-                disabled={member.role === "Admin" || pendingId !== null}
+                disabled={pendingInviteByAuthUserId.has(member.id) || pendingId !== null}
                 aria-label={`Select ${member.full_name}`}
                 className="motion-control-pop mt-3 size-4 shrink-0 rounded border-input accent-primary disabled:cursor-not-allowed disabled:opacity-50"
                 onChange={(event) =>
@@ -83,6 +85,7 @@ export function MembersCards({
                 pending={pendingId !== null}
                 pendingInvite={pendingInviteByAuthUserId.get(member.id)}
                 viewerRole={viewerRole}
+                peerAdminBlockedReason={getPeerAdminBlockedReason(member)}
                 onAction={onAction}
               />
             </div>

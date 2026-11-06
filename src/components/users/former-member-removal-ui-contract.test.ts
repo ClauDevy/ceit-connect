@@ -84,7 +84,7 @@ describe("former-member removal UI contract", () => {
 
   it("keeps desktop and phone selection role-aware and motion-safe", () => {
     for (const source of [desktop, phone]) {
-      expect(source).toContain('member.role === "Admin"');
+      expect(source).toContain("pendingInviteByAuthUserId.has(member.id)");
       expect(source).toContain("motion-control-pop");
       expect(source).toContain("selectedIds.has(member.id)");
     }

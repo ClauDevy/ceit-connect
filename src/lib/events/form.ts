@@ -48,6 +48,88 @@ export function normalizeEventPhaseName(value: string | null | undefined) {
   return value?.trim() || "Unphased";
 }
 
+export function getSavableEventPhaseName(
+  phase: Pick<EventFormPhaseRef, "name" | "originalName" | "origin">,
+) {
+  const currentName = phase.name.trim();
+  if (currentName) return currentName;
+  return phase.origin === "persisted" ? phase.originalName.trim() : "";
+}
+
+export function eventFormPhasesAreValid(
+  phases: readonly Pick<
+    EventFormPhaseRef,
+    "name" | "originalName" | "origin" | "tasks"
+  >[],
+) {
+  return phases.every(
+    (phase) =>
+      phase.tasks.length === 0 || getSavableEventPhaseName(phase).length > 0,
+  );
+}
+
+type EventPhaseSaveAction =
+  | { type: "rename"; phase: string; next_phase: string }
+  | { type: "delete"; phase: string };
+
+export function buildCompleteEventPhaseOrder({
+  serverOrder,
+  visibleOrder,
+  phaseActions,
+  applyVisibleOrder = true,
+}: {
+  serverOrder: readonly string[];
+  visibleOrder: readonly string[];
+  phaseActions: readonly EventPhaseSaveAction[];
+  applyVisibleOrder?: boolean;
+}) {
+  const unique = (names: readonly string[]) =>
+    names.reduce<string[]>((result, name) => {
+      const normalized = normalizeEventPhaseName(name);
+      if (!result.includes(normalized)) result.push(normalized);
+      return result;
+    }, []);
+  let transformed = unique(serverOrder);
+
+  for (const action of phaseActions) {
+    const source = normalizeEventPhaseName(action.phase);
+    if (action.type === "delete") {
+      transformed = transformed.filter((name) => name !== source);
+      continue;
+    }
+    if (!action.next_phase.trim()) continue;
+    const destination = normalizeEventPhaseName(action.next_phase);
+    if (destination === source) continue;
+    if (transformed.includes(destination)) {
+      transformed = transformed.filter((name) => name !== source);
+    } else {
+      transformed = transformed.map((name) =>
+        name === source ? destination : name,
+      );
+    }
+  }
+
+  const requested = unique(visibleOrder);
+  if (!applyVisibleOrder) {
+    return [
+      ...transformed,
+      ...requested.filter((name) => !transformed.includes(name)),
+    ];
+  }
+  const requestedExisting = requested.filter((name) =>
+    transformed.includes(name),
+  );
+  let requestedIndex = 0;
+  const requestedSet = new Set(requestedExisting);
+  const merged = transformed.map((name) =>
+    requestedSet.has(name) ? requestedExisting[requestedIndex++] : name,
+  );
+  for (const name of requested) {
+    if (!merged.includes(name)) merged.push(name);
+  }
+  return merged;
+}
+
 export function buildEventPhaseViews<
   TPhase extends EventFormPhaseRef,
   TReaderTask extends EventFormReaderTaskRef,
@@ -177,6 +259,7 @@ export function getEventPhaseControls<
     );
   const canMutatePhase =
     editablePhase !== null &&
+    normalizeEventPhaseName(editablePhase.originalName) !== "Unphased" &&
     !phase.isReaderShell &&
     !coAdminDraftActionsBlocked &&
     !coAdminTemplateActionsBlocked;

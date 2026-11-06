@@ -62,7 +62,7 @@ function task(
 }
 
 describe("archived task phase groups", () => {
-  it("keeps first-seen named phase order and task order, with No phase last", () => {
+  it("keeps supplied phase order and task order, with the safe Unphased bucket", () => {
     const groups = groupArchivedTasksByPhase([
       task("b-1", "Phase B"),
       task("none-1", null),
@@ -75,7 +75,7 @@ describe("archived task phase groups", () => {
     expect(groups.map((group) => group.phase)).toEqual([
       "Phase B",
       "Phase A",
-      "No phase",
+      "Unphased",
     ]);
     expect(groups.map((group) => group.tasks.map(({ id }) => id))).toEqual([
       ["b-1", "b-2"],
@@ -109,7 +109,7 @@ describe("archived task phase groups", () => {
       />,
     );
 
-    expect(html).toContain("No phase");
+    expect(html).toContain("Unphased");
     expect(html).toContain("🔒 Confidential Task");
     expect(html).not.toContain("Secret phase");
     expect(html).not.toContain("Secret description");

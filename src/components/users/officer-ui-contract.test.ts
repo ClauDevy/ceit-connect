@@ -40,6 +40,19 @@ describe("officer UI contract", () => {
     expect(usersTable).toContain("router.refresh()");
   });
 
+  it("refreshes Admin lifecycle capacity after every officer mutation source", () => {
+    expect(usersTable).toMatch(
+      /void refreshAdminLifecycleContext\(\);\s*};\s*window\.addEventListener\("officer-invites-changed"/,
+    );
+    expect(usersTable).toMatch(
+      /refreshPendingInvites\(\),\s*paging\.refreshFromStart\(\),\s*refreshAdminLifecycleContext\(\),/,
+    );
+    expect(usersTable).toMatch(
+      /paging\.refreshFromStart\(\),\s*refreshAdminLifecycleContext\(\),/,
+    );
+    expect(usersTable.match(/refreshAdminLifecycleContext\(\)/g)?.length).toBeGreaterThanOrEqual(6);
+  });
+
   it("keeps phone targets and semantic interaction states", () => {
     expect(inviteDialog).toContain("size-11 md:size-9");
     expect(pending).toContain("focus-visible:ring-3");

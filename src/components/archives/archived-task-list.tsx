@@ -37,7 +37,7 @@ export type ArchivedTaskGroup = {
   tasks: ArchivedTask[];
 };
 
-const NO_PHASE = "No phase";
+const NO_PHASE = "Unphased";
 const MASKED_TASK_TITLE = "🔒 Confidential Task";
 
 const taskDateFormatter = new Intl.DateTimeFormat("en-US", {
