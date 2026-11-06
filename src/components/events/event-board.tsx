@@ -1672,6 +1672,7 @@ function BoardContents({
           }}
           mode={taskDialog.mode}
           eventId={taskDialog.mode === "add" ? event.id : undefined}
+          eventEndDate={event.end_date}
           taskId={taskDialog.mode === "edit" ? taskDialog.taskId : undefined}
           defaultPhase={selectedPhase}
           completedPhaseNames={[...completePhases]}

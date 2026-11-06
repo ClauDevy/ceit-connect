@@ -25,7 +25,7 @@ Roles and invites
 - Admins and Co-Admins are invited through a separate Admin-only "Invite officers" flow
   (role plus committee for Co-Admins, several at once, congratulations email). The normal invite form is Members only.
 - Only active Admins through officer RPCs may invite a brand-new Admin/Co-Admin, appoint an active Member as Co-Admin or Admin, return a Co-Admin to Member, move a Member to another committee, or cancel an unaccepted officer invite. A Co-Admin must first return to Member before appointment as Admin. There is no generic role-change operation.
-- An Admin steps down only on their own initiative, becomes a Member, chooses a committee, and may do so only while another active Admin exists. Admins cannot demote, deactivate, remove, delete, or anonymize one another. The last active Admin is always protected.
+- An Admin steps down only on their own initiative, becomes a Member, chooses a committee, and may do so only while another active Admin exists. Batch A supersedes the peer-Admin lifecycle lock: an Admin may deactivate, reactivate, or anonymize another Admin, never themselves or the final other confirmed active Admin. Role changes remain unchanged and users are never hard-deleted.
 - Year-end handover returns the old Co-Admin to Member and appoints the new active Member, or deactivates the old Co-Admin and invites a new person. One account per person keeps history attached.
 - Co-Admins get User Management for their OWN committee: view members, invite Members into it,
   deactivate and reactivate them, edit basic details. They cannot perform officer operations, touch
@@ -55,7 +55,7 @@ Activity Log
 
 ## Batches
 
-Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13e, 13d, 13b, 4, 14, then Phase 5, then 15.**
+Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13e, 13d, 13b, 4, A, B, D, 14, then Phase 5, then 15.**
 
 0. `fix/users-authz` - remove direct Co-Admin UPDATE on users; make the invite route and Users page use the active-profile guard; preserve narrow own-profile editing without allowing changes to role, committee, or active state.
 1. `fix/ui-bugs` - stable search inputs; whole-box real links and 44px phone targets; first-image crop zoom-out; route-specific skeletons; phone Drive preview; comment-button alignment only; `Asia/Manila` display/parsing audit; unused-package proof; exact lint/navigation/middleware/root-script cleanup. No database changes. See `docs/phase-4b/step-1.md`.
@@ -69,6 +69,7 @@ Batch IDs are stable. Run order: **0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12
    (scattered, faint, fixed placement), login page treatment, light-mode version, and favicon. Needs a clean shield SVG.
     - Owner-approved additions (2026-11-02): the app-shell mark in `brand.tsx` and `mobile-topbar.tsx` becomes `public/brand/app-logo.svg`; the login page gets a static credit footer; the login mascot gets a faint shield behind it and a small tummy shield mark.
     - Status: implemented locally (built in Claude chat); owner gate, browser checks, and merge pending. No Dev or Prod result is claimed. See `docs/phase-4b/step-4.md` and `docs/phase-4b/step-4-tests.md`.
+A. `fix/phone-testing-bugs` - runs after Batch 4 and before B, D, and 14. Fixes the phone-found phase-delete warning, explicit phase ordering, pending/deactivated user actions, safe peer-Admin lifecycle management, and event-end task schedule bounds. Review pin: due-date bounds use `CCD05`; deferred phase maintenance takes event `FOR SHARE` before the event advisory lock; Archived order is available to active users but suppresses phases without real task access. Status: implemented locally; migrations unapplied. See `docs/phase-4b/step-a.md`, `step-a-tests.md`, and `step-a-function-diff.md`.
 5. `feature/motion-polish` - shared route, tab, form, disclosure, stable-ID scroll reveal, progress, close-path, and interaction motion; reduced-motion fallback, measurable phone budget, and no new animation library.
 6. `feature/mobile-board` - phone scroll-snap columns, independent collapse, and dedicated-handle touch drag-and-drop; a plain swipe never moves a task and task cards remain real links.
 7. `feature/accounts-polish` - Active/Deactivated tabs; Users paging; Settings warning dot until a password is set; no temporary password; secure invited-user Google sign-in.
@@ -132,14 +133,14 @@ Notifications (bell, Discord webhooks, Resend for critical only), Executive Dash
 
 ## Audit resolutions (owner-approved 2026-10-24)
 - Phase 4 gate: Step 10E must be completed or explicitly waived before any 4B code batch.
-- Batch IDs are stable; run order is: 0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13e, 13d, 13b, 4, 14, then Phase 5, then 15.
-- Security-critical (High reasoning): 0, 3H, 7, 8, 9, 10, 12, 13, 13c, 13e, 13d, 13b, 15.
+- Batch IDs are stable; run order is: 0, 1, 2, 3, 3P, 3H, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13c, 13e, 13d, 13b, 4, A, B, D, 14, then Phase 5, then 15.
+- Security-critical (High reasoning): 0, 3H, 7, 8, 9, 10, 12, 13, 13c, 13e, 13d, 13b, A, 15.
 - Batch 0 `fix/users-authz`: remove direct Co-Admin UPDATE on users; invite route and Users page use the active-profile guard. Own-profile edit keeps working.
 - Batch 0 tests prove own-profile editing cannot change `role`, `committee_id`, or `is_active`.
 - Batch 1 first records the exact lint baseline, then fixes those three warnings plus the root-layout development warning. Successful sign-in/password-reset navigation remains tested. After Batch 1 merges, its `cn`/`p`/lint/script items leave `docs/PROGRESS.md`; Batch 14 only verifies they stay gone.
 - Users are never deleted or hard-deleted. "Remove former member" (Admin only, deactivated accounts only) anonymizes: same UUID, is_active=false, login banned, auth and profile email replaced with a unique non-routable value, name "Former member", avatar cleared and Storage object removed. Anonymized accounts cannot be reactivated. Bulk select, preview, typed confirmation, result report, about 50 per run; users with open tasks are skipped. Golden rule 9 does NOT change.
 - Google sign-in: "Allow new users to sign up" disabled in Dev and Prod. /auth/callback keeps the session only for an active profile whose email matches and is on an allowed domain. No password gate. No reliance on app_metadata.provider. Negative tests: uninvited email, deactivated user, profile-less user, wrong domain.
-- Officer operations are exactly: invite a new officer, appoint an active Member, return a Co-Admin to Member, move a Member to another committee, cancel an unaccepted officer invite, and Admin self-step-down. Admin is the President title with `committee_id = null`; the `President` lookup row remains. No Admin alters another Admin.
+- Role-change officer operations remain exactly: invite, appoint, return a Co-Admin to Member, move committee, cancel invitation, and self-step-down. Batch A separately permits peer-Admin deactivate/reactivate/anonymize under the officer lock; it adds no peer role change.
 - Add private `public.app_settings` with RLS and no anon/authenticated grants. `enforce_officer_role_caps` is false in Dev and Prod for testing. Under the shared officer advisory lock, caps-on counts pending invites and permits at most two active Admins and one active Co-Admin per committee. Caps-off permits extra test officers; never-zero stays on. Enabling caps later affects only new invites, appointments, and activations, not existing over-limit accounts.
 - Before Step 8 migration design, run the documented read-only Dev/Prod check for any Admin with non-null `committee_id`; a nonzero result requires an owner decision and tracked correction before implementation. Step 8 tests prove both cap modes and activation of caps around existing over-limit accounts.
 - Batch 10 typed confirmation is exactly `REMOVE <count> MEMBERS`.

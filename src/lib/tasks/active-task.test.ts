@@ -250,6 +250,9 @@ describe("active task CCL01 retry helper", () => {
 
   it("maps the approved stable messages", async () => {
     const expected = new Map([
+      ["CCD05", "The due date cannot be after the event end date."],
+      ["CCD02", "The call time cannot be after the event end date."],
+      ["CCD03", "The end time cannot be after the event end date."],
       ["CCS01", "This task changed after you loaded it. Reload and try again."],
       ["CCP01", "This event already has the maximum of 200 tasks."],
       ["CCN01", "No changes to save."],

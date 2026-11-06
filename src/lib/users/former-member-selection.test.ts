@@ -20,14 +20,14 @@ function member(id: string, role = "Member", anonymized = false): Member {
 }
 
 describe("former-member visible selection", () => {
-  it("excludes anonymized and Admin rows", () => {
+  it("excludes anonymized rows but permits inactive Admin removal", () => {
     expect(
       getSelectableFormerMemberIds([
         member("ordinary"),
         member("terminal", "Member", true),
         member("admin", "Admin"),
       ]),
-    ).toEqual(["ordinary"]);
+    ).toEqual(["ordinary", "admin"]);
   });
 
   it("does not count removed rows toward the 50-account limit", () => {

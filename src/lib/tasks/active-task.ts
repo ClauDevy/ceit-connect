@@ -391,6 +391,15 @@ export function editActiveTaskRpcArgs(request: EditActiveTaskRequest) {
 }
 
 function mapRpcError(error: RpcError): ActiveTaskRpcFailure {
+  if (error.code === "CCD05") {
+    return { ok: false, status: 409, message: "The due date cannot be after the event end date." };
+  }
+  if (error.code === "CCD02") {
+    return { ok: false, status: 409, message: "The call time cannot be after the event end date." };
+  }
+  if (error.code === "CCD03") {
+    return { ok: false, status: 409, message: "The end time cannot be after the event end date." };
+  }
   if (error.code === "CCS01") {
     return {
       ok: false,

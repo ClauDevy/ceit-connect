@@ -10,7 +10,7 @@ const LIMIT_MESSAGE = `Select no more than ${MAX_FORMER_MEMBER_REMOVALS} account
 export function getSelectableFormerMemberIds(members: readonly Member[]) {
   return members
     .filter(
-      (member) => member.role !== "Admin" && member.anonymized_at === null,
+      (member) => !member.is_active && member.anonymized_at === null,
     )
     .map((member) => member.id);
 }

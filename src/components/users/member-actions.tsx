@@ -32,6 +32,7 @@ type MemberActionProps = {
   pending: boolean;
   pendingInvite?: PendingOfficerInvite;
   viewerRole: Extract<Role, "Admin" | "Co-Admin">;
+  peerAdminBlockedReason?: string | null;
   onAction: (action: MemberActionName, member: Member) => void;
 };
 
@@ -41,19 +42,34 @@ export function MemberAction({
   pending,
   pendingInvite,
   viewerRole,
+  peerAdminBlockedReason,
   onAction,
 }: MemberActionProps) {
-  if (member.anonymized_at !== null) {
-    if (viewerRole === "Co-Admin") return null;
+  if (pendingInvite) {
     return (
       <ActionMenu member={member} pending={pending}>
-        <DestructiveItem
-          onClick={() => onAction("retry-former-member-cleanup", member)}
-        >
-          <RotateCcw className="size-4" aria-hidden />
-          Re-run cleanup
+        <DestructiveItem onClick={() => onAction("cancel-invite", member)}>
+          <MailX className="size-4" aria-hidden />
+          Cancel invitation
         </DestructiveItem>
       </ActionMenu>
+    );
+  }
+
+  if (member.anonymized_at !== null) {
+    if (viewerRole === "Co-Admin") {
+      return <ActionReason>Anonymized accounts cannot be reactivated.</ActionReason>;
+    }
+    return (
+      <div className="grid justify-items-end gap-1">
+        <ActionReason>Anonymized accounts cannot be reactivated.</ActionReason>
+        <ActionMenu member={member} pending={pending}>
+          <DestructiveItem onClick={() => onAction("retry-former-member-cleanup", member)}>
+            <RotateCcw className="size-4" aria-hidden />
+            Re-run cleanup
+          </DestructiveItem>
+        </ActionMenu>
+      </div>
     );
   }
 
@@ -79,26 +95,50 @@ export function MemberAction({
     );
   }
 
-  if (pendingInvite) {
-    return (
-      <ActionMenu member={member} pending={pending}>
-        <DestructiveItem onClick={() => onAction("cancel-invite", member)}>
-          <MailX className="size-4" aria-hidden />
-          Cancel invitation
-        </DestructiveItem>
-      </ActionMenu>
-    );
-  }
-
   if (member.role === "Admin") {
-    if (!isSelf) return null;
+    if (!isSelf) {
+      if (member.is_active && peerAdminBlockedReason) {
+        return <ActionReason>{peerAdminBlockedReason}</ActionReason>;
+      }
+      return (
+        <div className="grid justify-items-end gap-1">
+          {!member.is_active && peerAdminBlockedReason ? (
+            <ActionReason>{peerAdminBlockedReason}</ActionReason>
+          ) : null}
+          <ActionMenu member={member} pending={pending}>
+            {member.is_active ? (
+              <DestructiveItem onClick={() => onAction("toggle", member)}>
+                <UserRoundX className="size-4" aria-hidden />
+                Deactivate
+              </DestructiveItem>
+            ) : (
+              <>
+                {!peerAdminBlockedReason ? (
+                  <DropdownMenuItem onClick={() => onAction("toggle", member)}>
+                    <RotateCcw className="size-4" aria-hidden />
+                    Reactivate
+                  </DropdownMenuItem>
+                ) : null}
+                <DestructiveItem onClick={() => onAction("remove-former-member", member)}>
+                  <UserRoundX className="size-4" aria-hidden />
+                  Remove former member
+                </DestructiveItem>
+              </>
+            )}
+          </ActionMenu>
+        </div>
+      );
+    }
     return (
-      <ActionMenu member={member} pending={pending}>
-        <DestructiveItem onClick={() => onAction("step-down", member)}>
-          <UserRoundX className="size-4" aria-hidden />
-          Step down to Member
-        </DestructiveItem>
-      </ActionMenu>
+      <div className="grid justify-items-end gap-1">
+        <ActionReason>You cannot deactivate or remove your own account.</ActionReason>
+        <ActionMenu member={member} pending={pending}>
+          <DestructiveItem onClick={() => onAction("step-down", member)}>
+            <UserRoundX className="size-4" aria-hidden />
+            Step down to Member
+          </DestructiveItem>
+        </ActionMenu>
+      </div>
     );
   }
 
@@ -144,6 +184,10 @@ export function MemberAction({
       </DestructiveItem>
     </ActionMenu>
   );
+}
+
+function ActionReason({ children }: { children: React.ReactNode }) {
+  return <p className="max-w-48 text-right text-xs text-muted-foreground">{children}</p>;
 }
 
 function ActionMenu({

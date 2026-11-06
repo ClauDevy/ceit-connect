@@ -72,6 +72,23 @@ describe("MemberAction", () => {
     expect(html).not.toContain("Deactivate");
   });
 
+  it("keeps removal available when Admin capacity blocks only reactivation", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", is_active: false }}
+        isSelf={false}
+        pending={false}
+        peerAdminBlockedReason="Admin role capacity is currently full."
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("Admin role capacity is currently full.");
+    expect(html).toContain("Remove former member");
+    expect(html).not.toContain("Reactivate");
+  });
+
   it("gives an Admin only Re-run cleanup for an anonymized row", () => {
     const html = renderToStaticMarkup(
       <MemberAction
@@ -92,7 +109,7 @@ describe("MemberAction", () => {
     expect(html).not.toContain("Edit name");
   });
 
-  it("gives a Co-Admin no actions for an anonymized row", () => {
+  it("gives a Co-Admin a visible reason for an anonymized row", () => {
     const html = renderToStaticMarkup(
       <MemberAction
         viewerRole="Co-Admin"
@@ -107,7 +124,8 @@ describe("MemberAction", () => {
         onAction={vi.fn()}
       />,
     );
-    expect(html).toBe("");
+    expect(html).toContain("Anonymized accounts cannot be reactivated.");
+    expect(html).not.toContain("More actions");
   });
 
   it("gives the current Admin only the self step-down action", () => {
