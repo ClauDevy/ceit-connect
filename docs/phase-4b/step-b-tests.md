@@ -8,7 +8,7 @@ Run each paste separately in the Dev SQL Editor after applying its matching migr
 begin;
 create temporary table batch_b_results(seq integer generated always as identity,label text,passed boolean) on commit drop;
 insert into batch_b_results(label,passed)
-select 'catalog has 39 activity types',count(*)=39 from ceit_connect_private.activity_type_catalog union all
+select 'catalog has 40 activity types',count(*)=40 from ceit_connect_private.activity_type_catalog union all
 select 'catalog mappings are unique',count(*)=count(distinct (activity_type,broad_action,subject_kind)) from ceit_connect_private.activity_type_catalog union all
 select 'catalog is private',not has_table_privilege('authenticated','ceit_connect_private.activity_type_catalog','SELECT') union all
 select 'actor kind column exists',exists(select 1 from information_schema.columns where table_schema='public' and table_name='activity_log' and column_name='actor_kind') union all
@@ -43,7 +43,7 @@ select 'global reader is leadership-only',pg_get_functiondef('public.list_activi
 select 'Task History remains task-filtered',pg_get_functiondef('public.list_activity_log(uuid,text,text,uuid,date,date,text,timestamptz,uuid,integer)'::regprocedure) like '%p_task_id is null or log_row.task_id = p_task_id%' union all
 select 'system copy exists',pg_get_functiondef('public.list_activity_log(uuid,text,text,uuid,date,date,text,timestamptz,uuid,integer)'::regprocedure) like '%actor_kind = ''system'' then ''System''%' union all
 select 'unavailable copy exists',pg_get_functiondef('public.list_activity_log(uuid,text,text,uuid,date,date,text,timestamptz,uuid,integer)'::regprocedure) like '%Unavailable actor%' union all
-select 'event predicate mirrors Draft rule',pg_get_functiondef('ceit_connect_private.activity_event_status_visible_for_user(text,uuid)'::regprocedure) like '%p_event_status <> ''Draft''%profile.role in (''Admin'', ''Co-Admin'')%' union all
+select 'event predicate mirrors inactive-safe Draft rule',pg_get_functiondef('ceit_connect_private.activity_event_status_visible_for_user(text,uuid)'::regprocedure) like '%profile.is_active%p_event_status <> ''Draft''%profile.role in (''Admin'', ''Co-Admin'')%' union all
 select 'event predicate is private',not has_function_privilege('authenticated','ceit_connect_private.activity_event_status_visible_for_user(text,uuid)','EXECUTE') union all
 select 'retention remains 30 days',public.activity_log_retention_days()=30 union all
 select 'purge remains capped',pg_get_functiondef('public.purge_activity_log()'::regprocedure) like '%limit 5000%' union all
@@ -83,10 +83,10 @@ begin
   insert into public.users(id,email,full_name,role,committee_id,is_active) values
     (m,token||'-m@example.test','Batch B Member','Member',ca,true),
     (x,token||'-x@example.test','Batch B Inactive','Member',ca,false);
-  insert into public.events(id,name,start_date,end_date,status,created_by) values
-    (ed,token||'-draft',current_date,current_date+2,'Draft',a),
-    (ea,token||'-active',current_date,current_date+2,'Active',a),
-    (er,token||'-archived',current_date-2,current_date-1,'Archived',a);
+  insert into public.events(id,name,start_date,end_date,status,created_by,archived_unfinished_task_count) values
+    (ed,token||'-draft',current_date,current_date+2,'Draft',a,null),
+    (ea,token||'-active',current_date,current_date+2,'Active',a,null),
+    (er,token||'-archived',current_date-2,current_date-1,'Archived',a,0);
   perform set_config('ceit_connect.task_assignee_writer','create_event_with_tasks',true);
   perform set_config('ceit_connect.task_access_writer','create_active_event_task',true);
   insert into public.tasks(id,event_id,committee_id,title,phase,status,priority,task_type,primary_assignees,is_confidential,created_by,sort_order) values
@@ -149,7 +149,7 @@ insert into batch_b_results(label,passed) select 'ever-confidential delete store
 insert into batch_b_results(label,passed) select 'Admin event helper sees all statuses',ceit_connect_private.activity_event_status_visible_for_user('Draft',current_setting('bb.a')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Active',current_setting('bb.a')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Archived',current_setting('bb.a')::uuid);
 insert into batch_b_results(label,passed) select 'Co-Admin event helper sees all statuses',ceit_connect_private.activity_event_status_visible_for_user('Draft',current_setting('bb.c')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Active',current_setting('bb.c')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Archived',current_setting('bb.c')::uuid);
 insert into batch_b_results(label,passed) select 'Member event helper matches non-Draft policy',not ceit_connect_private.activity_event_status_visible_for_user('Draft',current_setting('bb.m')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Active',current_setting('bb.m')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Archived',current_setting('bb.m')::uuid);
-insert into batch_b_results(label,passed) select 'inactive helper mirrors non-Draft policy gap',not ceit_connect_private.activity_event_status_visible_for_user('Draft',current_setting('bb.x')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Active',current_setting('bb.x')::uuid) and ceit_connect_private.activity_event_status_visible_for_user('Archived',current_setting('bb.x')::uuid);
+insert into batch_b_results(label,passed) select 'inactive helper denies every event status',not ceit_connect_private.activity_event_status_visible_for_user('Draft',current_setting('bb.x')::uuid) and not ceit_connect_private.activity_event_status_visible_for_user('Active',current_setting('bb.x')::uuid) and not ceit_connect_private.activity_event_status_visible_for_user('Archived',current_setting('bb.x')::uuid);
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('bb.a'),'role','authenticated')::text,true);
 insert into batch_b_results(label,passed) select 'Admin RLS matches event helper',count(*)=3 from public.events where id in(current_setting('bb.ed')::uuid,current_setting('bb.ea')::uuid,current_setting('bb.er')::uuid);
@@ -158,7 +158,7 @@ insert into batch_b_results(label,passed) select 'Co-Admin RLS matches event hel
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('bb.m'),'role','authenticated')::text,true);
 insert into batch_b_results(label,passed) select 'Member RLS matches event helper',count(*)=2 from public.events where id in(current_setting('bb.ed')::uuid,current_setting('bb.ea')::uuid,current_setting('bb.er')::uuid);
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('bb.x'),'role','authenticated')::text,true);
-insert into batch_b_results(label,passed) select 'inactive RLS matches event helper',count(*)=2 from public.events where id in(current_setting('bb.ed')::uuid,current_setting('bb.ea')::uuid,current_setting('bb.er')::uuid);
+insert into batch_b_results(label,passed) select 'inactive RLS matches event helper',count(*)=0 from public.events where id in(current_setting('bb.ed')::uuid,current_setting('bb.ea')::uuid,current_setting('bb.er')::uuid);
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('bb.x'),'role','authenticated')::text,true);
@@ -302,6 +302,10 @@ begin
  insert into public.tasks(id,event_id,committee_id,title,phase,status,is_confidential,created_by,sort_order) select gen_random_uuid(),phase_move_event,c,'Move phase '||phase_name,phase_name,'To Do',false,a,ordinality*1024 from unnest(array['A','B','C']) with ordinality as phases(phase_name,ordinality);
  insert into public.tasks(id,event_id,committee_id,title,phase,status,is_confidential,created_by,sort_order) values(gen_random_uuid(),phase_rename_event,c,'Rename phase A','A','To Do',false,a,1024),(rename_task,phase_rename_event,c,'Rename phase B','B','To Do',false,a,2048),(gen_random_uuid(),phase_rename_event,c,'Rename phase C','C','To Do',false,a,3072),(phase_task,phase_task_event,c,'Task phase move','A','To Do',false,a,1024);
  set constraints public.tasks_z9_reconcile_event_phase_positions immediate;set constraints public.tasks_z9_reconcile_event_phase_positions deferred;
+ perform ceit_connect_private.reconcile_event_phase_positions(phase_delete_event,array['A','B','C']);
+ perform ceit_connect_private.reconcile_event_phase_positions(phase_move_event,array['A','B','C']);
+ perform ceit_connect_private.reconcile_event_phase_positions(phase_rename_event,array['A','B','C']);
+ perform ceit_connect_private.reconcile_event_phase_positions(phase_task_event,array['A']);
  select id into delete_middle_task from public.tasks where event_id=phase_delete_event and phase='B';
  set local role authenticated;
  select updated_at into v_version from public.events where id=phase_delete_event;perform public.edit_event_with_tasks(phase_delete_event,v_version,'Phase delete '||token,null,current_date,current_date+1,'Draft','[]','[]',array[delete_middle_task],jsonb_build_array(jsonb_build_object('type','delete','phase','B'),jsonb_build_object('type','reorder','phases',jsonb_build_array('A','C'))));
@@ -309,7 +313,7 @@ begin
  select updated_at into v_version from public.events where id=phase_rename_event;perform public.edit_event_with_tasks(phase_rename_event,v_version,'Phase rename '||token,null,current_date,current_date+1,'Draft','[]',(select jsonb_agg(jsonb_build_object('id',task_row.id,'title',task_row.title,'description',task_row.description,'phase','Bee','committee_id',task_row.committee_id,'task_type',task_row.task_type,'priority',task_row.priority,'due_date',task_row.due_date,'call_time',task_row.call_time,'end_time',task_row.end_time,'assignee_ids',to_jsonb(task_row.primary_assignees||task_row.assist_assignees))) from public.tasks task_row where task_row.id=rename_task),'{}',jsonb_build_array(jsonb_build_object('type','rename','phase','B','next_phase','Bee')));
  select updated_at into v_version from public.events where id=phase_task_event;perform public.edit_event_with_tasks(phase_task_event,v_version,'Phase task update '||token,null,current_date,current_date+1,'Draft','[]',(select jsonb_agg(jsonb_build_object('id',task_row.id,'title',task_row.title,'description',task_row.description,'phase','B','committee_id',task_row.committee_id,'task_type',task_row.task_type,'priority',task_row.priority,'due_date',task_row.due_date,'call_time',task_row.call_time,'end_time',task_row.end_time,'assignee_ids',to_jsonb(task_row.primary_assignees||task_row.assist_assignees))) from public.tasks task_row where task_row.id=phase_task),'{}','[]');
  reset role;
- insert into public.events(id,name,start_date,end_date,status,created_by) values(template_source,'Batch B template source '||token,current_date-2,current_date-1,'Archived',a);
+ insert into public.events(id,name,start_date,end_date,status,created_by,archived_unfinished_task_count) values(template_source,'Batch B template source '||token,current_date-2,current_date-1,'Archived',a,0);
  perform set_config('request.jwt.claims',jsonb_build_object('sub',co,'role','authenticated')::text,true);set local role authenticated;template_created:=public.create_event_from_archived_template('Batch B template-created '||token,null,current_date,current_date+1,'Active',template_source,jsonb_build_array(jsonb_build_object('title','Template active task','phase','Launch','committee_id',c,'task_type','Deliverable','priority','Medium','assignee_ids','[]'::jsonb)),'[]');reset role;perform set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated')::text,true);
  insert into public.events(id,name,start_date,end_date,status,created_by) values(active_event,'Batch B active '||token,current_date-1,current_date,'Active',a);insert into public.tasks(id,event_id,committee_id,title,phase,status,is_confidential,created_by,sort_order) values(active_task,active_event,c,'Completed','Archive phase','Completed',false,a,1024);
  set local role authenticated;select updated_at into v_version from public.events where id=active_event;perform public.archive_event(active_event,0,v_version);reset role;

@@ -1,5 +1,7 @@
 # Phase 4 Step 10 — hardening and gate tests
 
+> **Phase 4B extension (2026-11-09):** the exact Phase 4 totals below remain historical. The authoritative current A/B/D allowlist is the migration-tied table and 33-line paste in `docs/phase-4b/step-14-tests.md`; it absorbs every object changed by migrations `20261106120000` through `20261106170000`, `20261107120000`, and `20261108120000`, plus all four Batch 14 migrations. Part 2 migration `20261109123000_revoke_inactive_user_sessions.sql` adds the sole signature `public.revoke_inactive_user_sessions(uuid)`: owner `postgres`, volatile, `SECURITY DEFINER`, fixed empty `search_path`, `EXECUTE` only for `service_role`, denied to `PUBLIC`, `anon`, and `authenticated`, with no overloads. Its catalog and behavior checks live in `docs/phase-4b/step-14-part-2-tests.md`. Do not alter the old totals or invent replacements: record new totals only from the owner's live Dev output. The external Prod cron job is a gate-ledger item, never an allowlist entry.
+
 ## 10A — read-only live Dev catalog inventory
 
 Run this paste only in the **Dev** Supabase SQL Editor. It is read-only: every statement is a `SELECT`, and it reads only `pg_proc`, `pg_class`, `pg_policies`, `pg_trigger`, and `information_schema` views. It does not impersonate a user because it inspects catalog metadata rather than application RLS behavior.
