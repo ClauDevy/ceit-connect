@@ -24,7 +24,7 @@ export default async function ArchivesPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")
-    .select("id, name, description, start_date, end_date, banner_url")
+    .select("id, name, description, start_date, end_date, banner_url, archived_unfinished_task_count")
     .eq("status", "Archived")
     .order(ARCHIVED_EVENT_ORDER[0].column, {
       ascending: ARCHIVED_EVENT_ORDER[0].ascending,

@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
 import {
   ARCHIVED_EVENT_ORDER,
+  archivedUnfinishedTaskLabel,
   type ArchivedEvent,
 } from "@/lib/events/list-paging";
 import { LIST_FETCH_LIMIT, type OffsetListPage } from "@/lib/list-paging";
@@ -57,7 +58,7 @@ export function ArchiveEventList({
     async (offset: number, signal: AbortSignal) => {
       let request = supabase
         .from("events")
-        .select("id, name, description, start_date, end_date, banner_url")
+        .select("id, name, description, start_date, end_date, banner_url, archived_unfinished_task_count")
         .eq("status", "Archived");
       if (search) {
         request = request.ilike("name", `%${search.replace(/[\\%_]/g, "\\$&")}%`);
@@ -181,7 +182,11 @@ export function ArchiveEventList({
         </InlineAlert>
       ) : null}
       <div className="grid gap-3">
-        {paging.items.map((event) => (
+        {paging.items.map((event) => {
+          const unfinishedLabel = archivedUnfinishedTaskLabel(
+            event.archived_unfinished_task_count,
+          );
+          return (
           <Card
             interactive
             key={event.id}
@@ -204,10 +209,13 @@ export function ArchiveEventList({
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <h2 className="min-w-0 font-display text-base leading-snug font-semibold break-words line-clamp-2 sm:text-lg">
+                  <h2 className="min-w-0 truncate font-display text-base leading-snug font-semibold sm:text-lg">
                     {event.name}
                   </h2>
                   <Badge variant="neutral">Archived</Badge>
+                  {unfinishedLabel ? (
+                    <Badge variant="warning">{unfinishedLabel}</Badge>
+                  ) : null}
                 </div>
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
                   <CalendarDays className="size-3.5 shrink-0" aria-hidden />
@@ -225,7 +233,8 @@ export function ArchiveEventList({
               />
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
       <LoadMoreControl
         announcement={paging.announcement}

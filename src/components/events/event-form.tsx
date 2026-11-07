@@ -82,6 +82,7 @@ import {
   shouldUseCoAdminTemplateCreate,
 } from "@/lib/events/template-import";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
+import { activeEventEndDateError } from "@/lib/events/end-date";
 import { preventSearchFormSubmission } from "@/lib/search";
 import { SUCCESS_ANIMATION_NAME } from "@/lib/motion";
 import type { Committee, Role } from "@/lib/types";
@@ -1118,6 +1119,16 @@ export function EventForm({
       setTab("fundamentals");
       return;
     }
+    const endDateError = activeEventEndDateError({
+      initialStatus: initialEvent?.status,
+      initialEndDate: initialEvent?.endDate,
+      nextEndDate: endDate,
+    });
+    if (endDateError) {
+      setError(endDateError);
+      setTab("fundamentals");
+      return;
+    }
     if (datesOutOfOrder) {
       setError("The end date cannot be before the start date.");
       setTab("fundamentals");
@@ -1627,7 +1638,11 @@ export function EventForm({
                     )}
                   </FormField>
                   <FormField
-                    label="End date"
+                    label={
+                      initialEvent?.status === "Active"
+                        ? "End date (required for Active events)"
+                        : "End date"
+                    }
                     error={
                       datesOutOfOrder
                         ? "End date must be on or after the start date."
@@ -1642,9 +1657,19 @@ export function EventForm({
                         aria-invalid={datesOutOfOrder}
                         value={endDate}
                         onChange={(event) => setEndDate(event.target.value)}
+                        required={
+                          initialEvent?.status === "Active" &&
+                          Boolean(initialEvent.endDate)
+                        }
                       />
                     )}
                   </FormField>
+                  {initialEvent?.status === "Active" && !initialEvent.endDate ? (
+                    <p className="text-xs text-muted-foreground sm:col-start-2">
+                      This legacy Active event can still be saved without an end
+                      date, or you can add one now.
+                    </p>
+                  ) : null}
                 </div>
 
                 <MotionPresence open={tasksAfterEventEnd.length > 0}>

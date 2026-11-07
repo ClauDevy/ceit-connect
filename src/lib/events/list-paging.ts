@@ -25,6 +25,7 @@ export type ArchivedEvent = {
   start_date: string;
   end_date: string | null;
   banner_url: string | null;
+  archived_unfinished_task_count: number | null;
 };
 
 export const HOME_EVENT_ORDER = [
@@ -38,6 +39,11 @@ export const ARCHIVED_EVENT_ORDER = [
   { column: "created_at", ascending: false },
   { column: "id", ascending: false },
 ] as const;
+
+export function archivedUnfinishedTaskLabel(count: number | null) {
+  if (count === null || count <= 0) return null;
+  return `${count} ${count === 1 ? "unfinished task" : "unfinished tasks"}`;
+}
 
 export function splitHomeEvents(events: readonly HomeEvent[]) {
   return {
