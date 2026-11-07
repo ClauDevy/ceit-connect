@@ -18,7 +18,9 @@ const adminMigration = readFileSync(
 const sqlPastes = readFileSync(
   join(process.cwd(), "docs", "phase-4b", "step-a-tests.md"),
   "utf8",
-).toLowerCase();
+)
+  .replace(/\r\n/g, "\n")
+  .toLowerCase();
 
 function functionBody(source: string, signature: string, nextMarker: string) {
   const start = source.indexOf(signature);
@@ -146,7 +148,7 @@ describe("Batch A migration review contracts", () => {
     ).toHaveLength(3);
     expect(sqlPastes).toContain("select public.archive_event(");
     expect(sqlPastes).toContain(
-      "$pattern$event_end_override_writer','',true$pattern$",
+      "$pattern$event_end_override_writer[^;]*''[^;]*true$pattern$",
     );
   });
 

@@ -156,7 +156,7 @@ There is no separately persisted pending ordinary-Member invitation to cancel: `
 No existing shared helper implements the full effective `events_select` predicate. Stage 1 therefore adds a private predicate that mirrors the live policy exactly:
 
 - Draft requires an active Admin or Co-Admin through `my_role()`;
-- the policy's independent `status <> 'Draft'` branch currently allows any authenticated session to read Active and Archived events, including an inactive/profile-less session;
+- Batch 14 supersedes the former independent `status <> 'Draft'` branch: every status now requires an active profile, while active Admins and Co-Admins retain Draft access;
 - `list_activity_log()` separately rejects inactive and profile-less callers before evaluating any event row.
 
 The SQL paste compares the helper against RLS results for Admin, Co-Admin, Member and inactive callers across Draft, Active and Archived fixtures, and separately proves the activity reader still rejects the inactive caller. The non-Draft inactive-policy gap remains a Batch 14 finding and is not fixed here.
@@ -267,7 +267,7 @@ All SQL verification is in `step-b-tests.md`: Paste A expects 41 lines, B 31, C 
 5. That route may expose raw backend error text.
 6. Ordinary-Member Auth ban/unban and Co-Admin avatar-policy behavior remain separate follow-ups.
 7. First-sign-in/invitation-acceptance activity is intentionally deferred.
-8. Effective `events_select` allows inactive authenticated sessions to read non-Draft events; Batch 14 already owns verification and correction if still present.
+8. Batch 14 closes the former inactive authenticated non-Draft read and replaces this batch's private event-status helper with the same active-profile predicate.
 9. The archived-task-list test emits React’s warning for a non-boolean `interactive=true` DOM attribute.
 10. `src/components/ui/mascot.tsx` retains the pre-existing unused `INK` constant lint warning.
 11. The local `.next/dev/types` cache contains duplicated/truncated generated fragments, so `npx.cmd tsc --noEmit` currently stops on three parser errors in generated `routes.d.ts`/`validator.ts` before checking project source. Stage 3 does not delete or regenerate build output.

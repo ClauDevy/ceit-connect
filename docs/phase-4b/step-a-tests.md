@@ -63,7 +63,7 @@ select 'constraint target is schema-qualified',pg_get_functiondef('ceit_connect_
 select 'private table is ungranted',not has_table_privilege('authenticated','ceit_connect_private.event_phase_positions','SELECT') union all
 select 'private helper is ungranted',not has_function_privilege('authenticated','ceit_connect_private.reconcile_event_phase_positions(uuid,text[])','EXECUTE') union all
 select 'phase reader is granted',has_function_privilege('authenticated','public.list_event_phase_order(uuid)','EXECUTE') union all
-select 'typeless actions reach prior validator',pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure) like '%is distinct from ''reorder''%' union all
+select 'typeless actions reach prior validator',pg_get_functiondef('public.edit_event_with_tasks_pre_batch_b(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure) ~* $pattern$type.*is[[:space:]]+distinct[[:space:]]+from.*reorder$pattern$ union all
 select 'position OUT name stays quoted',pg_get_functiondef('public.list_event_phase_order(uuid)'::regprocedure) like '%"position" bigint%' union all
 select 'writer reorder persisted',array(select phase_key from ceit_connect_private.event_phase_positions where event_id=current_setting('ba.er')::uuid order by position)=array['B','A','C'] union all
 select 'middle rename kept position',array(select phase_key from ceit_connect_private.event_phase_positions where event_id=current_setting('ba.en')::uuid order by position)=array['A','Middle','C'] union all
@@ -79,7 +79,7 @@ select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting(
 insert into batch_a_results(label,passed) select 'confidential-only name is hidden',not exists(select 1 from public.list_event_phase_order(current_setting('ba.ea')::uuid) where phase_key='Secret Phase');
 reset role;
 insert into batch_a_results(label,passed) select 'Home computes content access once',(length(pg_get_functiondef('public.list_home_event_progress(uuid[])'::regprocedure))-length(replace(pg_get_functiondef('public.list_home_event_progress(uuid[])'::regprocedure),'task_content_access_for_user','')))/length('task_content_access_for_user')=1;
-do $report$ declare r record; begin for r in select * from batch_a_results order by seq loop raise notice '% %: %',lpad(r.seq::text,2,'0'),r.label,case when r.passed then 'PASS' else 'FAIL' end; end loop; if (select count(*) from batch_a_results)<>20 or exists(select 1 from batch_a_results where not passed) then raise exception 'Batch A phase checks failed'; end if; end $report$;
+do $report$ declare r record; v_count integer; v_failed text; begin for r in select * from batch_a_results order by seq loop raise notice '% %: %',lpad(r.seq::text,2,'0'),r.label,case when r.passed then 'PASS' else 'FAIL' end; end loop; select count(*),string_agg(seq::text||' '||label,', ' order by seq) filter(where not passed) into v_count,v_failed from batch_a_results; if v_count<>20 or v_failed is not null then raise exception 'Batch A phase checks failed: expected 20 rows, got %; failed: %',v_count,coalesce(v_failed,'none (one or more result rows were missing)'); end if; end $report$;
 do $$ begin raise exception 'TEST RESULTS: 20/20 PASS — transaction intentionally rolled back'; end $$;
 ```
 
@@ -90,6 +90,10 @@ begin;
 create temporary table batch_a_results(seq integer generated always as identity,label text,passed boolean) on commit drop;
 grant select,insert on batch_a_results to authenticated;
 grant usage,select on sequence batch_a_results_seq_seq to authenticated;
+-- Keep the two rollback-only fixture Admins inside the enabled two-seat cap.
+select set_config('ceit_connect.officer_writer','set_officer_active',true);
+update public.users set is_active=false where role='Admin' and is_active;
+select set_config('ceit_connect.officer_writer','',true);
 do $fixtures$
 declare token text:='batch-a-admin-'||gen_random_uuid(); actor_id uuid:=gen_random_uuid(); peer_id uuid:=gen_random_uuid();
 begin
@@ -99,7 +103,7 @@ begin
   perform set_config('ceit_connect.officer_writer','invite_new_officer',true);
   insert into public.users(id,email,full_name,role,committee_id,is_active,avatar_url) values(actor_id,token||'-actor@example.test','Batch A Actor','Admin',null,true,null),(peer_id,token||'-peer@example.test','Batch A Peer','Admin',null,true,'avatars/test.png');
   perform set_config('ceit_connect.officer_writer','',true);
-  update public.app_settings set enforce_officer_role_caps=false where key='global';
+  update public.app_settings set enforce_officer_role_caps=true where key='global';
   perform set_config('ba.actor',actor_id::text,true); perform set_config('ba.peer',peer_id::text,true);
 end $fixtures$;
 set local role authenticated;
@@ -190,9 +194,9 @@ select 'extension bypasses scan',pg_get_functiondef('ceit_connect_private.guard_
 select 'null-to-value scans',pg_get_functiondef('ceit_connect_private.guard_event_end_shortening()'::regprocedure) like '%old.end_date is not null and new.end_date >= old.end_date%' union all
 select 'event error has no title',pg_get_functiondef('ceit_connect_private.guard_event_end_shortening()'::regprocedure) not like '%task_row.title%' union all
 select 'override requires exact trusted scope',pg_get_functiondef('ceit_connect_private.guard_task_event_end()'::regprocedure) like '%current_user=''postgres''%event_end_override_writer%=''edit_event_with_tasks''%event_end_override_event_id%new.event_id::text%' union all
-select 'wrapper clears success and error paths',regexp_count(pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure),$pattern$event_end_override_writer','',true$pattern$)=2 union all
+select 'wrapper clears success and error paths',regexp_count(pg_get_functiondef('public.edit_event_with_tasks_pre_batch_b(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure),$pattern$event_end_override_writer[^;]*''[^;]*true$pattern$)=2 union all
 select 'set-null differs from unset',pg_get_functiondef('ceit_connect_private.guard_task_event_end()'::regprocedure) like '%event_end_override_is_set%' and pg_get_functiondef('ceit_connect_private.guard_task_event_end()'::regprocedure) like '%nullif(current_setting(''ceit_connect.event_end_override_value''%';
-do $report$ declare r record; begin for r in select * from batch_a_results order by seq loop raise notice '% %: %',lpad(r.seq::text,2,'0'),r.label,case when r.passed then 'PASS' else 'FAIL' end; end loop; if (select count(*) from batch_a_results)<>24 or exists(select 1 from batch_a_results where not passed) then raise exception 'Batch A deadline checks failed'; end if; end $report$;
+do $report$ declare r record; v_count integer; v_failed text; begin for r in select * from batch_a_results order by seq loop raise notice '% %: %',lpad(r.seq::text,2,'0'),r.label,case when r.passed then 'PASS' else 'FAIL' end; end loop; select count(*),string_agg(seq::text||' '||label,', ' order by seq) filter(where not passed) into v_count,v_failed from batch_a_results; if v_count<>24 or v_failed is not null then raise exception 'Batch A deadline checks failed: expected 24 rows, got %; failed: %',v_count,coalesce(v_failed,'none (one or more result rows were missing)'); end if; end $report$;
 do $$ begin raise exception 'TEST RESULTS: 24/24 PASS — transaction intentionally rolled back'; end $$;
 ```
 

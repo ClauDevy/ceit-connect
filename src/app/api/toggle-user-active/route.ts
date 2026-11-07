@@ -10,6 +10,45 @@ function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status });
 }
 
+type ServiceRoleClient = Awaited<ReturnType<typeof createServiceRoleClient>>;
+
+async function syncAuthAccess(
+  adminClient: ServiceRoleClient,
+  userId: string,
+  isActive: boolean,
+) {
+  try {
+    const { error } = await adminClient.auth.admin.updateUserById(userId, {
+      ban_duration: isActive ? "none" : "876000h",
+    });
+    if (error) return false;
+    if (isActive) return true;
+
+    const { data, error: sessionError } = await adminClient.rpc(
+      "revoke_inactive_user_sessions",
+      { p_user_id: userId },
+    );
+    if (sessionError || !Array.isArray(data) || data.length !== 1) return false;
+    const row = data[0] as Record<string, unknown>;
+    return row.out_user_id === userId && row.out_outcome === "revoked";
+  } catch {
+    return false;
+  }
+}
+
+function loginCleanupPending(storageWarning = false) {
+  return json(
+    {
+      error: "Profile status changed, but login cleanup still needs attention.",
+      cleanupPending: true,
+      ...(storageWarning
+        ? { warning: "The avatar file could not be removed." }
+        : {}),
+    },
+    502,
+  );
+}
+
 export async function POST(request: Request) {
   const user = await getAuthUser();
   if (!user) return json({ error: "Not signed in" }, 401);
@@ -73,9 +112,24 @@ export async function POST(request: Request) {
     } catch (rpcError) {
       error = rpcError;
     }
-    if (error) {
+    const stateAlreadyChanged =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "CCM04";
+    if (error && !stateAlreadyChanged) {
       const safe = safeMemberManagementError(error);
       return json({ error: safe.message }, safe.status);
+    }
+
+    let adminClient: ServiceRoleClient;
+    try {
+      adminClient = await createServiceRoleClient();
+    } catch {
+      return loginCleanupPending();
+    }
+    if (!(await syncAuthAccess(adminClient, userId, isActive))) {
+      return loginCleanupPending();
     }
     return json({ success: true });
   }
@@ -114,23 +168,18 @@ export async function POST(request: Request) {
       return json({ error: message }, 409);
     }
 
-    let adminClient: Awaited<ReturnType<typeof createServiceRoleClient>>;
-    let authError: unknown;
+    let adminClient: ServiceRoleClient;
     try {
       adminClient = await createServiceRoleClient();
-      const authResult = await adminClient.auth.admin.updateUserById(userId, {
-        ban_duration: isActive ? "none" : "876000h",
-      });
-      authError = authResult.error;
     } catch {
-      return json(
-        {
-          error: "Profile status changed, but login cleanup still needs attention.",
-          cleanupPending: true,
-        },
-        502,
-      );
+      return loginCleanupPending();
     }
+
+    const authAccessUpdated = await syncAuthAccess(
+      adminClient,
+      userId,
+      isActive,
+    );
 
     let storageWarning = false;
     if (!isActive) {
@@ -144,17 +193,8 @@ export async function POST(request: Request) {
       }
     }
 
-    if (authError) {
-      return json(
-        {
-          error: "Profile status changed, but login cleanup still needs attention.",
-          cleanupPending: true,
-          ...(storageWarning
-            ? { warning: "The avatar file could not be removed." }
-            : {}),
-        },
-        502,
-      );
+    if (!authAccessUpdated) {
+      return loginCleanupPending(storageWarning);
     }
 
     return json({
@@ -165,32 +205,49 @@ export async function POST(request: Request) {
     });
   }
 
-  const adminClient = await createServiceRoleClient();
+  let adminClient: ServiceRoleClient;
+  try {
+    adminClient = await createServiceRoleClient();
+  } catch {
+    return json({ error: "The user status could not be changed." }, 500);
+  }
   const updates: { is_active: boolean; avatar_url?: null } = {
     is_active: isActive,
   };
   if (!isActive) updates.avatar_url = null;
 
-  const { error: profileError } = await adminClient
+  const { data: updatedProfile, error: profileError } = await adminClient
     .from("users")
     .update(updates)
-    .eq("id", userId);
+    .eq("id", userId)
+    .select("id")
+    .single();
 
-  if (profileError) {
-    return json({ error: profileError.message }, 500);
+  if (profileError || !updatedProfile) {
+    return json({ error: "The user status could not be changed." }, 500);
   }
 
+  const authAccessUpdated = await syncAuthAccess(adminClient, userId, isActive);
+  let storageWarning = false;
   if (!isActive) {
-    const { error: removeError } = await adminClient.storage
-      .from("avatars")
-      .remove([`${userId}/avatar.webp`]);
-    if (removeError) {
-      return json({
-        success: true,
-        warning: "User deactivated, but the avatar file could not be removed.",
-      });
+    try {
+      const { error: removeError } = await adminClient.storage
+        .from("avatars")
+        .remove([`${userId}/avatar.webp`]);
+      storageWarning = Boolean(removeError);
+    } catch {
+      storageWarning = true;
     }
   }
 
-  return json({ success: true });
+  if (!authAccessUpdated) {
+    return loginCleanupPending(storageWarning);
+  }
+
+  return json({
+    success: true,
+    ...(storageWarning
+      ? { warning: "User status changed, but the avatar file could not be removed." }
+      : {}),
+  });
 }
