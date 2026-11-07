@@ -9,8 +9,11 @@ import {
   type BoardEvent,
   type BoardTask,
 } from "@/lib/events/board";
+import { parseEventAutoArchiveWarning } from "@/lib/events/auto-archive-warning";
 import { createClient } from "@/lib/supabase/server";
 import { isCanonicalUuid } from "@/lib/uuid";
+
+export const dynamic = "force-dynamic";
 
 async function BoardData({
   event,
@@ -35,10 +38,14 @@ async function BoardData({
         .order("name")
         .returns<BoardCommittee[]>()
     : Promise.resolve({ data: [] as BoardCommittee[], error: null });
+  const warningPromise = supabase.rpc("get_event_auto_archive_warning", {
+    p_event_id: event.id,
+  });
 
-  const [boardResult, committeesResult] = await Promise.all([
+  const [boardResult, committeesResult, warningResult] = await Promise.all([
     boardPromise,
     committeesPromise,
+    warningPromise,
   ]);
 
   if (boardResult.error) {
@@ -60,6 +67,20 @@ async function BoardData({
       committeesResult.error,
     );
   }
+  if (warningResult.error) {
+    console.error("Failed to load event auto-archive warning:", {
+      code: warningResult.error.code,
+    });
+  }
+  const autoArchiveWarning = warningResult.error
+    ? null
+    : parseEventAutoArchiveWarning(warningResult.data);
+  const warningPayloadPresent = Array.isArray(warningResult.data)
+    ? warningResult.data.length > 0
+    : warningResult.data !== null && warningResult.data !== undefined;
+  if (!warningResult.error && warningPayloadPresent && !autoArchiveWarning) {
+    console.error("Event auto-archive warning returned invalid data.");
+  }
 
   return (
     <EventBoard
@@ -70,6 +91,7 @@ async function BoardData({
           viewer.role === "Admin" || committee.id === viewer.committeeId,
       )}
       initialTasks={boardData}
+      autoArchiveWarning={autoArchiveWarning}
     />
   );
 }
