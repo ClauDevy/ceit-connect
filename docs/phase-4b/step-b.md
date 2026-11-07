@@ -1,7 +1,7 @@
 # Phase 4B — Batch B: audit-log coverage
 
 **Branch:** `feature/audit-log-coverage`  
-**Status:** Stage 1 implemented locally; migration unapplied  
+**Status:** Stages 1, 2A, and 2B applied on Dev; Stage 3 closeout and the deletion-inventory follow-up are implemented locally and await Dev application/verification
 **Run order:** after Batch A and before Batch D and Batch 14  
 **Scope:** audit data and safe reader support; no Activity Log redesign
 
@@ -12,7 +12,18 @@
 3. **Stage 2B:** event/phase/archive/delete wrappers, database-only event bulk RPC and Auth-backed former-member summary finalizer.
 4. **Stage 3:** tiny copy/documentation-only closeout if browser verification finds a generic label that needs clarification.
 
-Stage 2A and 2B remain one implementation run, but use two migration files so the owner can review and Dev-apply them separately. Stage 2 also creates the real `docs/phase-4b/step-b-function-diff.md`, comparing every replacement side by side with its latest body, identifying full-body replacements versus rename-plus-wrapper replacements, and recording before/after trigger order on `tasks`, `users`, `events`, `task_leave_requests`, and `task_volunteers`.
+Stage 2A and 2B were implemented in one run using two migration files so the owner can review and Dev-apply them separately. The real `docs/phase-4b/step-b-function-diff.md` compares every replacement side by side with its latest body, identifies full-body replacements versus rename-plus-wrapper replacements, and records before/after trigger order on `tasks`, `users`, `events`, `task_leave_requests`, `task_volunteers`, and `officer_invites`.
+
+Stage 2 files:
+
+- `20261106160000_activity_log_trigger_writers.sql`
+- `20261106170000_activity_log_event_writers.sql`
+
+Follow-up file:
+
+- `20261107120000_event_phase_delete_lock_inventory.sql`
+
+Stage 3 changes only Edit Event confirmation copy and documentation/tests. The form cannot move a task between phases: its task editor preserves the existing phase ID and exposes no cross-phase control. The phase-removal confirmation now says so explicitly while retaining the existing rule that persisted To Do tasks are deleted on save; no form, payload, writer, or authorization logic changes.
 
 ## Current coverage
 
@@ -62,8 +73,9 @@ Every new task-subject row stores its confidentiality boolean.
 
 The sole approved IDs-only exception is `task_deleted`:
 
-- the Stage 2 writer may store the deleted title only when every retained activity row for that task proves it was never confidential;
-- the proof combines legacy snapshots and semantic `task_was_confidential` values and fails closed on malformed or missing evidence;
+- the Stage 2 writer may store the deleted title only when there is at least one retained activity row and every retained row proves the task was never confidential;
+- the proof combines legacy snapshots and semantic `task_was_confidential` values and fails closed on malformed evidence;
+- zero retained rows set `task_was_confidential=false`, store no title, and read as `Deleted task` to both active Admins and Co-Admins;
 - only active Admins and Co-Admins receive that snapshot;
 - a Member receives `Deleted task` if they can exercise a task-scoped test path;
 - an ever-confidential task stores no title snapshot and displays `Deleted task`;
@@ -137,6 +149,8 @@ The Stage 1 SQL tests compare the database catalog with this table.
 | `bulk_events_deleted` | DELETE | bulk | Admin + Co-Admin | `N events deleted` | `count`, `ids` |
 | `bulk_members_removed` | DELETE | bulk | Admin + Co-Admin | `N members removed` | `count`, `ids` |
 
+There is no separately persisted pending ordinary-Member invitation to cancel: `finalize_member_invite()` creates the profile and writes `member_invited` transactionally. A pending officer invitation is cancelled through the existing officer-invite cancellation boundary; the resulting `officer_invites` status update writes `invitation_cancelled` with IDs, role and committee only, never the invitee email or name.
+
 ## Event visibility parity
 
 No existing shared helper implements the full effective `events_select` predicate. Stage 1 therefore adds a private predicate that mirrors the live policy exactly:
@@ -151,7 +165,7 @@ The SQL paste compares the helper against RLS results for Admin, Co-Admin, Membe
 
 No actor value is accepted from a browser payload. Writers use `auth.uid()`, a locked row’s stored user ID, or an existing private deletion context.
 
-Every Stage 2 writer must set a non-null `actor_kind`, including the rewritten legacy task trigger, `move_task`, and the event-delete writers. The Stage 2 SQL paste must execute every writer path and prove that none of its newly inserted rows has an empty `actor_kind`. The validated private `write_activity` insert helper and the protected phase-text length cap both land in Stage 2A.
+Every Stage 2 writer sets a non-null `actor_kind`, including the rewritten legacy task trigger, `move_task` through that trigger, and the event-delete writers. The Stage 2 SQL paste executes representative writer paths and proves that none of their newly inserted rows has an empty `actor_kind`. The validated private `write_activity` insert helper and the 100-character protected phase-text cap land in Stage 2A.
 
 | Table/path | Current write path | Actor | Stage 2 source |
 |---|---|---|---|
@@ -186,22 +200,26 @@ This is the second narrow exception to perfect actor/summary attribution:
 1. an Auth-backed former-member bulk can complete external work while its aggregate summary finalizer fails twice; individual `person_removed` rows still exist and the route surfaces the aggregate failure;
 2. the existing direct service-role ordinary-Member active-state branch has no trustworthy database actor and is logged as `Unavailable actor`.
 
+Known limitation of the first approved exception: the finalizer considers only newly anonymized IDs from the current route run. Batch B deliberately does not reconcile an earlier run whose `person_removed` rows committed but whose summary finalizer failed twice; those earlier rows remain individually auditable without a later aggregate summary.
+
 Batch 14 must close the second exception by moving that service-role profile update behind a narrow actor-aware database boundary. Batch B records the handoff here but does not edit the Batch 14 list.
 
 ## Stage 2 Edit Event output
 
 - `event_edited` is written only when event metadata or submitted task/phase content actually changes. Its payload contains changed-field codes only.
 - Phase positions are read after Batch A’s explicit reconciliation call, never from the deferred trigger.
-- Phase-only task updates caused by rename/reorder are suppressed under the exact Edit Event marker.
+- The wrapper passes transaction-local canonical `{from,to}` rename pairs to the task trigger and clears them on success and error. Only a task phase change matching a pair is suppressed; a task moved to a different phase in the same save still writes `task_updated` with `phase`.
+- `phase_moved` compares dense ranks among surviving phases before and after the save, mapping rename destinations back to their sources. Removing a phase does not falsely mark later survivors as moved.
 - One save that renames `A` to `B` and then reorders it writes:
   - one `event_edited` if the save changed persisted state;
   - one `phase_renamed` for `A` → `B`;
-  - one `phase_moved` for each surviving phase whose final numeric Batch A position differs;
+  - one `phase_moved` for each surviving phase whose dense survivor rank changes;
   - no duplicate phase-only `task_updated` rows.
+- A single-task phase edit on an Active event does not create an event-wide `phase_added` entry; the accepted record is the task’s `task_updated` row with the `phase` field.
 
 ## Stage 2 bulk behavior
 
-Database-only event bulk deletion keeps the existing per-item success/failure states and route response shape. Up to ten event IDs are sorted before locking; successful item subtransactions and the one summary commit together. The transaction holds every successful item’s event, advisory, task and child locks until the outer call commits, increasing lock duration compared with today’s sequential RPCs but preventing a summary from committing separately. Before approval, Dev must time one call deleting 10 large events and report the elapsed time. If that result is close to the project statement timeout, the implementation keeps event deletions sequential and writes the summary afterward, matching the member-bulk pattern.
+Database-only event bulk deletion keeps the existing per-item success/failure states and route response shape. Up to ten event IDs are sorted before locking; successful item subtransactions and the one summary commit together. The transaction holds every successful item’s event, advisory, task and child locks until the outer call commits, increasing lock duration compared with today’s sequential RPCs but preventing a summary from committing separately. Paste D times one call deleting 10 events with 200 tasks each and prints `elapsed_ms`. The same ten-event timing must also be run once through the real `/api/event-deletion` route because SQL Editor and API-role timeouts differ. If either Dev result is close to its statement/route limit, the implementation must be revised to keep deletions sequential and write the summary afterward, matching the member-bulk pattern, before approval.
 
 Bulk summaries are additional to per-item rows:
 
@@ -220,6 +238,12 @@ Bulk summaries are additional to per-item rows:
 
 The 30-day scalar, guarded 5,000-row purge, delete/truncate guard and all direct table revokes remain unchanged. Event/person IDs have no cascading foreign keys. Event deletion retains both the event row and its per-task DELETE rows in activity.
 
+## Event-deletion inventory follow-up
+
+Batch A added `ceit_connect_private.event_phase_positions.event_id -> public.events.id ON DELETE CASCADE` after Batch 13d had pinned its fail-closed deletion inventory. With Batch A present, the old exact-count check correctly raises `CCE09` before deletion because that ninth foreign key is not registered. This affects Prod event deletion today wherever Batch A is applied but the follow-up is not: Batch B is not required to trigger the failure, because the Batch 13d single-delete locker already performs the exact inventory check.
+
+`20261107120000_event_phase_delete_lock_inventory.sql` adds only the reviewed `event_child_rows` inventory kind and the phase-position row at order 90, then replaces the private locker so event-child rows are locked by `event_id`. It changes no public function, role, grant, authorization predicate, or caller input. The established outer sequence remains authorization before locks, then event row -> event advisory -> task rows. Existing task-child locks remain orders 30–80; the new phase-position lock is appended at order 90. The tracked schema contains no other unregistered foreign key to `events` or `tasks`; Paste E proves both directions of exact catalog parity on the target database before exercising a real delete.
+
 ## Verification
 
 Only these local commands are allowed:
@@ -232,7 +256,7 @@ npm.cmd run lint
 
 Never build, commit, push or run a Supabase command for Batch B.
 
-Stage 1 SQL verification is in `step-b-tests.md`. Stage 2 will extend it with writer, finalizer, lock and trigger-order tests.
+All SQL verification is in `step-b-tests.md`: Paste A expects 41 lines, B 31, C 38, D 32, and follow-up Paste E 12, for 154 evaluated result lines. Paste D also prints the measured 10-large-event elapsed time. The revised pastes and follow-up have not yet been rerun on Dev.
 
 ## Unrelated findings — listed, not fixed
 
@@ -244,7 +268,10 @@ Stage 1 SQL verification is in `step-b-tests.md`. Stage 2 will extend it with wr
 6. Ordinary-Member Auth ban/unban and Co-Admin avatar-policy behavior remain separate follow-ups.
 7. First-sign-in/invitation-acceptance activity is intentionally deferred.
 8. Effective `events_select` allows inactive authenticated sessions to read non-Draft events; Batch 14 already owns verification and correction if still present.
+9. The archived-task-list test emits React’s warning for a non-boolean `interactive=true` DOM attribute.
+10. `src/components/ui/mascot.tsx` retains the pre-existing unused `INK` constant lint warning.
+11. The local `.next/dev/types` cache contains duplicated/truncated generated fragments, so `npx.cmd tsc --noEmit` currently stops on three parser errors in generated `routes.d.ts`/`validator.ts` before checking project source. Stage 3 does not delete or regenerate build output.
 
 ## Catalog handoff
 
-Batch 14 must later absorb the additive columns/constraints, every new catalog object, the event-visibility helper, replaced reader, Stage 2 writers/triggers/wrappers, grants/revokes, revoked prior bodies, and the direct service-role unavailable-actor exception. Batch B records that handoff here but does not edit the Batch 14 or Deferred lists.
+Batch 14 must later absorb the additive columns/constraints, every new catalog object, the event-visibility helper, replaced reader, Stage 2 writers/triggers/wrappers, grants/revokes (including `write_activity` execute for `ceit_event_delete_executor`), revoked prior bodies, and the direct service-role unavailable-actor exception. Batch B records that handoff here but does not edit the Batch 14 or Deferred lists.

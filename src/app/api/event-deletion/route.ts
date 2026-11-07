@@ -26,6 +26,7 @@ type DeleteRpcRow = {
   out_event_id: string;
   out_cleanup_job_id: string | null;
   out_cleanup_unavailable: boolean;
+  out_error_code: string | null;
 };
 
 function json(body: unknown, status = 200) {
@@ -112,11 +113,12 @@ export async function POST(request: Request) {
     console.error("Pre-deletion event cleanup pass failed.");
   }
 
-  const results: EventDeletionResult[] = [];
+  const resultById = new Map<string, EventDeletionResult>();
+  const eligible: Array<{ id: string; expectedUpdatedAt: string }> = [];
   for (const submitted of body.events) {
     const stored = storedById.get(submitted.id.toLowerCase());
     if (!stored) {
-      results.push({
+      resultById.set(submitted.id.toLowerCase(), {
         eventId: submitted.id,
         eventName: null,
         deletion: "failed",
@@ -127,7 +129,7 @@ export async function POST(request: Request) {
       continue;
     }
     if (stored.updated_at !== submitted.expectedUpdatedAt) {
-      results.push({
+      resultById.set(submitted.id.toLowerCase(), {
         eventId: submitted.id,
         eventName: stored.name,
         deletion: "failed",
@@ -137,49 +139,66 @@ export async function POST(request: Request) {
       });
       continue;
     }
+    eligible.push(submitted);
+  }
 
+  let deletionRows: DeleteRpcRow[] = [];
+  if (eligible.length > 0) {
     let deletion;
     try {
-      deletion = await service.rpc("delete_event", {
-        p_event_id: submitted.id,
+      deletion = await service.rpc("delete_events_bulk", {
+        p_events: eligible.map((event) => ({
+          id: event.id,
+          expected_updated_at: event.expectedUpdatedAt,
+        })),
         p_actor_id: caller.userId,
-        // Keep the opaque database string intact. Date would lose microseconds.
-        p_expected_updated_at: submitted.expectedUpdatedAt,
       });
     } catch {
-      results.push({
-        eventId: submitted.id,
-        eventName: stored.name,
-        deletion: "failed",
-        cleanup: "done",
-        cleanupWarning: false,
-        message: deletionErrorMessage(undefined),
-      });
-      continue;
+      deletion = { data: null, error: { code: undefined } };
     }
     if (deletion.error) {
-      results.push({
-        eventId: submitted.id,
-        eventName: stored.name,
-        deletion: "failed",
-        cleanup: "done",
-        cleanupWarning: false,
-        message: deletionErrorMessage(deletion.error.code),
-      });
-      continue;
+      for (const submitted of eligible) {
+        const stored = storedById.get(submitted.id.toLowerCase());
+        resultById.set(submitted.id.toLowerCase(), {
+          eventId: submitted.id,
+          eventName: stored?.name ?? null,
+          deletion: "failed",
+          cleanup: "done",
+          cleanupWarning: false,
+          message: deletionErrorMessage(deletion.error.code),
+        });
+      }
+    } else if (Array.isArray(deletion.data)) {
+      deletionRows = deletion.data as DeleteRpcRow[];
     }
+  }
 
-    const row = Array.isArray(deletion.data)
-      ? (deletion.data[0] as DeleteRpcRow | undefined)
-      : undefined;
+  const deletionById = new Map(
+    deletionRows.map((row) => [row.out_event_id.toLowerCase(), row]),
+  );
+  for (const submitted of eligible) {
+    if (resultById.has(submitted.id.toLowerCase())) continue;
+    const stored = storedById.get(submitted.id.toLowerCase());
+    const row = deletionById.get(submitted.id.toLowerCase());
     if (!row) {
-      results.push({
+      resultById.set(submitted.id.toLowerCase(), {
         eventId: submitted.id,
-        eventName: stored.name,
+        eventName: stored?.name ?? null,
         deletion: "failed",
         cleanup: "done",
         cleanupWarning: false,
         message: deletionErrorMessage(undefined),
+      });
+      continue;
+    }
+    if (row.out_error_code) {
+      resultById.set(submitted.id.toLowerCase(), {
+        eventId: submitted.id,
+        eventName: stored?.name ?? null,
+        deletion: "failed",
+        cleanup: "done",
+        cleanupWarning: false,
+        message: deletionErrorMessage(row.out_error_code),
       });
       continue;
     }
@@ -203,15 +222,26 @@ export async function POST(request: Request) {
     if (row.out_cleanup_unavailable) {
       cleanupMessage = "Event deleted. Its stored banner could not be queued for cleanup.";
     }
-    results.push({
+    resultById.set(submitted.id.toLowerCase(), {
       eventId: submitted.id,
-      eventName: stored.name,
+      eventName: stored?.name ?? null,
       deletion: "done",
       cleanup,
       cleanupWarning: row.out_cleanup_unavailable,
       message: cleanupMessage,
     });
   }
+
+  const results = body.events.map((submitted) =>
+    resultById.get(submitted.id.toLowerCase()) ?? {
+      eventId: submitted.id,
+      eventName: storedById.get(submitted.id.toLowerCase())?.name ?? null,
+      deletion: "failed" as const,
+      cleanup: "done" as const,
+      cleanupWarning: false,
+      message: deletionErrorMessage(undefined),
+    },
+  );
 
   let pendingCount: number | null = null;
   try {
