@@ -31,8 +31,8 @@ declare
   ok boolean;
   n integer;
 begin
-  select count(*) = 1 into ok from public.app_settings where key = 'global' and not enforce_officer_role_caps;
-  r := r || format(E'\nSETTINGS_EXACT_SEED: %s', case when ok then 'PASS' else 'FAIL' end);
+  select count(*) = 1 into ok from public.app_settings where key = 'global' and enforce_officer_role_caps;
+  r := r || format(E'\nSETTINGS_EXACT_ENABLED_STATE: %s', case when ok then 'PASS' else 'FAIL' end);
   select count(*) = 1 into ok from pg_constraint where conrelid = 'public.app_settings'::regclass and contype = 'p';
   r := r || format(E'\nSETTINGS_PRIMARY_KEY: %s', case when ok then 'PASS' else 'FAIL' end);
   select count(*) = 1 into ok from pg_constraint where conrelid = 'public.app_settings'::regclass and conname = 'app_settings_singleton_key';
@@ -78,10 +78,14 @@ end $$;
 rollback;
 ```
 
-## TEST 2 — caps off and all seven writers
+## TEST 2 — caps on and all seven writers
 
 ```sql
 begin;
+insert into public.committees(id,name) values
+ ('b802c000-0000-4000-8000-000000000001','B8 T2 A'),
+ ('b802c000-0000-4000-8000-000000000002','B8 T2 B'),
+ ('b802c000-0000-4000-8000-000000000003','B8 T2 C');
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select x.id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',x.email,'',x.confirmed,'{}','{}',now(),now()
 from (values
@@ -89,15 +93,14 @@ from (values
  ('b8020000-0000-4000-8000-000000000002'::uuid,'b8-admin2@test.local',now()),
  ('b8020000-0000-4000-8000-000000000003'::uuid,'b8-member1@test.local',now()),
  ('b8020000-0000-4000-8000-000000000004'::uuid,'b8-member2@test.local',now()),
- ('b8020000-0000-4000-8000-000000000005'::uuid,'b8-co@test.local',now()),
- ('b8020000-0000-4000-8000-000000000006'::uuid,'b8-invite@test.local',null::timestamptz)
+ ('b8020000-0000-4000-8000-000000000005'::uuid,'b8-co@test.local',now())
 ) x(id,email,confirmed);
 do $$
 declare c1 uuid; c2 uuid; c3 uuid;
 begin
-  select id into c1 from public.committees order by name limit 1;
-  select id into c2 from public.committees order by name offset 1 limit 1;
-  select id into c3 from public.committees order by name offset 2 limit 1;
+  c1 := 'b802c000-0000-4000-8000-000000000001';
+  c2 := 'b802c000-0000-4000-8000-000000000002';
+  c3 := 'b802c000-0000-4000-8000-000000000003';
   perform set_config('ceit_connect.officer_writer','invite_new_officer',true);
   insert into public.users(id,email,full_name,role,committee_id) values
    ('b8020000-0000-4000-8000-000000000001','b8-admin1@test.local','Admin One','Admin',null),
@@ -113,35 +116,47 @@ select set_config('request.jwt.claims','{"sub":"b8020000-0000-4000-8000-00000000
 do $$
 declare r text := ''; c1 uuid; c2 uuid; c3 uuid; j jsonb; ok boolean;
 begin
-  select id into c1 from public.committees order by name limit 1;
-  select id into c2 from public.committees order by name offset 1 limit 1;
-  select id into c3 from public.committees order by name offset 2 limit 1;
+  c1 := 'b802c000-0000-4000-8000-000000000001';
+  c2 := 'b802c000-0000-4000-8000-000000000002';
+  c3 := 'b802c000-0000-4000-8000-000000000003';
   select public.invite_new_officer('b8021000-0000-4000-8000-000000000001',null,'B8-Invite@Test.Local',' Invited Officer ','Co-Admin',c3) into j;
   r:=r||format(E'\nPREPARE_NORMALIZED: %s',case when j->>'outcome'='prepared' then 'PASS' else 'FAIL' end);
+  execute 'reset role';
+  insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+  values ('b8020000-0000-4000-8000-000000000006','00000000-0000-0000-0000-000000000000','authenticated','authenticated','b8-invite@test.local','',null,'{}','{}',now(),now());
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claims','{"sub":"b8020000-0000-4000-8000-000000000001","role":"authenticated"}',true);
   select public.invite_new_officer('b8021000-0000-4000-8000-000000000001','b8020000-0000-4000-8000-000000000006',null,null,null,null) into j;
   r:=r||format(E'\nFINALIZE_SENT: %s',case when j->>'outcome'='sent' then 'PASS' else 'FAIL' end);
   select role='Co-Admin' and is_active and committee_id=c3 into ok from public.users where id='b8020000-0000-4000-8000-000000000006';
   r:=r||format(E'\nFINAL_PROFILE_IS_SEAT: %s',case when ok then 'PASS' else 'FAIL' end);
+  execute 'reset role';
   select status='sent' and reservation_released_at is not null into ok from public.officer_invites where id='b8021000-0000-4000-8000-000000000001';
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claims','{"sub":"b8020000-0000-4000-8000-000000000001","role":"authenticated"}',true);
   r:=r||format(E'\nFINALIZATION_COALESCE_PATH_EXECUTED: %s',case when ok then 'PASS' else 'FAIL' end);
-  perform public.appoint_member_as_officer('b8020000-0000-4000-8000-000000000003','Co-Admin',c1);
+  perform public.appoint_member_as_officer('b8020000-0000-4000-8000-000000000003','Co-Admin',c2);
   select role='Co-Admin' into ok from public.users where id='b8020000-0000-4000-8000-000000000003';
-  r:=r||format(E'\nSECOND_COADMIN_CAPS_OFF: %s',case when ok then 'PASS' else 'FAIL' end);
+  r:=r||format(E'\nEMPTY_COADMIN_SEAT_FILLED_CAPS_ON: %s',case when ok then 'PASS' else 'FAIL' end);
   perform public.return_coadmin_to_member('b8020000-0000-4000-8000-000000000003',c2);
   select role='Member' and committee_id=c2 into ok from public.users where id='b8020000-0000-4000-8000-000000000003';
   r:=r||format(E'\nRETURN_TO_MEMBER: %s',case when ok then 'PASS' else 'FAIL' end);
   perform public.move_member_to_committee('b8020000-0000-4000-8000-000000000003',c3);
   select committee_id=c3 into ok from public.users where id='b8020000-0000-4000-8000-000000000003';
   r:=r||format(E'\nMOVE_MEMBER: %s',case when ok then 'PASS' else 'FAIL' end);
-  perform public.appoint_member_as_officer('b8020000-0000-4000-8000-000000000004','Admin',null);
-  select role='Admin' and committee_id is null into ok from public.users where id='b8020000-0000-4000-8000-000000000004';
-  r:=r||format(E'\nTHIRD_ADMIN_CAPS_OFF: %s',case when ok then 'PASS' else 'FAIL' end);
+  begin
+    perform public.appoint_member_as_officer('b8020000-0000-4000-8000-000000000004','Admin',null);
+    ok := false;
+  exception when sqlstate 'CCO04' then
+    ok := true;
+  end;
+  r:=r||format(E'\nTHIRD_ADMIN_BLOCKED_CAPS_ON: %s',case when ok then 'PASS' else 'FAIL' end);
   perform public.set_officer_active('b8020000-0000-4000-8000-000000000005',false);
   select not is_active and avatar_url is null into ok from public.users where id='b8020000-0000-4000-8000-000000000005';
   r:=r||format(E'\nCOADMIN_DEACTIVATED: %s',case when ok then 'PASS' else 'FAIL' end);
   perform public.set_officer_active('b8020000-0000-4000-8000-000000000005',true);
   select is_active into ok from public.users where id='b8020000-0000-4000-8000-000000000005';
-  r:=r||format(E'\nCOADMIN_REACTIVATED_CAPS_OFF: %s',case when ok then 'PASS' else 'FAIL' end);
+  r:=r||format(E'\nCOADMIN_REACTIVATED_CAPS_ON: %s',case when ok then 'PASS' else 'FAIL' end);
   perform public.return_coadmin_to_member('b8020000-0000-4000-8000-000000000006',c3);
   select role='Member' and is_active into ok from public.users where id='b8020000-0000-4000-8000-000000000006';
   r:=r||format(E'\nINVITEE_RETURNED_TO_MEMBER_BEFORE_CANCEL: %s',case when ok then 'PASS' else 'FAIL' end);
@@ -154,15 +169,20 @@ begin
   perform public.step_down_as_admin(c1);
   select role='Member' and committee_id=c1 into ok from public.users where id='b8020000-0000-4000-8000-000000000001';
   r:=r||format(E'\nSELF_STEP_DOWN: %s',case when ok then 'PASS' else 'FAIL' end);
-  select count(*)=2 into ok from public.users where role='Admin' and is_active;
+  -- The caller is now a Member, so make the remaining catalog assertions as owner.
+  -- Otherwise RLS correctly hides the other Admin and the finalized invitee.
+  execute 'reset role';
+  select role='Admin' and is_active into ok from public.users where id='b8020000-0000-4000-8000-000000000002';
   r:=r||format(E'\nOTHER_ADMINS_PRESERVED: %s',case when ok then 'PASS' else 'FAIL' end);
   select count(*)=1 into ok from public.committees where name='President';
   r:=r||format(E'\nPRESIDENT_LOOKUP_PRESERVED: %s',case when ok then 'PASS' else 'FAIL' end);
   select count(*)=0 into ok from public.users where role='Admin' and committee_id is not null;
   r:=r||format(E'\nALL_ADMINS_NULL_COMMITTEE: %s',case when ok then 'PASS' else 'FAIL' end);
-  select not enforce_officer_role_caps into ok from public.app_settings where key='global';
-  r:=r||format(E'\nCAPS_OFF_SETTING_READ: %s',case when ok then 'PASS' else 'FAIL' end);
-  select count(*)=1 into ok from public.users where lower(btrim(email))='b8-invite@test.local';
+  select enforce_officer_role_caps into ok from public.app_settings where key='global';
+  r:=r||format(E'\nCAPS_ON_SETTING_READ: %s',case when ok then 'PASS' else 'FAIL' end);
+  select (select count(*) from public.users where lower(btrim(email))='b8-invite@test.local')=1
+    and exists(select 1 from auth.users where id='b8020000-0000-4000-8000-000000000006' and lower(email)='b8-invite@test.local')
+  into ok;
   r:=r||format(E'\nONE_ACCOUNT_PER_PERSON: %s',case when ok then 'PASS' else 'FAIL' end);
   select count(*)=7 into ok from pg_proc where pronamespace='public'::regnamespace and proname in ('invite_new_officer','appoint_member_as_officer','return_coadmin_to_member','move_member_to_committee','cancel_officer_invite','step_down_as_admin','set_officer_active');
   r:=r||format(E'\nEXACT_WRITERS_ONLY: %s',case when ok then 'PASS' else 'FAIL' end);
@@ -177,6 +197,13 @@ rollback;
 
 ```sql
 begin;
+insert into public.committees(id,name) values
+ ('b803c000-0000-4000-8000-000000000001','B8 T3 A'),
+ ('b803c000-0000-4000-8000-000000000002','B8 T3 B'),
+ ('b803c000-0000-4000-8000-000000000003','B8 T3 C');
+select set_config('ceit_connect.officer_writer','set_officer_active',true);
+update public.users set is_active=false where role='Admin' and is_active;
+select set_config('ceit_connect.officer_writer','',true);
 -- This paste uses the same Auth/profile fixture shape as TEST 2 with ids in
 -- the b803... range: two active Admins, two active Co-Admins in committee 1
 -- (an intentional pre-cap overage), one active Member, and one unconfirmed
@@ -188,10 +215,10 @@ select x.id,'00000000-0000-0000-0000-000000000000','authenticated','authenticate
 from (values
  ('b8030000-0000-4000-8000-000000000001'::uuid,'b803-a1@test.local',now()),('b8030000-0000-4000-8000-000000000002','b803-a2@test.local',now()),
  ('b8030000-0000-4000-8000-000000000003','b803-co@test.local',now()),('b8030000-0000-4000-8000-000000000004','b803-m1@test.local',now()),
- ('b8030000-0000-4000-8000-000000000005','b803-m2@test.local',now()),('b8030000-0000-4000-8000-000000000006','b803-new@test.local',null::timestamptz)
+ ('b8030000-0000-4000-8000-000000000005','b803-m2@test.local',now())
 ) x(id,email,confirmed);
 do $$ declare c1 uuid; c2 uuid; begin
- select id into c1 from public.committees order by name limit 1; select id into c2 from public.committees order by name offset 1 limit 1;
+ c1 := 'b803c000-0000-4000-8000-000000000001'; c2 := 'b803c000-0000-4000-8000-000000000002';
  perform set_config('ceit_connect.officer_writer','invite_new_officer',true);
  insert into public.users(id,email,full_name,role,committee_id) values
  ('b8030000-0000-4000-8000-000000000001','b803-a1@test.local','A1','Admin',null),('b8030000-0000-4000-8000-000000000002','b803-a2@test.local','A2','Admin',null),
@@ -209,7 +236,7 @@ select set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-00000000
 do $$
 declare r text:=''; c1 uuid; c2 uuid; c3 uuid; j jsonb; ok boolean; denied boolean; released timestamptz;
 begin
- select id into c1 from public.committees order by name limit 1; select id into c2 from public.committees order by name offset 1 limit 1; select id into c3 from public.committees order by name offset 2 limit 1;
+ c1 := 'b803c000-0000-4000-8000-000000000001'; c2 := 'b803c000-0000-4000-8000-000000000002'; c3 := 'b803c000-0000-4000-8000-000000000003';
  select count(*)=2 into ok from public.users where role='Co-Admin' and committee_id=c1 and is_active;
  r:=r||format(E'\nEXISTING_OVERLIMIT_NOT_REWRITTEN: %s',case when ok then 'PASS' else 'FAIL' end);
  denied:=false; begin perform public.invite_new_officer('b8031000-0000-4000-8000-000000000001',null,'third-admin@test.local','Third','Admin',null); exception when sqlstate 'CCO04' then denied:=true; end;
@@ -220,9 +247,15 @@ begin
  r:=r||format(E'\nAPPOINTMENT_COUNTS_PREPARING: %s',case when denied then 'PASS' else 'FAIL' end);
  select public.cancel_officer_invite('b8031000-0000-4000-8000-000000000002') into j;
  r:=r||format(E'\nFAILED_ATTEMPT_RELEASED: %s',case when j->>'outcome'='cancelled' then 'PASS' else 'FAIL' end);
+ execute 'reset role';
  select reservation_released_at into released from public.officer_invites where id='b8031000-0000-4000-8000-000000000002';
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000001","role":"authenticated"}',true);
  perform public.cancel_officer_invite('b8031000-0000-4000-8000-000000000002');
+ execute 'reset role';
  select reservation_released_at=released into ok from public.officer_invites where id='b8031000-0000-4000-8000-000000000002';
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000001","role":"authenticated"}',true);
  r:=r||format(E'\nRESERVATION_RELEASED_EXACTLY_ONCE: %s',case when ok then 'PASS' else 'FAIL' end);
  perform public.appoint_member_as_officer('b8030000-0000-4000-8000-000000000005','Co-Admin',c2);
  select role='Co-Admin' and committee_id=c2 and is_active into ok from public.users where id='b8030000-0000-4000-8000-000000000005';
@@ -231,7 +264,10 @@ begin
  r:=r||format(E'\nSTALE_PREPARING_DOES_NOT_COUNT_TOWARD_CAP: %s',case when ok then 'PASS' else 'FAIL' end);
  select public.invite_new_officer('b8031000-0000-4000-8000-000000000003',null,'stale@test.local','Stale','Co-Admin',c2) into j;
  r:=r||format(E'\nSTALE_15_MINUTE_PREPARING_BECOMES_CLEANUP: %s',case when j->>'outcome'='cleanup_pending' then 'PASS' else 'FAIL' end);
+ execute 'reset role';
  select status='cleanup_pending' and reservation_released_at is not null into ok from public.officer_invites where id='b8031000-0000-4000-8000-000000000003';
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000001","role":"authenticated"}',true);
  r:=r||format(E'\nSTALE_RESERVATION_RELEASED: %s',case when ok then 'PASS' else 'FAIL' end);
  perform public.return_coadmin_to_member('b8030000-0000-4000-8000-000000000003',c1);
  select role='Member' and committee_id=c1 into ok from public.users where id='b8030000-0000-4000-8000-000000000003';
@@ -243,16 +279,32 @@ begin
  perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000002","role":"authenticated"}',true);
  denied:=false; begin perform public.step_down_as_admin(c1); exception when sqlstate 'CCO09' then denied:=true; end;
  r:=r||format(E'\nLAST_ADMIN_ALWAYS_PROTECTED: %s',case when denied then 'PASS' else 'FAIL' end);
+ execute 'reset role';
  select enforce_officer_role_caps into ok from public.app_settings where key='global';
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000001","role":"authenticated"}',true);
  r:=r||format(E'\nCAPS_SETTING_TRUE: %s',case when ok then 'PASS' else 'FAIL' end);
+ execute 'reset role';
  select (select count(*) from public.users where role='Co-Admin' and committee_id=c2 and is_active)+(select count(*) from public.officer_invites where officer_role='Co-Admin' and committee_id=c2 and status='preparing')=1 into ok;
- r:=r||format(E'\nACTIVE_PLUS_PREPARING_FORMULA: %s',case when ok then 'PASS' else 'FAIL' end);
+ execute 'set local role authenticated';
  perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000002","role":"authenticated"}',true);
+ r:=r||format(E'\nACTIVE_PLUS_PREPARING_FORMULA: %s',case when ok then 'PASS' else 'FAIL' end);
  perform public.invite_new_officer('b8031000-0000-4000-8000-000000000004',null,'b803-new@test.local','New','Co-Admin',c3);
+ execute 'reset role';
+ insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+ values ('b8030000-0000-4000-8000-000000000006','00000000-0000-0000-0000-000000000000','authenticated','authenticated','b803-new@test.local','',null,'{}','{}',now(),now());
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000002","role":"authenticated"}',true);
  perform public.invite_new_officer('b8031000-0000-4000-8000-000000000004','b8030000-0000-4000-8000-000000000006',null,null,null,null);
+ execute 'reset role';
  select status='sent' and reservation_released_at is not null into ok from public.officer_invites where id='b8031000-0000-4000-8000-000000000004';
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000002","role":"authenticated"}',true);
  r:=r||format(E'\nFINALIZATION_REPLACES_RESERVATION: %s',case when ok then 'PASS' else 'FAIL' end);
+ execute 'reset role';
  select (select count(*) from public.users where role='Co-Admin' and committee_id=c3 and is_active)+(select count(*) from public.officer_invites where officer_role='Co-Admin' and committee_id=c3 and status='preparing')=1 into ok;
+ execute 'set local role authenticated';
+ perform set_config('request.jwt.claims','{"sub":"b8030000-0000-4000-8000-000000000002","role":"authenticated"}',true);
  r:=r||format(E'\nNO_DOUBLE_COUNT: %s',case when ok then 'PASS' else 'FAIL' end);
  perform public.move_member_to_committee('b8030000-0000-4000-8000-000000000003',c2);
  select role='Member' and committee_id=c2 into ok from public.users where id='b8030000-0000-4000-8000-000000000003';
@@ -341,16 +393,16 @@ rollback;
 
 ```sql
 begin;
+insert into public.committees(id,name) values
+ ('b805c000-0000-4000-8000-000000000001','B8 T5');
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select x.id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',x.email,'',x.confirmed,'{}','{}',now(),now()
 from (values
  ('b8050000-0000-4000-8000-000000000001'::uuid,'b805-admin@test.local',now()),
- ('b8050000-0000-4000-8000-000000000002','b805-good@test.local',null::timestamptz),
- ('b8050000-0000-4000-8000-000000000003','b805-wrong@test.local',null::timestamptz),
  ('b8050000-0000-4000-8000-000000000004','b805-existing@test.local',now())
 ) x(id,email,confirmed);
 do $$ declare c uuid; begin
- select id into c from public.committees order by name limit 1;
+ c := 'b805c000-0000-4000-8000-000000000001';
  perform set_config('ceit_connect.officer_writer','invite_new_officer',true);
  insert into public.users(id,email,full_name,role,committee_id) values
  ('b8050000-0000-4000-8000-000000000001','b805-admin@test.local','Admin','Admin',null);
@@ -363,8 +415,14 @@ select set_config('request.jwt.claims','{"sub":"b8050000-0000-4000-8000-00000000
 do $$
 declare r text:=''; c uuid; denied boolean; j jsonb; ok boolean;
 begin
-  select id into c from public.committees order by name limit 1;
+  c := 'b805c000-0000-4000-8000-000000000001';
   perform public.invite_new_officer('b8051000-0000-4000-8000-000000000001',null,'b805-good@test.local','Good','Co-Admin',c);
+  execute 'reset role';
+  insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
+    ('b8050000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','b805-good@test.local','',null,'{}','{}',now(),now()),
+    ('b8050000-0000-4000-8000-000000000003','00000000-0000-0000-0000-000000000000','authenticated','authenticated','b805-wrong@test.local','',null,'{}','{}',now(),now());
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claims','{"sub":"b8050000-0000-4000-8000-000000000001","role":"authenticated"}',true);
   denied:=false; begin perform public.invite_new_officer('b8051000-0000-4000-8000-000000000001','b8059999-0000-4000-8000-000000000001',null,null,null,null); exception when sqlstate 'CCO03' then denied:=true; end;
   r:=r||format(E'\nAUTH_UUID_MUST_EXIST: %s',case when denied then 'PASS' else 'FAIL' end);
   denied:=false; begin perform public.invite_new_officer('b8051000-0000-4000-8000-000000000001','b8050000-0000-4000-8000-000000000003',null,null,null,null); exception when sqlstate 'CCO03' then denied:=true; end;
@@ -377,11 +435,17 @@ begin
   r:=r||format(E'\nPROFILE_DERIVED_FROM_PREPARATION: %s',case when ok then 'PASS' else 'FAIL' end);
   select public.cancel_officer_invite('b8051000-0000-4000-8000-000000000001') into j;
   r:=r||format(E'\nUNACCEPTED_INVITE_CANCELLABLE: %s',case when j->>'cleanup_action'='revoke' then 'PASS' else 'FAIL' end);
+  execute 'reset role';
   select status='cancelled' and reservation_released_at is not null and cancelled_at is not null into ok from public.officer_invites where id='b8051000-0000-4000-8000-000000000001';
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claims','{"sub":"b8050000-0000-4000-8000-000000000001","role":"authenticated"}',true);
   r:=r||format(E'\nCANCELLATION_COALESCE_PATH_EXECUTED: %s',case when ok then 'PASS' else 'FAIL' end);
   denied:=false; begin perform public.set_officer_active('b8050000-0000-4000-8000-000000000002',true); exception when sqlstate 'CCO03' then denied:=true; end;
   r:=r||format(E'\nCANCELLED_UNCONFIRMED_INVITEE_REACTIVATION_REJECTED: %s',case when denied then 'PASS' else 'FAIL' end);
+  execute 'reset role';
   select exists(select 1 from auth.users where id='b8050000-0000-4000-8000-000000000002') and exists(select 1 from public.users where id='b8050000-0000-4000-8000-000000000002') into ok;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claims','{"sub":"b8050000-0000-4000-8000-000000000001","role":"authenticated"}',true);
   r:=r||format(E'\nCANCELLED_PROFILE_AND_AUTH_REMAIN: %s',case when ok then 'PASS' else 'FAIL' end);
   denied:=false; begin perform public.invite_new_officer('b8051000-0000-4000-8000-000000000002',null,'b805-good@test.local','Again','Co-Admin',c); exception when sqlstate 'CCO03' then denied:=true; end;
   r:=r||format(E'\nCANCELLED_EMAIL_REINVITE_REJECTED: %s',case when denied then 'PASS' else 'FAIL' end);
@@ -389,6 +453,7 @@ begin
   update auth.users set email_confirmed_at=now() where id='b8050000-0000-4000-8000-000000000002';
   update public.officer_invites set status='sent',cancelled_at=null where id='b8051000-0000-4000-8000-000000000001';
   execute 'set local role authenticated';
+  perform set_config('request.jwt.claims','{"sub":"b8050000-0000-4000-8000-000000000001","role":"authenticated"}',true);
   denied:=false; begin perform public.cancel_officer_invite('b8051000-0000-4000-8000-000000000001'); exception when sqlstate 'CCO07' then denied:=true; end;
   r:=r||format(E'\nACCEPTED_EMAIL_CONFIRMED_REJECTED: %s',case when denied then 'PASS' else 'FAIL' end);
   select count(*)=0 into ok from public.list_pending_officer_invites() where id='b8051000-0000-4000-8000-000000000001';
@@ -401,6 +466,7 @@ begin
   r:=r||format(E'\nAUTH_EMAIL_READ_IN_DEFINER: %s',case when ok then 'PASS' else 'FAIL' end);
   select pg_get_functiondef('public.invite_new_officer(uuid,uuid,text,text,text,uuid)'::regprocedure) like '%profile.id = p_auth_user_id%' into ok;
   r:=r||format(E'\nFINALIZE_REQUIRES_NO_PROFILE: %s',case when ok then 'PASS' else 'FAIL' end);
+  execute 'reset role';
   select count(*)=1 into ok from public.officer_invites where email='b805-good@test.local' and status='sent';
   r:=r||format(E'\nREINVITE_REQUIRES_FUTURE_RECOVERY_FLOW: %s',case when ok then 'PASS' else 'FAIL' end);
   raise exception 'TEST RESULTS %',r;
@@ -442,8 +508,16 @@ begin
       case when strpos(body,' from public.') = 0 then 2147483647 else strpos(body,' from public.') end,
       case when strpos(body,'officer_require_active_admin') = 0 then 2147483647 else strpos(body,'officer_require_active_admin') end
     );
-    ok := lock_pos > begin_pos and lock_pos < first_read_pos;
-    r:=r||format(E'\nLOCK_FIRST_%s: %s',fn::text,case when ok then 'PASS' else 'FAIL' end);
+    ok := case
+      when fn = 'public.set_officer_active(uuid,boolean)'::regprocedure then
+        lock_pos > begin_pos
+        and strpos(body,'officer_require_active_admin') < lock_pos
+        and strpos(body,'lock_task_assignee_users') > lock_pos
+      else lock_pos > begin_pos and lock_pos < first_read_pos
+    end;
+    r:=r||format(E'\n%s_%s: %s',
+      case when fn = 'public.set_officer_active(uuid,boolean)'::regprocedure then 'AUTHORIZATION_THEN_LOCK' else 'LOCK_FIRST' end,
+      fn::text,case when ok then 'PASS' else 'FAIL' end);
     ok := body like '%public.officer_advisory_lock_key()%'
       and (length(body)-length(replace(body,'pg_advisory_xact_lock','')))/length('pg_advisory_xact_lock')=1;
     r:=r||format(E'\nONE_SHARED_KEY_%s: %s',fn::text,case when ok then 'PASS' else 'FAIL' end);
@@ -453,7 +527,7 @@ begin
     ok := row_lock_pos > lock_pos
       and affected_pos > row_lock_pos
       and (reset_pos = 0 or affected_pos < reset_pos)
-      and body like '%if v_affected <> 1%'
+      and (body like '%if v_affected <> 1%' or body like '%if v_affected<>1%')
       and (fn <> 'public.cancel_officer_invite(uuid)'::regprocedure
            or body like '%if v_affected not in (0, 1)%');
     r:=r||format(E'\nROW_LOCK_AND_EXACT_AFFECTED_CHECK_%s: %s',fn::text,case when ok then 'PASS' else 'FAIL' end);
@@ -475,6 +549,8 @@ rollback;
 
 ```sql
 begin;
+insert into public.committees(id,name) values
+ ('b807c000-0000-4000-8000-000000000001','B8 T7');
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select x.id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',x.email,'',now(),'{}','{}',now(),now()
 from (values
@@ -486,7 +562,7 @@ from (values
  ('b8070000-0000-4000-8000-000000000006','b807-profileless@test.local')
 ) x(id,email);
 do $$ declare c uuid; begin
- select id into c from public.committees order by name limit 1;
+ c := 'b807c000-0000-4000-8000-000000000001';
  perform set_config('ceit_connect.officer_writer','invite_new_officer',true);
  insert into public.users(id,email,full_name,role,committee_id,is_active) values
  ('b8070000-0000-4000-8000-000000000001','b807-a1@test.local','A1','Admin',null,true),
@@ -501,7 +577,7 @@ set local role authenticated;
 do $$
 declare r text:=''; denied boolean; c uuid; bad uuid:='b8079999-0000-4000-8000-000000000001';
 begin
- select id into c from public.committees order by name limit 1;
+ c := 'b807c000-0000-4000-8000-000000000001';
  perform set_config('request.jwt.claims','{"sub":"b8070000-0000-4000-8000-000000000004","role":"authenticated"}',true);
  denied:=false; begin perform public.appoint_member_as_officer('b8070000-0000-4000-8000-000000000005','Co-Admin',c); exception when sqlstate 'CCO01' then denied:=true; end;
  r:=r||format(E'\nCOADMIN_CALLER_DENIED: %s',case when denied then 'PASS' else 'FAIL' end);
@@ -522,8 +598,8 @@ begin
  perform set_config('request.jwt.claims','{"sub":"b8070000-0000-4000-8000-000000000001","role":"authenticated"}',true);
  denied:=false; begin perform public.return_coadmin_to_member('b8070000-0000-4000-8000-000000000002',c); exception when sqlstate 'CCO03' then denied:=true; end;
  r:=r||format(E'\nADMIN_CANNOT_RETURN_OTHER_ADMIN: %s',case when denied then 'PASS' else 'FAIL' end);
- denied:=false; begin perform public.set_officer_active('b8070000-0000-4000-8000-000000000002',false); exception when sqlstate 'CCO03' then denied:=true; end;
- r:=r||format(E'\nADMIN_CANNOT_DEACTIVATE_OTHER_ADMIN: %s',case when denied then 'PASS' else 'FAIL' end);
+ denied:=false; begin perform public.set_officer_active('b8070000-0000-4000-8000-000000000002',false); exception when others then denied:=true; end;
+ r:=r||format(E'\nADMIN_CAN_DEACTIVATE_OTHER_ADMIN_WITH_SUCCESSOR: %s',case when not denied and exists(select 1 from public.users where id='b8070000-0000-4000-8000-000000000002' and not is_active) then 'PASS' else 'FAIL' end);
  denied:=false; begin perform public.set_officer_active('b8070000-0000-4000-8000-000000000001',false); exception when sqlstate 'CCO03' then denied:=true; end;
  r:=r||format(E'\nADMIN_CANNOT_DEACTIVATE_SELF: %s',case when denied then 'PASS' else 'FAIL' end);
  denied:=false; begin perform public.appoint_member_as_officer('b8070000-0000-4000-8000-000000000005','Co-Admin',bad); exception when sqlstate 'CCO02' then denied:=true; end;
@@ -545,6 +621,9 @@ rollback;
 
 ```sql
 begin;
+insert into public.committees(id,name) values
+ ('b808c000-0000-4000-8000-000000000001','B8 T8 A'),
+ ('b808c000-0000-4000-8000-000000000002','B8 T8 B');
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select x.id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',x.email,'',now(),'{}','{}',now(),now()
 from (values
@@ -554,7 +633,7 @@ from (values
  ('b8080000-0000-4000-8000-000000000004','b808-member@test.local')
 ) x(id,email);
 do $$ declare c uuid; begin
- select id into c from public.committees order by name limit 1;
+ c := 'b808c000-0000-4000-8000-000000000001';
  perform set_config('ceit_connect.officer_writer','invite_new_officer',true);
  insert into public.users(id,email,full_name,role,committee_id) values
  ('b8080000-0000-4000-8000-000000000001','b808-a1@test.local','A1','Admin',null),
@@ -580,10 +659,10 @@ select set_config('request.jwt.claims','{"sub":"b8080000-0000-4000-8000-00000000
 do $$
 declare r text:=''; denied boolean; c1 uuid; c2 uuid;
 begin
- select id into c1 from public.committees order by name limit 1;
- select id into c2 from public.committees order by name offset 1 limit 1;
+ c1 := 'b808c000-0000-4000-8000-000000000001';
+ c2 := 'b808c000-0000-4000-8000-000000000002';
  perform set_config('test.step8_suppress_user','b8080000-0000-4000-8000-000000000004',true);
- denied:=false; begin perform public.appoint_member_as_officer('b8080000-0000-4000-8000-000000000004','Co-Admin',c1); exception when sqlstate 'CCO06' then denied:=true; end;
+ denied:=false; begin perform public.appoint_member_as_officer('b8080000-0000-4000-8000-000000000004','Co-Admin',c2); exception when sqlstate 'CCO06' then denied:=true; end;
  r:=r||format(E'\nAPPOINT_ZERO_ROW_ASSERTION_FIRES: %s',case when denied then 'PASS' else 'FAIL' end);
  denied:=false; begin perform public.move_member_to_committee('b8080000-0000-4000-8000-000000000004',c2); exception when sqlstate 'CCO06' then denied:=true; end;
  r:=r||format(E'\nMOVE_ZERO_ROW_ASSERTION_FIRES: %s',case when denied then 'PASS' else 'FAIL' end);
@@ -604,11 +683,16 @@ rollback;
 
 ```sql
 begin;
+insert into public.committees(id,name) values
+ ('b809c000-0000-4000-8000-000000000001','B8 T9');
+select set_config('ceit_connect.officer_writer','set_officer_active',true);
+update public.users set is_active=false where role='Admin' and is_active;
+select set_config('ceit_connect.officer_writer','',true);
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('b8090000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','b809-caller@test.local','',now(),'{}','{}',now(),now()),
 ('b8090000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','b809-invitee@test.local','',null,'{}','{}',now(),now());
 do $$ declare c uuid; begin
- select id into c from public.committees order by name limit 1;
+ c := 'b809c000-0000-4000-8000-000000000001';
  perform set_config('ceit_connect.officer_writer','invite_new_officer',true);
  insert into public.users(id,email,full_name,role,committee_id) values
  ('b8090000-0000-4000-8000-000000000001','b809-caller@test.local','Caller Admin','Admin',null),
@@ -620,7 +704,7 @@ end $$;
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"b8090000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 do $$ declare r text:=''; c uuid; denied boolean; begin
- select id into c from public.committees order by name limit 1;
+ c := 'b809c000-0000-4000-8000-000000000001';
  denied:=false;
  begin perform public.step_down_as_admin(c); exception when sqlstate 'CCO09' then denied:=true; end;
  r:=r||format(E'\nUNCONFIRMED_ONLY_OTHER_ADMIN_REJECTS_STEPDOWN: %s',case when denied then 'PASS' else 'FAIL' end);
@@ -630,7 +714,8 @@ reset role;
 update auth.users set email_confirmed_at=now() where id='b8090000-0000-4000-8000-000000000002';
 set local role authenticated;
 do $$ declare r text:=current_setting('test.step8_stepdown_results'); c uuid; ok boolean; begin
- select id into c from public.committees order by name limit 1;
+ c := 'b809c000-0000-4000-8000-000000000001';
+ perform set_config('request.jwt.claims','{"sub":"b8090000-0000-4000-8000-000000000001","role":"authenticated"}',true);
  perform public.step_down_as_admin(c);
  select caller.role='Member' and caller.committee_id=c
  into ok

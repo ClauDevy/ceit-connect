@@ -4,7 +4,11 @@ import { describe, expect, it } from "vitest";
 const migration = readFileSync(
   "supabase/migrations/20261106150000_activity_log_subjects.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
+const batch14VisibilityMigration = readFileSync(
+  "supabase/migrations/20261109121000_batch_14_inactive_event_visibility.sql",
+  "utf8",
+).replace(/\r\n/g, "\n");
 
 describe("Batch B Stage 1 migration contract", () => {
   it("defines all 39 approved semantic activity types", () => {
@@ -49,7 +53,7 @@ describe("Batch B Stage 1 migration contract", () => {
     );
   });
 
-  it("uses the effective events_select predicate", () => {
+  it("is superseded by the inactive-safe events_select mirror", () => {
     expect(migration).toContain(
       "create function ceit_connect_private.activity_event_status_visible_for_user",
     );
@@ -58,6 +62,17 @@ describe("Batch B Stage 1 migration contract", () => {
     expect(migration).toContain("profile.role in ('Admin', 'Co-Admin')");
     expect(migration).toContain(
       "ceit_connect_private.activity_event_status_visible_for_user(v_deleted_event_status, v_caller_id)",
+    );
+    expect(batch14VisibilityMigration).toContain(
+      "create or replace function ceit_connect_private.activity_event_status_visible_for_user",
+    );
+    expect(batch14VisibilityMigration).toContain("and profile.is_active");
+    expect(batch14VisibilityMigration).toContain("p_event_status <> 'Draft'");
+    expect(batch14VisibilityMigration).toContain(
+      "or profile.role in ('Admin', 'Co-Admin')",
+    );
+    expect(batch14VisibilityMigration).toContain(
+      "an active profile is required for every status",
     );
   });
 

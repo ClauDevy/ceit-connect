@@ -1,5 +1,9 @@
 # Phase 4 Step 10E — app review and final gate
 
+> Phase 4B uses a separate final ledger in `docs/phase-4b/step-14.md`. Its Gate B reruns include `step-a-tests.md`, `step-b-tests.md`, and the unchanged 46-line `step-d-tests.md`; the historical Phase 4 result below is not rewritten.
+
+> Batch 14 Part 2 extends the current function allowlist with `public.revoke_inactive_user_sessions(uuid)` from `20261109123000_revoke_inactive_user_sessions.sql`: owner `postgres`, volatile, `SECURITY DEFINER`, empty `search_path`, exact exposed-role `EXECUTE` for `service_role` only, denied to `PUBLIC`, `anon`, and `authenticated`, and no overloads. The separate 13-line Part 2 paste owns this current-state gate; the historical totals below remain unchanged.
+
 This is the final review ledger for Phase 4. SQL pastes are run on **Dev only**
 with **Run without RLS**, one complete paste at a time. Do not run them on Prod.
 The manual checks below are point-and-click checks in the Dev app.

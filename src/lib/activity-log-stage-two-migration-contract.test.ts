@@ -4,15 +4,15 @@ import { describe, expect, it } from "vitest";
 const stage2a = readFileSync(
   "supabase/migrations/20261106160000_activity_log_trigger_writers.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const stage2b = readFileSync(
   "supabase/migrations/20261106170000_activity_log_event_writers.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const eventDeleteInventoryFollowUp = readFileSync(
   "supabase/migrations/20261107120000_event_phase_delete_lock_inventory.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("Batch B Stage 2 migration contracts", () => {
   it("installs a private catalog-validating insert boundary", () => {

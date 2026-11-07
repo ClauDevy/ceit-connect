@@ -51,18 +51,40 @@ function sessionClient(options?: {
   return { client, rpc, from };
 }
 
-function serviceClient(authError: unknown = null) {
-  const updateUserById = vi.fn().mockResolvedValue({ data: {}, error: authError });
+function serviceClient(options?: {
+  authError?: unknown;
+  profileError?: unknown;
+  revokeError?: unknown;
+  revokeResult?: unknown;
+  updatedProfile?: object | null;
+}) {
+  const updateUserById = vi.fn().mockResolvedValue({
+    data: {},
+    error: options?.authError ?? null,
+  });
   const remove = vi.fn().mockResolvedValue({ data: [], error: null });
-  const eq = vi.fn().mockResolvedValue({ error: null });
+  const single = vi.fn().mockResolvedValue({
+    data: options?.updatedProfile === undefined ? { id: targetId } : options.updatedProfile,
+    error: options?.profileError ?? null,
+  });
+  const select = vi.fn(() => ({ single }));
+  const eq = vi.fn(() => ({ select }));
   const update = vi.fn(() => ({ eq }));
+  const rpc = vi.fn().mockResolvedValue({
+    data:
+      options?.revokeResult === undefined
+        ? [{ out_user_id: targetId, out_outcome: "revoked" }]
+        : options.revokeResult,
+    error: options?.revokeError ?? null,
+  });
   const client = {
     auth: { admin: { updateUserById } },
     storage: { from: vi.fn(() => ({ remove })) },
     from: vi.fn(() => ({ update })),
+    rpc,
   };
   mocks.createServiceRoleClient.mockResolvedValue(client);
-  return { client, updateUserById, remove, update };
+  return { client, updateUserById, remove, update, single, rpc };
 }
 
 beforeEach(() => {
@@ -80,13 +102,60 @@ describe("POST /api/toggle-user-active Co-Admin boundary", () => {
   it.each([
     [false, "deactivate_committee_member"],
     [true, "reactivate_committee_member"],
-  ])("uses only the caller-session %s RPC", async (isActive, rpcName) => {
+  ])("uses the caller-session %s RPC and synchronizes Auth", async (isActive, rpcName) => {
     const session = sessionClient();
+    const service = serviceClient();
     const response = await POST(request(isActive));
     expect(response.status).toBe(200);
     expect(session.rpc).toHaveBeenCalledWith(rpcName, { p_user_id: targetId });
     expect(session.from).toHaveBeenCalledTimes(isActive ? 1 : 0);
-    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+    expect(service.updateUserById).toHaveBeenCalledWith(targetId, {
+      ban_duration: isActive ? "none" : "876000h",
+    });
+    expect(service.rpc).toHaveBeenCalledTimes(isActive ? 0 : 1);
+    if (!isActive) {
+      expect(service.rpc).toHaveBeenCalledWith(
+        "revoke_inactive_user_sessions",
+        { p_user_id: targetId },
+      );
+    }
+  });
+
+  it("reports cleanup pending when the Member profile changed but Auth banning fails", async () => {
+    sessionClient();
+    serviceClient({ authError: { message: "private" } });
+    const response = await POST(request(false));
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      error: "Profile status changed, but login cleanup still needs attention.",
+      cleanupPending: true,
+    });
+  });
+
+  it("reports cleanup pending when the Member was banned but session revocation fails", async () => {
+    sessionClient();
+    serviceClient({ revokeError: { message: "private" } });
+    const response = await POST(request(false));
+    expect(response.status).toBe(502);
+    expect((await response.json()).cleanupPending).toBe(true);
+  });
+
+  it("retries Auth cleanup after the committee Member state already changed", async () => {
+    const session = sessionClient({
+      rpcError: { code: "CCM04", message: "state changed" },
+    });
+    const service = serviceClient();
+    const response = await POST(request(false));
+    expect(response.status).toBe(200);
+    expect(session.rpc).toHaveBeenCalledWith("deactivate_committee_member", {
+      p_user_id: targetId,
+    });
+    expect(service.updateUserById).toHaveBeenCalledWith(targetId, {
+      ban_duration: "876000h",
+    });
+    expect(service.rpc).toHaveBeenCalledWith("revoke_inactive_user_sessions", {
+      p_user_id: targetId,
+    });
   });
 
   it("rejects an anonymized target before the reactivation RPC", async () => {
@@ -159,7 +228,41 @@ describe("POST /api/toggle-user-active Admin regression", () => {
     expect(service.updateUserById).toHaveBeenCalledWith(targetId, {
       ban_duration: "876000h",
     });
+    expect(service.rpc).toHaveBeenCalledWith("revoke_inactive_user_sessions", {
+      p_user_id: targetId,
+    });
     expect(service.remove).toHaveBeenCalledWith([`${targetId}/avatar.webp`]);
+  });
+
+  it("unbans a reactivated officer", async () => {
+    const session = sessionClient({ targetRole: "Admin" });
+    const service = serviceClient();
+    const response = await POST(request(true));
+    expect(response.status).toBe(200);
+    expect(session.rpc).toHaveBeenCalledWith("set_officer_active", {
+      p_user_id: targetId,
+      p_is_active: true,
+    });
+    expect(service.updateUserById).toHaveBeenCalledWith(targetId, {
+      ban_duration: "none",
+    });
+    expect(service.remove).not.toHaveBeenCalled();
+  });
+
+  it("reports cleanup pending when an officer profile changed but Auth banning fails", async () => {
+    sessionClient({ targetRole: "Co-Admin" });
+    serviceClient({ authError: { message: "private" } });
+    const response = await POST(request(false));
+    expect(response.status).toBe(502);
+    expect((await response.json()).cleanupPending).toBe(true);
+  });
+
+  it("reports cleanup pending when an officer was banned but session revocation fails", async () => {
+    sessionClient({ targetRole: "Co-Admin" });
+    serviceClient({ revokeResult: [] });
+    const response = await POST(request(false));
+    expect(response.status).toBe(502);
+    expect((await response.json()).cleanupPending).toBe(true);
   });
 
   it("keeps Admin Member deactivation avatar clearing", async () => {
@@ -172,6 +275,52 @@ describe("POST /api/toggle-user-active Admin regression", () => {
       avatar_url: null,
     });
     expect(service.remove).toHaveBeenCalledWith([`${targetId}/avatar.webp`]);
+    expect(service.updateUserById).toHaveBeenCalledWith(targetId, {
+      ban_duration: "876000h",
+    });
+    expect(service.rpc).toHaveBeenCalledWith("revoke_inactive_user_sessions", {
+      p_user_id: targetId,
+    });
+  });
+
+  it("unbans an Admin-reactivated Member", async () => {
+    sessionClient({ targetRole: "Member" });
+    const service = serviceClient();
+    const response = await POST(request(true));
+    expect(response.status).toBe(200);
+    expect(service.update).toHaveBeenCalledWith({ is_active: true });
+    expect(service.updateUserById).toHaveBeenCalledWith(targetId, {
+      ban_duration: "none",
+    });
+    expect(service.remove).not.toHaveBeenCalled();
+  });
+
+  it("fails honestly when the Admin Member update matches no profile", async () => {
+    sessionClient({ targetRole: "Member" });
+    const service = serviceClient({ updatedProfile: null });
+    const response = await POST(request(false));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: "The user status could not be changed.",
+    });
+    expect(service.updateUserById).not.toHaveBeenCalled();
+    expect(service.remove).not.toHaveBeenCalled();
+  });
+
+  it("reports cleanup pending when a Member profile changed but Auth banning fails", async () => {
+    sessionClient({ targetRole: "Member" });
+    serviceClient({ authError: { message: "private" } });
+    const response = await POST(request(false));
+    expect(response.status).toBe(502);
+    expect((await response.json()).cleanupPending).toBe(true);
+  });
+
+  it("reports cleanup pending when an Admin-managed Member was banned but session revocation fails", async () => {
+    sessionClient({ targetRole: "Member" });
+    serviceClient({ revokeError: { message: "private" } });
+    const response = await POST(request(false));
+    expect(response.status).toBe(502);
+    expect((await response.json()).cleanupPending).toBe(true);
   });
 
   it("rejects an anonymized target before any Admin service-role write", async () => {

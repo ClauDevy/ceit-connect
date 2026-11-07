@@ -1,5 +1,7 @@
 # Step 10A — Phase 4 database review
 
+> **Phase 4B reviewed-object extension (2026-11-09):** keep this Phase 4 review and its counts as historical evidence. `docs/phase-4b/step-14-tests.md` is the authoritative source-bound extension for all objects created or replaced by the eight shipped Batch A/B/D migrations and all four Batch 14 migrations. Part 2 migration `20261109123000_revoke_inactive_user_sessions.sql` adds `public.revoke_inactive_user_sessions(uuid)`, reviewed as postgres-owned, volatile, `SECURITY DEFINER`, fixed-empty-path, service-role-only, denied to `PUBLIC`, `anon`, and `authenticated`, with no overloads. Each accepted object is tied to its source migration; no object is blessed merely because it exists. New totals await the owner's live Dev catalog output. The Prod-only `pg_cron` row is external and excluded.
+
 ## Findings
 
 | Severity | Finding |
