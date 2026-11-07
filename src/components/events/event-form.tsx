@@ -2590,7 +2590,7 @@ export function EventForm({
         title="Remove this phase?"
         description={
           phaseToRemove?.tasks.length
-            ? `This also removes ${phaseToRemove.tasks.length} task${phaseToRemove.tasks.length === 1 ? "" : "s"}. Persisted To Do tasks will be deleted when you save.`
+            ? `This also removes ${phaseToRemove.tasks.length} task${phaseToRemove.tasks.length === 1 ? "" : "s"}. Tasks can’t be moved between phases here; persisted To Do tasks will be deleted when you save.`
             : "This removes the empty phase from the form."
         }
         confirmLabel="Remove phase"

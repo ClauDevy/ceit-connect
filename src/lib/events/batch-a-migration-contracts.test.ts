@@ -132,4 +132,54 @@ describe("Batch A migration review contracts", () => {
     expect(sqlPastes).toContain("16/16 pass");
     expect(sqlPastes).toContain("24/24 pass");
   });
+
+  it("keeps SQL paste fixtures writable and builds Archives through the writer", () => {
+    expect(
+      sqlPastes.match(
+        /grant select,insert on batch_a_results to authenticated;/g,
+      ),
+    ).toHaveLength(3);
+    expect(
+      sqlPastes.match(
+        /grant usage,select on sequence batch_a_results_seq_seq to authenticated;/g,
+      ),
+    ).toHaveLength(3);
+    expect(sqlPastes).toContain("select public.archive_event(");
+    expect(sqlPastes).toContain(
+      "$pattern$event_end_override_writer','',true$pattern$",
+    );
+  });
+
+  it("uses executable public writer contracts in every SQL paste", () => {
+    expect(sqlPastes).not.toContain(
+      "from public.former_member_eligibility(current_setting('ba.peer')::uuid)",
+    );
+    expect(sqlPastes).toContain(
+      "from public.preview_former_member_removal(array[current_setting('ba.peer')::uuid])",
+    );
+    expect(sqlPastes).toContain("'phase','middle'");
+    expect(sqlPastes).toContain("'phase','bee'");
+    expect(sqlPastes).not.toContain(
+      "and public.canonical_task_phase(task_row.phase)='b'",
+    );
+    expect(sqlPastes).toContain(
+      "batch a admin checks failed: expected 16 rows, got %; failed: %",
+    );
+    expect(sqlPastes).toContain("do $anonymize$");
+    expect(sqlPastes).toContain(
+      "select result.out_outcome into v_outcome from public.anonymize_former_member",
+    );
+    expect(sqlPastes).not.toContain(
+      "from public.anonymize_former_member(current_setting('ba.peer')::uuid) result join public.users",
+    );
+    expect(sqlPastes).toContain("set constraints all immediate;");
+    expect(sqlPastes).toContain(
+      "alter table public.tasks enable trigger tasks_i0_guard_event_end;",
+    );
+    expect(sqlPastes.indexOf("set constraints all immediate;")).toBeLessThan(
+      sqlPastes.indexOf(
+        "alter table public.tasks enable trigger tasks_i0_guard_event_end;",
+      ),
+    );
+  });
 });

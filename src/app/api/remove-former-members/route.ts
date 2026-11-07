@@ -118,6 +118,7 @@ export async function POST(request: Request) {
   }
 
   const results: FormerMemberRemovalResult[] = [];
+  const newlyAnonymizedIds: string[] = [];
   for (const userId of payload.userIds) {
     if (!(await hasActiveAdminSession())) {
       results.push({
@@ -289,6 +290,34 @@ export async function POST(request: Request) {
       state: "removed",
       message: "Former-member removal completed.",
     });
+    if (databaseResult.outcome === "anonymized") {
+      newlyAnonymizedIds.push(userId);
+    }
+  }
+
+  if (newlyAnonymizedIds.length >= 2) {
+    let finalized = false;
+    for (let attempt = 0; attempt < 2 && !finalized; attempt += 1) {
+      try {
+        const response = await callerClient.rpc(
+          "finalize_former_member_bulk_activity",
+          { p_user_ids: newlyAnonymizedIds },
+        );
+        finalized = !response.error && typeof response.data === "string";
+      } catch {
+        finalized = false;
+      }
+    }
+    if (!finalized) {
+      return json(
+        {
+          error:
+            "The member removals completed, but their Activity Log summary could not be finalized. Refresh and contact an administrator before retrying.",
+          results,
+        },
+        500,
+      );
+    }
   }
 
   return json({ results });

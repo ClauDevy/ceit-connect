@@ -7,6 +7,8 @@ Run each paste separately in the Dev SQL Editor after applying its matching migr
 ```sql
 begin;
 create temporary table batch_a_results(seq integer generated always as identity,label text,passed boolean) on commit drop;
+grant select,insert on batch_a_results to authenticated;
+grant usage,select on sequence batch_a_results_seq_seq to authenticated;
 do $fixtures$
 declare
   token text:='batch-a-phase-'||gen_random_uuid(); a uuid:=gen_random_uuid(); m uuid:=gen_random_uuid(); c uuid:=gen_random_uuid(); ca uuid:=gen_random_uuid(); cb uuid:=gen_random_uuid();
@@ -22,7 +24,7 @@ begin
   insert into public.users(id,email,full_name,role,committee_id,is_active) values(m,token||'-m@example.test','Batch A Member','Member',ca,true);
   insert into public.events(id,name,start_date,end_date,status,created_by) values
     (er,token||'-reorder',current_date,current_date+10,'Draft',a),(en,token||'-rename',current_date,current_date+10,'Draft',a),(em,token||'-merge',current_date,current_date+10,'Draft',a),
-    (enr,token||'-rename-reorder',current_date,current_date+10,'Draft',a),(ed,token||'-delete',current_date,current_date+10,'Draft',a),(ea,token||'-archive',current_date-10,current_date-1,'Archived',a);
+    (enr,token||'-rename-reorder',current_date,current_date+10,'Draft',a),(ed,token||'-delete',current_date,current_date+10,'Draft',a),(ea,token||'-archive',current_date-10,current_date-1,'Active',a);
   perform set_config('ceit_connect.task_assignee_writer','create_event_with_tasks',true);
   perform set_config('ceit_connect.task_access_writer','create_active_event_task',true);
   insert into public.tasks(event_id,committee_id,title,phase,status,priority,task_type,due_date,primary_assignees,is_confidential,created_by,sort_order)
@@ -42,10 +44,11 @@ begin
 end $fixtures$;
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('ba.a'),'role','authenticated')::text,true);
-select public.edit_event_with_tasks(current_setting('ba.er')::uuid,(select updated_at from public.events where id=current_setting('ba.er')::uuid),(select name from public.events where id=current_setting('ba.er')::uuid),null,current_date,current_date+10,'Draft','[]','[]','{}','[{"type":"reorder","phases":["B","A","C"]}]');
-select public.edit_event_with_tasks(current_setting('ba.en')::uuid,(select updated_at from public.events where id=current_setting('ba.en')::uuid),(select name from public.events where id=current_setting('ba.en')::uuid),null,current_date,current_date+10,'Draft','[]','[]','{}','[{"type":"rename","phase":"B","next_phase":"Middle"}]');
-select public.edit_event_with_tasks(current_setting('ba.em')::uuid,(select updated_at from public.events where id=current_setting('ba.em')::uuid),(select name from public.events where id=current_setting('ba.em')::uuid),null,current_date,current_date+10,'Draft','[]','[]','{}','[{"type":"rename","phase":"A","next_phase":"C"}]');
-select public.edit_event_with_tasks(current_setting('ba.enr')::uuid,(select updated_at from public.events where id=current_setting('ba.enr')::uuid),(select name from public.events where id=current_setting('ba.enr')::uuid),null,current_date,current_date+10,'Draft','[]','[]','{}','[{"type":"rename","phase":"B","next_phase":"Bee"},{"type":"reorder","phases":["C","Bee","A"]}]');
+select public.archive_event(current_setting('ba.ea')::uuid,0,(select updated_at from public.events where id=current_setting('ba.ea')::uuid));
+select public.edit_event_with_tasks(current_setting('ba.er')::uuid,(select updated_at from public.events where id=current_setting('ba.er')::uuid),(select name from public.events where id=current_setting('ba.er')::uuid),null,current_date,current_date+10,'Draft','[]','[]','{}',jsonb_build_array(jsonb_build_object('type','reorder','phases',jsonb_build_array('B','A','C'))));
+select public.edit_event_with_tasks(current_setting('ba.en')::uuid,(select updated_at from public.events where id=current_setting('ba.en')::uuid),(select name from public.events where id=current_setting('ba.en')::uuid),null,current_date,current_date+10,'Draft','[]',(select jsonb_agg(jsonb_build_object('id',task_row.id,'title',task_row.title,'description',task_row.description,'phase','Middle','committee_id',task_row.committee_id,'task_type',task_row.task_type,'priority',task_row.priority,'due_date',task_row.due_date,'call_time',task_row.call_time,'end_time',task_row.end_time,'assignee_ids',to_jsonb(task_row.primary_assignees||task_row.assist_assignees))) from public.tasks task_row where task_row.event_id=current_setting('ba.en')::uuid and task_row.phase='B'),'{}',jsonb_build_array(jsonb_build_object('type','rename','phase','B','next_phase','Middle')));
+select public.edit_event_with_tasks(current_setting('ba.em')::uuid,(select updated_at from public.events where id=current_setting('ba.em')::uuid),(select name from public.events where id=current_setting('ba.em')::uuid),null,current_date,current_date+10,'Draft','[]',(select jsonb_agg(jsonb_build_object('id',task_row.id,'title',task_row.title,'description',task_row.description,'phase','C','committee_id',task_row.committee_id,'task_type',task_row.task_type,'priority',task_row.priority,'due_date',task_row.due_date,'call_time',task_row.call_time,'end_time',task_row.end_time,'assignee_ids',to_jsonb(task_row.primary_assignees||task_row.assist_assignees))) from public.tasks task_row where task_row.event_id=current_setting('ba.em')::uuid and task_row.phase='A'),'{}',jsonb_build_array(jsonb_build_object('type','rename','phase','A','next_phase','C')));
+select public.edit_event_with_tasks(current_setting('ba.enr')::uuid,(select updated_at from public.events where id=current_setting('ba.enr')::uuid),(select name from public.events where id=current_setting('ba.enr')::uuid),null,current_date,current_date+10,'Draft','[]',(select jsonb_agg(jsonb_build_object('id',task_row.id,'title',task_row.title,'description',task_row.description,'phase','Bee','committee_id',task_row.committee_id,'task_type',task_row.task_type,'priority',task_row.priority,'due_date',task_row.due_date,'call_time',task_row.call_time,'end_time',task_row.end_time,'assignee_ids',to_jsonb(task_row.primary_assignees||task_row.assist_assignees))) from public.tasks task_row where task_row.event_id=current_setting('ba.enr')::uuid and task_row.phase='B'),'{}',jsonb_build_array(jsonb_build_object('type','rename','phase','B','next_phase','Bee'),jsonb_build_object('type','reorder','phases',jsonb_build_array('C','Bee','A'))));
 select public.edit_event_with_tasks(current_setting('ba.ed')::uuid,(select updated_at from public.events where id=current_setting('ba.ed')::uuid),(select name from public.events where id=current_setting('ba.ed')::uuid),null,current_date,current_date+10,'Draft','[]','[]',array[current_setting('ba.td')::uuid],'[]');
 reset role;
 set constraints public.tasks_z9_reconcile_event_phase_positions immediate;
@@ -85,6 +88,8 @@ do $$ begin raise exception 'TEST RESULTS: 20/20 PASS — transaction intentiona
 ```sql
 begin;
 create temporary table batch_a_results(seq integer generated always as identity,label text,passed boolean) on commit drop;
+grant select,insert on batch_a_results to authenticated;
+grant usage,select on sequence batch_a_results_seq_seq to authenticated;
 do $fixtures$
 declare token text:='batch-a-admin-'||gen_random_uuid(); actor_id uuid:=gen_random_uuid(); peer_id uuid:=gen_random_uuid();
 begin
@@ -100,13 +105,19 @@ end $fixtures$;
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('ba.actor'),'role','authenticated')::text,true);
 select public.set_officer_active(current_setting('ba.peer')::uuid,false);
-insert into batch_a_results(label,passed) select 'peer Admin deactivation preserves role and clears avatar',role='Admin' and not is_active and avatar_url is null from public.users where id=current_setting('ba.peer')::uuid;
+insert into batch_a_results(label,passed) select 'peer Admin deactivation preserves role and clears avatar',coalesce((select role='Admin' and not is_active and avatar_url is null from public.users where id=current_setting('ba.peer')::uuid),false);
 select public.set_officer_active(current_setting('ba.peer')::uuid,true);
-insert into batch_a_results(label,passed) select 'peer Admin reactivation succeeds',role='Admin' and is_active from public.users where id=current_setting('ba.peer')::uuid;
+insert into batch_a_results(label,passed) select 'peer Admin reactivation succeeds',coalesce((select role='Admin' and is_active from public.users where id=current_setting('ba.peer')::uuid),false);
 do $self$ declare rejected boolean:=false; begin begin perform public.set_officer_active(current_setting('ba.actor')::uuid,false); exception when sqlstate 'CCO03' then rejected:=true; end; insert into batch_a_results(label,passed) values('self deactivation is rejected',rejected); end $self$;
 select public.set_officer_active(current_setting('ba.peer')::uuid,false);
-insert into batch_a_results(label,passed) select 'inactive Admin is eligible',out_outcome='eligible' and out_role='Admin' from public.former_member_eligibility(current_setting('ba.peer')::uuid);
-insert into batch_a_results(label,passed) select 'anonymization preserves Admin history',result.out_outcome='anonymized' and profile.role='Admin' and profile.anonymized_at is not null from public.anonymize_former_member(current_setting('ba.peer')::uuid) result join public.users profile on profile.id=result.out_user_id;
+insert into batch_a_results(label,passed) select 'inactive Admin is eligible',coalesce((select outcome='eligible' and role='Admin' from public.preview_former_member_removal(array[current_setting('ba.peer')::uuid])),false);
+do $anonymize$
+declare v_outcome text;v_role text;v_anonymized_at timestamptz;
+begin
+  select result.out_outcome into v_outcome from public.anonymize_former_member(current_setting('ba.peer')::uuid) result;
+  select profile.role,profile.anonymized_at into v_role,v_anonymized_at from public.users profile where profile.id=current_setting('ba.peer')::uuid;
+  insert into batch_a_results(label,passed) values('anonymization preserves Admin history',coalesce(v_outcome='anonymized' and v_role='Admin' and v_anonymized_at is not null,false));
+end $anonymize$;
 reset role;
 insert into batch_a_results(label,passed)
 select 'Admin target is supported',pg_get_functiondef('public.set_officer_active(uuid,boolean)'::regprocedure) like '%v_target.role not in (''Admin'',''Co-Admin'')%' union all
@@ -120,7 +131,7 @@ select 'anonymize authorizes before lock',strpos(pg_get_functiondef('public.anon
 select 'CMR05 inner handler is retained',pg_get_functiondef('public.anonymize_former_member(uuid)'::regprocedure) like '%exception when others then%CMR05%Anonymization failed before its invariant could be verified.%' union all
 select 'officer guard trigger remains enabled',exists(select 1 from pg_trigger where tgrelid='public.users'::regclass and tgname='users_guard_officer_writes' and tgenabled<>'D') union all
 select 'lifecycle context is granted',has_function_privilege('authenticated','public.get_admin_lifecycle_context()','EXECUTE');
-do $report$ declare r record; begin for r in select * from batch_a_results order by seq loop raise notice '% %: %',lpad(r.seq::text,2,'0'),r.label,case when r.passed then 'PASS' else 'FAIL' end; end loop; if (select count(*) from batch_a_results)<>16 or exists(select 1 from batch_a_results where not passed) then raise exception 'Batch A Admin checks failed'; end if; end $report$;
+do $report$ declare r record;v_count integer;v_failed text;begin for r in select * from batch_a_results order by seq loop raise notice '% %: %',lpad(r.seq::text,2,'0'),r.label,case when r.passed then 'PASS' else 'FAIL' end;end loop;select count(*),string_agg(seq::text||' '||label,', ' order by seq) filter(where not passed) into v_count,v_failed from batch_a_results;if v_count<>16 or v_failed is not null then raise exception 'Batch A Admin checks failed: expected 16 rows, got %; failed: %',v_count,coalesce(v_failed,'none (one or more result rows were missing)');end if;end $report$;
 do $$ begin raise exception 'TEST RESULTS: 16/16 PASS — transaction intentionally rolled back'; end $$;
 ```
 
@@ -129,6 +140,8 @@ do $$ begin raise exception 'TEST RESULTS: 16/16 PASS — transaction intentiona
 ```sql
 begin;
 create temporary table batch_a_results(seq integer generated always as identity,label text,passed boolean) on commit drop;
+grant select,insert on batch_a_results to authenticated;
+grant usage,select on sequence batch_a_results_seq_seq to authenticated;
 do $fixtures$
 declare token text:='batch-a-deadline-'||gen_random_uuid(); a uuid:=gen_random_uuid(); c uuid:=gen_random_uuid(); exm uuid:=gen_random_uuid(); exa uuid:=gen_random_uuid(); shm uuid:=gen_random_uuid(); shb uuid:=gen_random_uuid(); gf uuid:=gen_random_uuid(); texm uuid:=gen_random_uuid(); tshm uuid:=gen_random_uuid(); tshb uuid:=gen_random_uuid(); tgf uuid:=gen_random_uuid();
 begin
@@ -142,9 +155,11 @@ begin
     (texm,exm,c,token||'-extend-move','Phase','To Do','Medium','Deliverable',current_date+9,'{}',a,1024),(tshm,shm,c,token||'-shorten-move','Phase','To Do','Medium','Deliverable',current_date+18,'{}',a,1024),
     (tshb,shb,c,token||'-shorten-block','Phase','To Do','Medium','Deliverable',current_date+18,'{}',a,1024),(tgf,gf,c,token||'-grandfather','Phase','To Do','Medium','Deliverable',current_date+15,'{}',a,1024);
   perform set_config('ceit_connect.task_assignee_writer','',true);
-  execute 'alter table public.tasks enable trigger tasks_i0_guard_event_end';
   perform set_config('ba.a',a::text,true); perform set_config('ba.c',c::text,true); perform set_config('ba.exm',exm::text,true); perform set_config('ba.exa',exa::text,true); perform set_config('ba.shm',shm::text,true); perform set_config('ba.shb',shb::text,true); perform set_config('ba.gf',gf::text,true); perform set_config('ba.texm',texm::text,true); perform set_config('ba.tshm',tshm::text,true); perform set_config('ba.tgf',tgf::text,true);
 end $fixtures$;
+set constraints all immediate;
+alter table public.tasks enable trigger tasks_i0_guard_event_end;
+set constraints all deferred;
 set local role authenticated;
 select set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('ba.a'),'role','authenticated')::text,true);
 select public.edit_event_with_tasks(current_setting('ba.exm')::uuid,(select updated_at from public.events where id=current_setting('ba.exm')::uuid),(select name from public.events where id=current_setting('ba.exm')::uuid),null,current_date,current_date+20,'Draft','[]',jsonb_build_array(jsonb_build_object('id',current_setting('ba.texm'),'title',(select title from public.tasks where id=current_setting('ba.texm')::uuid),'description',null,'phase','Phase','committee_id',current_setting('ba.c'),'task_type','Deliverable','priority','Medium','due_date',(current_date+15)::text,'call_time',null,'end_time',null,'assignee_ids','[]'::jsonb)),'{}','[]');
@@ -175,7 +190,7 @@ select 'extension bypasses scan',pg_get_functiondef('ceit_connect_private.guard_
 select 'null-to-value scans',pg_get_functiondef('ceit_connect_private.guard_event_end_shortening()'::regprocedure) like '%old.end_date is not null and new.end_date >= old.end_date%' union all
 select 'event error has no title',pg_get_functiondef('ceit_connect_private.guard_event_end_shortening()'::regprocedure) not like '%task_row.title%' union all
 select 'override requires exact trusted scope',pg_get_functiondef('ceit_connect_private.guard_task_event_end()'::regprocedure) like '%current_user=''postgres''%event_end_override_writer%=''edit_event_with_tasks''%event_end_override_event_id%new.event_id::text%' union all
-select 'wrapper clears success and error paths',(length(pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure))-length(replace(pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure),'event_end_override_writer'','''','')))/length('event_end_override_writer'','''')=2 union all
+select 'wrapper clears success and error paths',regexp_count(pg_get_functiondef('public.edit_event_with_tasks(uuid,timestamptz,text,text,date,date,text,jsonb,jsonb,uuid[],jsonb)'::regprocedure),$pattern$event_end_override_writer','',true$pattern$)=2 union all
 select 'set-null differs from unset',pg_get_functiondef('ceit_connect_private.guard_task_event_end()'::regprocedure) like '%event_end_override_is_set%' and pg_get_functiondef('ceit_connect_private.guard_task_event_end()'::regprocedure) like '%nullif(current_setting(''ceit_connect.event_end_override_value''%';
 do $report$ declare r record; begin for r in select * from batch_a_results order by seq loop raise notice '% %: %',lpad(r.seq::text,2,'0'),r.label,case when r.passed then 'PASS' else 'FAIL' end; end loop; if (select count(*) from batch_a_results)<>24 or exists(select 1 from batch_a_results where not passed) then raise exception 'Batch A deadline checks failed'; end if; end $report$;
 do $$ begin raise exception 'TEST RESULTS: 24/24 PASS — transaction intentionally rolled back'; end $$;
