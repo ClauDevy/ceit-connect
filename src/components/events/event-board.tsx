@@ -130,12 +130,17 @@ import {
 } from "@/lib/tasks/phase-completion";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import {
+  formatEventAutoArchiveWarning,
+  type EventAutoArchiveWarning,
+} from "@/lib/events/auto-archive-warning";
 
 type EventBoardProps = {
   event: BoardEvent;
   viewer: BoardViewer;
   committees: BoardCommittee[];
   initialTasks?: BoardTask[];
+  autoArchiveWarning: EventAutoArchiveWarning | null;
 };
 
 const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -265,6 +270,7 @@ function BoardContents({
   viewer,
   committees,
   initialTasks,
+  autoArchiveWarning,
 }: EventBoardProps) {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
@@ -1046,6 +1052,15 @@ function BoardContents({
           </div>
         </div>
       </section>
+
+      {autoArchiveWarning ? (
+        <InlineAlert variant="warning">
+          {formatEventAutoArchiveWarning(
+            autoArchiveWarning,
+            viewer.role === "Admin" || viewer.role === "Co-Admin",
+          )}
+        </InlineAlert>
+      ) : null}
 
       {moveError ? (
         <InlineAlert className="flex flex-wrap items-center justify-between gap-3">

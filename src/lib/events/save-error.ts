@@ -6,6 +6,9 @@ type SupabaseSaveError = {
 };
 
 export function getEventSaveErrorMessage(error: SupabaseSaveError) {
+  if (error.code === "CCD06") {
+    return "Active events need an end date. Choose an end date and try again.";
+  }
   if (error.code === "CCD01") {
     return "This creator already has 10 Draft events. Launch, archive, or delete a Draft before saving another.";
   }
