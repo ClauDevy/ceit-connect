@@ -21,6 +21,7 @@ import { maxDuration, POST } from "./route";
 const adminId = "10000000-0000-4000-8000-000000000001";
 const targetId = "10000000-0000-4000-8000-000000000002";
 const secondId = "10000000-0000-4000-8000-000000000003";
+const thirdId = "10000000-0000-4000-8000-000000000004";
 const timestamp = "2026-10-27T12:00:00.000Z";
 
 function request(body: unknown) {
@@ -67,6 +68,9 @@ function callerClient(
     if (implementation) return implementation(name, args);
     if (name === "preview_former_member_removal") {
       return { data: previewRows(args.p_user_ids as string[]), error: null };
+    }
+    if (name === "finalize_former_member_bulk_activity") {
+      return { data: "10000000-0000-4000-8000-000000000099", error: null };
     }
     return { data: anonymizedRow(args.p_user_id as string), error: null };
   });
@@ -450,5 +454,130 @@ describe("POST /api/remove-former-members execution", () => {
       secondId,
       expect.any(Object),
     );
+  });
+
+  it("finalizes a completed bulk once with completed ids only", async () => {
+    const session = callerClient();
+    const response = await POST(
+      request({
+        action: "remove",
+        userIds: [targetId, secondId],
+        confirmation: "REMOVE 2 MEMBERS",
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(session.rpc).toHaveBeenLastCalledWith(
+      "finalize_former_member_bulk_activity",
+      { p_user_ids: [targetId, secondId] },
+    );
+  });
+
+  it("does not finalize an already-anonymized retry", async () => {
+    const session = callerClient((name, args) => {
+      if (name === "preview_former_member_removal") {
+        return { data: previewRows(args.p_user_ids as string[]), error: null };
+      }
+      if (name === "finalize_former_member_bulk_activity") {
+        throw new Error("finalizer must not be called");
+      }
+      return {
+        data: anonymizedRow(args.p_user_id as string, "already_anonymized"),
+        error: null,
+      };
+    });
+    const response = await POST(request({
+      action: "remove",
+      userIds: [targetId, secondId],
+      confirmation: "REMOVE 2 MEMBERS",
+    }));
+    expect(response.status).toBe(200);
+    expect(session.rpc.mock.calls.some(
+      ([name]) => name === "finalize_former_member_bulk_activity",
+    )).toBe(false);
+  });
+
+  it("skips the finalizer when only one id was newly anonymized", async () => {
+    const session = callerClient((name, args) => {
+      if (name === "preview_former_member_removal") {
+        return { data: previewRows(args.p_user_ids as string[]), error: null };
+      }
+      if (name === "finalize_former_member_bulk_activity") {
+        throw new Error("finalizer must not be called");
+      }
+      const userId = args.p_user_id as string;
+      return {
+        data: anonymizedRow(
+          userId,
+          userId === secondId ? "already_anonymized" : "anonymized",
+        ),
+        error: null,
+      };
+    });
+    const response = await POST(request({
+      action: "remove",
+      userIds: [targetId, secondId],
+      confirmation: "REMOVE 2 MEMBERS",
+    }));
+    expect(response.status).toBe(200);
+    expect(session.rpc.mock.calls.some(
+      ([name]) => name === "finalize_former_member_bulk_activity",
+    )).toBe(false);
+  });
+
+  it("finalizes a mixed retry with only the newly anonymized ids", async () => {
+    const session = callerClient((name, args) => {
+      if (name === "preview_former_member_removal") {
+        return { data: previewRows(args.p_user_ids as string[]), error: null };
+      }
+      if (name === "finalize_former_member_bulk_activity") {
+        return { data: "10000000-0000-4000-8000-000000000099", error: null };
+      }
+      const userId = args.p_user_id as string;
+      return {
+        data: anonymizedRow(
+          userId,
+          userId === secondId ? "already_anonymized" : "anonymized",
+        ),
+        error: null,
+      };
+    });
+    const response = await POST(request({
+      action: "remove",
+      userIds: [targetId, secondId, thirdId],
+      confirmation: "REMOVE 3 MEMBERS",
+    }));
+    expect(response.status).toBe(200);
+    expect(session.rpc).toHaveBeenCalledWith(
+      "finalize_former_member_bulk_activity",
+      { p_user_ids: [targetId, thirdId] },
+    );
+  });
+
+  it("retries the bulk finalizer once and surfaces a clear failure", async () => {
+    const session = callerClient((name, args) => {
+      if (name === "preview_former_member_removal") {
+        return { data: previewRows(args.p_user_ids as string[]), error: null };
+      }
+      if (name === "finalize_former_member_bulk_activity") {
+        return { data: null, error: { code: "CAL04", message: "private" } };
+      }
+      return { data: anonymizedRow(args.p_user_id as string), error: null };
+    });
+    const response = await POST(
+      request({
+        action: "remove",
+        userIds: [targetId, secondId],
+        confirmation: "REMOVE 2 MEMBERS",
+      }),
+    );
+    const payload = await response.json();
+    expect(response.status).toBe(500);
+    expect(payload.error).toContain("Activity Log summary could not be finalized");
+    expect(JSON.stringify(payload)).not.toContain("private");
+    expect(
+      session.rpc.mock.calls.filter(
+        ([name]) => name === "finalize_former_member_bulk_activity",
+      ),
+    ).toHaveLength(2);
   });
 });
