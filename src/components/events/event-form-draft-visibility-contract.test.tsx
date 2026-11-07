@@ -57,6 +57,12 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
     );
   });
 
+  it("accurately warns that Edit Event cannot move tasks between phases", () => {
+    expect(eventForm).toContain(
+      "Tasks can’t be moved between phases here; persisted To Do tasks will be deleted when you save.",
+    );
+  });
+
   it("keeps reader rows outside editable phase state and every task save payload", () => {
     expect(eventForm).toContain(
       "initialEvent ? makeInitialPhases(initialEvent.tasks) : []",

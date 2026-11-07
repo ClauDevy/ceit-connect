@@ -53,7 +53,7 @@ function service(rows: unknown[] = [{ id: eventId, name: "Foundation Week", stat
   const inFilter = vi.fn().mockResolvedValue({ data: rows, error: null });
   const select = vi.fn(() => ({ in: inFilter }));
   const rpc = vi.fn(async (name: string) => {
-    if (name === "delete_event") return { data: [{ out_event_id: eventId, out_cleanup_job_id: null, out_cleanup_unavailable: false }], error: null };
+    if (name === "delete_events_bulk") return { data: [{ out_event_id: eventId, out_cleanup_job_id: null, out_cleanup_unavailable: false, out_error_code: null }], error: null };
     throw new Error(`unexpected ${name}`);
   });
   const client = { from: vi.fn(() => ({ select })), rpc };
@@ -112,22 +112,58 @@ describe("event deletion route", () => {
     expect(rpc).toHaveBeenCalledTimes(1);
   });
 
-  it("reports a re-read version mismatch as stale without calling delete_event", async () => {
+  it("reports a re-read version mismatch as stale without calling the bulk writer", async () => {
     const { rpc } = service([{ id: eventId, name: "Foundation Week", status: "Draft", updated_at: "2026-10-31T12:34:57.000001+00:00" }]);
     const response = await POST(request(body()));
     expect((await response.json()).results[0].message).toContain("changed");
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("runs the 8-second pre-pass then forwards actor and opaque microsecond version", async () => {
+  it("runs the 8-second pre-pass then sends one database bulk call with opaque versions", async () => {
     const { rpc } = service();
     await POST(request(body()));
     expect(mocks.runEventStorageCleanupPass).toHaveBeenCalledWith(expect.anything(), {
       timeBudgetMs: PRE_DELETION_CLEANUP_BUDGET_MS,
     });
-    expect(rpc).toHaveBeenCalledWith("delete_event", {
-      p_event_id: eventId, p_actor_id: actorId, p_expected_updated_at: version,
+    expect(rpc).toHaveBeenCalledWith("delete_events_bulk", {
+      p_events: [{ id: eventId, expected_updated_at: version }],
+      p_actor_id: actorId,
     });
+  });
+
+  it("sends all eligible events in one database call and preserves submitted result order", async () => {
+    const rows = [
+      { id: eventId, name: "Foundation Week", status: "Draft", updated_at: version },
+      { id: secondId, name: "Second event", status: "Archived", updated_at: version },
+    ];
+    const { client } = service(rows);
+    client.rpc = vi.fn().mockResolvedValue({
+      data: [
+        { out_event_id: secondId, out_cleanup_job_id: null, out_cleanup_unavailable: false, out_error_code: null },
+        { out_event_id: eventId, out_cleanup_job_id: null, out_cleanup_unavailable: false, out_error_code: null },
+      ],
+      error: null,
+    });
+    mocks.createServiceRoleClient.mockResolvedValue(client);
+
+    const response = await POST(request(body([
+      { id: eventId, expectedUpdatedAt: version },
+      { id: secondId, expectedUpdatedAt: version },
+    ], "DELETE 2 EVENTS")));
+    const payload = await response.json();
+
+    expect(client.rpc).toHaveBeenCalledTimes(1);
+    expect(client.rpc).toHaveBeenCalledWith("delete_events_bulk", {
+      p_events: [
+        { id: eventId, expected_updated_at: version },
+        { id: secondId, expected_updated_at: version },
+      ],
+      p_actor_id: actorId,
+    });
+    expect(payload.results.map((result: { eventId: string }) => result.eventId)).toEqual([
+      eventId,
+      secondId,
+    ]);
   });
 
   it("does not let pre-pass failure block deletion", async () => {
@@ -136,12 +172,12 @@ describe("event deletion route", () => {
     const { rpc } = service();
     const response = await POST(request(body()));
     expect(response.status).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("delete_event", expect.anything());
+    expect(rpc).toHaveBeenCalledWith("delete_events_bulk", expect.anything());
   });
 
   it("attempts the exact returned cleanup job only after deletion succeeds", async () => {
     const { client } = service();
-    client.rpc = vi.fn().mockResolvedValue({ data: [{ out_event_id: eventId, out_cleanup_job_id: "13de9000-0000-4000-8000-000000000001", out_cleanup_unavailable: false }], error: null });
+    client.rpc = vi.fn().mockResolvedValue({ data: [{ out_event_id: eventId, out_cleanup_job_id: "13de9000-0000-4000-8000-000000000001", out_cleanup_unavailable: false, out_error_code: null }], error: null });
     mocks.createServiceRoleClient.mockResolvedValue(client);
     const response = await POST(request(body()));
     expect(mocks.attemptEventStorageCleanup).toHaveBeenCalledWith(client, "13de9000-0000-4000-8000-000000000001");
@@ -150,7 +186,7 @@ describe("event deletion route", () => {
 
   it("maps database codes and cleanup warning without exposing messages", async () => {
     const { client } = service();
-    client.rpc = vi.fn().mockResolvedValue({ data: null, error: { code: "CCE04", message: "private stored name" } });
+    client.rpc = vi.fn().mockResolvedValue({ data: [{ out_event_id: eventId, out_cleanup_job_id: null, out_cleanup_unavailable: false, out_error_code: "CCE04" }], error: null });
     mocks.createServiceRoleClient.mockResolvedValue(client);
     const response = await POST(request(body()));
     const text = JSON.stringify(await response.json());
@@ -160,7 +196,7 @@ describe("event deletion route", () => {
 
   it("reports finalized cleanup failure separately from successful deletion", async () => {
     const { client } = service();
-    client.rpc = vi.fn().mockResolvedValue({ data: [{ out_event_id: eventId, out_cleanup_job_id: "13de9000-0000-4000-8000-000000000001", out_cleanup_unavailable: false }], error: null });
+    client.rpc = vi.fn().mockResolvedValue({ data: [{ out_event_id: eventId, out_cleanup_job_id: "13de9000-0000-4000-8000-000000000001", out_cleanup_unavailable: false, out_error_code: null }], error: null });
     mocks.createServiceRoleClient.mockResolvedValue(client);
     mocks.attemptEventStorageCleanup.mockResolvedValue({ jobId: "job", status: "failed", message: "fixed" });
     const payload = await (await POST(request(body()))).json();
