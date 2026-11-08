@@ -4,9 +4,15 @@ import { describe, expect, it } from "vitest";
 const migration = readFileSync(
   "supabase/migrations/20261108120000_event_auto_archive.sql",
   "utf8",
+).replace(/\r\n/g, "\n");
+const paste = readFileSync("docs/phase-4b/step-d-tests.md", "utf8").replace(
+  /\r\n/g,
+  "\n",
 );
-const paste = readFileSync("docs/phase-4b/step-d-tests.md", "utf8");
-const plan = readFileSync("docs/phase-4b/step-d.md", "utf8");
+const plan = readFileSync("docs/phase-4b/step-d.md", "utf8").replace(
+  /\r\n/g,
+  "\n",
+);
 
 describe("Batch D automatic archive migration contract", () => {
   it("uses three complete Manila days and leaves scheduling out of the migration", () => {

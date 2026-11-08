@@ -4,19 +4,19 @@ import { describe, expect, it } from "vitest";
 const privilegeMigration = readFileSync(
   "supabase/migrations/20261109120000_batch_14_privilege_and_run_history_hardening.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const visibilityMigration = readFileSync(
   "supabase/migrations/20261109121000_batch_14_inactive_event_visibility.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const capsMigration = readFileSync(
   "supabase/migrations/20261109122000_enable_officer_role_caps.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const batch14Paste = readFileSync(
   "docs/phase-4b/step-14-tests.md",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("Batch 14 migration contracts", () => {
   it("pins the exact authenticated privilege baseline and result", () => {
