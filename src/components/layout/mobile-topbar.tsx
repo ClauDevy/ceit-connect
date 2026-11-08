@@ -1,6 +1,7 @@
 import { AppLogo } from "@/components/ui/app-logo"
 import { AvatarMenu } from "@/components/layout/avatar-menu"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { MobileNotificationBell } from "@/components/notifications/notification-center"
 import type { CurrentUser } from "@/lib/types"
 
 export function MobileTopbar({ user }: { user: CurrentUser }) {
@@ -12,6 +13,7 @@ export function MobileTopbar({ user }: { user: CurrentUser }) {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
+        <MobileNotificationBell />
         <AvatarMenu user={user} />
       </div>
     </header>
