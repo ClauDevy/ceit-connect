@@ -261,7 +261,10 @@ All SQL verification is in `step-b-tests.md`: Paste A expects 41 lines, B 31, C 
 ## Unrelated findings — listed, not fixed
 
 1. `move_task()` takes event/advisory/phase locks before caller authorization.
-2. `notifications_update_own` does not limit changed columns to `read_at`.
+2. Historical finding: `notifications_update_own` did not limit changed columns
+   to `read_at`. Phase 5 N1 resolves this in its new, not-yet-applied migration
+   by revoking authenticated UPDATE and routing read-state changes through two
+   narrow active-owner RPCs.
 3. A failed single-task delete can render its error behind the confirmation dialog.
 4. `/api/toggle-user-active` can report success after a zero-row service-role Member update.
 5. That route may expose raw backend error text.
