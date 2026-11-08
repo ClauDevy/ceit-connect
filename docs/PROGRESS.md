@@ -4,7 +4,9 @@
 
 The approved Phase 5 batch map, decisions, gate checks, and release checklist are in `docs/phase-5/PHASE-5-PLAN.md`.
 
-- **Phase 5 N1 notification foundation is implemented locally and awaits owner migration review; it is not applied on Dev or Prod.** Migration `20261110120000_notification_foundation.sql` generates all six persistent notification types set-wise, excludes inactive recipients and self-actions, stays silent for Draft/Archived/no-op/leave paths, masks titles through current task access, replaces the latest two notification policies, retains authenticated SELECT for personal Realtime, revokes authenticated INSERT/UPDATE/DELETE, and adds authenticated-only count/page/read-state RPCs. The migration adds no task/event FK. The N1 step, exact object catalog, 30-line catalog paste, and 48-line behavior paste are under `docs/phase-5/`; the behavior paste includes Draft, Archived, inactive, revoked-access, and 45-recipient/three-comment fixtures. Historical frozen pastes are not edited and their skip/replacement rules are documented. Local verification: 1,115/1,115 Vitest assertions pass; lint has zero errors and the pre-existing unused-`INK` warning; `git diff --check` passes with only the existing LF/CRLF notice; direct TypeScript reaches only the two pre-existing missing `PageProps` globals and one missing `LayoutProps` global. No build or Supabase command was run.
+- **Phase 5 N1 notification foundation is live on Dev and Prod and its smoke tests passed (owner-confirmed).** Migration `20261110120000_notification_foundation.sql` generates all six persistent notification types set-wise, excludes inactive recipients and self-actions, stays silent for Draft/Archived/no-op/leave paths, masks titles through current task access, replaces the latest two notification policies, retains authenticated SELECT for personal Realtime, revokes authenticated INSERT/UPDATE/DELETE, and adds authenticated-only count/page/read-state RPCs. The migration adds no task/event FK. The owner will remove the Prod smoke-test events through normal app screens before N2 ships; no cleanup code or migration is part of N2.
+
+- **Phase 5 N2 notification bell is implemented locally; owner manual testing and rollout are pending.** One shared provider places the bell between the desktop theme/identity controls and phone theme/avatar controls, renders a Base UI 1.8.0 anchored popover or safe-area bottom sheet, and uses only the four N1 RPCs. The database count alone owns the `99+` badge; confirmed writers update loaded row presentation then refetch, while personal INSERT Realtime only invalidates readers. Fetch-21/show-20 keyset paging deduplicates and preserves older loaded pages across first-page refresh. Focus, visibility, online, channel recovery, and token refresh recover missed rows; development effect replay cannot duplicate channels. Hidden rows never link, masked rows keep N1's generic title, and Active/Archived rows share `/tasks/{id}`. Fixed errors retain prior state, inactive denial returns to the established server session boundary, and shared motion includes a complete reduced-motion state. N2 requires **no Prod database push**. Its 32 focused assertions pass; the final full run has 1,142 passing assertions and only five unrelated pre-existing CRLF-sensitive Batch 14/Batch D contract failures, while the archived-task mock still emits its documented non-failing `interactive` warning. Direct TypeScript reaches only the three documented missing Next-generated `PageProps`/`LayoutProps` globals. Lint has zero errors and only the pre-existing unused-`INK` warning; `git diff --check` passes. No build, Supabase command, commit, or push was run. The Dev manual gate must confirm the unread-count runtime format is numeric.
 
 - **Batch 14 Part 1 is live and fully passed on Dev and Prod.** The owner applied all three tracked migrations and confirmed the 33/33 Batch 14 paste plus Step 8, Batch A, Batch B, and Batch D 46/46 reruns. The migrations remove only authenticated TRUNCATE/REFERENCES/TRIGGER from events, tasks, notifications, users, and activity_log, enable non-forced zero-policy RLS on both Batch D run-history tables, deny inactive/profile-less event readers while preserving active role behavior and its Activity Log mirror, and enable the global officer-cap row. Dev's target revokes had been applied manually before the tracked migration; the migration is the tracked record of truth in both environments. A, B, and D remain live on Dev and Prod; Prod's external cron row was owner-verified 2026-11-07 and Dev has none.
 
@@ -239,9 +241,8 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - `.gitattributes` LF forcing.
 - Final docs cleanup: correct stale Batch 14 status wording in
   `docs/phase-4b/step-14.md`; this is unrelated to N1 behavior.
-- Older Batch 14 test cleanup: normalize CRLF in
-  `src/lib/batch-14-migration-contract.test.ts` if that batch is revisited. Its
-  current test passes, so N1 does not change it.
+- Batch 14 and Batch D migration-contract reads now normalize CRLF for checkout portability.
+- N2 docs cleanup: add `DesktopNotificationBell` to the shared design-system documentation.
 - N1 concurrency review: exercise the unusual sequence where notification
   insertion holds the recipient user's light foreign-key key-share lock while
   another transaction deactivates that user. N1 documents this and does not
@@ -249,9 +250,10 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 ## Open items
 
-- Phase 5 runs N1, N2, I1, P1, D1, D2, and O1 as separate reviewed batches. N1 is local only; each later batch requires its own plan and run.
+- Phase 5 runs N1, N2, N3, I1, P1, D1, D2, and O1 as separate reviewed batches. N1 is live; N2 is local pending its manual gate; each later batch requires its own plan and run.
 - Post-Phase-5 notification follow-ups include daily digest email and a council-wide Discord webhook. Their secure background-sender pattern remains an open decision shared with P1.
-- Notification foundation deliberately has no alert coalescing and no notification cleanup/retention policy yet.
+- N3 notification housekeeping must define notification cleanup/retention, a bounded writer, scheduling proof, catalog impact, and rollback-safe tests before implementation.
+- I1 installable-app basics remains a separate batch and does not absorb N2, push, email, or Discord behavior.
 - Phase 5 idea: consider an automatic email queue for rate-limited invitations. Batch 8 deliberately uses sequential sends and explicit retry only.
 - List-only item: `src/components/layout/sidebar.tsx` is an unused legacy sidebar with no importer and is not mounted by `AppShell`; Batch 14 does not delete it.
 - Batch 14 catalog-test allowlist follow-up: include `purge_activity_log`, `activity_log_retention_days`, `guard_activity_log_deletes`, and trigger `activity_log_guard_deletes`. Do not change the authoritative count or allowlist files before that deferred catalog pass.
