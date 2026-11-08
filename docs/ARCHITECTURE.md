@@ -43,7 +43,7 @@ If it returns `null`, show a plain "Open link" button, never a broken iframe. Pr
 - **Executive Dashboard** (two-level drill-down bar chart): Level 1 (Admin only) = one bar per committee sized by active tasks. Level 2 = one bar per member of a committee. Admins land on Level 1; Co-Admins land directly on their own committee's Level 2; Members don't see the chart. Names/avatars must be **always visible on the chart** (no hover-only identification — touchscreens). A committee with zero active tasks shows the sleeping-tiger empty state.
 - **Event Archives:** completed events frozen read-only (no drag, comment, or edit); historical chat and Drive links stay readable.
 - **Activity Log:** immutable audit trail via Postgres triggers on every task INSERT/UPDATE/DELETE. Clients have no direct table privileges or SELECT policy; the authenticated-only fixed-shape `list_activity_log()` reader masks unavailable content and never returns raw `changes`.
-- **Notifications:** the bell is backed by a persistent `notifications` table (not inferred from Realtime). Realtime only pushes new rows live; the table makes unread counts correct after refresh or offline.
+- **Notifications:** the bell is backed by a persistent `notifications` table (not inferred from Realtime). N1 generates all six row types set-wise, filters inactive recipients and self-actions, exposes active-owner count/page/read-state RPCs, and keeps authenticated table access SELECT-only for Realtime. Realtime only pushes new rows live; the table makes unread counts correct after refresh or offline. N1 is implemented locally and awaits migration review/Dev application; the bell UI is not part of N1.
 
 ### UI defense in depth
 Hiding a nav icon is UX polish, not security. Every UI role check must have a matching RLS policy or server check — a Member can still type `/activity-log` or call an API by hand.
@@ -87,12 +87,12 @@ Supabase free tier has no automated backups. A designated Technical Lead exports
 | 2 | Auth, image pipeline, offboarding | Done |
 | 3 | Event engine, drafts, relative scheduling, archives | Done |
 | 4 | Task engine, Kanban, dependencies, confidentiality UI | Done |
-| 4B | Pre-Phase-5 authorization, account, task-rule, and UI changes | Planned |
-| 5 | Notifications, dashboard wiring, ops handover | Not started |
+| 4B | Pre-Phase-5 authorization, account, task-rule, and UI changes | Done; A/B/D/14 live on Dev and Prod |
+| 5 | Notifications, dashboard wiring, ops handover | N1 implemented locally; not applied |
 
 **Phase 3 gate checks:** auto-import lands relative dates correctly and populates the backlog with no assignees; a valid Drive link renders an inline preview and plain text falls back to a link; active Admins and Co-Admins can see and edit any Draft, while a Member cannot see a Draft even via direct URL; a Co-Admin can launch any Draft but cannot change Active back to Draft or archive one; an Archived event cannot be updated or un-archived.
 **Phase 4 gate checks:** blocked task unlocks when its dependency completes; a non-assigned Member sees only "Confidential Task" on the board and task page; drag-and-drop works on desktop and tap-checkbox on a real phone.
-**Phase 5 gate checks:** a burst of 40+ mentions throttles gracefully; a Co-Admin lands on their own committee with no Level 1 access, a Member has no dashboard link and the URL is blocked server-side; the unread count survives a refresh after an offline notification.
+**Phase 5 gate checks:** N1, N2, D1, D2, and O1 must all pass. N1 proves a burst of 40+ in-app mentions across at least three comments is inserted set-wise without loss or delay; N2 proves the persistent unread count survives refresh after an offline notification; D1/D2 prove a Co-Admin lands on their own committee with no Level 1 access and a Member has no dashboard link and is blocked server-side; O1 proves the backup export and live row-count comparison.
 
 ## Planned changes (Phase 4B)
 

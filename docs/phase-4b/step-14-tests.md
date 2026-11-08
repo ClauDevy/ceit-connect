@@ -1,5 +1,10 @@
 # Step 14 database verification and authoritative A/B/D catalog
 
+> **Phase 5 N1 successor note:** this already-passed paste is frozen. Its
+> notification CRUD expectation is historical and must not be rerun after N1.
+> The current notification allowlist and grant/policy checks move to
+> `docs/phase-5/catalog.md` and the 30-line N1 Paste A.
+
 Run order on Dev: apply `20261109120000_batch_14_privilege_and_run_history_hardening.sql`, then `20261109121000_batch_14_inactive_event_visibility.sql`, then `20261109122000_enable_officer_role_caps.sql`; run this paste; then re-run `step-8-tests.md`, `step-a-tests.md`, `step-b-tests.md`, and `step-d-tests.md`. Review every migration before applying it. The paste is one transaction, creates its fixtures inside that transaction, impersonates browser callers, prints exactly **33** result lines, and ends with the intentional `TEST RESULTS` exception that rolls everything back.
 
 No new global catalog total is claimed here. The owner records totals only from this live Dev run. The allowlist below is source-bound: an object is accepted only when its tracked source migration is present.
