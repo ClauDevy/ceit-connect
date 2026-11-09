@@ -1,4 +1,4 @@
-import { Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
+import { Download, Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
@@ -6,6 +6,7 @@ import { SettingsSection } from "@/components/settings/settings-section";
 import { SetPasswordForm } from "@/components/settings/set-password-form";
 import { AvatarUploader } from "@/components/settings/avatar-uploader";
 import { FullNameForm } from "@/components/settings/full-name-form";
+import { InstallAppHelp } from "@/components/settings/install-app-help";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -57,6 +58,16 @@ export default async function SettingsPage() {
           }
         >
           <SetPasswordForm hasPassword={!!profile?.password_set} />
+        </SettingsSection>
+
+        <SettingsSection
+          motionIndex={3}
+          title="Install the app"
+          description="Keep CEIT Connect within easy reach on your phone."
+          icon={<Download aria-hidden />}
+          tone="amber"
+        >
+          <InstallAppHelp />
         </SettingsSection>
       </div>
     </div>
