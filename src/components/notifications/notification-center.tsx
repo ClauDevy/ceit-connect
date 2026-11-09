@@ -51,6 +51,7 @@ import {
   parseNotificationRows,
   parseNotificationUnreadCount,
   type NotificationCursor,
+  type NotificationListState,
   type NotificationRow,
 } from "@/lib/notifications/notification-bell";
 import { subscribeToNotificationRealtime } from "@/lib/notifications/notification-realtime";
@@ -59,20 +60,7 @@ import { cn } from "@/lib/utils";
 
 type OpenSurface = "desktop" | "mobile" | null;
 
-type ListState = {
-  rows: NotificationRow[];
-  loaded: boolean;
-  loading: boolean;
-  loadingMore: boolean;
-  olderPagesLoaded: boolean;
-  hasMore: boolean;
-  cursor: NotificationCursor | null;
-  error: string | null;
-  appendError: string | null;
-  announcement: string;
-};
-
-const INITIAL_LIST_STATE: ListState = {
+const INITIAL_LIST_STATE: NotificationListState = {
   rows: [],
   loaded: false,
   loading: false,
@@ -88,7 +76,7 @@ const INITIAL_LIST_STATE: ListState = {
 type NotificationContextValue = {
   count: number | null;
   countError: string | null;
-  list: ListState;
+  list: NotificationListState;
   openSurface: OpenSurface;
   busyIds: ReadonlySet<string>;
   markAllBusy: boolean;
@@ -127,18 +115,20 @@ export function NotificationProvider({
   const countRequestRef = useRef(0);
   const listRefreshRequestRef = useRef(0);
   const listAppendRequestRef = useRef(0);
-  const listRef = useRef<ListState>(INITIAL_LIST_STATE);
+  const listRef = useRef<NotificationListState>(INITIAL_LIST_STATE);
   const openRef = useRef<OpenSurface>(null);
   const busyIdsRef = useRef(new Set<string>());
   const markAllBusyRef = useRef(false);
   const [count, setCount] = useState<number | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
-  const [list, setList] = useState<ListState>(INITIAL_LIST_STATE);
+  const [list, setList] = useState<NotificationListState>(INITIAL_LIST_STATE);
   const [openSurface, setOpenSurface] = useState<OpenSurface>(null);
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set());
   const [markAllBusy, setMarkAllBusy] = useState(false);
 
-  const updateList = useCallback((update: (current: ListState) => ListState) => {
+  const updateList = useCallback((
+    update: (current: NotificationListState) => NotificationListState,
+  ) => {
     setList((current) => {
       const next = update(current);
       listRef.current = next;
@@ -273,7 +263,7 @@ export function NotificationProvider({
 
   const recover = useCallback(() => {
     void refreshCount();
-    if (openRef.current && listRef.current.loaded) void refreshList();
+    if (openRef.current) void refreshList();
   }, [refreshCount, refreshList]);
 
   useEffect(() => {
@@ -441,9 +431,27 @@ function NotificationBellIcon({ count }: { count: number | null }) {
   );
 }
 
-function NotificationRows() {
-  const router = useRouter();
-  const { list, busyIds, close, markOne } = useNotifications();
+type NotificationRowsViewProps = {
+  count: number | null;
+  countError: string | null;
+  list: NotificationListState;
+  busyIds: ReadonlySet<string>;
+  close: () => void;
+  markOne: (id: string) => Promise<boolean>;
+  refreshList: () => void;
+  navigate: (taskId: string) => void;
+};
+
+export function NotificationRowsView({
+  count,
+  countError,
+  list,
+  busyIds,
+  close,
+  markOne,
+  refreshList,
+  navigate,
+}: NotificationRowsViewProps) {
   const reveal = useListReveal({
     items: list.rows,
     settled: list.loaded && !list.loading,
@@ -457,6 +465,8 @@ function NotificationRows() {
   }
 
   async function handleClick(event: MouseEvent<HTMLAnchorElement>, row: NotificationRow) {
+    const taskId = row.taskId;
+    if (!taskId) return;
     if (
       isModifiedNotificationActivation({
         button: event.button,
@@ -476,11 +486,16 @@ function NotificationRows() {
     if (busyIds.has(row.id)) return;
     if (await markOne(row.id)) {
       close();
-      router.push(`/tasks/${row.taskId}`);
+      navigate(taskId);
     }
   }
 
-  if (list.loading && !list.loaded) {
+  if (
+    list.rows.length === 0 &&
+    (list.loading ||
+      (!list.loaded && !list.error) ||
+      (count === null && countError === null && !list.error))
+  ) {
     return (
       <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-muted-foreground" role="status">
         <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
@@ -488,7 +503,22 @@ function NotificationRows() {
       </div>
     );
   }
-  if (list.loaded && list.rows.length === 0) {
+  if (list.rows.length === 0 && list.error) return null;
+  if (list.loaded && list.rows.length === 0 && count !== 0) {
+    return (
+      <EmptyState
+        compact
+        title="Notifications could not be displayed"
+        description="Refresh the list to try again."
+        action={
+          <Button type="button" variant="outline" size="sm" onClick={refreshList}>
+            Refresh
+          </Button>
+        }
+      />
+    );
+  }
+  if (list.loaded && list.rows.length === 0 && count === 0) {
     return (
       <EmptyState
         compact
@@ -573,6 +603,31 @@ function NotificationRows() {
         );
       })}
     </div>
+  );
+}
+
+function NotificationRows() {
+  const router = useRouter();
+  const {
+    count,
+    countError,
+    list,
+    busyIds,
+    close,
+    markOne,
+    refreshList,
+  } = useNotifications();
+  return (
+    <NotificationRowsView
+      count={count}
+      countError={countError}
+      list={list}
+      busyIds={busyIds}
+      close={close}
+      markOne={markOne}
+      refreshList={refreshList}
+      navigate={(taskId) => router.push(`/tasks/${taskId}`)}
+    />
   );
 }
 

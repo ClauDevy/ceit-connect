@@ -53,6 +53,24 @@ describe("notification center application contract", () => {
     expect(realtime).toContain("client.realtime.setAuth(session.access_token)");
   });
 
+  it("refreshes an open panel once per recovery event without a loaded gate or loop", () => {
+    const recoverStart = center.indexOf("const recover = useCallback");
+    const refreshListStart = center.indexOf("const refreshList = useCallback");
+    expect(recoverStart).toBeGreaterThanOrEqual(0);
+    expect(refreshListStart).toBeGreaterThanOrEqual(0);
+    const recover = center.slice(
+      recoverStart,
+      center.indexOf("useEffect(() =>", recoverStart),
+    );
+    const refreshList = center.slice(
+      refreshListStart,
+      center.indexOf("const loadMore = useCallback"),
+    );
+    expect(recover.match(/void refreshList\(\)/g)).toHaveLength(1);
+    expect(recover).not.toContain("listRef.current.loaded");
+    expect(refreshList).not.toContain("recover(");
+  });
+
   it("keeps Realtime personal, invalidation-only, deduplicated, and cleaned up", () => {
     expect(realtime).toContain('event: "INSERT"');
     expect(realtime).toContain('table: "notifications"');

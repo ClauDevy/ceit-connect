@@ -61,6 +61,23 @@ keeps every older loaded row. When older pages exist, their oldest cursor and
 page cursor. Failed count, refresh, or append calls keep the last successful
 state and show fixed safe copy.
 
+The first-page merge returns the shared list state's `rows`, `hasMore`, and
+`cursor` shape through an explicit TypeScript return type. This prevents a
+successful RPC page from settling under a non-rendered property while the UI
+incorrectly declares the list empty. Open-panel recovery refreshes the list
+even while its first request is pending; each recovery invokes one refresh,
+the existing request token rejects the older response, and neither refresh
+path schedules another recovery.
+
+`No notifications yet` renders only for a loaded, successful, non-refreshing
+empty list when the count is confirmed as zero. Once the list is loaded, an
+empty list with a positive or unavailable count instead shows `Notifications
+could not be displayed` with one manual Refresh button, including when the
+count reader retained a value alongside an error. Loading and list-error states
+never render either claim; a first-load list failure relies on the existing
+error alert and Retry button without leaving a spinner behind. There is no
+automatic retry loop.
+
 After the database confirms mark-one or mark-all, loaded rows become read
 locally for display and both readers refetch. This local row state never changes
 the badge. Mark all is enabled when the count reader says greater than zero or
@@ -105,6 +122,12 @@ settlement without badge arithmetic, personal invalidation-only Realtime,
 offline/focus/visibility/token/channel recovery, dev double-mount channel
 dedupe, cleanup, native modified activation, double-activation guards,
 desktop/mobile placement, hidden non-links, accessible full copy, and motion.
+A rendered-component regression passes the exact observed Prod microsecond
+`+00:00` response through validation and first-page settlement, then verifies
+that the notification sentence renders. It also covers positive-count,
+unavailable-count, refreshing, and first-load/list-error empty-state behavior.
+A separate source-contract test proves single-invocation, non-looping
+open-panel recovery before the first load settles.
 
 Manual acceptance covers desktop, phone, keyboard, screen reader, online/live,
 offline then reconnect, malformed/network failure, Active/Archived/masked/
