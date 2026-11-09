@@ -9,9 +9,9 @@ current batch completes its full stage order.
 | ID | Scope | Branch | Reasoning | Status |
 | --- | --- | --- | --- | --- |
 | N1 | Persistent notification generation, secure readers, read-state writers, Realtime boundary, catalog, and database tests | `feature/notification-foundation` | High | Live on Dev and Prod; N1 smoke tests passed (owner-confirmed) |
-| N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Implemented locally; owner manual gate and rollout pending |
+| N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Live on Dev and Prod (owner-confirmed) |
 | N3 | Notification housekeeping policy, bounded cleanup, catalog, and database tests | `feature/notification-housekeeping` | High | Not started; requires its own plan and retention decision |
-| I1 | Installable app basics | `feature/installable-app` | Medium | Not started |
+| I1 | Installable app basics | `feature/installable-app` | Medium | Implemented locally; owner phone gate and rollout pending |
 | P1 | Web push | `feature/web-push` | High | Not started; blocked on the secure-sender decision below |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Not started |
