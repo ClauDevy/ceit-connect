@@ -9,13 +9,18 @@ current batch completes its full stage order.
 | ID | Scope | Branch | Reasoning | Status |
 | --- | --- | --- | --- | --- |
 | N1 | Persistent notification generation, secure readers, read-state writers, Realtime boundary, catalog, and database tests | `feature/notification-foundation` | High | Live on Dev and Prod; N1 smoke tests passed (owner-confirmed) |
-| N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Implemented locally; owner manual gate and rollout pending |
+| N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Live on Dev and Prod (owner-confirmed) |
+| I1 | Installable app basics | `feature/installable-app` | Medium | Implemented locally; owner phone gate and rollout pending |
 | N3 | Notification housekeeping policy, bounded cleanup, catalog, and database tests | `feature/notification-housekeeping` | High | Not started; requires its own plan and retention decision |
-| I1 | Installable app basics | `feature/installable-app` | Medium | Not started |
 | P1 | Web push | `feature/web-push` | High | Not started; blocked on the secure-sender decision below |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Not started |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Not started |
+
+Owner-approved sequence: N1, N2, I1, N3, P1, D1, D2, then O1. I1
+starts after the N2 notification UI gate and does not wait for N3. Every batch
+still completes its own plan, implementation, review, and rollout before the
+next batch starts.
 
 ## Approved notification decisions
 
@@ -86,11 +91,12 @@ These are not part of the currently implemented N1/N2 behavior:
 
 ## Open items
 
+- I1 remains a separate installable-app batch after the N2 notification UI
+  gate; it does not wait for N3 and must not absorb push, email, Discord, or N2
+  behavior.
 - N3 must define the owner-approved notification retention window, safe bounded
   cleanup path, schedule/operations proof, catalog impact, and rollback-safe
   database tests before any housekeeping migration is written.
-- I1 remains a separate installable-app batch after the notification UI gate;
-  it must not absorb push, email, Discord, or N2 behavior.
 
 ## Open secure-sender decision
 
@@ -103,8 +109,8 @@ without putting a service-role key in a client or weakening the existing rule.
 
 ## Phase 5 gate checks
 
-- Every required batch N1, N2, I1, P1, D1, D2, and O1 has completed its own
-  review and rollout evidence.
+- The Phase 5 gate remains closed until every required batch — N1, N2, I1, N3,
+  P1, D1, D2, and O1 — has completed its own review and rollout evidence.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.
 - After an offline notification, refresh restores the correct unread count and
