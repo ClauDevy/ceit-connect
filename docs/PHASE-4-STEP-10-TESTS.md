@@ -6,6 +6,12 @@
 > `docs/phase-5/step-n1-notification-foundation-catalog-tests.md` paste and
 > `docs/phase-5/catalog.md`; this frozen Phase 4 paste remains evidence of its
 > original gate.
+>
+> **Phase 5 N3a extension (2026-11-10):** N3a does not change either N1
+> notification policy or authenticated SELECT-only table privilege. Its new
+> functions, private history, cleanup index, and exact grants are allowlisted in
+> `docs/phase-5/catalog.md` and checked by the 38-line N3a Paste A. This frozen
+> Phase 4 paste and its historical totals remain unchanged.
 
 > **Phase 4B extension (2026-11-09):** the exact Phase 4 totals below remain historical. The authoritative current A/B/D allowlist is the migration-tied table and 33-line paste in `docs/phase-4b/step-14-tests.md`; it absorbs every object changed by migrations `20261106120000` through `20261106170000`, `20261107120000`, and `20261108120000`, plus all four Batch 14 migrations. Part 2 migration `20261109123000_revoke_inactive_user_sessions.sql` adds the sole signature `public.revoke_inactive_user_sessions(uuid)`: owner `postgres`, volatile, `SECURITY DEFINER`, fixed empty `search_path`, `EXECUTE` only for `service_role`, denied to `PUBLIC`, `anon`, and `authenticated`, with no overloads. Its catalog and behavior checks live in `docs/phase-4b/step-14-part-2-tests.md`. Do not alter the old totals or invent replacements: record new totals only from the owner's live Dev output. The external Prod cron job is a gate-ledger item, never an allowlist entry.
 
