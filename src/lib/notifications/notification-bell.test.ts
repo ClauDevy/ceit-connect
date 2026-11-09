@@ -78,6 +78,9 @@ describe("notification bell response contracts", () => {
     expect(parseNotificationRows(value)?.at(-1)?.taskId).toBeNull();
     expect(parseNotificationRows([{ ...value[0], out_type: "unknown" }])).toBeNull();
     expect(parseNotificationRows([{ ...value[0], out_created_at: "bad" }])).toBeNull();
+    expect(
+      parseNotificationRows([value[0], { ...value[1], out_created_at: "bad" }]),
+    ).toBeNull();
     expect(parseNotificationRows([value[0], value[0]])).toBeNull();
   });
 });
@@ -112,13 +115,13 @@ describe("notification paging and settlement", () => {
       currentHasMore: true,
       currentCursor: { createdAt: row(20).createdAt, id: row(20).id },
     });
-    expect(merged.items.map((item) => item.id)).toEqual([
+    expect(merged.rows.map((item) => item.id)).toEqual([
       row(0).id,
       row(1).id,
       row(2).id,
       row(20).id,
     ]);
-    expect(merged.items[1].taskTitle).toBe("Updated");
+    expect(merged.rows[1].taskTitle).toBe("Updated");
     expect(merged.cursor?.id).toBe(row(20).id);
   });
 
@@ -132,7 +135,7 @@ describe("notification paging and settlement", () => {
         currentHasMore: true,
         currentCursor: { createdAt: row(2).createdAt, id: row(2).id },
       }),
-    ).toEqual({ items: refreshed.items, hasMore: false, cursor: refreshed.cursor });
+    ).toEqual({ rows: refreshed.items, hasMore: false, cursor: refreshed.cursor });
   });
 
   it("updates loaded display rows only after a confirmed writer result", () => {

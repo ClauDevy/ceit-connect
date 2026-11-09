@@ -34,6 +34,24 @@ export type NotificationPage = {
   cursor: NotificationCursor | null;
 };
 
+export type NotificationListState = {
+  rows: NotificationRow[];
+  loaded: boolean;
+  loading: boolean;
+  loadingMore: boolean;
+  olderPagesLoaded: boolean;
+  hasMore: boolean;
+  cursor: NotificationCursor | null;
+  error: string | null;
+  appendError: string | null;
+  announcement: string;
+};
+
+type RefreshedNotificationListState = Pick<
+  NotificationListState,
+  "rows" | "hasMore" | "cursor"
+>;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -141,10 +159,10 @@ export function mergeRefreshedNotificationPage({
   olderPagesLoaded: boolean;
   currentHasMore: boolean;
   currentCursor: NotificationCursor | null;
-}) {
+}): RefreshedNotificationListState {
   if (!olderPagesLoaded) {
     return {
-      items: [...refreshed.items],
+      rows: [...refreshed.items],
       hasMore: refreshed.hasMore,
       cursor: refreshed.cursor,
     };
@@ -152,7 +170,7 @@ export function mergeRefreshedNotificationPage({
 
   const refreshedIds = new Set(refreshed.items.map((row) => row.id));
   return {
-    items: [
+    rows: [
       ...refreshed.items,
       ...current.filter((row) => !refreshedIds.has(row.id)),
     ],
