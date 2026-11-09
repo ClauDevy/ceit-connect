@@ -9,16 +9,17 @@ current batch completes its full stage order.
 | ID | Scope | Branch | Reasoning | Status |
 | --- | --- | --- | --- | --- |
 | N1 | Persistent notification generation, secure readers, read-state writers, Realtime boundary, catalog, and database tests | `feature/notification-foundation` | High | Live on Dev and Prod; N1 smoke tests passed (owner-confirmed) |
-| N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Live on Dev and Prod (owner-confirmed) |
-| I1 | Installable app basics | `feature/installable-app` | Medium | Implemented locally; owner phone gate and rollout pending |
-| N3 | Notification housekeeping policy, bounded cleanup, catalog, and database tests | `feature/notification-housekeeping` | High | Not started; requires its own plan and retention decision |
+| N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Live on Dev and Prod; list/badge correction also live with no recurrence (owner-confirmed) |
+| I1 | Installable app basics | `feature/installable-app` | Medium | Live on Prod (owner-confirmed) |
+| N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Implemented locally for review; not applied to Dev or Prod |
+| N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Not started; begins only after N3a is merged and live |
 | P1 | Web push | `feature/web-push` | High | Not started; blocked on the secure-sender decision below |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Not started |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Not started |
 
-Owner-approved sequence: N1, N2, I1, N3, P1, D1, D2, then O1. I1
-starts after the N2 notification UI gate and does not wait for N3. Every batch
+Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D2, then O1. I1
+started after the N2 notification UI gate and is now live. Every later batch
 still completes its own plan, implementation, review, and rollout before the
 next batch starts.
 
@@ -29,6 +30,15 @@ N1 generates six persistent in-app types: `mention`, `heads_up`, `assignment`,
 set-wise and are never throttled, delayed, or dropped. Nobody receives a
 notification for their own action, including self-claims and volunteering.
 Inactive users receive no notification.
+
+N3a deletes read notifications automatically 60 days after `read_at`, never
+auto-removes unread notifications, processes at most 500 oldest eligible rows
+per run, and retains private aggregate history for 30 days. Prod schedules the
+postgres-owned runner at `15 16 * * *` UTC; Dev has no cron job. Delete-one is
+active-owner-only and idempotent for absent/foreign rows; clear-read targets
+account-wide caller-owned read rows, deletes unlocked rows in ID order with
+`SKIP LOCKED`, and returns the removed count. N3b is a later UI-only
+batch and cannot start until N3a is merged and live.
 
 The recipient rules are:
 
@@ -91,12 +101,11 @@ These are not part of the currently implemented N1/N2 behavior:
 
 ## Open items
 
-- I1 remains a separate installable-app batch after the N2 notification UI
-  gate; it does not wait for N3 and must not absorb push, email, Discord, or N2
-  behavior.
-- N3 must define the owner-approved notification retention window, safe bounded
-  cleanup path, schedule/operations proof, catalog impact, and rollback-safe
-  database tests before any housekeeping migration is written.
+- N3a requires owner line review, Dev application and both rollback-safe SQL
+  pastes, manual Dev runner verification, merge/Prod application, and the
+  owner-created Prod cron row. N3b remains blocked until N3a is merged and live.
+- I1 remains separate and live; it does not absorb push, email, Discord, or
+  notification housekeeping behavior.
 
 ## Open secure-sender decision
 
@@ -109,8 +118,9 @@ without putting a service-role key in a client or weakening the existing rule.
 
 ## Phase 5 gate checks
 
-- The Phase 5 gate remains closed until every required batch — N1, N2, I1, N3,
-  P1, D1, D2, and O1 — has completed its own review and rollout evidence.
+- The Phase 5 gate remains closed until every required batch — N1, N2, I1,
+  N3a, N3b, P1, D1, D2, and O1 — has completed its own review and rollout
+  evidence.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.
 - After an offline notification, refresh restores the correct unread count and
