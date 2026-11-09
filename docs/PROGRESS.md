@@ -12,7 +12,7 @@ The approved Phase 5 batch map, decisions, gate checks, and release checklist ar
 
 - **Phase 5 I1 installable-app basics is live on Prod (owner-confirmed).** A typed Next.js manifest fixes the app id/start/scope at `/`, uses standalone display and paper launch colors, and publishes committed 192/512 ordinary, 512 maskable, and 180 Apple RGB icons generated once from the unchanged approved shield favicon over its exact ink background. Root metadata adds default Apple standalone tags and paper/ink scheme-aware browser colors. The manifest and PNGs bypass session refresh while protected routes retain no-store behavior. Settings adds instruction-only iPhone-first and Android help, swaps its neutral server render after mount, reacts to display-mode changes, and never handles a browser install prompt. There is no service worker, offline cache, push, database, migration, email, Discord, auth, or N2 behavior change. See `docs/phase-5/step-i1-installable-app.md`.
 
-- **Phase 5 N3 is split into N3a database housekeeping and N3b UI (2026-11-09).** N3a on `feature/notification-housekeeping` is implemented locally for review: active-owner delete-one; account-wide clear-read that deletes unlocked rows in ID order with `SKIP LOCKED`; a postgres-session-only 60-day bounded cleanup runner; 30-day private aggregate history; catalog coverage; two rollback-safe Dev pastes; and exact Prod scheduling instructions. Unread notifications are never automatically removed. N3b on `feature/notification-housekeeping-ui` must start only after N3a is merged and live.
+- **Phase 5 N3 is split into N3a database housekeeping and N3b UI (2026-11-09).** N3a migration `20261111120000_notification_housekeeping.sql` is applied on Dev, and owner-run Paste A 38/38 plus Paste B 32/32 passed with their intentional rollback sentinels. It provides active-owner delete-one; account-wide clear-read that deletes unlocked rows in ID order with `SKIP LOCKED`; a postgres-session-only 60-day bounded cleanup runner; 30-day private aggregate history; catalog coverage; and exact Prod scheduling instructions. Unread notifications are never automatically removed. Manual Dev runner verification, merge, Prod application, and Prod cron creation remain pending. N3b on `feature/notification-housekeeping-ui` must start only after N3a is merged and live.
 
 - **Batch 14 Part 1 is live and fully passed on Dev and Prod.** The owner applied all three tracked migrations and confirmed the 33/33 Batch 14 paste plus Step 8, Batch A, Batch B, and Batch D 46/46 reruns. The migrations remove only authenticated TRUNCATE/REFERENCES/TRIGGER from events, tasks, notifications, users, and activity_log, enable non-forced zero-policy RLS on both Batch D run-history tables, deny inactive/profile-less event readers while preserving active role behavior and its Activity Log mirror, and enable the global officer-cap row. Dev's target revokes had been applied manually before the tracked migration; the migration is the tracked record of truth in both environments. A, B, and D remain live on Dev and Prod; Prod's external cron row was owner-verified 2026-11-07 and Dev has none.
 
@@ -261,15 +261,20 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
   null` without a global 1–200 constraint, while the notification runtime
   validator rejects empty or over-200-character titles. Current app writers
   enforce the bound, but the database-wide invariant remains absent.
-- Phase 5 docs cleanup: reconcile the stale `ARCHITECTURE.md` Phase 5 gate-check
-  row with the approved N1, N2, I1, N3a, N3b, P1, D1, D2, O1 batch map. N3a
-  does not edit that broader phase summary.
+- Phase 5 completion gate: Phase 5 cannot be marked complete until N1, N2, I1,
+  the bell correction, N3a, N3b, P1, D1, D2, and O1 have each completed review
+  and rollout.
+- N3a database follow-up: the Dev-applied migration intentionally remains
+  immutable. Its `notification_cleanup_batch_size()` value of 500 is coupled
+  to the run-history `deleted_count` and `retention_deleted_count` constraints,
+  which also hard-code 500. Any future batch-size change must use a new later
+  migration that updates the function and both constraints together.
 
 ## Open items
 
-- The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D2, then O1. N1, N2, the bell correction, and I1 are live. N3a is local awaiting review and owner-run Dev application; N3b starts only after N3a is merged and live.
+- The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D2, then O1. N1, N2, the bell correction, and I1 are live. N3a is applied and SQL-verified on Dev; N3b starts only after N3a is merged and live.
 - Post-Phase-5 notification follow-ups include daily digest email and a council-wide Discord webhook. Their secure background-sender pattern remains an open decision shared with P1.
-- N3a rollout remains: owner line review, Dev migration application, Paste A and Paste B, manual Dev runner, merge/Prod migration, and owner-created Prod cron job. N3b remains separate and not started.
+- N3a rollout remains: manual Dev runner verification, merge, Prod migration, and owner-created Prod cron job. N3b remains separate and not started.
 - Phase 5 idea: consider an automatic email queue for rate-limited invitations. Batch 8 deliberately uses sequential sends and explicit retry only.
 - List-only item: `src/components/layout/sidebar.tsx` is an unused legacy sidebar with no importer and is not mounted by `AppShell`; Batch 14 does not delete it.
 - Batch 14 catalog-test allowlist follow-up: include `purge_activity_log`, `activity_log_retention_days`, `guard_activity_log_deletes`, and trigger `activity_log_guard_deletes`. Do not change the authoritative count or allowlist files before that deferred catalog pass.

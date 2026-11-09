@@ -11,7 +11,7 @@ current batch completes its full stage order.
 | N1 | Persistent notification generation, secure readers, read-state writers, Realtime boundary, catalog, and database tests | `feature/notification-foundation` | High | Live on Dev and Prod; N1 smoke tests passed (owner-confirmed) |
 | N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Live on Dev and Prod; list/badge correction also live with no recurrence (owner-confirmed) |
 | I1 | Installable app basics | `feature/installable-app` | Medium | Live on Prod (owner-confirmed) |
-| N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Implemented locally for review; not applied to Dev or Prod |
+| N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Applied on Dev; Paste A 38/38 and Paste B 32/32 passed; manual runner, merge, Prod application, and Prod cron pending |
 | N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Not started; begins only after N3a is merged and live |
 | P1 | Web push | `feature/web-push` | High | Not started; blocked on the secure-sender decision below |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
@@ -101,8 +101,7 @@ These are not part of the currently implemented N1/N2 behavior:
 
 ## Open items
 
-- N3a requires owner line review, Dev application and both rollback-safe SQL
-  pastes, manual Dev runner verification, merge/Prod application, and the
+- N3a requires manual Dev runner verification, merge/Prod application, and the
   owner-created Prod cron row. N3b remains blocked until N3a is merged and live.
 - I1 remains separate and live; it does not absorb push, email, Discord, or
   notification housekeeping behavior.
@@ -118,9 +117,9 @@ without putting a service-role key in a client or weakening the existing rule.
 
 ## Phase 5 gate checks
 
-- The Phase 5 gate remains closed until every required batch — N1, N2, I1,
-  N3a, N3b, P1, D1, D2, and O1 — has completed its own review and rollout
-  evidence.
+- Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
+  the bell correction, N3a, N3b, P1, D1, D2, and O1 — has completed review and
+  rollout.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.
 - After an offline notification, refresh restores the correct unread count and
