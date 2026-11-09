@@ -7,6 +7,9 @@ const readText = (path: string) =>
 const migration = readText(
   "supabase/migrations/20261110120000_notification_foundation.sql",
 );
+const housekeepingMigration = readText(
+  "supabase/migrations/20261111120000_notification_housekeeping.sql",
+);
 const catalogPaste = readText(
   "docs/phase-5/step-n1-notification-foundation-catalog-tests.md",
 );
@@ -37,8 +40,10 @@ const peerAdmin = readText(
 );
 
 describe("Phase 5 N1 notification foundation migration contract", () => {
-  it("is the latest migration and replaces the one latest policy pair", () => {
-    expect(migrationFiles.at(-1)).toBe("20261110120000_notification_foundation.sql");
+  it("orders housekeeping after N1 without replacing the notification policy pair", () => {
+    expect(migrationFiles.at(-1)).toBe(
+      "20261111120000_notification_housekeeping.sql",
+    );
     const priorSql = migrationFiles
       .filter((name) => name < "20261110120000_notification_foundation.sql")
       .map((name) => readText(`supabase/migrations/${name}`))
@@ -53,6 +58,8 @@ describe("Phase 5 N1 notification foundation migration contract", () => {
     expect(migration).toContain(
       "notification policies differ from the latest pre-N1 or N1 definitions",
     );
+    expect(housekeepingMigration).not.toMatch(/create policy/i);
+    expect(housekeepingMigration).not.toMatch(/drop policy/i);
   });
 
   it("keeps Realtime read-only and personal", () => {

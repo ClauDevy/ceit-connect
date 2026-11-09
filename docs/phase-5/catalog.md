@@ -1,6 +1,6 @@
 # Phase 5 migration-tied catalog
 
-This catalog currently contains **N1 objects only**. Historical Phase 4 and
+This catalog currently contains **N1 and N3a objects**. Historical Phase 4 and
 Phase 4B counts remain unchanged; do not invent a new global total before the
 owner supplies live Dev catalog output.
 
@@ -78,4 +78,53 @@ recipient user row (and referenced task row). The unusual concurrent
 deactivate-while-notifying sequence is deferred, not redesigned by N1. The
 leave marker is deleted by the matching task trigger before its Active-event
 early return and is scoped to the exact transaction and task.
+
+## `20261111120000_notification_housekeeping.sql`
+
+### Table and index
+
+- Private table `ceit_connect_private.notification_cleanup_runs`: aggregate
+  run timing/status/counts and fixed safe errors only; postgres-owned, RLS on,
+  zero policies, zero application-role privileges, and no foreign key.
+- Partial index `notifications_read_cleanup_idx(read_at,id) WHERE read_at IS
+  NOT NULL` supports bounded oldest-first cleanup.
+
+### Public authenticated-only owner wrappers
+
+- `public.delete_notification(uuid)` returns true only when it deletes the
+  active caller's own row; absent and foreign rows return false.
+- `public.clear_read_notifications()` selects the active caller's read rows in
+  ID order with `FOR UPDATE SKIP LOCKED`, deletes those selected rows, and
+  returns the number removed. Concurrently locked rows remain for a later
+  clear or automatic run; unread rows are never touched.
+
+Both are postgres-owned, volatile, fixed-empty-path `SECURITY DEFINER`
+functions granted only to `authenticated`. Raw notification DELETE remains
+revoked and no DELETE policy is added.
+
+### Postgres-session-only cleanup boundary
+
+- `public.run_notification_cleanup()`
+- `ceit_connect_private.purge_old_read_notifications(timestamptz)`
+- `ceit_connect_private.purge_notification_cleanup_runs()`
+
+All three require `session_user = 'postgres'` and grant no application-role
+execute. The runner uses an advisory transaction lock, captures a 60-day
+`read_at` cutoff, and deletes at most 500 oldest eligible rows with `SKIP
+LOCKED`. It retains aggregate history for 30 days. The immutable constants
+`notification_read_retention_days()`,
+`notification_cleanup_run_retention_days()`, and
+`notification_cleanup_batch_size()` return 60, 30, and 500 and have no
+application-role execute grants.
+
+### Private owner mutators
+
+- `ceit_connect_private.delete_notification_for_user(uuid,uuid)`
+- `ceit_connect_private.clear_read_notifications_for_user(uuid)`
+
+They are postgres-owned, volatile, fixed-empty-path `SECURITY DEFINER`
+functions with no application-role execute. Public wrappers authorize the
+active profile before calling them.
+
+N3a replaces no N1 policy, reader, writer, trigger, or FK. CCE09 is unchanged.
 
