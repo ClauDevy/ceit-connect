@@ -10,11 +10,13 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent,
+  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   type RefObject,
 } from "react";
-import { Bell, CheckCheck, LoaderCircle, X } from "lucide-react";
+import { Bell, CheckCheck, LoaderCircle, Trash2, X } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
 import { useListReveal } from "@/components/shared/motion";
@@ -48,8 +50,11 @@ import {
   NOTIFICATION_FETCH_LIMIT,
   parseMarkAllNotificationsReadResult,
   parseMarkNotificationReadResult,
+  parseClearReadNotificationsResult,
+  parseDeleteNotificationResult,
   parseNotificationRows,
   parseNotificationUnreadCount,
+  removeNotificationRow,
   type NotificationCursor,
   type NotificationListState,
   type NotificationRow,
@@ -80,13 +85,23 @@ type NotificationContextValue = {
   openSurface: OpenSurface;
   busyIds: ReadonlySet<string>;
   markAllBusy: boolean;
+  clearReadBusy: boolean;
+  actionError: string | null;
   open: (surface: Exclude<OpenSurface, null>) => void;
   close: () => void;
   refreshList: () => void;
   loadMore: () => void;
   markOne: (id: string) => Promise<boolean>;
   markAll: () => Promise<void>;
+  deleteOne: (id: string) => Promise<boolean>;
+  clearRead: () => Promise<void>;
 };
+
+const DELETE_SUCCESS_ANNOUNCEMENT = "Notification deleted.";
+const DELETE_FAILURE_MESSAGE = "Notification could not be deleted. Try again.";
+const CLEAR_SUCCESS_ANNOUNCEMENT = "Read notifications cleared.";
+const CLEAR_FAILURE_MESSAGE = "Read notifications could not be cleared. Try again.";
+const CLEAR_CONFIRM_TIMEOUT_MS = 5_000;
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
@@ -119,12 +134,16 @@ export function NotificationProvider({
   const openRef = useRef<OpenSurface>(null);
   const busyIdsRef = useRef(new Set<string>());
   const markAllBusyRef = useRef(false);
+  const clearReadBusyRef = useRef(false);
   const [count, setCount] = useState<number | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
   const [list, setList] = useState<NotificationListState>(INITIAL_LIST_STATE);
   const [openSurface, setOpenSurface] = useState<OpenSurface>(null);
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set());
   const [markAllBusy, setMarkAllBusy] = useState(false);
+  const [clearReadBusy, setClearReadBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionAnnouncement, setActionAnnouncement] = useState("");
 
   const updateList = useCallback((
     update: (current: NotificationListState) => NotificationListState,
@@ -180,7 +199,7 @@ export function NotificationProvider({
     [supabase],
   );
 
-  const refreshList = useCallback(async () => {
+  const refreshList = useCallback(async ({ authoritative = false } = {}) => {
     const request = ++listRefreshRequestRef.current;
     listAppendRequestRef.current += 1;
     updateList((current) => ({
@@ -194,13 +213,22 @@ export function NotificationProvider({
       if (!mountedRef.current || request !== listRefreshRequestRef.current) return;
       updateList((current) => ({
         ...current,
-        ...mergeRefreshedNotificationPage({
-          current: current.rows,
-          refreshed,
-          olderPagesLoaded: current.olderPagesLoaded,
-          currentHasMore: current.hasMore,
-          currentCursor: current.cursor,
-        }),
+        ...(authoritative
+          ? {
+              rows: refreshed.items,
+              hasMore: refreshed.hasMore,
+              cursor: refreshed.cursor,
+              olderPagesLoaded: false,
+              appendError: null,
+              announcement: "",
+            }
+          : mergeRefreshedNotificationPage({
+              current: current.rows,
+              refreshed,
+              olderPagesLoaded: current.olderPagesLoaded,
+              currentHasMore: current.hasMore,
+              currentCursor: current.cursor,
+            })),
         loaded: true,
         loading: false,
         error: null,
@@ -262,18 +290,25 @@ export function NotificationProvider({
   }, [handleInactiveDenial, readPage, updateList]);
 
   const recover = useCallback(() => {
+    setActionAnnouncement("");
     void refreshCount();
     if (openRef.current) void refreshList();
+  }, [refreshCount, refreshList]);
+
+  const recoverAuthoritatively = useCallback(() => {
+    setActionAnnouncement("");
+    void refreshCount();
+    if (openRef.current) void refreshList({ authoritative: true });
   }, [refreshCount, refreshList]);
 
   useEffect(() => {
     mountedRef.current = true;
     void Promise.resolve().then(refreshCount);
     const unsubscribeRealtime = subscribeToNotificationRealtime(userId, recover);
-    const handleFocus = () => recover();
+    const handleFocus = () => recoverAuthoritatively();
     const handleOnline = () => recover();
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") recover();
+      if (document.visibilityState === "visible") recoverAuthoritatively();
     };
     window.addEventListener("focus", handleFocus);
     window.addEventListener("online", handleOnline);
@@ -288,14 +323,16 @@ export function NotificationProvider({
       window.removeEventListener("online", handleOnline);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [recover, refreshCount, userId]);
+  }, [recover, recoverAuthoritatively, refreshCount, userId]);
 
   const open = useCallback(
     (surface: Exclude<OpenSurface, null>) => {
+      setActionAnnouncement("");
+      setActionError(null);
       openRef.current = surface;
       setOpenSurface(surface);
       void refreshCount();
-      void refreshList();
+      void refreshList({ authoritative: true });
     },
     [refreshCount, refreshList],
   );
@@ -307,7 +344,12 @@ export function NotificationProvider({
 
   const markOne = useCallback(
     async (id: string) => {
-      if (busyIdsRef.current.has(id) || markAllBusyRef.current) return false;
+      if (
+        busyIdsRef.current.has(id) ||
+        markAllBusyRef.current ||
+        clearReadBusyRef.current
+      )
+        return false;
       busyIdsRef.current.add(id);
       setBusyIds(new Set(busyIdsRef.current));
       updateList((current) => ({ ...current, error: null }));
@@ -342,7 +384,7 @@ export function NotificationProvider({
   );
 
   const markAll = useCallback(async () => {
-    if (markAllBusyRef.current) return;
+    if (markAllBusyRef.current || clearReadBusyRef.current) return;
     markAllBusyRef.current = true;
     setMarkAllBusy(true);
     updateList((current) => ({ ...current, error: null }));
@@ -370,6 +412,76 @@ export function NotificationProvider({
     }
   }, [handleInactiveDenial, refreshCount, refreshList, supabase, updateList]);
 
+  const deleteOne = useCallback(
+    async (id: string) => {
+      if (
+        busyIdsRef.current.has(id) ||
+        markAllBusyRef.current ||
+        clearReadBusyRef.current
+      )
+        return false;
+      busyIdsRef.current.add(id);
+      setBusyIds(new Set(busyIdsRef.current));
+      setActionError(null);
+      setActionAnnouncement("");
+      try {
+        const { data, error } = await supabase.rpc("delete_notification", {
+          p_notification_id: id,
+        });
+        if (error) throw error;
+        if (parseDeleteNotificationResult(data) === null) {
+          setActionError(DELETE_FAILURE_MESSAGE);
+          setActionAnnouncement(DELETE_FAILURE_MESSAGE);
+          void refreshCount();
+          void refreshList();
+          return false;
+        }
+        updateList((current) => ({
+          ...current,
+          rows: removeNotificationRow(current.rows, id),
+        }));
+        setActionAnnouncement(DELETE_SUCCESS_ANNOUNCEMENT);
+        void refreshCount();
+        void refreshList();
+        return true;
+      } catch (error) {
+        handleInactiveDenial(error);
+        setActionError(DELETE_FAILURE_MESSAGE);
+        setActionAnnouncement(DELETE_FAILURE_MESSAGE);
+        return false;
+      } finally {
+        busyIdsRef.current.delete(id);
+        if (mountedRef.current) setBusyIds(new Set(busyIdsRef.current));
+      }
+    },
+    [handleInactiveDenial, refreshCount, refreshList, supabase, updateList],
+  );
+
+  const clearRead = useCallback(async () => {
+    if (clearReadBusyRef.current || markAllBusyRef.current) return;
+    clearReadBusyRef.current = true;
+    setClearReadBusy(true);
+    setActionError(null);
+    setActionAnnouncement("");
+    try {
+      const { data, error } = await supabase.rpc("clear_read_notifications");
+      if (error) throw error;
+      parseClearReadNotificationsResult(data);
+      setActionAnnouncement(CLEAR_SUCCESS_ANNOUNCEMENT);
+      await Promise.all([
+        refreshCount(),
+        refreshList({ authoritative: true }),
+      ]);
+    } catch (error) {
+      handleInactiveDenial(error);
+      setActionError(CLEAR_FAILURE_MESSAGE);
+      setActionAnnouncement(CLEAR_FAILURE_MESSAGE);
+    } finally {
+      clearReadBusyRef.current = false;
+      if (mountedRef.current) setClearReadBusy(false);
+    }
+  }, [handleInactiveDenial, refreshCount, refreshList, supabase]);
+
   const context = useMemo<NotificationContextValue>(
     () => ({
       count,
@@ -378,18 +490,26 @@ export function NotificationProvider({
       openSurface,
       busyIds,
       markAllBusy,
+      clearReadBusy,
+      actionError,
       open,
       close,
       refreshList: () => void refreshList(),
       loadMore: () => void loadMore(),
       markOne,
       markAll,
+      deleteOne,
+      clearRead,
     }),
     [
       busyIds,
       close,
+      clearRead,
+      clearReadBusy,
       count,
       countError,
+      actionError,
+      deleteOne,
       list,
       loadMore,
       markAll,
@@ -405,7 +525,7 @@ export function NotificationProvider({
     <NotificationContext.Provider value={context}>
       {children}
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {notificationCountAnnouncement(count)}
+        {actionAnnouncement || notificationCountAnnouncement(count)}
       </p>
     </NotificationContext.Provider>
   );
@@ -438,8 +558,10 @@ type NotificationRowsViewProps = {
   busyIds: ReadonlySet<string>;
   close: () => void;
   markOne: (id: string) => Promise<boolean>;
+  deleteOne: (id: string) => Promise<boolean>;
   refreshList: () => void;
   navigate: (taskId: string) => void;
+  emptyFocusRef?: RefObject<HTMLElement | null>;
 };
 
 export function NotificationRowsView({
@@ -449,9 +571,17 @@ export function NotificationRowsView({
   busyIds,
   close,
   markOne,
+  deleteOne,
   refreshList,
   navigate,
+  emptyFocusRef,
 }: NotificationRowsViewProps) {
+  const deleteButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const focusSequenceRef = useRef(0);
+  const [focusAfterDelete, setFocusAfterDelete] = useState<{
+    id: string | null;
+    sequence: number;
+  } | null>(null);
   const reveal = useListReveal({
     items: list.rows,
     settled: list.loaded && !list.loading,
@@ -462,6 +592,20 @@ export function NotificationRowsView({
 
   function backgroundMark(row: NotificationRow) {
     if (row.readAt === null && !busyIds.has(row.id)) void markOne(row.id);
+  }
+
+  useEffect(() => {
+    if (!focusAfterDelete) return;
+    if (focusAfterDelete.id === null) emptyFocusRef?.current?.focus();
+    else deleteButtonRefs.current.get(focusAfterDelete.id)?.focus();
+  }, [emptyFocusRef, focusAfterDelete]);
+
+  async function handleDelete(row: NotificationRow) {
+    const index = list.rows.findIndex((candidate) => candidate.id === row.id);
+    const focusId = list.rows[index + 1]?.id ?? list.rows[index - 1]?.id ?? null;
+    if (await deleteOne(row.id)) {
+      setFocusAfterDelete({ id: focusId, sequence: ++focusSequenceRef.current });
+    }
   }
 
   async function handleClick(event: MouseEvent<HTMLAnchorElement>, row: NotificationRow) {
@@ -478,12 +622,15 @@ export function NotificationRowsView({
       backgroundMark(row);
       return;
     }
+    if (busyIds.has(row.id)) {
+      event.preventDefault();
+      return;
+    }
     if (row.readAt !== null) {
       close();
       return;
     }
     event.preventDefault();
-    if (busyIds.has(row.id)) return;
     if (await markOne(row.id)) {
       close();
       navigate(taskId);
@@ -562,7 +709,7 @@ export function NotificationRowsView({
           <div
             key={row.id}
             {...reveal.getRevealProps(row.id)}
-            className={cn("relative", unread && "bg-primary/5")}
+            className={cn("relative flex items-stretch", unread && "bg-primary/5")}
           >
             {row.taskId ? (
               <Link
@@ -573,7 +720,7 @@ export function NotificationRowsView({
                 onAuxClick={(event) => {
                   if (event.button === 1) backgroundMark(row);
                 }}
-                className="flex min-h-16 w-full items-start gap-3 px-4 py-3 outline-none transition-colors duration-[var(--motion-interaction-duration)] hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 motion-reduce:transition-none"
+                className="flex min-h-16 min-w-0 flex-1 items-start gap-3 px-4 py-3 outline-none transition-colors duration-[var(--motion-interaction-duration)] hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 motion-reduce:transition-none"
               >
                 {content}
               </Link>
@@ -581,7 +728,7 @@ export function NotificationRowsView({
               <div
                 role="group"
                 aria-label={accessibleLabel}
-                className="flex min-h-16 items-start gap-3 px-4 py-3"
+                className="flex min-h-16 min-w-0 flex-1 items-start gap-3 px-4 py-3"
               >
                 {content}
                 {unread ? (
@@ -599,6 +746,34 @@ export function NotificationRowsView({
                 ) : null}
               </div>
             )}
+            <Button
+              ref={(node) => {
+                if (node) deleteButtonRefs.current.set(row.id, node);
+                else deleteButtonRefs.current.delete(row.id);
+              }}
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={busy}
+              aria-busy={busy || undefined}
+              aria-label={`Delete notification permanently: ${sentence}`}
+              title="Delete notification"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void handleDelete(row);
+              }}
+              className="m-2 min-h-11 min-w-11 self-center text-muted-foreground hover:text-destructive"
+            >
+              {busy ? (
+                <LoaderCircle
+                  aria-hidden
+                  className="animate-spin motion-reduce:animate-none"
+                />
+              ) : (
+                <Trash2 aria-hidden />
+              )}
+            </Button>
           </div>
         );
       })}
@@ -606,7 +781,11 @@ export function NotificationRowsView({
   );
 }
 
-function NotificationRows() {
+function NotificationRows({
+  emptyFocusRef,
+}: {
+  emptyFocusRef: RefObject<HTMLElement | null>;
+}) {
   const router = useRouter();
   const {
     count,
@@ -615,6 +794,7 @@ function NotificationRows() {
     busyIds,
     close,
     markOne,
+    deleteOne,
     refreshList,
   } = useNotifications();
   return (
@@ -625,9 +805,130 @@ function NotificationRows() {
       busyIds={busyIds}
       close={close}
       markOne={markOne}
+      deleteOne={deleteOne}
       refreshList={refreshList}
       navigate={(taskId) => router.push(`/tasks/${taskId}`)}
+      emptyFocusRef={emptyFocusRef}
     />
+  );
+}
+
+export function ClearReadControl({ panelOpen }: { panelOpen: boolean }) {
+  const { clearRead, clearReadBusy } = useNotifications();
+  const [armed, setArmed] = useState(false);
+  const groupRef = useRef<HTMLDivElement>(null);
+  const clearButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoreClearFocusRef = useRef(false);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }, []);
+
+  const reset = useCallback(
+    ({ restoreFocus = false } = {}) => {
+      clearTimer();
+      restoreClearFocusRef.current =
+        restoreFocus && document.activeElement === confirmButtonRef.current;
+      setArmed(false);
+    },
+    [clearTimer],
+  );
+
+  useEffect(() => {
+    if (armed) {
+      confirmButtonRef.current?.focus();
+    } else if (restoreClearFocusRef.current) {
+      restoreClearFocusRef.current = false;
+      clearButtonRef.current?.focus();
+    }
+  }, [armed]);
+
+  useEffect(() => {
+    if (!panelOpen) {
+      clearTimer();
+      queueMicrotask(() => setArmed(false));
+    }
+    return clearTimer;
+  }, [clearTimer, panelOpen]);
+
+  function arm() {
+    clearTimer();
+    setArmed(true);
+    timerRef.current = setTimeout(
+      () => reset({ restoreFocus: true }),
+      CLEAR_CONFIRM_TIMEOUT_MS,
+    );
+  }
+
+  function handleBlur(event: FocusEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget)) reset();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    reset({ restoreFocus: true });
+  }
+
+  if (!armed) {
+    return (
+      <Button
+        ref={clearButtonRef}
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={clearReadBusy}
+        aria-busy={clearReadBusy || undefined}
+        onClick={arm}
+      >
+        Clear read
+      </Button>
+    );
+  }
+
+  return (
+    <div
+      ref={groupRef}
+      role="group"
+      aria-label="Confirm clearing read notifications"
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="motion-small-disclosure flex items-center gap-1 motion-reduce:transition-none"
+    >
+      <Button
+        ref={confirmButtonRef}
+        type="button"
+        variant="destructive"
+        size="sm"
+        disabled={clearReadBusy}
+        aria-busy={clearReadBusy || undefined}
+        onClick={() => {
+          clearTimer();
+          setArmed(false);
+          void clearRead();
+        }}
+      >
+        {clearReadBusy ? (
+          <LoaderCircle
+            aria-hidden
+            className="animate-spin motion-reduce:animate-none"
+          />
+        ) : null}
+        Confirm clear read
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={clearReadBusy}
+        onClick={() => reset()}
+      >
+        Cancel
+      </Button>
+    </div>
   );
 }
 
@@ -637,6 +938,8 @@ function NotificationPanelContent({ titleRef }: { titleRef: RefObject<HTMLHeadin
     countError,
     list,
     markAllBusy,
+    actionError,
+    openSurface,
     refreshList,
     loadMore,
     markAll,
@@ -644,25 +947,34 @@ function NotificationPanelContent({ titleRef }: { titleRef: RefObject<HTMLHeadin
   const markAllEnabled = count === null || count > 0;
   return (
     <div className="flex max-h-[min(36rem,80dvh)] min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b px-4 py-3">
-        <h2 ref={titleRef} tabIndex={-1} className="min-w-0 flex-1 font-display text-lg font-semibold outline-none">
-          Notifications
-        </h2>
-        <Button
+      <div className="border-b px-4 py-3 pr-14">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 ref={titleRef} tabIndex={-1} className="min-w-0 flex-1 font-display text-lg font-semibold outline-none">
+            Notifications
+          </h2>
+          {list.rows.length > 0 ? (
+            <ClearReadControl panelOpen={openSurface !== null} />
+          ) : null}
+          <Button
           type="button"
           variant="ghost"
           size="sm"
           disabled={!markAllEnabled || markAllBusy}
           aria-busy={markAllBusy || undefined}
           onClick={() => void markAll()}
-        >
-          {markAllBusy ? <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" /> : <CheckCheck aria-hidden />}
-          Mark all as read
-        </Button>
+          >
+            {markAllBusy ? <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" /> : <CheckCheck aria-hidden />}
+            Mark all as read
+          </Button>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Deletion is permanent. Unread notifications are never removed.
+        </p>
       </div>
       <div className="min-h-0 overflow-y-auto overscroll-contain">
         <div className="space-y-2 p-2">
           {countError ? <InlineAlert>{countError}</InlineAlert> : null}
+          {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
           {list.error ? (
             <InlineAlert className="flex flex-wrap items-center justify-between gap-2">
               <span>{list.error}</span>
@@ -672,7 +984,7 @@ function NotificationPanelContent({ titleRef }: { titleRef: RefObject<HTMLHeadin
             </InlineAlert>
           ) : null}
         </div>
-        <NotificationRows />
+        <NotificationRows emptyFocusRef={titleRef} />
         <div className="p-3">
           <LoadMoreControl
             announcement={list.announcement}

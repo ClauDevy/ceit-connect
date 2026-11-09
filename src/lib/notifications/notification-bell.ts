@@ -86,6 +86,14 @@ export function parseMarkAllNotificationsReadResult(value: unknown) {
   return parseNotificationUnreadCount(value);
 }
 
+export function parseDeleteNotificationResult(value: unknown) {
+  return typeof value === "boolean" ? value : null;
+}
+
+export function parseClearReadNotificationsResult(value: unknown) {
+  return parseNotificationUnreadCount(value);
+}
+
 export function parseNotificationRows(value: unknown): NotificationRow[] | null {
   if (!Array.isArray(value) || value.length > NOTIFICATION_FETCH_LIMIT) return null;
 
@@ -189,6 +197,13 @@ export function markNotificationRowsRead(
       ? { ...row, readAt }
       : row,
   );
+}
+
+export function removeNotificationRow(
+  rows: readonly NotificationRow[],
+  notificationId: string,
+) {
+  return rows.filter((row) => row.id !== notificationId);
 }
 
 export function notificationSentence(row: NotificationRow) {
