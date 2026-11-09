@@ -48,6 +48,7 @@ function renderRows({
       busyIds={new Set()}
       close={vi.fn()}
       markOne={vi.fn().mockResolvedValue(true)}
+      deleteOne={vi.fn().mockResolvedValue(true)}
       refreshList={vi.fn()}
       navigate={vi.fn()}
     />,

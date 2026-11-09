@@ -11,8 +11,8 @@ current batch completes its full stage order.
 | N1 | Persistent notification generation, secure readers, read-state writers, Realtime boundary, catalog, and database tests | `feature/notification-foundation` | High | Live on Dev and Prod; N1 smoke tests passed (owner-confirmed) |
 | N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Live on Dev and Prod; list/badge correction also live with no recurrence (owner-confirmed) |
 | I1 | Installable app basics | `feature/installable-app` | Medium | Live on Prod (owner-confirmed) |
-| N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Applied on Dev; Paste A 38/38 and Paste B 32/32 passed; manual runner, merge, Prod application, and Prod cron pending |
-| N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Not started; begins only after N3a is merged and live |
+| N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Merged and live on Dev and Prod; Prod cleanup job scheduled; first scheduled-run check pending and non-blocking |
+| N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Implemented locally; 1,186 tests and lint pass; TypeScript reaches only the documented missing Next-generated globals; manual review pending |
 | P1 | Web push | `feature/web-push` | High | Not started; blocked on the secure-sender decision below |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Not started |
@@ -101,8 +101,8 @@ These are not part of the currently implemented N1/N2 behavior:
 
 ## Open items
 
-- N3a requires manual Dev runner verification, merge/Prod application, and the
-  owner-created Prod cron row. N3b remains blocked until N3a is merged and live.
+- N3a is merged and live on Dev and Prod, and the owner-created Prod cron row is
+  scheduled. Only the first scheduled-run check remains; it does not block N3b.
 - I1 remains separate and live; it does not absorb push, email, Discord, or
   notification housekeeping behavior.
 
