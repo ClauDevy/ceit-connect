@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import manifest from "@/app/manifest";
+import { config as proxyConfig } from "@/proxy";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const readBinary = (path: string) => readFileSync(resolve(process.cwd(), path));
@@ -163,6 +164,8 @@ describe("I1 static icon contract", () => {
 describe("I1 metadata and public-route contract", () => {
   const layout = read("src/app/layout.tsx");
   const proxy = read("src/proxy.ts");
+  const matcherPattern = proxyConfig.matcher[0];
+  const matcher = new RegExp(`^${matcherPattern}$`);
 
   it("adds Apple metadata and per-scheme browser colors", () => {
     expect(layout).toContain('url: "/icons/apple-touch-icon.png"');
@@ -174,12 +177,31 @@ describe("I1 metadata and public-route contract", () => {
   });
 
   it("keeps manifest and icons outside session refresh without weakening app routes", () => {
-    expect(proxy).toContain("manifest\\\\.webmanifest");
-    expect(proxy).toContain(".*\\\\.(?:svg|png|jpg|jpeg|webp)$");
     expect(proxy).toContain('"Cache-Control"');
     expect(proxy).toContain('"no-store, no-cache, must-revalidate, proxy-revalidate"');
-    expect(proxy).not.toMatch(/login|redirect/);
-    expect(proxy).not.toMatch(/auth\/callback|auth\/signout|home/);
+
+    for (const path of [
+      "/home",
+      "/login",
+      "/auth/callback",
+      "/auth/signout",
+      "/api/invite",
+      "/tasks/abc",
+      "/settings",
+    ]) {
+      expect(matcher.test(path), `${path} should run through proxy`).toBe(true);
+    }
+
+    for (const path of [
+      "/manifest.webmanifest",
+      "/icons/icon-192.png",
+      "/icons/maskable-icon-512.png",
+      "/icons/apple-touch-icon.png",
+      "/favicon.ico",
+      "/_next/static/chunk.js",
+    ]) {
+      expect(matcher.test(path), `${path} should bypass proxy`).toBe(false);
+    }
   });
 });
 
