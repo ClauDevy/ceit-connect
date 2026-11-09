@@ -10,10 +10,13 @@ import {
   notificationBellLabel,
   notificationCountAnnouncement,
   notificationSentence,
+  parseClearReadNotificationsResult,
+  parseDeleteNotificationResult,
   parseMarkAllNotificationsReadResult,
   parseMarkNotificationReadResult,
   parseNotificationRows,
   parseNotificationUnreadCount,
+  removeNotificationRow,
   type NotificationRow,
 } from "./notification-bell";
 
@@ -60,6 +63,15 @@ describe("notification bell response contracts", () => {
     expect(parseMarkNotificationReadResult(1)).toBeNull();
     expect(parseMarkAllNotificationsReadResult(4)).toBe(4);
     expect(parseMarkAllNotificationsReadResult("4")).toBeNull();
+  });
+
+  it("validates housekeeping writer shapes without treating false as malformed", () => {
+    expect(parseDeleteNotificationResult(true)).toBe(true);
+    expect(parseDeleteNotificationResult(false)).toBe(false);
+    expect(parseDeleteNotificationResult("false")).toBeNull();
+    expect(parseClearReadNotificationsResult(0)).toBe(0);
+    expect(parseClearReadNotificationsResult(4)).toBe(4);
+    expect(parseClearReadNotificationsResult("4")).toBeNull();
   });
 
   it("strictly parses all six list types, nullable task ids, and timestamps", () => {
@@ -149,6 +161,14 @@ describe("notification paging and settlement", () => {
     expect(markNotificationRowsRead(one, null, "2026-11-09T15:00:00Z")[0].readAt).toBe(
       "2026-11-09T15:00:00Z",
     );
+  });
+
+  it("removes only the confirmed notification without disturbing paging order", () => {
+    expect(
+      removeNotificationRow([row(0), row(1), row(2)], row(1).id).map(
+        (item) => item.id,
+      ),
+    ).toEqual([row(0).id, row(2).id]);
   });
 });
 

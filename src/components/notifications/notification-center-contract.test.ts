@@ -30,12 +30,14 @@ describe("notification center application contract", () => {
     );
   });
 
-  it("uses only N1 readers and writers and never performs badge arithmetic", () => {
+  it("uses the approved notification RPCs and never performs badge arithmetic", () => {
     for (const rpc of [
       "get_notification_unread_count",
       "list_notifications",
       "mark_notification_read",
       "mark_all_notifications_read",
+      "delete_notification",
+      "clear_read_notifications",
     ]) {
       expect(center).toContain(`rpc(\"${rpc}\"`);
     }
@@ -104,19 +106,32 @@ describe("notification center application contract", () => {
     expect(center).not.toContain("dangerouslySetInnerHTML");
   });
 
-  it("uses shared motion with complete reduced-motion popup fallbacks and no ticking timer", () => {
+  it("uses shared motion with reduced-motion fallbacks and only the fixed confirm timeout", () => {
     expect(center).toContain("useListReveal");
     expect(center).not.toContain("setInterval");
-    expect(center).not.toContain("setTimeout");
+    expect(center.match(/setTimeout\(/g)).toHaveLength(1);
+    expect(center).toContain("CLEAR_CONFIRM_TIMEOUT_MS = 5_000");
+    expect(center).toContain("clearTimeout(timerRef.current)");
+    expect(center).toContain("motion-small-disclosure");
     expect(popover).toContain("duration-[var(--motion-enter-duration)]");
     expect(popover).toContain("data-[ending-style]:duration-[var(--motion-exit-duration)]");
     expect(popover).toContain("motion-reduce:transition-none");
   });
 
   it("settles both mutations through finally and enables mark-all from count state", () => {
-    expect(center.match(/finally \{/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(center.match(/finally \{/g)?.length).toBeGreaterThanOrEqual(4);
     expect(center).toContain("const markAllEnabled = count === null || count > 0");
     expect(center).toContain("rows: markNotificationRowsRead(current.rows, id");
     expect(center).toContain("rows: markNotificationRowsRead(current.rows, null");
+  });
+
+  it("keeps delete separate from navigation and makes recovery authoritative", () => {
+    expect(center).toContain("event.stopPropagation()");
+    expect(center).toContain("Delete notification permanently:");
+    expect(center).toContain("min-h-11 min-w-11");
+    expect(center).toContain("refreshList({ authoritative: true })");
+    expect(center).toContain("recoverAuthoritatively");
+    expect(realtime).toContain('event: "INSERT"');
+    expect(realtime).not.toContain('event: "DELETE"');
   });
 });
