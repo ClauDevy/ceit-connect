@@ -40,7 +40,7 @@ budget is 45 seconds. The arithmetic is deliberately conservative:
 
 - claim limit: 20;
 - concurrency: 10, so one claim is at most two waves;
-- Web Push timeout: 8 seconds per wave;
+- Web Push socket timeout and wall-clock deadline: 8 seconds per wave;
 - database RPC timeout: 1 second per claim, acknowledgement, or finish request,
   through full response-body consumption;
 - wave admission reserve: 8,000 ms send timeout + 1,000 ms acknowledgement
@@ -203,14 +203,18 @@ select cron.schedule(
 ## Manual browser gate
 
 Android and desktop browsers can test against localhost and the Dev Supabase
-project. iPhone web push requires the installed HTTPS app and can be tested only
-on Prod after this branch is merged and deployed.
+project. For a physical Android device, connect Chrome DevTools remote debugging,
+enable port forwarding for device port `3000` to `localhost:3000` on the
+development computer, then open `http://localhost:3000` in Chrome on the device.
+iPhone web push requires the installed HTTPS app and can be tested only on Prod
+after this branch is merged and deployed.
 
 ### Android
 
 1. Sign in, open Settings, and tap **Enable notifications**.
 2. Confirm the permission prompt appears only after the tap.
-3. On localhost against Dev, trigger one notification and confirm generic copy appears.
+3. On localhost against Dev, create one notification, run the manual local Dev
+   wake above, and confirm the generic copy appears.
 4. Tap it and confirm an existing CEIT Connect window is only focused without
    changing its page; with no same-origin window, confirm the app opens at `/`.
 5. Turn notifications off and confirm the device changes to Off.
@@ -282,7 +286,7 @@ expected delivered/retry/terminal aggregate. Do not treat a retry as a delivery.
 
 ## Local automated result
 
-- `npm.cmd run test`: 1,258/1,258 tests pass across 120 files, including 70
+- `npm.cmd run test`: 1,261/1,261 tests pass across 120 files, including 73
   focused P1b tests.
 - `npm.cmd run lint`: passes with 0 errors and the unrelated existing
   `src/components/ui/mascot.tsx` unused-`INK` warning.

@@ -45,8 +45,8 @@ export function PushAwareSignOutForm({
 
   const content = isSubmitting
     ? Children.map(children, (child) => (
-        isValidElement<{ children?: ReactNode; disabled?: boolean }>(child)
-          ? cloneElement(child, { children: "Signing out…", disabled: true })
+        isValidElement<{ disabled?: boolean }>(child)
+          ? cloneElement(child, { disabled: true })
           : child
       ))
     : children

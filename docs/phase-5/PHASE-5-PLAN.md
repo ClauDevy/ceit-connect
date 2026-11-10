@@ -13,7 +13,7 @@ current batch completes its full stage order.
 | I1 | Installable app basics | `feature/installable-app` | Medium | Live on Prod (owner-confirmed) |
 | N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Merged and live on Dev and Prod; Prod cleanup job scheduled; first scheduled-run check pending and non-blocking |
 | N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Implemented locally; 1,186 tests and lint pass; TypeScript reaches only the documented missing Next-generated globals; manual review pending |
-| P1 | Web push | `feature/web-push-database` then `feature/web-push` | High | P1a live on Dev and Prod; P1b locally verified (1,258 tests, TypeScript, lint, and diff check), owner browser/rollout gates pending |
+| P1 | Web push | `feature/web-push-database` then `feature/web-push` | High | P1a live on Dev and Prod; P1b locally verified (1,261 tests, lint, and diff check pass; TypeScript does not pass because of three known missing Next-generated-type errors), owner browser/rollout gates pending |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Not started |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Not started |
