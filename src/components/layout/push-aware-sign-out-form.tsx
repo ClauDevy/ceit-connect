@@ -15,8 +15,8 @@ export function PushAwareSignOutForm({
   const submitting = useRef(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    if (submitting.current) return
     event.preventDefault()
+    if (submitting.current) return
     submitting.current = true
     const form = event.currentTarget
     try {

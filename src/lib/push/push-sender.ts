@@ -5,6 +5,7 @@ import webpush from "web-push"
 
 export const PUSH_CLAIM_LIMIT = 20
 export const PUSH_CONCURRENCY = 10
+export const PUSH_DATABASE_REQUEST_TIMEOUT_MS = 1_000
 export const PUSH_REQUEST_TIMEOUT_MS = 8_000
 export const PUSH_RUN_BUDGET_MS = 45_000
 export const PUSH_CLAIM_START_MINIMUM_MS = 11_000
@@ -12,14 +13,15 @@ export const PUSH_WAVE_START_MINIMUM_MS = 9_000
 export const PUSH_TTL_SECONDS = 3_600
 export const PUSH_URGENCY = "normal" as const
 
-// One wave can spend 8 seconds in Web Push. Reserve another second for its
-// acknowledgements: 8,000 + 1,000 = 9,000 ms. A 20-row claim is at most two
-// waves (2 x 8,000 = 16,000 ms of send time), safely inside the 45,000 ms run
-// budget. A new claim needs 11,000 ms: the 9,000 ms wave reserve plus a 2,000
-// ms claim/finish margin, so a claim is not taken when its first wave cannot
-// safely start. We still re-check the 9,000 ms minimum before every wave; rows
-// leased but not started are left untouched for the database's two-minute
-// lease expiry.
+// Each database RPC aborts after 1 second. One wave can spend 8 seconds in Web
+// Push, and its concurrent acknowledgements fit the remaining second:
+// 8,000 + 1,000 = 9,000 ms. A 20-row claim is at most two waves (2 x 8,000 =
+// 16,000 ms of send time), safely inside the 45,000 ms run budget. A new claim
+// needs 11,000 ms: the 9,000 ms wave reserve plus a 2,000 ms margin for the
+// separately bounded claim and finish calls, so a claim is not taken when its
+// first wave cannot safely start. We still re-check the 9,000 ms minimum before
+// every wave; rows leased but not started are left untouched for the database's
+// two-minute lease expiry.
 
 type PushSenderConfig = {
   anonKey: string
@@ -211,6 +213,28 @@ function isClaimedDelivery(value: unknown): value is ClaimedPushDelivery {
     typeof row.out_attempt === "number"
 }
 
+async function fetchPushDatabase(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) {
+  const controller = new AbortController()
+  const upstreamSignal = init?.signal
+  const abortFromUpstream = () => controller.abort(upstreamSignal?.reason)
+  if (upstreamSignal?.aborted) controller.abort(upstreamSignal.reason)
+  else upstreamSignal?.addEventListener("abort", abortFromUpstream, { once: true })
+  const timeout = setTimeout(
+    () => controller.abort(),
+    PUSH_DATABASE_REQUEST_TIMEOUT_MS,
+  )
+
+  try {
+    return await globalThis.fetch(input, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+    upstreamSignal?.removeEventListener("abort", abortFromUpstream)
+  }
+}
+
 function createPushDatabaseClient(config: PushSenderConfig) {
   return createClient(config.supabaseUrl, config.anonKey, {
     auth: {
@@ -218,7 +242,10 @@ function createPushDatabaseClient(config: PushSenderConfig) {
       detectSessionInUrl: false,
       persistSession: false,
     },
-    global: { headers: { "x-ceit-push-capability": config.capability } },
+    global: {
+      fetch: fetchPushDatabase,
+      headers: { "x-ceit-push-capability": config.capability },
+    },
   })
 }
 

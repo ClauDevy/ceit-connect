@@ -115,9 +115,11 @@ anon-key RPCs and must additionally prove a separate random capability whose
 salted hash is stored in the database. P1a implements the database half; P1b
 implements the isolated wake route, VAPID sender, push-only worker, explicit
 per-device Settings control, and best-effort current-device sign-out cleanup.
-The worker opens fixed `/`; P1a's stale `/notifications` target is an unrelated
-future jump-to-comment follow-up. Discord remains postponed to the final step
-after dashboard and polish and is not planned here.
+The worker only focuses an existing same-origin window without navigating it;
+it opens fixed `/` only when no same-origin window exists or focusing fails.
+P1a's stale `/notifications` target is an unrelated future jump-to-comment
+follow-up. Discord remains postponed to the final step after dashboard and
+polish and is not planned here.
 
 ## Phase 5 gate checks
 

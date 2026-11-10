@@ -209,14 +209,18 @@ export function PushNotificationsControl({ userId }: { userId: string }) {
 
   async function removeDevice(subscriptionId: string) {
     setMessage("")
-    const { data, error } = await createClient().rpc("remove_my_push_subscription", {
-      p_subscription_id: subscriptionId,
-    })
-    if (error || data !== true) {
+    try {
+      const { data, error } = await createClient().rpc("remove_my_push_subscription", {
+        p_subscription_id: subscriptionId,
+      })
+      if (error || data !== true) {
+        setMessage("That device could not be removed.")
+        return
+      }
+      setDevices((current) => current.filter((row) => row.out_id !== subscriptionId))
+    } catch {
       setMessage("That device could not be removed.")
-      return
     }
-    setDevices((current) => current.filter((row) => row.out_id !== subscriptionId))
   }
 
   if (state === "checking") return <p role="status" className="text-sm text-muted-foreground">Checking this device…</p>
