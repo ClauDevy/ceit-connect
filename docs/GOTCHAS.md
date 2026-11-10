@@ -23,6 +23,7 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 
 ## 2. Environment variables
 - `NEXT_PUBLIC_SUPABASE_URL` must be the **bare** project URL (`https://<ref>.supabase.co`). A trailing `/rest/v1/` sends sign-in requests to the wrong endpoint (`PGRST125 Invalid path`) while the UI claims "email isn't recognized".
+- Web push adds public `NEXT_PUBLIC_PUSH_VAPID_PUBLIC_KEY` and server-only `PUSH_VAPID_PRIVATE_KEY`, `PUSH_VAPID_SUBJECT`, `PUSH_DB_CAPABILITY`, and `PUSH_WAKE_SECRET`. Dev and Prod use separate VAPID pairs and separate secrets. The public key must match its private key; never regenerate a deployed VAPID pair after subscriptions exist.
 - `.env.local` changes need a dev-server restart. Vercel changes need a redeploy.
 - Google's consent-screen name comes from Google Cloud → **Branding**, not the OAuth client's internal "Name" field.
 

@@ -52,6 +52,7 @@ export function DesktopSidebar({ user }: { user: CurrentUser }) {
 
         <div className="border-t pt-4">
           <SignOutButton
+            userId={user.id}
             variant={collapsed ? "icon" : "inline"}
             className={cn(collapsed && "flex justify-center")}
           />
