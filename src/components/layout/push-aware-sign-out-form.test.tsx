@@ -41,6 +41,30 @@ describe("PushAwareSignOutForm", () => {
     expect(mocks.bestEffortPushSignOut).toHaveBeenCalledOnce()
   })
 
+  it("disables an icon-only submit control without replacing its content", async () => {
+    let finishCleanup: (() => void) | undefined
+    mocks.bestEffortPushSignOut.mockReturnValue(new Promise<void>((resolve) => {
+      finishCleanup = resolve
+    }))
+    const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => undefined)
+    const { container } = render(
+      <PushAwareSignOutForm userId="user-a">
+        <button type="submit" aria-label="Sign out">
+          <svg data-testid="sign-out-icon" />
+        </button>
+      </PushAwareSignOutForm>,
+    )
+    const form = container.querySelector("form")!
+
+    fireEvent.submit(form)
+
+    expect((screen.getByRole("button", { name: "Sign out" }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId("sign-out-icon")).toBeTruthy()
+    expect(screen.getByRole("status").textContent).toBe("Signing out…")
+    finishCleanup?.()
+    await waitFor(() => expect(submit).toHaveBeenCalledOnce())
+  })
+
   it("uses a connected native POST form if the menu form unmounts during cleanup", async () => {
     let finishCleanup: (() => void) | undefined
     mocks.bestEffortPushSignOut.mockReturnValue(new Promise<void>((resolve) => {

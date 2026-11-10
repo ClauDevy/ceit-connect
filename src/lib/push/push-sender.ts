@@ -173,22 +173,31 @@ export async function sendClaimedDelivery(
     return { outcome: "permanent", httpStatus: 400 }
   }
 
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined
   try {
-    const response = await sendNotification(
-      {
-        endpoint: delivery.out_endpoint,
-        keys: {
-          auth: delivery.out_auth_secret,
-          p256dh: delivery.out_p256dh,
+    const deadline = new Promise<never>((_resolve, reject) => {
+      deadlineTimer = setTimeout(() => {
+        reject(Object.assign(new Error("Web Push deadline exceeded."), { code: "ETIMEDOUT" }))
+      }, PUSH_REQUEST_TIMEOUT_MS)
+    })
+    const response = await Promise.race([
+      sendNotification(
+        {
+          endpoint: delivery.out_endpoint,
+          keys: {
+            auth: delivery.out_auth_secret,
+            p256dh: delivery.out_p256dh,
+          },
         },
-      },
-      buildPushPayload(delivery),
-      {
-        TTL: PUSH_TTL_SECONDS,
-        timeout: PUSH_REQUEST_TIMEOUT_MS,
-        urgency: PUSH_URGENCY,
-      },
-    )
+        buildPushPayload(delivery),
+        {
+          TTL: PUSH_TTL_SECONDS,
+          timeout: PUSH_REQUEST_TIMEOUT_MS,
+          urgency: PUSH_URGENCY,
+        },
+      ),
+      deadline,
+    ])
     return classifyHttpStatus(response.statusCode)
   } catch (error) {
     const status = errorStatus(error)
@@ -198,6 +207,8 @@ export async function sendClaimedDelivery(
     // network failures, timeouts, and every other unexpected library failure
     // are bounded by the database retry schedule instead of being dropped.
     return { outcome: "transient", httpStatus: null }
+  } finally {
+    if (deadlineTimer !== undefined) clearTimeout(deadlineTimer)
   }
 }
 
@@ -273,6 +284,7 @@ async function acknowledge(
 
 type RunCounts = {
   acknowledged: number
+  claimFailures: number
   claimed: number
   failedAcknowledgements: number
   finishedRuns: number
@@ -284,6 +296,7 @@ export async function runPushDeliveryLoop(config: PushSenderConfig) {
   const startedAt = Date.now()
   const counts: RunCounts = {
     acknowledged: 0,
+    claimFailures: 0,
     claimed: 0,
     failedAcknowledgements: 0,
     finishedRuns: 0,
@@ -295,7 +308,10 @@ export async function runPushDeliveryLoop(config: PushSenderConfig) {
       const { data, error } = await client.rpc("claim_push_deliveries", {
         p_limit: PUSH_CLAIM_LIMIT,
       })
-      if (error) break
+      if (error) {
+        counts.claimFailures += 1
+        break
+      }
       if (!Array.isArray(data) || data.length === 0) break
 
       const deliveries = data.filter(isClaimedDelivery)

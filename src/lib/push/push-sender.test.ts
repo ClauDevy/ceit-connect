@@ -189,6 +189,20 @@ describe("push outcome mapping", () => {
       httpStatus: null,
     })
   })
+
+  it("stops waiting at the wall-clock send deadline", async () => {
+    vi.useFakeTimers()
+    const send = vi.fn(() => new Promise<never>(() => undefined))
+
+    const pending = sendClaimedDelivery(delivery(), send)
+    await vi.advanceTimersByTimeAsync(PUSH_REQUEST_TIMEOUT_MS)
+
+    await expect(pending).resolves.toEqual({
+      outcome: "transient",
+      httpStatus: null,
+    })
+    expect(vi.getTimerCount()).toBe(0)
+  })
 })
 
 describe("push delivery loop budget and run bookkeeping", () => {
@@ -281,6 +295,25 @@ describe("push delivery loop budget and run bookkeeping", () => {
       claimed: 0,
       unsent: 0,
     }))
+  })
+
+  it("counts a claim failure without logging its error", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "sensitive database detail" },
+    })
+    mocks.createClient.mockReturnValue({ rpc })
+
+    await runPushDeliveryLoop(config)
+
+    expect(console.info).toHaveBeenLastCalledWith("Push wake finished.", expect.objectContaining({
+      claimFailures: 1,
+      claimed: 0,
+    }))
+    expect(console.info).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ error: expect.anything() }),
+    )
   })
 
   it("leaves a claimed row unsent and stops when a wave has too little time", async () => {
