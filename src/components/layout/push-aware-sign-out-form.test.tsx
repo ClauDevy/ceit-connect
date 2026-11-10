@@ -12,6 +12,7 @@ import { PushAwareSignOutForm } from "@/components/layout/push-aware-sign-out-fo
 
 afterEach(() => {
   cleanup()
+  document.querySelectorAll("[data-push-sign-out-submission]").forEach((form) => form.remove())
   vi.restoreAllMocks()
   mocks.bestEffortPushSignOut.mockReset()
 })
@@ -38,6 +39,38 @@ describe("PushAwareSignOutForm", () => {
     finishCleanup?.()
     await waitFor(() => expect(submit).toHaveBeenCalledOnce())
     expect(mocks.bestEffortPushSignOut).toHaveBeenCalledOnce()
+  })
+
+  it("uses a connected native POST form if the menu form unmounts during cleanup", async () => {
+    let finishCleanup: (() => void) | undefined
+    mocks.bestEffortPushSignOut.mockReturnValue(new Promise<void>((resolve) => {
+      finishCleanup = resolve
+    }))
+    let submittedAction: string | null = null
+    let submittedConnected = false
+    let submittedMethod = ""
+    const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (this: HTMLFormElement) {
+      submittedAction = this.getAttribute("action")
+      submittedConnected = this.isConnected
+      submittedMethod = this.method
+    })
+    const { container, unmount } = render(
+      <PushAwareSignOutForm userId="user-a">
+        <button type="submit">Sign out</button>
+      </PushAwareSignOutForm>,
+    )
+    const form = container.querySelector("form")!
+
+    fireEvent.submit(form)
+    expect(form.getAttribute("aria-busy")).toBe("true")
+    expect(form.textContent).toContain("Signing out…")
+    unmount()
+    finishCleanup?.()
+
+    await waitFor(() => expect(submit).toHaveBeenCalledOnce())
+    expect(submittedConnected).toBe(true)
+    expect(submittedMethod).toBe("post")
+    expect(submittedAction).toBe("/auth/signout")
   })
 
   it("submits and releases its guard even when device cleanup rejects", async () => {

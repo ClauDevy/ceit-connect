@@ -99,7 +99,7 @@ describe("P1b Settings and sign-out interaction contract", () => {
     expect(form).toContain('action="/auth/signout"')
     expect(form).toContain('method="post"')
     const cleanupCall = form.indexOf("await bestEffortPushSignOut(userId)")
-    const formSubmit = form.indexOf("form.submit()")
+    const formSubmit = form.indexOf("submissionForm.submit()")
     expect(cleanupCall).not.toBe(-1)
     expect(formSubmit).not.toBe(-1)
     expect(cleanupCall).toBeLessThan(formSubmit)

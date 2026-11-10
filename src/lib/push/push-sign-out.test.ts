@@ -37,6 +37,30 @@ describe("push-aware sign-out", () => {
     expect(window.localStorage.getItem(pushDeviceStorageKey("user-a"))).toBeNull()
   })
 
+  it("starts database removal and browser unsubscribe concurrently", async () => {
+    window.localStorage.setItem(pushDeviceStorageKey("user-a"), "device-a")
+    let finishRemoval: (() => void) | undefined
+    const remove = vi.fn().mockReturnValue(new Promise<void>((resolve) => {
+      finishRemoval = resolve
+    }))
+    const unsubscribe = vi.fn().mockResolvedValue(true)
+    const getBrowserSubscription = vi.fn().mockResolvedValue({ unsubscribe })
+
+    const cleanup = bestEffortPushSignOut("user-a", 100, {
+      getBrowserSubscription,
+      removeDatabaseSubscription: remove,
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(remove).toHaveBeenCalledWith("device-a")
+    expect(getBrowserSubscription).toHaveBeenCalledOnce()
+    expect(unsubscribe).toHaveBeenCalledOnce()
+
+    finishRemoval?.()
+    await cleanup
+  })
+
   it("swallows localStorage access failures so sign-out can continue", async () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("storage blocked")

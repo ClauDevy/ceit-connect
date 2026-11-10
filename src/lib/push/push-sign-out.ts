@@ -35,18 +35,22 @@ export async function bestEffortPushSignOut(
     } catch {
       // Storage can be unavailable in hardened/private browser contexts.
     }
-    if (subscriptionId) {
+    const databaseCleanup = (async () => {
+      if (!subscriptionId) return
       try {
         await dependencies.removeDatabaseSubscription(subscriptionId)
       } catch {
-        // Sign-out must continue; browser unsubscribe below prevents delivery.
+        // Sign-out must continue; browser unsubscribe prevents delivery.
       }
-    }
-    try {
-      await (await dependencies.getBrowserSubscription())?.unsubscribe()
-    } catch {
-      // The database lease/404 cleanup remains a second safety net.
-    }
+    })()
+    const browserCleanup = (async () => {
+      try {
+        await (await dependencies.getBrowserSubscription())?.unsubscribe()
+      } catch {
+        // The database lease/404 cleanup remains a second safety net.
+      }
+    })()
+    await Promise.all([databaseCleanup, browserCleanup])
   }
 
   let timeoutHandle: number | undefined
