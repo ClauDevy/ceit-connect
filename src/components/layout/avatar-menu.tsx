@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import type { CurrentUser } from "@/lib/types"
 import { SettingsWarningDot } from "@/components/layout/settings-warning-dot"
+import { PushAwareSignOutForm } from "@/components/layout/push-aware-sign-out-form"
 
 export function AvatarMenu({ user }: { user: CurrentUser }) {
   return (
@@ -35,7 +36,7 @@ export function AvatarMenu({ user }: { user: CurrentUser }) {
           Settings
           {!user.passwordSet ? <SettingsWarningDot className="ml-auto" /> : null}
         </DropdownMenuLinkItem>
-        <form action="/auth/signout" method="post">
+        <PushAwareSignOutForm userId={user.id}>
           {/* Keep the form mounted until the browser starts the native POST navigation. */}
           <DropdownMenuItem
             render={<button type="submit" />}
@@ -45,7 +46,7 @@ export function AvatarMenu({ user }: { user: CurrentUser }) {
             <LogOut aria-hidden className="size-4" />
             Sign out
           </DropdownMenuItem>
-        </form>
+        </PushAwareSignOutForm>
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -1,0 +1,22 @@
+import { createHash, randomBytes } from "node:crypto"
+
+const capability = randomBytes(32).toString("base64url")
+const wakeSecret = randomBytes(32).toString("base64url")
+const salt = randomBytes(32)
+const digest = createHash("sha256")
+  .update(salt)
+  .update(capability, "utf8")
+  .digest("hex")
+const saltHex = salt.toString("hex")
+
+console.log(`PUSH_DB_CAPABILITY=${capability}`)
+console.log(`PUSH_WAKE_SECRET=${wakeSecret}`)
+console.log(`salt=${saltHex}`)
+console.log(`hash=${digest}`)
+console.log("\nReady-to-paste SQL for this environment:\n")
+console.log("select public.configure_push_sender_credential_hash(")
+console.log("  'current',")
+console.log("  1,")
+console.log(`  '${saltHex}',`)
+console.log(`  '${digest}'`)
+console.log(");")

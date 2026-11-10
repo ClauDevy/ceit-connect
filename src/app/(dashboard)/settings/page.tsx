@@ -1,4 +1,4 @@
-import { Download, Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
+import { BellRing, Download, Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
@@ -8,6 +8,7 @@ import { AvatarUploader } from "@/components/settings/avatar-uploader";
 import { FullNameForm } from "@/components/settings/full-name-form";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { InstallAppHelp } from "@/components/settings/install-app-help";
+import { PushNotificationsControl } from "@/components/settings/push-notifications-control";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -75,6 +76,15 @@ export default async function SettingsPage() {
 
         <SettingsSection
           motionIndex={3}
+          title="Notifications on this device"
+          description="Choose whether this browser receives generic task alerts."
+          icon={<BellRing aria-hidden />}
+        >
+          <PushNotificationsControl userId={user.id} />
+        </SettingsSection>
+
+        <SettingsSection
+          motionIndex={4}
           title="Install the app"
           description="Keep CEIT Connect within easy reach on your phone."
           icon={<Download aria-hidden />}
