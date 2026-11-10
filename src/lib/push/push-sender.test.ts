@@ -374,4 +374,33 @@ describe("push delivery loop budget and run bookkeeping", () => {
       finishedRuns: 1,
     }))
   })
+
+  it("counts a false acknowledgement result as failed", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    const row = delivery()
+    let claimed = false
+    const rpc = vi.fn().mockImplementation(async (name: string) => {
+      if (name === "claim_push_deliveries") {
+        if (claimed) return { data: [], error: null }
+        claimed = true
+        return { data: [row], error: null }
+      }
+      if (name === "acknowledge_push_delivery") {
+        return { data: false, error: null }
+      }
+      if (name === "finish_push_delivery_run") return { data: true, error: null }
+      throw new Error(`Unexpected RPC ${name}`)
+    })
+    mocks.createClient.mockReturnValue({ rpc })
+    vi.spyOn(webpush, "sendNotification").mockResolvedValue({ statusCode: 201 } as never)
+
+    await runPushDeliveryLoop(config)
+
+    expect(console.info).toHaveBeenLastCalledWith("Push wake finished.", expect.objectContaining({
+      acknowledged: 0,
+      failedAcknowledgements: 1,
+      finishedRuns: 1,
+    }))
+  })
 })

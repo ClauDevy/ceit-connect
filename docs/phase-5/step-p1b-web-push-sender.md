@@ -282,7 +282,7 @@ expected delivered/retry/terminal aggregate. Do not treat a retry as a delivery.
 
 ## Local automated result
 
-- `npm.cmd run test`: 1,257/1,257 tests pass across 120 files, including 69
+- `npm.cmd run test`: 1,258/1,258 tests pass across 120 files, including 70
   focused P1b tests.
 - `npm.cmd run lint`: passes with 0 errors and the unrelated existing
   `src/components/ui/mascot.tsx` unused-`INK` warning.

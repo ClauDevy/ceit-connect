@@ -262,13 +262,13 @@ async function acknowledge(
   delivery: ClaimedPushDelivery,
   result: PushOutcome,
 ) {
-  const { error } = await client.rpc("acknowledge_push_delivery", {
+  const { data, error } = await client.rpc("acknowledge_push_delivery", {
     p_delivery_id: delivery.out_delivery_id,
     p_http_status: result.httpStatus,
     p_lease_token: delivery.out_lease_token,
     p_outcome: result.outcome,
   })
-  return !error
+  return !error && data === true
 }
 
 type RunCounts = {
