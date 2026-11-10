@@ -3,12 +3,14 @@ import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { LoginHero } from "@/components/auth/login-hero"
 import { LoginFooter } from "@/components/auth/login-footer"
 import { TigerMascot } from "@/components/ui/tiger-mascot"
+import { ViewportRecovery } from "@/components/auth/viewport-recovery"
 
 // Phones: one centred column, mascot above the form, credit line at the bottom.
 // md and up: brand panel on the left, form (and the credit line) on the right.
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-dvh flex-col md:flex-row">
+    <div className="relative flex min-h-svh flex-col md:flex-row">
+      <ViewportRecovery />
       <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 z-10">
         <ThemeToggle />
       </div>

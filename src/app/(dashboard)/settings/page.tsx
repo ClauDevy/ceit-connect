@@ -6,6 +6,7 @@ import { SettingsSection } from "@/components/settings/settings-section";
 import { SetPasswordForm } from "@/components/settings/set-password-form";
 import { AvatarUploader } from "@/components/settings/avatar-uploader";
 import { FullNameForm } from "@/components/settings/full-name-form";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { InstallAppHelp } from "@/components/settings/install-app-help";
 
 export default async function SettingsPage() {
@@ -23,6 +24,17 @@ export default async function SettingsPage() {
       <PageHeader
         title="Settings"
       />
+
+      {!profile?.password_set ? (
+        <InlineAlert variant="warning" className="mb-5 flex items-start gap-3">
+          <KeyRound className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            <b>One step left:</b> set a backup password below so you can still sign
+            in if Google or email links are unavailable. The orange dot on the
+            Settings tab goes away once it&apos;s set.
+          </span>
+        </InlineAlert>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <SettingsSection
@@ -51,6 +63,7 @@ export default async function SettingsPage() {
           motionIndex={2}
           title="Password"
           icon={<KeyRound aria-hidden />}
+          attention={!profile?.password_set}
           description={
             profile?.password_set
               ? "Update your password."
@@ -65,7 +78,6 @@ export default async function SettingsPage() {
           title="Install the app"
           description="Keep CEIT Connect within easy reach on your phone."
           icon={<Download aria-hidden />}
-          tone="amber"
         >
           <InstallAppHelp />
         </SettingsSection>

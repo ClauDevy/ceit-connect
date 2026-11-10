@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { SettingsWarningDot } from "@/components/layout/settings-warning-dot"
 import { SectionEnter } from "@/components/shared/motion"
 
 // Each settings section has its own soft hue so the page is easy to scan: a tinted header
@@ -34,6 +35,8 @@ type SettingsSectionProps = {
   children: React.ReactNode
   motionIndex?: number
   tone?: SettingsTone
+  /** Shows the same orange dot as the nav when this section needs action. */
+  attention?: boolean
 }
 
 export function SettingsSection({
@@ -44,6 +47,7 @@ export function SettingsSection({
   children,
   motionIndex = 0,
   tone = "primary",
+  attention = false,
 }: SettingsSectionProps) {
   return (
     <SectionEnter index={motionIndex}>
@@ -64,7 +68,10 @@ export function SettingsSection({
               {icon}
             </span>
           ) : null}
-          <CardTitle className={cn("text-lg", !icon && "col-span-2")}>{title}</CardTitle>
+          <CardTitle className={cn("flex items-center gap-2 text-lg", !icon && "col-span-2")}>
+            {title}
+            {attention ? <SettingsWarningDot /> : null}
+          </CardTitle>
           {description && (
             <CardDescription className={cn(!icon && "col-span-2")}>
               {description}
