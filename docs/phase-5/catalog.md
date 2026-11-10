@@ -128,3 +128,48 @@ active profile before calling them.
 
 N3a replaces no N1 policy, reader, writer, trigger, or FK. CCE09 is unchanged.
 
+## `20261112120000_web_push_database.sql`
+
+### Public subscription boundary
+
+- `public.push_subscriptions` is postgres-owned with RLS enabled. Authenticated
+  callers may select only safe own metadata; endpoint, `p256dh`, and auth key
+  columns have no browser SELECT grant. Registration/list/remove-one/remove-all
+  RPCs require an active authenticated profile.
+- One endpoint hash has one owner. Re-registration transfers a shared device
+  only after deleting its old queued work. The per-person limit is five.
+- `users_z9_remove_deactivated_push_subscriptions` deletes subscriptions and
+  their queued rows after active-to-inactive profile transitions.
+
+### Private sender boundary
+
+- `ceit_connect_private.push_delivery_queue` has foreign keys only to
+  `notifications` and `users`. Notification deletion cascades queued and leased
+  work. `subscription_id` deliberately has no FK; subscription removal uses one
+  private helper to remove its queue rows first.
+- Credentials store only two 32-byte salted hashes (`current` and `next`). The
+  three anon-executable sender RPCs run both fixed-length comparisons and deny
+  service role. Wrong secrets receive the same generic denial and are not
+  persisted.
+- Claims lease at most 100 rows for two minutes, recheck active profile,
+  subscription, and notification existence, and return endpoint material plus
+  fixed generic copy. They never accept a recipient or message.
+- Acknowledgement quietly returns false for missing/stale rows, retries only
+  transient results, removes 404/410 subscriptions, and never extends past
+  eight attempts or one hour.
+
+### Wake, retention, and unchanged objects
+
+- `notifications_z9_enqueue_push` is the only attachment to existing
+  notification behavior. Queue and kick failures are contained and return the
+  original row. Existing notification/task functions, policies, and CCE09 are
+  unchanged.
+- Vault names default to `push_kick_url` and `push_wake_secret`. The constant
+  `{}` wake is sent through `pg_net`; a singleton row coalesces ordinary wake
+  requests for exactly ten seconds and uses `FOR UPDATE SKIP LOCKED` so a
+  concurrent kicker never waits. `request_push_kick_if_due()` enters that same
+  coalescer only for due pending work or an expired lease.
+- Counts-only run history retains 30 days. Delivered rows retain three days,
+  and terminal rows seven days. The postgres-session-only cleanup runner is
+  scheduled separately on Prod only.
+
