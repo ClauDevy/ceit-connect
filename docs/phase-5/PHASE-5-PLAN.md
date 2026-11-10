@@ -13,7 +13,7 @@ current batch completes its full stage order.
 | I1 | Installable app basics | `feature/installable-app` | Medium | Live on Prod (owner-confirmed) |
 | N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Merged and live on Dev and Prod; Prod cleanup job scheduled; first scheduled-run check pending and non-blocking |
 | N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Implemented locally; 1,186 tests and lint pass; TypeScript reaches only the documented missing Next-generated globals; manual review pending |
-| P1 | Web push | `feature/web-push` | High | Not started; blocked on the secure-sender decision below |
+| P1 | Web push | `feature/web-push-database` then a separate P1b branch | High | P1a database implemented locally for review; P1b outline only; no Dev/Prod result claimed |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Not started |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Not started |
@@ -106,14 +106,14 @@ These are not part of the currently implemented N1/N2 behavior:
 - I1 remains separate and live; it does not absorb push, email, Discord, or
   notification housekeeping behavior.
 
-## Open secure-sender decision
+## Approved secure-sender decision
 
-P1 cannot be designed until the owner approves a secure server-side sender
-pattern that also works for any later email or Discord queue. `AGENTS.md` permits
-the service-role client only in server-only code after the route or action
-re-verifies a logged-in, active caller with the correct role. Background
-delivery has no interactive caller, so the plan must resolve that conflict
-without putting a service-role key in a client or weakening the existing rule.
+P1 uses no service-role exception. The isolated sender reaches only narrow
+anon-key RPCs and must additionally prove a separate random capability whose
+salted hash is stored in the database. P1a implements the database half; P1b
+will implement the sender route and browser surface after P1a review and Dev
+verification. Discord remains postponed to the final step after dashboard and
+polish and is not planned here.
 
 ## Phase 5 gate checks
 

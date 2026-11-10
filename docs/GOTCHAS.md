@@ -58,6 +58,7 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 
 ### SQL testing
 
+- SQL-standard special-syntax and conditional-expression constructs (`substring FROM`, `position IN`, `trim FROM`, `extract FROM`, `overlay PLACING`, `greatest`, `least`, `coalesce`, `nullif`) cannot be schema-qualified; use comma-argument function forms or keep the conditional expressions unqualified when `search_path` is empty.
 - Compute expected values as the table owner before impersonating a role; impersonated roles can see only the rows allowed by RLS.
 - Check catalog-exposed properties (`prosecdef`, `provolatile`, `proconfig`, grants) in `pg_proc`/`pg_catalog`; never infer them by text-matching `pg_get_functiondef()` output.
 - A task update run as the SQL Editor owner (`current_user = 'postgres'`) normally reaches the exact six-column privileged union: `status`, `sort_order`, `depends_on_task_id`, `primary_assignees`, `assist_assignees`, and `request_backup`. The Edit Event, Active-task editor, and confidentiality writer have narrower named-marker branches. A change outside the selected branch, including `phase` in the ordinary owner path, is rejected. An owner status change receives no automatic destination ranking, keeps its old `sort_order`, and can violate `tasks_lane_sort_order_key`; test fixtures should use the public RPC or set every required server-owned value under the exact fixture marker.
