@@ -124,4 +124,59 @@ describe("Notifications on this device", () => {
     await waitFor(() => expect(getSubscription).toHaveBeenCalledOnce())
     expect(order).toEqual(["register", "ready-push-manager"])
   })
+
+  it("keeps a listed device and shows the fixed failure message when removal rejects", async () => {
+    const subscription = {
+      endpoint: "https://fcm.googleapis.com/push/example",
+      expirationTime: null,
+      getKey: (name: string) => new Uint8Array(name === "p256dh" ? 65 : 16).buffer,
+    } as unknown as PushSubscription
+    const registration = {
+      pushManager: {
+        getSubscription: vi.fn().mockResolvedValue(subscription),
+        subscribe: vi.fn(),
+      },
+    } as unknown as ServiceWorkerRegistration
+    setNavigator("Mozilla/5.0 (Windows NT 10.0)", subscription)
+    Object.defineProperty(window.navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        getRegistration: vi.fn().mockResolvedValue(registration),
+        register: vi.fn().mockResolvedValue(registration),
+        ready: Promise.resolve(registration),
+      },
+    })
+    process.env.NEXT_PUBLIC_PUSH_VAPID_PUBLIC_KEY = "AQID"
+    const listedDevice = {
+      out_id: "device-a",
+      out_device_label: "Desktop browser",
+      out_platform: "desktop",
+      out_expires_at: null,
+      out_created_at: "2026-11-10T12:00:00Z",
+      out_last_seen_at: "2026-11-10T12:00:00Z",
+    }
+    let listCalls = 0
+    const rpc = vi.fn().mockImplementation(async (name: string) => {
+      if (name === "list_my_push_subscriptions") {
+        listCalls += 1
+        return { data: listCalls === 1 ? [] : [listedDevice], error: null }
+      }
+      if (name === "register_push_subscription") {
+        return { data: null, error: { message: "PUSH_DEVICE_LIMIT" } }
+      }
+      if (name === "remove_my_push_subscription") {
+        throw new Error("network unavailable")
+      }
+      throw new Error(`Unexpected RPC ${name}`)
+    })
+    mocks.createClient.mockReturnValue({ rpc })
+
+    render(<PushNotificationsControl userId="user-a" />)
+    fireEvent.click(await screen.findByRole("button", { name: /enable notifications/i }))
+    const remove = await screen.findByRole("button", { name: /remove/i })
+    fireEvent.click(remove)
+
+    expect(await screen.findByText("That device could not be removed.")).toBeTruthy()
+    expect(screen.getByText("Desktop browser")).toBeTruthy()
+  })
 })

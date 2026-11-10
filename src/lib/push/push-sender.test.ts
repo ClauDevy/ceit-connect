@@ -18,6 +18,7 @@ import {
   PUSH_CLAIM_START_MINIMUM_MS,
   PUSH_CLAIM_LIMIT,
   PUSH_CONCURRENCY,
+  PUSH_DATABASE_REQUEST_TIMEOUT_MS,
   PUSH_REQUEST_TIMEOUT_MS,
   PUSH_RUN_BUDGET_MS,
   PUSH_TTL_SECONDS,
@@ -58,6 +59,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
@@ -83,6 +85,7 @@ describe("push sender constants and payload", () => {
   it("pins the approved batch and time arithmetic", () => {
     expect(PUSH_CLAIM_LIMIT).toBe(20)
     expect(PUSH_CONCURRENCY).toBe(10)
+    expect(PUSH_DATABASE_REQUEST_TIMEOUT_MS).toBe(1_000)
     expect(PUSH_REQUEST_TIMEOUT_MS).toBe(8_000)
     expect(PUSH_RUN_BUDGET_MS).toBe(45_000)
     expect(PUSH_CLAIM_START_MINIMUM_MS).toBe(11_000)
@@ -196,6 +199,37 @@ describe("push delivery loop budget and run bookkeeping", () => {
     supabaseUrl: "https://example.supabase.co",
     vapidSubject: "mailto:push@example.com",
   }
+
+  it("aborts each push database request at the one-second RPC timeout", async () => {
+    vi.useFakeTimers()
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    mocks.createClient.mockReturnValue({ rpc })
+
+    await runPushDeliveryLoop(config)
+
+    const options = mocks.createClient.mock.calls[0]?.[2] as {
+      global: { fetch: typeof fetch; headers: Record<string, string> }
+    }
+    let requestSignal: AbortSignal | undefined
+    vi.stubGlobal("fetch", vi.fn((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        requestSignal = init?.signal ?? undefined
+        requestSignal?.addEventListener("abort", () => {
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }))
+        }, { once: true })
+      })
+    )))
+
+    const pendingRequest = options.global.fetch("https://example.supabase.co/rest/v1/rpc/claim")
+    const rejected = expect(pendingRequest).rejects.toMatchObject({ name: "AbortError" })
+    await vi.advanceTimersByTimeAsync(PUSH_DATABASE_REQUEST_TIMEOUT_MS)
+
+    await rejected
+    expect(requestSignal?.aborted).toBe(true)
+    expect(options.global.headers).toEqual({
+      "x-ceit-push-capability": config.capability,
+    })
+  })
 
   it("does not claim when less than the claim-start minimum remains", async () => {
     vi.useFakeTimers()

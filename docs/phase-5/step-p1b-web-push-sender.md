@@ -14,8 +14,9 @@ sign-up path.
 Push payloads contain exactly `title`, `body`, and `tag`. Title and body are the
 generic strings returned by `claim_push_deliveries`; tag is that row's opaque
 delivery UUID. No name, task title, event name, comment, task ID, endpoint, key,
-or navigation address is included. The worker ignores every payload address
-and always opens or focuses `/`.
+or navigation address is included. The worker ignores every payload address,
+focuses an existing same-origin window without navigating it, and opens fixed
+`/` only when no same-origin window exists or focusing fails.
 
 ## Sender security and timing
 
@@ -40,11 +41,12 @@ budget is 45 seconds. The arithmetic is deliberately conservative:
 - claim limit: 20;
 - concurrency: 10, so one claim is at most two waves;
 - Web Push timeout: 8 seconds per wave;
+- database RPC timeout: 1 second per claim, acknowledgement, or finish request;
 - wave admission reserve: 8,000 ms send timeout + 1,000 ms acknowledgement
-  margin = 9,000 ms;
+  timeout = 9,000 ms; acknowledgements within a wave run concurrently;
 - claim admission reserve: 9,000 ms wave reserve + 2,000 ms claim/finish margin
-  = 11,000 ms, so a new claim is never taken without room to start its first
-  wave;
+  (one separately bounded second each) = 11,000 ms, so a new claim is never
+  taken without room to start its first wave;
 - worst planned send time for one full claim: 2 × 8,000 ms = 16,000 ms, inside
   the 45,000 ms loop budget;
 - remaining time is checked before every claim and every wave. A claim never
@@ -208,7 +210,8 @@ on Prod after this branch is merged and deployed.
 1. Sign in, open Settings, and tap **Enable notifications**.
 2. Confirm the permission prompt appears only after the tap.
 3. On localhost against Dev, trigger one notification and confirm generic copy appears.
-4. Tap it and confirm CEIT Connect opens at `/`.
+4. Tap it and confirm an existing CEIT Connect window is only focused without
+   changing its page; with no same-origin window, confirm the app opens at `/`.
 5. Turn notifications off and confirm the device changes to Off.
 
 ### iPhone installed app
@@ -219,7 +222,9 @@ on Prod after this branch is merged and deployed.
 3. Sign in, tap Enable, and allow the synchronous permission prompt.
 4. After merge on Prod, trigger a notification, including while the app is closed, and confirm
    a visible generic notification appears.
-5. Tap it and confirm the installed app opens or focuses at `/`.
+5. Tap it and confirm an existing CEIT Connect window is only focused without
+   changing its page; with no same-origin window, confirm the installed app
+   opens at `/`.
 
 ### Desktop
 
@@ -276,18 +281,23 @@ expected delivered/retry/terminal aggregate. Do not treat a retry as a delivery.
 
 ## Local automated result
 
-- `npm.cmd run test`: 1,251/1,251 tests pass across 120 files, including 63
+- `npm.cmd run test`: 1,254/1,254 tests pass across 120 files, including 66
   focused P1b tests.
-- `npm.cmd run lint`: passes with no warning or error.
+- `npm.cmd run lint`: passes with 0 errors and the unrelated existing
+  `src/components/ui/mascot.tsx` unused-`INK` warning.
 - `git diff --check`: passes; Git prints only its Windows LF-to-CRLF advisory
   for `next.config.ts`.
-- `npx.cmd tsc --noEmit`: passes with the generated Next types present.
+- `npx.cmd tsc --noEmit`: reaches only the three documented missing
+  Next-generated `PageProps`/`LayoutProps` globals while generated types are
+  absent; the owner-required no-build gate does not regenerate them.
 
 ## Unrelated follow-up
 
 P1a's claimed `out_target_path` is the stale `/notifications` value, but this
 application has no authenticated `/notifications` page. P1b deliberately
-ignores it and opens `/`. Revisit the database target only with the future
+ignores it: a click only focuses an existing same-origin window without
+navigating it, and opens `/` when no such window exists or focusing fails.
+Revisit the database target only with the future
 jump-to-comment/navigation design; do not invent a page or migration in P1b.
 
 `pushsubscriptionchange` is also deferred. If a browser rotates its subscription
