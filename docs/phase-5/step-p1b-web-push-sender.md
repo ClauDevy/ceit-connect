@@ -41,7 +41,8 @@ budget is 45 seconds. The arithmetic is deliberately conservative:
 - claim limit: 20;
 - concurrency: 10, so one claim is at most two waves;
 - Web Push timeout: 8 seconds per wave;
-- database RPC timeout: 1 second per claim, acknowledgement, or finish request;
+- database RPC timeout: 1 second per claim, acknowledgement, or finish request,
+  through full response-body consumption;
 - wave admission reserve: 8,000 ms send timeout + 1,000 ms acknowledgement
   timeout = 9,000 ms; acknowledgements within a wave run concurrently;
 - claim admission reserve: 9,000 ms wave reserve + 2,000 ms claim/finish margin
@@ -281,7 +282,7 @@ expected delivered/retry/terminal aggregate. Do not treat a retry as a delivery.
 
 ## Local automated result
 
-- `npm.cmd run test`: 1,254/1,254 tests pass across 120 files, including 66
+- `npm.cmd run test`: 1,255/1,255 tests pass across 120 files, including 67
   focused P1b tests.
 - `npm.cmd run lint`: passes with 0 errors and the unrelated existing
   `src/components/ui/mascot.tsx` unused-`INK` warning.
