@@ -52,17 +52,19 @@ export function PushAwareSignOutForm({
     : children
 
   return (
-    <form
-      action="/auth/signout"
-      method="post"
-      className={className}
-      aria-busy={isSubmitting}
-      onSubmit={handleSubmit}
-    >
-      {content}
+    <>
+      <form
+        action="/auth/signout"
+        method="post"
+        className={className}
+        aria-busy={isSubmitting}
+        onSubmit={handleSubmit}
+      >
+        {content}
+      </form>
       <span className="sr-only" role="status" aria-live="polite">
         {isSubmitting ? "Signing out…" : ""}
       </span>
-    </form>
+    </>
   )
 }

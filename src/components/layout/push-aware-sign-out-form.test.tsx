@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 const mocks = vi.hoisted(() => ({ bestEffortPushSignOut: vi.fn() }))
 vi.mock("@/lib/push/push-sign-out", () => ({
@@ -63,7 +63,9 @@ describe("PushAwareSignOutForm", () => {
 
     fireEvent.submit(form)
     expect(form.getAttribute("aria-busy")).toBe("true")
-    expect(form.textContent).toContain("Signing out…")
+    const status = screen.getByRole("status")
+    expect(status.textContent).toBe("Signing out…")
+    expect(form.contains(status)).toBe(false)
     unmount()
     finishCleanup?.()
 
