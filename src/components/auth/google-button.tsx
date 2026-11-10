@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { AuthAlert } from "@/components/auth/auth-alert"
 import { createClient } from "@/lib/supabase/client"
@@ -19,9 +19,26 @@ function GoogleMark() {
 export function GoogleButton({ onAttempt }: { onAttempt?: () => void }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
+  // True only while the sign-in request itself is running, so a visibility change
+  // cannot re-enable the button mid-request.
+  const requestInFlight = useRef(false)
+
+  // Coming back from Google (cancel / back button) must never leave the button stuck.
+  useEffect(() => {
+    function reset() {
+      if (document.visibilityState !== "hidden" && !requestInFlight.current) setPending(false)
+    }
+    window.addEventListener("pageshow", reset)
+    document.addEventListener("visibilitychange", reset)
+    return () => {
+      window.removeEventListener("pageshow", reset)
+      document.removeEventListener("visibilitychange", reset)
+    }
+  }, [])
 
   async function handleClick() {
     onAttempt?.()
+    requestInFlight.current = true
     setPending(true)
     setError("")
 
@@ -39,6 +56,8 @@ export function GoogleButton({ onAttempt }: { onAttempt?: () => void }) {
     } catch {
       setError("Unable to continue with Google. Please try again.")
       setPending(false)
+    } finally {
+      requestInFlight.current = false
     }
   }
 

@@ -325,6 +325,5 @@ begin
   end if;
   raise exception 'TEST RESULTS 30/30 PASS — transaction intentionally rolled back';
 end
-$$;
 ```
 

@@ -41,11 +41,17 @@ export const NAV_ITEMS: readonly NavItem[] = [
 
 export function navForRole(role: Role) {
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
-  return {
-    all: items,
-    pinned: items.filter((item) => item.pinnedOnMobile),
-    more: items.filter((item) => !item.pinnedOnMobile),
-  };
+  const pinned = items.filter((item) => item.pinnedOnMobile);
+  const more = items.filter((item) => !item.pinnedOnMobile);
+  // A "More" menu with a single page is pointless: show that page as a normal tab instead.
+  if (more.length === 1) {
+    const [only] = more;
+    const settingsIndex = pinned.findIndex((item) => item.href === "/settings");
+    const mobilePinned = [...pinned];
+    mobilePinned.splice(settingsIndex === -1 ? mobilePinned.length : settingsIndex, 0, only);
+    return { all: items, pinned: mobilePinned, more: [] as NavItem[] };
+  }
+  return { all: items, pinned, more };
 }
 
 export function isNavActive(pathname: string | null, href: string) {

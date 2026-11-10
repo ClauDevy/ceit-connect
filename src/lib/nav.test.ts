@@ -57,8 +57,9 @@ describe("role navigation", () => {
       "/archives",
       "/settings",
     ])
-    expect(hrefs(nav.pinned)).toEqual(["/home", "/workspace", "/settings"])
-    expect(hrefs(nav.more)).toEqual(["/archives"])
+    // One lone "More" page is promoted to a normal tab (before Settings).
+    expect(hrefs(nav.pinned)).toEqual(["/home", "/workspace", "/archives", "/settings"])
+    expect(hrefs(nav.more)).toEqual([])
   })
 
   it("matches exact and nested routes without matching sibling prefixes", () => {
