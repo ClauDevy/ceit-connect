@@ -369,6 +369,21 @@ describe("notification housekeeping interactions", () => {
     expect(screen.getByRole("button", { name: "Confirm clear read" })).toBe(document.activeElement);
   });
 
+  it("moves focus to the panel heading after clear is confirmed", async () => {
+    mocks.rpc.mockImplementation((name: string) => {
+      if (name === "get_notification_unread_count") return ok(0);
+      if (name === "list_notifications") return ok([PROD_ROW]);
+      if (name === "clear_read_notifications") return ok(1);
+      throw new Error(`Unexpected RPC: ${name}`);
+    });
+
+    await renderCenter();
+    fireEvent.click(await screen.findByRole("button", { name: "Clear read" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm clear read" }));
+
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Notifications" }));
+  });
+
   it("resets clear confirmation on cancel, blur, Escape, timeout, and unmount", async () => {
     mocks.rpc.mockImplementation((name: string) => {
       if (name === "get_notification_unread_count") return ok(0);

@@ -215,18 +215,18 @@ function MyTasksContents({
                 />
                 <CardContent className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
                   <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <p className="min-w-0 text-sm font-semibold sm:text-base">
+                      {task.out_title}
+                    </p>
+                    <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2">
                       <Badge variant="outline">{task.out_status}</Badge>
-                      <p className="min-w-0 text-sm font-semibold sm:text-base">
-                        {task.out_title}
-                      </p>
+                      <PriorityBadge priority={task.out_effective_priority} />
                       {task.out_request_backup ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                           <TriangleAlert className="size-3.5" aria-hidden />{" "}
                           Help Wanted
                         </span>
                       ) : null}
-                      <PriorityBadge priority={task.out_effective_priority} />
                     </div>
                     <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
                       {task.out_event_name} · {task.out_committee_name} ·{" "}

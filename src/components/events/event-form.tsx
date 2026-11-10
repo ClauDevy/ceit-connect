@@ -53,6 +53,7 @@ import {
 import { FormField } from "@/components/ui/form-field";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
+import { formatDateSafe } from "@/lib/safe-date";
 import {
   Select,
   SelectContent,
@@ -248,6 +249,17 @@ const taskTypes: { value: TaskType; label: string }[] = [
   { value: "Deliverable", label: "Deliverable" },
   { value: "LiveOperation", label: "Live Operation" },
 ];
+
+const friendlyDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function friendlyDate(value: string) {
+  return formatDateSafe(friendlyDateFormatter, value, value);
+}
 
 function makeId() {
   return crypto.randomUUID();
@@ -475,9 +487,9 @@ export function EventForm({
     ? phases.flatMap((phase) =>
         phase.tasks.flatMap((task) => {
           const fields = [
-            task.dueDate > endDate ? `due date ${task.dueDate}` : null,
-            task.callDate > endDate ? `call date ${task.callDate}` : null,
-            task.endDate > endDate ? `end date ${task.endDate}` : null,
+            task.dueDate > endDate ? `Due ${friendlyDate(task.dueDate)}` : null,
+            task.callDate > endDate ? `Call ${friendlyDate(task.callDate)}` : null,
+            task.endDate > endDate ? `Ends ${friendlyDate(task.endDate)}` : null,
           ].filter((value): value is string => Boolean(value));
           return fields.length > 0 ? [{ ...task, fields }] : [];
         }),
@@ -1544,7 +1556,7 @@ export function EventForm({
       )}
 
       <div className="grid min-w-0 gap-6 lg:items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card className="min-w-0 overflow-hidden">
+        <Card className="min-w-0 overflow-clip">
           <div
             className="flex gap-1 overflow-x-auto border-b bg-gradient-to-r from-primary/10 via-muted/30 to-card px-5 pt-3 sm:px-6"
           >
@@ -1676,8 +1688,8 @@ export function EventForm({
                   {tasksAfterEventEnd.length > 0 ? <InlineAlert>
                     <div className="grid gap-1">
                       <p>
-                        The event cannot end on {endDate} because these retained
-                        task schedules are later:
+                        The event cannot end on {friendlyDate(endDate)} because
+                        these tasks are scheduled later:
                       </p>
                       <ul className="list-disc pl-5">
                         {tasksAfterEventEnd.map((task) => (
@@ -1711,15 +1723,16 @@ export function EventForm({
                   )}
                 </FormField>
 
-                <Button
-                  type="button"
-                  variant="link"
-                  className="w-fit px-0"
-                  onClick={() => selectFormTab("tasks")}
-                >
-                  Continue to Task Setup
-                  <ChevronRight />
-                </Button>
+                <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 -mx-1 bg-card/95 px-1 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+                  <Button
+                    type="button"
+                    className="w-full md:w-fit"
+                    onClick={() => selectFormTab("tasks")}
+                  >
+                    Continue to Task Setup
+                    <ChevronRight />
+                  </Button>
+                </div>
               </TabPanel>
             ) : (
               <TabPanel
@@ -1800,7 +1813,7 @@ export function EventForm({
                           : []);
                       return (
                       <section key={getEventPhaseCardKey(phaseView)} className="overflow-hidden rounded-2xl border bg-card">
-                        <div className="flex min-w-0 items-center gap-2 border-b bg-muted/40 p-3">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2 border-b bg-muted/40 p-3 sm:flex-nowrap">
                           {editablePhase || phaseComplete ? (
                             <Button
                               type="button"
@@ -1837,6 +1850,7 @@ export function EventForm({
                           {editablePhase && !phaseComplete ? (
                             <Input
                               aria-label="Phase name"
+                              placeholder="Phase name (tap to rename)"
                               maxLength={100}
                               value={editablePhase.name}
                               disabled={!phaseControls.canRename}
@@ -1846,7 +1860,7 @@ export function EventForm({
                                   event.target.value,
                                 )
                               }
-                              className="h-11 min-w-0 flex-1 border-transparent bg-transparent font-semibold shadow-none hover:border-border md:h-8"
+                              className="order-first h-12 min-w-0 basis-full border-input bg-background px-3.5 text-base font-semibold shadow-none sm:order-none sm:h-11 sm:basis-0 sm:flex-1 md:h-8"
                             />
                           ) : (
                             <p className={cn("min-w-0 flex-1 truncate font-semibold", phaseComplete && "line-through")}>
@@ -1978,7 +1992,7 @@ export function EventForm({
                                         <Users className="size-3" />
                                         {task.assigneeIds.length > 0
                                           ? `${task.assigneeIds.length} assigned`
-                                          : "Backlog"}
+                                          : "Unassigned (Backlog)"}
                                       </span>
                                     </div>
                                   </div>
