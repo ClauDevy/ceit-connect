@@ -26,7 +26,7 @@ function BottomTab({ item, active, showWarning }: { item: NavItem; active: boole
       <Icon className="motion-nav-icon size-5" aria-hidden />
       {showWarning ? <SettingsWarningDot className="absolute top-1 right-[calc(50%_-_1.1rem)]" /> : null}
       {/* "Executive Dashboard" is too long for a tab; the full name is in the page header. */}
-      {item.href === "/dashboard" ? "Dashboard" : item.label}
+      {item.href === "/dashboard" ? "Dashboard" : item.href === "/archives" ? "Archives" : item.label}
     </Link>
   )
 }

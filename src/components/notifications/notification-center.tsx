@@ -813,7 +813,13 @@ function NotificationRows({
   );
 }
 
-export function ClearReadControl({ panelOpen }: { panelOpen: boolean }) {
+export function ClearReadControl({
+  panelOpen,
+  titleRef,
+}: {
+  panelOpen: boolean;
+  titleRef?: RefObject<HTMLHeadingElement | null>;
+}) {
   const { clearRead, clearReadBusy } = useNotifications();
   const [armed, setArmed] = useState(false);
   const groupRef = useRef<HTMLDivElement>(null);
@@ -908,6 +914,8 @@ export function ClearReadControl({ panelOpen }: { panelOpen: boolean }) {
         onClick={() => {
           clearTimer();
           setArmed(false);
+          // The Confirm button unmounts here, so keep focus inside the panel.
+          titleRef?.current?.focus();
           void clearRead();
         }}
       >
@@ -948,24 +956,24 @@ function NotificationPanelContent({ titleRef }: { titleRef: RefObject<HTMLHeadin
   return (
     <div className="flex max-h-[min(36rem,80dvh)] min-h-0 flex-col">
       <div className="border-b px-4 py-3 pr-14">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 ref={titleRef} tabIndex={-1} className="min-w-0 flex-1 font-display text-lg font-semibold outline-none">
-            Notifications
-          </h2>
-          {list.rows.length > 0 ? (
-            <ClearReadControl panelOpen={openSurface !== null} />
-          ) : null}
+        <h2 ref={titleRef} tabIndex={-1} className="font-display text-lg font-semibold outline-none">
+          Notifications
+        </h2>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 -mx-2">
           <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={!markAllEnabled || markAllBusy}
-          aria-busy={markAllBusy || undefined}
-          onClick={() => void markAll()}
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={!markAllEnabled || markAllBusy}
+            aria-busy={markAllBusy || undefined}
+            onClick={() => void markAll()}
           >
             {markAllBusy ? <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" /> : <CheckCheck aria-hidden />}
             Mark all as read
           </Button>
+          {list.rows.length > 0 ? (
+            <ClearReadControl panelOpen={openSurface !== null} titleRef={titleRef} />
+          ) : null}
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Deletion is permanent. Unread notifications are never removed.
