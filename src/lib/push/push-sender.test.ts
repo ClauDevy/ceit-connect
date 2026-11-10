@@ -231,6 +231,40 @@ describe("push delivery loop budget and run bookkeeping", () => {
     })
   })
 
+  it("keeps the RPC timeout active when headers arrive but the body stalls", async () => {
+    vi.useFakeTimers()
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    mocks.createClient.mockReturnValue({ rpc })
+
+    await runPushDeliveryLoop(config)
+
+    const options = mocks.createClient.mock.calls[0]?.[2] as {
+      global: { fetch: typeof fetch }
+    }
+    let requestSignal: AbortSignal | undefined
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      requestSignal = init?.signal ?? undefined
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          requestSignal?.addEventListener("abort", () => {
+            controller.error(Object.assign(new Error("aborted"), { name: "AbortError" }))
+          }, { once: true })
+        },
+      })
+      return new Response(body, {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      })
+    }))
+
+    const pendingRequest = options.global.fetch("https://example.supabase.co/rest/v1/rpc/claim")
+    const rejected = expect(pendingRequest).rejects.toMatchObject({ name: "AbortError" })
+    await vi.advanceTimersByTimeAsync(PUSH_DATABASE_REQUEST_TIMEOUT_MS)
+
+    await rejected
+    expect(requestSignal?.aborted).toBe(true)
+  })
+
   it("does not claim when less than the claim-start minimum remains", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(0)

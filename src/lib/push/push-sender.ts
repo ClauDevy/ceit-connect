@@ -228,7 +228,15 @@ async function fetchPushDatabase(
   )
 
   try {
-    return await globalThis.fetch(input, { ...init, signal: controller.signal })
+    const response = await globalThis.fetch(input, { ...init, signal: controller.signal })
+    // Supabase reads the body after fetch resolves with headers. Buffer the
+    // small RPC response here so a stalled body remains inside this deadline.
+    const body = await response.arrayBuffer()
+    return new Response(body.byteLength === 0 ? null : body, {
+      headers: response.headers,
+      status: response.status,
+      statusText: response.statusText,
+    })
   } finally {
     clearTimeout(timeout)
     upstreamSignal?.removeEventListener("abort", abortFromUpstream)
