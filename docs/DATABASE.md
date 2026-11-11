@@ -192,6 +192,20 @@ Task Draft visibility is enforced separately from event visibility. `tasks_selec
   therefore belongs to that outside-only subset when no active local assignee
   exists. Member bars are true workloads: shared tasks appear once for each
   active local assignee, and bars are never summed to derive the note.
+- Phase 5 D1b adds six authenticated-only public Executive Dashboard readers
+  plus the ungranted
+  `ceit_connect_private.classify_executive_dashboard_task(timestamptz,text,timestamptz)`.
+  The classifier returns mutually exclusive overdue/due-soon flags, the
+  approved 24-to-48-hour To Do risk flag, and one of `Overdue`,
+  `Due in 24 hours`, `In Progress`, `To Do`, or `Completed`. Scoped public
+  readers accept an optional committee UUID: omission means council scope and
+  is Admin-only; an active Co-Admin must pass their own committee UUID. The
+  overview reuses the D1 committee aggregate for its open total and adds KPIs
+  plus a mutually exclusive Active-event donut. Other readers return a
+  confidential-safe 20-row attention feed, seven Asia/Manila calendar days,
+  active Co-Admins/Members with at most two council-wide open assignments,
+  D1-compatible per-member slipping counts, and Admin-only counts-only push
+  adoption. All authorize before aggregation and take no explicit lock.
 - Step 8A task/child mutators use task-row then stored-event-row locking. They do not take the event advisory key because none reads or changes dependency graphs or lane ranks; the task lock is the common serialization point for claim/backup/offer races. SQLSTATEs are `CCB01` unavailable task, `CCB02` non-Active lifecycle, `CCB03` no longer claimable, `CCB04` claimant already assists, `CCB05` backup-state conflict, `CCB06` offer conflict, `CCB07` volunteer already assigned, `CCB08` Archived-child freeze, `CCB09` immutable volunteer update, and `CCB10` combined 100-assignee cap reached.
 
 ### Phase 4 Step 9A personal feed
