@@ -198,6 +198,13 @@ describe("motion entrance policy", () => {
       ),
       "utf8",
     );
+    const dashboardCharts = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/components/dashboard/executive-dashboard-charts.tsx",
+      ),
+      "utf8",
+    );
 
     expect(globals).toContain("--motion-progress-duration: 1100ms");
     expect(globals).toContain(
@@ -214,7 +221,10 @@ describe("motion entrance policy", () => {
     expect(ring).toContain(
       "strokeDashoffset={getProgressRingDashOffset(boundedPercentage)}",
     );
-    expect(`${bar}\n${ring}`).not.toMatch(/setTimeout|requestAnimationFrame/);
+    expect(dashboardCharts).toContain("<ChartBarGrow");
+    expect(dashboardCharts).toContain("useVisibilityAnimation<SVGCircleElement>");
+    expect(dashboardCharts).toContain('className: "motion-progress-ring"');
+    expect(`${bar}\n${ring}\n${dashboardCharts}`).not.toMatch(/setTimeout|requestAnimationFrame/);
     expect(`${bar}\n${ring}`).not.toMatch(/useEffect|useState|key=/);
   });
 

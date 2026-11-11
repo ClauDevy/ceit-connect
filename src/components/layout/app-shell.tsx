@@ -16,9 +16,9 @@ export function AppShell({ user, children }: { user: CurrentUser; children: Reac
     <NotificationProvider userId={user.id}>
       <NavigationProvider>
         <NavigationProgress />
-        <div className="flex h-dvh overflow-clip">
+        <div className="fixed inset-x-0 top-0 flex h-dvh min-h-0 w-full overflow-hidden">
           <DesktopSidebar user={user} />
-          <div className="flex min-w-0 flex-1 scroll-pt-24 flex-col overflow-x-hidden overflow-y-auto">
+          <div className="flex min-h-0 min-w-0 flex-1 scroll-pt-24 flex-col overflow-x-hidden overflow-y-auto overscroll-contain">
             <MobileTopbar user={user} />
             <DesktopHeader user={user} />
             <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 pb-28 sm:px-6 md:px-10 md:py-8 md:pb-8">
