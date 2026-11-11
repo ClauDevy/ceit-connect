@@ -51,10 +51,12 @@ describe("Executive Dashboard chart accessibility", () => {
       <TaskStatusDonut overview={{ ...base, donutToDoCount: 3, donutCompletedCount: 1 }} animate />,
     );
     expect(empty).toContain("No tasks");
+    expect(empty).toContain('aria-label="Task status. No tasks.');
     expect(empty).not.toContain("Infinity");
     expect(empty).not.toContain("NaN");
     expect(populated).toContain("25%");
     expect(populated).toContain("done");
+    expect(populated).toContain('aria-label="Task status. 25% done.');
     expect(populated).toContain("To do: 3");
     expect(populated).toContain("Completed: 1");
   });

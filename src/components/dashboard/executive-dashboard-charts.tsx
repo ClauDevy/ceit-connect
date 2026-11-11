@@ -279,10 +279,17 @@ export function TaskStatusDonut({ overview, animate }: { overview: DashboardOver
   const summary = values
     .map((item) => `${DASHBOARD_STATUS_PRESENTATION[item.key].label}: ${item.value}`)
     .join(", ");
+  const completionSummary = completedPercentage === null
+    ? "No tasks"
+    : `${completedPercentage}% done`;
 
   return (
     <div className="grid items-center gap-5 sm:grid-cols-[160px_minmax(0,1fr)]">
-      <div className="relative mx-auto size-36" role="img" aria-label={`Task status. ${summary}`}>
+      <div
+        className="relative mx-auto size-36"
+        role="img"
+        aria-label={`Task status. ${completionSummary}. ${summary}`}
+      >
         <svg className="size-full -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
           <circle cx="60" cy="60" r="48" fill="none" className="stroke-muted" strokeWidth="16" />
           {arcs
