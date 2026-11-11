@@ -88,5 +88,7 @@ describe("Executive Dashboard deadline motion", () => {
     );
 
     expect(markup).toContain('data-observe-parent="true"');
+    expect(markup).toContain("Nov 11");
+    expect(markup).not.toContain("Today");
   });
 });
