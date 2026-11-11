@@ -187,6 +187,32 @@ describe("Executive Dashboard scope cache", () => {
     expect(screen.queryByText(/not available for this account/i)).toBeNull();
   });
 
+  it("reuses an in-flight request when reopening the same scope", async () => {
+    const alpha = deferred<DashboardScopeData>();
+    mocks.loadDashboardScope.mockReturnValue(alpha.promise);
+    render(
+      <ExecutiveDashboard
+        viewerRole="Admin"
+        initialScope={{ kind: "council" }}
+        initialData={scopeData(null, 5)}
+        initialCommitteeTotals={committeeTotals as never}
+        initialPushAdoption={{ status: "ready", data: { activeProfilesWithPushCount: 1, activeProfileCount: 2 } }}
+        initialLoadedAt={Date.now()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: /All committees/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Alpha" }));
+
+    expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
+    await act(async () => {
+      alpha.resolve(scopeData("Alpha", 2));
+      await alpha.promise;
+    });
+    expect(screen.getAllByText("Alpha").length).toBeGreaterThan(0);
+  });
+
   it("shows stale cached data immediately and refreshes it quietly", async () => {
     const refreshed = deferred<DashboardScopeData>();
     mocks.loadDashboardScope.mockReturnValue(refreshed.promise);
@@ -287,15 +313,37 @@ describe("Executive Dashboard scope cache", () => {
       />,
     );
 
-    await waitFor(() => expect(mocks.loadDashboardScope).toHaveBeenCalledOnce());
-    expect(screen.getByText("overview:5")).toBeTruthy();
+    await screen.findByText(/Previously loaded values may still be shown/i);
     expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
+    expect(screen.getByText("overview:5")).toBeTruthy();
 
     now += DASHBOARD_CACHE_MAX_AGE_MS + 1;
     fireEvent.focus(window);
 
     await waitFor(() => expect(mocks.loadDashboardScope).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("overview:9")).toBeTruthy();
+    expect(screen.queryByText(/Previously loaded values may still be shown/i)).toBeNull();
+  });
+
+  it("lets a Co-Admin manually retry restored committee access", async () => {
+    mocks.loadDashboardScope.mockResolvedValue(scopeData("Alpha", 2));
+    render(
+      <ExecutiveDashboard
+        viewerRole="Co-Admin"
+        initialScope={{ kind: "committee", committeeId: "alpha" }}
+        initialData={deniedScopeData()}
+        initialCommitteeTotals={{ status: "ready", data: [] }}
+        initialPushAdoption={null}
+        initialLoadedAt={Date.now()}
+        initialAccessDenied
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry access" }));
+
+    expect(await screen.findByText("overview:2")).toBeTruthy();
+    expect(screen.queryByText(/not available for this account/i)).toBeNull();
+    expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
   });
 
   it("treats server-fetched data as fresh at this component's initialization time", async () => {

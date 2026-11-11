@@ -40,6 +40,7 @@ type CachedScope = {
   data: DashboardScopeData;
   loadedAt: number;
   lastAttemptAt: number;
+  refreshFailed: boolean;
 };
 
 function dashboardHasReaderError(data: DashboardScopeData) {
@@ -101,7 +102,7 @@ export function ExecutiveDashboard({
       ? Date.now()
       : initialLoadedAt;
     return {
-      [initialKey]: { data: initialData, loadedAt, lastAttemptAt: loadedAt },
+      [initialKey]: { data: initialData, loadedAt, lastAttemptAt: loadedAt, refreshFailed: false },
     };
   });
   const cacheRef = useRef(cache);
@@ -116,82 +117,93 @@ export function ExecutiveDashboard({
       ? new Set([initialKey])
       : new Set(),
   );
-  const latestRequestByScope = useRef(new Map<string, number>());
-  const requestSequence = useRef(0);
+  const inFlightByScope = useRef(new Map<string, Promise<void>>());
 
   useEffect(() => {
     cacheRef.current = cache;
   }, [cache]);
 
   const refreshScope = useCallback(
-    async (scope: DashboardScope) => {
+    (scope: DashboardScope) => {
       const key = dashboardScopeKey(scope);
-      const requestId = ++requestSequence.current;
-      latestRequestByScope.current.set(key, requestId);
-      setPendingScopes((current) => new Set(current).add(key));
+      const existingRequest = inFlightByScope.current.get(key);
+      if (existingRequest) return existingRequest;
 
-      const supabase = createClient();
-      const rpc: DashboardRpc = (name, args) =>
-        supabase.rpc(name as never, args as never) as unknown as PromiseLike<DashboardRpcResult>;
-      const [scopeData, refreshedTotals, refreshedPush] = await Promise.all([
-        loadDashboardScope(rpc, scope),
-        viewerRole === "Admin" && scope.kind === "council"
-          ? loadCommitteeTotals(rpc)
-          : Promise.resolve(null),
-        viewerRole === "Admin" && scope.kind === "council"
-          ? loadPushAdoption(rpc)
-          : Promise.resolve(null),
-      ]);
+      const request = (async () => {
+        setPendingScopes((current) => new Set(current).add(key));
 
-      if (latestRequestByScope.current.get(key) !== requestId) return;
-      setPendingScopes((current) => {
-        const next = new Set(current);
-        next.delete(key);
-        return next;
-      });
-      if (
-        dashboardHasAccessDenied(scopeData) ||
-        refreshedTotals?.status === "access-denied" ||
-        refreshedPush?.status === "access-denied"
-      ) {
-        setDeniedScopeKeys((current) => new Set(current).add(key));
-        return;
-      }
-      setDeniedScopeKeys((current) => {
-        if (!current.has(key)) return current;
-        const next = new Set(current);
-        next.delete(key);
-        return next;
-      });
-      const previousCached = cacheRef.current[key];
-      const attemptedAt = Date.now();
-      const refreshFailed =
-        dashboardHasReaderError(scopeData) ||
-        refreshedTotals?.status === "error" ||
-        refreshedPush?.status === "error";
-      const nextCached = {
-        data: preserveSuccessfulSections(previousCached?.data, scopeData),
-        loadedAt: refreshFailed ? previousCached?.loadedAt ?? 0 : attemptedAt,
-        lastAttemptAt: refreshFailed
-          ? Math.max(attemptedAt, (previousCached?.loadedAt ?? 0) + 1)
-          : attemptedAt,
+        const supabase = createClient();
+        const rpc: DashboardRpc = (name, args) =>
+          supabase.rpc(name as never, args as never) as unknown as PromiseLike<DashboardRpcResult>;
+        const [scopeData, refreshedTotals, refreshedPush] = await Promise.all([
+          loadDashboardScope(rpc, scope),
+          viewerRole === "Admin" && scope.kind === "council"
+            ? loadCommitteeTotals(rpc)
+            : Promise.resolve(null),
+          viewerRole === "Admin" && scope.kind === "council"
+            ? loadPushAdoption(rpc)
+            : Promise.resolve(null),
+        ]);
+
+        setPendingScopes((current) => {
+          const next = new Set(current);
+          next.delete(key);
+          return next;
+        });
+        if (
+          dashboardHasAccessDenied(scopeData) ||
+          refreshedTotals?.status === "access-denied" ||
+          refreshedPush?.status === "access-denied"
+        ) {
+          setDeniedScopeKeys((current) => new Set(current).add(key));
+          return;
+        }
+        setDeniedScopeKeys((current) => {
+          if (!current.has(key)) return current;
+          const next = new Set(current);
+          next.delete(key);
+          return next;
+        });
+        const previousCached = cacheRef.current[key];
+        const attemptedAt = Date.now();
+        const refreshFailed =
+          dashboardHasReaderError(scopeData) ||
+          refreshedTotals?.status === "error" ||
+          refreshedPush?.status === "error";
+        const nextCached = {
+          data: preserveSuccessfulSections(previousCached?.data, scopeData),
+          loadedAt: refreshFailed ? previousCached?.loadedAt ?? 0 : attemptedAt,
+          lastAttemptAt: refreshFailed
+            ? Math.max(attemptedAt, (previousCached?.loadedAt ?? 0) + 1)
+            : attemptedAt,
+          refreshFailed,
+        };
+        cacheRef.current = { ...cacheRef.current, [key]: nextCached };
+        setCache(cacheRef.current);
+        if (refreshedTotals) {
+          setCommitteeTotals((current) =>
+            refreshedTotals.status === "error" && current.status === "ready"
+              ? current
+              : refreshedTotals,
+          );
+        }
+        if (refreshedPush) {
+          setPushAdoption((current) =>
+            refreshedPush.status === "error" && current?.status === "ready"
+              ? current
+              : refreshedPush,
+          );
+        }
+      })();
+
+      inFlightByScope.current.set(key, request);
+      const removeRequest = () => {
+        if (inFlightByScope.current.get(key) === request) {
+          inFlightByScope.current.delete(key);
+        }
       };
-      cacheRef.current = { ...cacheRef.current, [key]: nextCached };
-      setCache(cacheRef.current);
-      if (refreshedTotals) {
-        setCommitteeTotals((current) =>
-          refreshedTotals.status === "error" && current.status === "ready"
-            ? current
-            : refreshedTotals,
-        );
-      }
-      if (refreshedPush) {
-        setPushAdoption((current) =>
-          refreshedPush.status === "error" && current?.status === "ready"
-            ? current
-            : refreshedPush,
-        );
-      }
+      void request.then(removeRequest, removeRequest);
+      return request;
     },
     [viewerRole],
   );
@@ -258,6 +270,8 @@ export function ExecutiveDashboard({
   }, [accessDenied, activeKey, activeScope, isPending, refreshScope]);
 
   if (accessDenied) {
+    const canRetryAccess =
+      activeScope.kind === "council" || activeScope.committeeId !== "unavailable";
     return (
       <div className="space-y-4">
         {viewerRole === "Admin" && activeScope.kind === "committee" ? (
@@ -269,6 +283,16 @@ export function ExecutiveDashboard({
           The Executive Dashboard is not available for this account. Return Home or ask an Admin to
           check your committee assignment.
         </InlineAlert>
+        {canRetryAccess ? (
+          <Button
+            variant="outline"
+            onClick={() => void refreshScope(activeScope)}
+            disabled={isPending}
+          >
+            <RefreshCw aria-hidden className={isPending ? "motion-safe:animate-spin" : undefined} />
+            Retry access
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -320,6 +344,12 @@ export function ExecutiveDashboard({
       </div>
 
       {isPending ? <p role="status" className="text-xs text-muted-foreground">Refreshing dashboard…</p> : null}
+      {activeCache.refreshFailed ? (
+        <InlineAlert variant="warning">
+          Some dashboard data could not refresh. Previously loaded values may still be shown and
+          could be out of date. Use Refresh to try again.
+        </InlineAlert>
+      ) : null}
 
       <OverviewKpis section={data.overview} />
       <DeadlinesCard section={data.deadlines} animate={animate} />
