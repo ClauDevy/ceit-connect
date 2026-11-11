@@ -4,6 +4,8 @@
 
 The approved Phase 5 batch map, decisions, gate checks, and release checklist are in `docs/phase-5/PHASE-5-PLAN.md`.
 
+- **Shared AppShell double-scroll fix is implemented locally.** The viewport shell is now fixed out of document flow, clips at the dynamic viewport, and gives its bounded `min-h-0` content column sole vertical scrolling with overscroll containment. Desktop and phone headers, bottom navigation, safe-area clearance, and ordinary document scrolling on non-AppShell routes remain unchanged. Source-contract coverage pins the single-scroller structure; no database, dependency, or route behavior changed.
+
 - **Phase 5 N1 notification foundation is live on Dev and Prod and its smoke tests passed (owner-confirmed).** Migration `20261110120000_notification_foundation.sql` generates all six persistent notification types set-wise, excludes inactive recipients and self-actions, stays silent for Draft/Archived/no-op/leave paths, masks titles through current task access, replaces the latest two notification policies, retains authenticated SELECT for personal Realtime, revokes authenticated INSERT/UPDATE/DELETE, and adds authenticated-only count/page/read-state RPCs. The migration adds no task/event FK. The owner will remove the Prod smoke-test events through normal app screens before N2 ships; no cleanup code or migration is part of N2.
 
 - **Phase 5 N2 notification bell is live on Dev and Prod (owner-confirmed).** One shared provider places the bell between the desktop theme/identity controls and phone theme/avatar controls, renders a Base UI 1.8.0 anchored popover or safe-area bottom sheet, and uses only the four N1 RPCs. The database count alone owns the `99+` badge; confirmed writers update loaded row presentation then refetch, while personal INSERT Realtime only invalidates readers. Fetch-21/show-20 keyset paging deduplicates and preserves older loaded pages across first-page refresh. Focus, visibility, online, channel recovery, and token refresh recover missed rows; development effect replay cannot duplicate channels. Hidden rows never link, masked rows keep N1's generic title, and Active/Archived rows share `/tasks/{id}`. Fixed errors retain prior state, inactive denial returns to the established server session boundary, and shared motion includes a complete reduced-motion state. N2 required no Prod database push.
@@ -18,7 +20,7 @@ The approved Phase 5 batch map, decisions, gate checks, and release checklist ar
 
 - **Phase 5 P1a database and P1b application are live on Dev and Prod (owner-confirmed 2026-11-11); production push is proven end to end.** P1a supplies private five-device subscriptions, strict provider hosts and key validation, shared-device transfer, deactivation cleanup, a notification/user-only queue, two-minute leases, transient-only retries, 404/410 removal, a hashed capability boundary, generic lock-screen copy, wake coalescing, due-work fallback, and counts-only history. P1b adds the isolated wake route, VAPID sender, push-only worker, explicit per-device Settings controls, and best-effort current-device sign-out cleanup without a service-role exception. The stale P1a `/notifications` target and unhandled `pushsubscriptionchange` recovery remain parked follow-ups. See `docs/phase-5/step-p1a-web-push-database.md` and `docs/phase-5/step-p1b-web-push-sender.md`.
 
-- **Phase 5 D1 Executive Dashboard database readers and authorization are live on Dev and Prod (owner-confirmed 2026-11-11).** The database-only batch adds confidential-safe committee totals, a Level 2 summary, true per-member workloads, explicit no-bar counts, and database-enforced Admin/Co-Admin scope. **D1b Executive Dashboard extras are in progress** as the next database-only batch; D2 follows D1b, then O1. No UI, route, or application code belongs to D1 or D1b.
+- **Phase 5 D1 and D1b Executive Dashboard readers are live on Dev and Prod (owner-confirmed 2026-11-11), and D2 UI is in progress.** D1 adds confidential-safe committee totals, a Level 2 summary, true per-member workloads, explicit no-bar counts, and database-enforced Admin/Co-Admin scope. D1b adds the scoped overview, attention, deadline, free-member, slipping-signal, and Admin-only push-adoption readers. No UI, route, or application code belongs to D1 or D1b.
 
 - **Discord (X1) was cancelled by the owner on 2026-11-11 and will not be built.**
 
@@ -280,7 +282,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 ## Open items
 
-- The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D2, then O1. N1, N2, the bell correction, I1, N3a, N3b, and P1 are live; D1 is in progress.
+- The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. N1, N2, the bell correction, I1, N3a, N3b, P1, D1, and D1b are live; D2 is in progress.
 - The post-Phase-5 notification follow-up is the daily digest email. Its background sender follows the approved P1 secure-sender decision: the public anon key plus a separately hashed capability, with no service-role exception.
 - N3a rollout is complete except for the first scheduled Prod cleanup-run check, which is non-blocking for N3b.
 - Phase 5 idea: consider an automatic email queue for rate-limited invitations. Batch 8 deliberately uses sequential sends and explicit retry only.
