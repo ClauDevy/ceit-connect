@@ -1,6 +1,6 @@
 # Phase 5 migration-tied catalog
 
-This catalog currently contains **N1 and N3a objects**. Historical Phase 4 and
+This catalog currently contains **N1, N3a, P1a, and D1 objects**. Historical Phase 4 and
 Phase 4B counts remain unchanged; do not invent a new global total before the
 owner supplies live Dev catalog output.
 
@@ -172,4 +172,37 @@ N3a replaces no N1 policy, reader, writer, trigger, or FK. CCE09 is unchanged.
 - Counts-only run history retains 30 days. Delivered rows retain three days,
   and terminal rows seven days. The postgres-session-only cleanup runner is
   scheduled separately on Prod only.
+
+## `20261113120000_executive_dashboard_data.sql`
+
+### Functions
+
+- `ceit_connect_private.executive_dashboard_committee_counts(uuid)` returns
+  six `bigint` counts: unique active tasks, covered tasks, unassigned tasks,
+  inactive-only tasks, active-outside-committee-only tasks, and tasks without a
+  member bar. It performs no authorization. It is postgres-owned, stable,
+  fixed-empty-path `SECURITY DEFINER`, has no overload, and grants execute to
+  no application role, including `service_role`.
+- `public.list_executive_dashboard_committee_totals()` returns committee UUID
+  and name plus the same six counts. It is active-Admin-only and orders by
+  committee name then UUID.
+- `public.get_executive_dashboard_committee_summary(uuid)` returns one
+  authorized committee plus the same six counts.
+- `public.list_executive_dashboard_committee_members(uuid)` returns committee
+  UUID, member UUID, full name, avatar URL, and true active-task count, ordered
+  by full name then UUID. Active zero-task profiles remain present.
+
+The three public functions are postgres-owned, stable, fixed-empty-path
+`SECURITY DEFINER` readers with no overload. Execute is revoked from `PUBLIC`,
+`anon`, `authenticated`, and `service_role`, then granted only to
+`authenticated`. Level 2 permits an active Admin for any existing committee or
+an active Co-Admin only for the committee derived from the caller profile.
+Null, missing, unauthorized-committee, Member, inactive, and profile-less
+authenticated cases use the same fixed `42501` denial inside the reader.
+
+### Unchanged catalog
+
+D1 creates no table, index, policy, trigger, or foreign key. It replaces no
+existing function and does not alter `tasks`, `events`, `users`, `committees`,
+`list_active_task_assignees_with_workload()`, or any task/event writer.
 
