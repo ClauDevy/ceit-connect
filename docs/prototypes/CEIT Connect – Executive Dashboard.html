@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CEIT Connect – Executive Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8F0;--card:#FFFFFF;--ink:#1B140F;--muted:#6B5E54;--line:#E9DCCB;--c:#EC6608;--cl:#FFDDBB;--cw:#FFF1E2;
+--over:#DC2626;--soon:#EC6608;--prog:#0284C7;--todo:#94A3B8;--done:#16A34A;--appr:#CA8A04;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#17110D;--card:#221A14;--ink:#F5EBDD;--muted:#B9A898;--line:#3A2F26;--cl:#5A3315;--cw:#2C2018;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#17110D;--card:#221A14;--ink:#F5EBDD;--muted:#B9A898;--line:#3A2F26;--cl:#5A3315;--cw:#2C2018;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;overflow-x:hidden}
+h1,h2,.fd{font-family:'Fredoka','Plus Jakarta Sans',sans-serif;font-weight:600;margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 14px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.logo{width:38px;height:38px;border-radius:12px;background:var(--c);color:#fff;display:grid;place-items:center;font:600 18px 'Fredoka',sans-serif}
+h1{font-size:22px}.sp{flex:1}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 12px;min-height:36px}
+.btn:hover{border-color:var(--c)}
+.pill{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:3px 12px;font-size:13px}
+.pill.on{background:var(--cl);border-color:var(--c)}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+.roles{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;font-size:13px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.k{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--a,var(--line));border-radius:14px;padding:10px 12px}
+.k .l{font-size:12px;color:var(--muted)}
+.k .n{font:600 28px/1.1 'Fredoka',sans-serif;color:var(--a,var(--ink))}
+.k .h{font-size:12px;color:var(--muted)}
+.meter{height:6px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--c);border-radius:3px;transform-origin:left;animation:grow 1.1s ease both}
+.g2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.card h2{font-size:18px}
+.ch{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tg{display:flex;gap:4px}
+.why{font-size:13px;color:var(--c);font-weight:600;margin:0}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:12px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.row{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;transition:transform .2s,border-color .2s}
+button.row:hover{transform:translateY(-1px);border-color:var(--c)}
+.rh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.nm{font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
+.nm em{font-style:normal;font-weight:400;font-size:12px;color:var(--muted)}
+.av{flex:none;width:26px;height:26px;border-radius:50%;background:var(--cl);font-size:10px;display:grid;place-items:center}
+.big{font:600 22px/1 'Fredoka',sans-serif;white-space:nowrap}
+.big small{font:400 11px 'Plus Jakarta Sans',sans-serif;color:var(--muted)}
+.pm{height:10px;border-radius:5px;background:var(--cw);overflow:hidden}
+.pm i{display:block;height:100%;border-radius:5px;background:var(--done);transform-origin:left;animation:grow 1s ease both}
+.rf{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
+.cp{color:#fff;background:var(--t);border-radius:99px;padding:0 8px;font-size:11px;font-weight:600}
+.track{display:flex;gap:2px;height:30px;background:var(--cw);border-radius:10px;padding:3px}
+.seg{display:grid;place-items:center;color:#fff;font-size:11px;font-weight:600;border-radius:7px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.14);transform-origin:left;animation:grow .9s ease both}
+.chip{display:inline-block;font-size:10px;font-weight:600;padding:0 7px;border-radius:99px;border:1px solid var(--over);color:var(--over)}
+.back{font-size:13px;margin-bottom:10px}
+.it{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px}
+.it:hover{border-color:var(--c)}
+.tag{flex:none;font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;color:#fff;background:var(--t)}
+.meta{font-size:12px;color:var(--muted)}
+.ev{margin-bottom:12px}
+.ev .top{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:600}
+.donut{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.donut ul{list-style:none;margin:0;padding:0;font-size:13px;flex:1;min-width:130px}
+.donut li{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.donut li i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.ar{display:grid;grid-template-columns:minmax(0,1fr) 64px 92px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.ar:last-child{border-bottom:0}
+.sp4{display:flex;align-items:flex-end;gap:3px;height:24px}
+.sp4 b{width:10px;border-radius:3px;background:var(--c);transform-origin:bottom;animation:growy .9s ease both}
+.st{font-size:11px;font-weight:600;color:#fff;background:var(--t);border-radius:99px;padding:1px 8px;text-align:center}
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dy{border:1px solid var(--line);border-radius:12px;padding:6px 2px;text-align:center;background:var(--paper);transition:transform .2s}
+.dy:hover{transform:translateY(-2px);border-color:var(--c)}
+.dy.t{border:2px solid var(--c)}
+.dy .d{font-size:11px;color:var(--muted)}
+.dy .v{font:600 20px/1.2 'Fredoka',sans-serif}
+.dy.hi{background:var(--cl)}
+.two{display:flex;gap:10px}.two>div{flex:1;text-align:center;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px}
+.two b{display:block;font:600 26px/1.1 'Fredoka',sans-serif}
+.blk{text-align:center;padding:40px 16px}
+.blk h2{font-size:22px;margin:8px 0}
+svg text{font-family:'Plus Jakarta Sans',sans-serif}
+.wb{transform-box:fill-box;transform-origin:bottom;animation:growy .9s ease both}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:12px;font-size:14px;max-width:92%;opacity:0;pointer-events:none;transition:.35s;z-index:20}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+@keyframes grow{from{transform:scaleX(0)}}
+@keyframes growy{from{transform:scaleY(0)}}
+@media (max-width:860px){.g2{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.k .n{font-size:24px}.ar{grid-template-columns:minmax(0,1fr) 56px 84px}.dy .v{font-size:17px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div class="logo" aria-hidden="true">C</div>
+<h1>Executive Dashboard</h1>
+<span class="sp"></span>
+<button class="btn" id="theme">Dark mode</button>
+</header>
+<p class="sub" id="sub"></p>
+<div class="roles"><span>Preview as:</span>
+<button class="pill on" data-r="admin">Admin (President)</button>
+<button class="pill" data-r="co">Co-Admin (COEXA)</button>
+<button class="pill" data-r="mem">Member</button></div>
+<div id="view"></div>
+<p class="meta" style="margin-top:6px">Prototype with mock data. Confidential tasks count in the numbers, but their titles stay hidden.</p>
+</div>
+<div id="toast" role="status"></div>
+<script>
+var CM=['President','CIA','COEXA','COMRECS','COFBUM','CARA','COPI','COPR','COBAP','COSEA','COSCA','COSRAW'];
+var NM=['Ana Reyes','Ben Cruz','Carla Santos','Diego Lim','Ella Tan','Fred Uy','Gina Ramos','Hans Co','Iris Dela Cruz','Jonas Bautista','Kyla Ong','Luis Garcia','Mia Flores','Noel Pineda','Olive Chua','Paolo Mendoza'];
+var WK=['Sep 14','Sep 21','Sep 28','Oct 5','Oct 12','Oct 19','Oct 26','Nov 2'];
+var seed=7;function r(n){seed=(seed*9301+49297)%233280;return Math.floor(seed/233280*n)}
+var D={},X={};
+CM.forEach(function(c,ci){var k=3+r(3);D[c]=[];X[c]={un:r(3),hw:r(2),pa:r(2)};
+for(var i=0;i<k;i++){var w=[];for(var j=0;j<8;j++)w.push(r(5));D[c].push({n:NM[(ci*3+i)%NM.length],c:c,h:i===0,d:3+r(8),p:1+r(4),t:r(4),u:r(3),o:r(10)<2?1:0,w:w})}});
+D.COEXA[1].o=2;D.COEXA[2].u=2;D.COPR[1].o=3;D.CIA[0].o=1;X.COEXA={un:2,hw:1,pa:1};
+D.COEXA[2].w=[2,1,1,0,0,0,0,0];D.COPR[1].w=[3,2,3,2,1,0,0,0];D.CIA[2].w=[1,0,1,0,0,1,0,0];
+CM.forEach(function(c){D[c].forEach(function(m){m.dd=[];for(var j=0;j<14;j++)m.dd.push(r(10)<2?1:0)})});
+D.COEXA[2].dd=[1,1,0,0,0,0,0,0,0,0,0,0,0,0];
+var IT=[
+['COEXA','Registration desk','over','Tech Summit'],['COEXA','Hosting script','soon','Foundation Day'],['COEXA','Venue signage','un','Tech Summit'],
+['COEXA','Photo coverage','help','Foundation Day'],['COEXA','Leave request from Diego Lim','appr',''],
+['COPR','Poster draft','over','Tech Summit'],['COPR','Confidential task','soon','',1],['CIA','Post-event report','over','Foundation Day'],
+['COFBUM','Budget sheet','soon','Tech Summit'],['COBAP','Sponsor letters','un','Foundation Day'],['COSCA','Stage hosting','help','Foundation Day'],
+['President','Leave request from Mia Flores','appr','']];
+var TG={over:['Overdue','var(--over)',0],soon:['Due in 24h','var(--soon)',1],appr:['Needs approval','var(--appr)',2],help:['Help wanted','var(--prog)',3],un:['Unassigned','var(--todo)',4]};
+var EVS=[['Tech Summit','Day-of operations',72,3],['Foundation Day','Planning',35,0],['Leadership Camp','Preparation',15,0]];
+var role='admin',drill=null,vmode='simple',wmode='day',$=function(i){return document.getElementById(i)};
+function act(m){return m.p+m.t+m.u+m.o}
+function sum(a,f){return a.reduce(function(s,m){return s+m[f]},0)}
+function asum(a,f,n){var o=[];for(var i=0;i<n;i++)o.push(0);a.forEach(function(m){m[f].forEach(function(v,i){o[i]+=v})});return o}
+function agg(a){return {d:sum(a,'d'),p:sum(a,'p'),t:sum(a,'t'),u:sum(a,'u'),o:sum(a,'o'),w:asum(a,'w',8),dd:asum(a,'dd',14),n:a.length}}
+function toast(m){var t=$('toast');t.textContent=m;t.className='on';clearTimeout(toast.h);toast.h=setTimeout(function(){t.className=''},2400)}
+function seg(m,max){var h='';[['o','--over'],['u','--soon'],['p','--prog'],['t','--todo']].forEach(function(s){var v=m[s[0]];if(v){var w=v/max*100;h+='<div class="seg" style="width:'+w+'%;background:var('+s[1]+')" title="'+v+'">'+(w>6?v:'')+'</div>'}});return '<div class="track">'+h+'</div>'}
+function init(n){return n.split(' ').map(function(w){return w[0]}).join('').slice(0,2)}
+function stat(m){var s=m.w[4]+m.w[5]+m.w[6]+m.w[7],a=s/(m.n||1);return a===0?['No progress','var(--over)']:a<=1.5?['Slowing','var(--soon)']:['On track','var(--done)']}
+function spark(w){var mx=Math.max(4,Math.max.apply(null,w.slice(4))),h='<div class="sp4" title="Completed per week, last 4 weeks">';w.slice(4).forEach(function(v,i){h+='<b style="height:'+Math.max(3,v/mx*24)+'px;opacity:'+(i===3?.5:1)+'"></b>'});return h+'</div>'}
+function donut(m){var P=[['d','--done','Completed'],['p','--prog','In progress'],['t','--todo','To do'],['u','--soon','Due in 24h'],['o','--over','Overdue']],tot=P.reduce(function(s,p){return s+m[p[0]]},0),C=2*Math.PI*48,off=0,svg='<svg width="130" height="130" viewBox="0 0 120 120" role="img" aria-label="Task status split"><g transform="rotate(-90 60 60)">',li='';
+P.forEach(function(p){var v=m[p[0]],len=v/tot*C;svg+='<circle cx="60" cy="60" r="48" fill="none" stroke="var('+p[1]+')" stroke-width="16" stroke-dasharray="'+Math.max(0,len-2)+' '+C+'" stroke-dashoffset="'+(-off)+'"/>';off+=len;li+='<li><span><i style="background:var('+p[1]+')"></i>'+p[2]+'</span><b>'+v+'</b></li>'});
+return '<div class="donut">'+svg+'</g><text x="60" y="58" text-anchor="middle" font-size="20" font-weight="600" fill="var(--ink)">'+Math.round(m.d/tot*100)+'%</text><text x="60" y="74" text-anchor="middle" font-size="10" fill="var(--muted)">done</text></svg><ul>'+li+'</ul></div>'}
+function bars(v,l1,l2,fade,ring){var n=v.length,mx=Math.max.apply(null,v),st=320/n,bw=Math.min(28,st*.68),h='<svg viewBox="0 0 340 150" width="100%" role="img" aria-label="Tasks completed">';
+v.forEach(function(x,i){var bh=Math.max(3,x/mx*80),bx=10+i*st+(st-bw)/2,last=i===n-1;
+h+='<rect class="wb" x="'+bx+'" y="'+(108-bh)+'" width="'+bw+'" height="'+bh+'" rx="'+Math.min(7,bw/2)+'" fill="var(--c)" opacity="'+(last&&fade?.45:1)+'"'+(last&&ring?' stroke="var(--ink)" stroke-width="2"':'')+' style="animation-delay:'+(i*45)+'ms"/><text x="'+(bx+bw/2)+'" y="'+(103-bh)+'" text-anchor="middle" font-size="'+(n>8?9.5:11)+'" font-weight="600" fill="var(--ink)">'+x+'</text><text x="'+(bx+bw/2)+'" y="123" text-anchor="middle" font-size="9" fill="var(--muted)">'+l1[i]+'</text>'+(l2?'<text x="'+(bx+bw/2)+'" y="136" text-anchor="middle" font-size="9" fill="'+(last?'var(--ink)':'var(--muted)')+'">'+l2[i]+'</text>':'')});
+return h+'</svg>'}
+function dayLabels(){var a=[],b=[],L=['S','M','T','W','T','F','S'];for(var i=13;i>=0;i--){var d=new Date(2026,10,4-i);a.push(L[d.getDay()]);b.push(i===0?'Today':String(d.getDate()))}return [a,b]}
+function rowHtml(x,max,avg,sc){var a=act(x.m),dn=Math.round(x.m.d/(x.m.d+a)*100),ch='';
+if(x.m.o)ch+='<span class="cp" style="--t:var(--over)">'+x.m.o+' overdue</span>';if(x.m.u)ch+='<span class="cp" style="--t:var(--soon)">'+x.m.u+' due in 24h</span>';
+var hd='<div class="rh"><div class="nm"><div class="av">'+init(x.k)+'</div><span>'+x.k+'</span>'+(x.h?'<em>Head</em>':'')+(a>avg*1.35?'<span class="chip">Heavy</span>':'')+'</div><div class="big">'+a+'<small> open</small></div></div>';
+var bd=vmode==='simple'?'<div class="pm"><i style="width:'+dn+'%"></i></div><div class="rf"><span>'+dn+'% done</span>'+ch+'</div>':seg(x.m,max);
+return sc?'<div class="row">'+hd+bd+'</div>':'<button class="row" data-c="'+x.k+'">'+hd+bd+'</button>'}
+function tgl(a,val,list){return '<div class="tg">'+list.map(function(p){return '<button class="pill'+(val===p[0]?' on':'')+'" data-'+a+'="'+p[0]+'">'+p[1]+'</button>'}).join('')+'</div>'}
+function render(){
+var v=$('view'),sc=role==='co'?'COEXA':drill;
+$('sub').textContent=role==='admin'?'Viewing as the SC President. You can see all 12 committees.':role==='co'?'Viewing as the COEXA committee head. You can see your own committee.':'Viewing as a Member.';
+if(role==='mem'){v.innerHTML='<div class="card blk"><div style="font-size:42px" aria-hidden="true">😴</div><h2>The dashboard is for officers</h2><p class="meta">Members don’t get a dashboard link, and opening the address directly is blocked by the server. Your tasks are in My Tasks.</p><button class="btn" id="gh">Go to Home</button></div>';$('gh').onclick=function(){toast('Goes to Home')};return}
+var ms=sc?D[sc]:[].concat.apply([],CM.map(function(c){return D[c]})),cx=sc?[X[sc]]:CM.map(function(c){return X[c]}),A=agg(ms),open=act(A),ot=Math.round(78+ms.length%7),hw=sum(cx,'hw');
+var K=[['Open tasks',open,'var(--ink)','Across active events'],['Overdue',A.o,'var(--over)','Needs action now'],['Due in 24 hours',A.u,'var(--soon)','Starting to escalate'],
+['Unassigned',sum(cx,'un'),'var(--todo)','No owner yet'],['Help wanted',hw,'var(--prog)','Backup requests open'],['Needs approval',sum(cx,'pa'),'var(--appr)','Leave requests, offers'],['On-time rate',ot+'%','var(--done)','Finished before the deadline']];
+var h='<div class="kpis">';K.forEach(function(k){h+='<div class="k" style="--a:'+k[2]+'"><div class="l">'+k[0]+'</div><div class="n">'+k[1]+'</div><div class="h">'+k[3]+'</div></div>'});h+='</div>';
+var base=sc?[2,1,2,0,1,0,1]:[8,5,11,6,3,0,9],DL=['W','T','F','S','S','M','T'];
+h+='<div class="card"><div class="ch"><div><h2>Deadlines this week</h2><p class="why">What is coming up in the next 7 days?</p></div></div><div class="days">';
+base.forEach(function(n,i){h+='<button class="dy'+(i===0?' t':'')+(n>=6?' hi':'')+'" data-dl="'+(4+i)+'"><div class="d">'+DL[i]+'</div><div class="v">'+n+'</div><div class="d">'+(i===0?'Today':'Nov '+(4+i))+'</div></button>'});
+h+='</div></div>';
+var rows=sc?D[sc].map(function(m){return {k:m.n,m:agg([m]),h:m.h}}):CM.map(function(c){return {k:c,m:agg(D[c])}});
+var avg=rows.reduce(function(s,x){return s+act(x.m)},0)/rows.length,max=Math.max.apply(null,rows.map(function(x){return act(x.m)}));
+h+='<div class="g2"><div><div class="card"><div class="ch"><div><h2>'+(sc?'Workload in '+sc:'Workload by committee')+'</h2><p class="why">Who has too much on their plate?</p><p class="hint">'+(sc?'One card per member.':'Tap a committee to see its members.')+'</p></div>'+tgl('v',vmode,[['simple','Simple'],['full','Detailed']])+'</div>';
+h+=vmode==='simple'?'<div class="leg"><span><i style="background:var(--done)"></i>Green bar = share of tasks done</span><span><i style="background:var(--over)"></i>Overdue</span><span><i style="background:var(--soon)"></i>Due in 24h</span></div>':'<div class="leg"><span><i style="background:var(--over)"></i>Overdue</span><span><i style="background:var(--soon)"></i>Due in 24h</span><span><i style="background:var(--prog)"></i>In progress</span><span><i style="background:var(--todo)"></i>To do</span></div>';
+if(sc&&role==='admin')h+='<button class="btn back" id="bk">‹ All committees</button>';
+rows.slice().sort(function(a,b){return act(b.m)-act(a.m)}).forEach(function(x){h+=rowHtml(x,max,avg,sc)});
+h+='</div></div><div>';
+var items=IT.filter(function(i){return !sc||i[0]===sc}).sort(function(a,b){return TG[a[2]][2]-TG[b[2]][2]}).slice(0,6);
+h+='<div class="card"><h2>Needs attention</h2><p class="why">What should I act on today?</p><p class="hint" style="margin-bottom:8px">'+(sc?'Items in '+sc:'Most urgent across the council')+'</p>';
+if(!items.length)h+='<p class="meta">Nothing urgent. Enjoy the quiet.</p>';
+items.forEach(function(i){var g=TG[i[2]];h+='<button class="it" data-t="'+i[1]+'"><span class="tag" style="--t:'+g[1]+'">'+g[0]+'</span><span><b>'+i[1]+'</b><br><span class="meta">'+(i[3]?i[3]+' · ':'')+i[0]+(i[4]?' · details hidden':'')+'</span></span></button>'});
+h+='</div><div class="card"><h2>Task status</h2><p class="why">How far along is everything?</p><p class="hint" style="margin-bottom:8px">All tasks in '+(sc||'the council')+'</p>'+donut(A)+'</div></div></div>';
+var wv=wmode==='day'?A.dd:A.w,tot=wv.slice(-7).reduce(function(s,x){return s+x},0),dl=dayLabels();
+h+='<div class="g2"><div class="card"><div class="ch"><div><h2>Tasks finished</h2><p class="why">Is the team getting work done?</p><p class="hint">'+(sc||'Whole council')+(wmode==='day'?'. The last 14 days. Each new day pushes the oldest bar out.':'. The last 8 weeks. The faded bar is this week so far.')+'</p></div>'+tgl('w',wmode,[['day','14 days'],['wk','8 weeks']])+'</div>'+(wmode==='day'?bars(A.dd,dl[0],dl[1],0,1):bars(A.w,WK,null,1,0))+'<p class="meta" style="margin:4px 0 0">Total in the last '+(wmode==='day'?'7 days':'7 days of data')+': <b>'+tot+'</b></p></div>';
+var fl=[].concat.apply([],CM.map(function(c){return D[c]})).map(function(m){return {k:m.n,c:m.c,w:m.w,s:stat({w:m.w,n:1})}}).filter(function(x){return x.s[0]!=='On track'}).sort(function(a,b){return (a.w[4]+a.w[5]+a.w[6]+a.w[7])-(b.w[4]+b.w[5]+b.w[6]+b.w[7])}).slice(0,6);
+h+='<div class="card"><h2>'+(sc?'Member progress':'Who needs a nudge?')+'</h2><p class="why">Who has not finished much lately?</p><p class="hint" style="margin-bottom:6px">Tasks completed in the last 4 weeks. The faded bar is this week.</p>';
+if(sc)D[sc].forEach(function(m){var s=stat({w:m.w,n:1});h+='<div class="ar"><div class="nm"><div class="av">'+init(m.n)+'</div><span>'+m.n+'</span></div>'+spark(m.w)+'<div class="st" style="--t:'+s[1]+'">'+s[0]+'</div></div>'});
+else{if(!fl.length)h+='<p class="meta">Everyone is on track.</p>';fl.forEach(function(m){h+='<div class="ar"><div class="nm"><div class="av">'+init(m.k)+'</div><span>'+m.k+' <em>'+m.c+'</em></span></div>'+spark(m.w)+'<div class="st" style="--t:'+m.s[1]+'">'+m.s[0]+'</div></div>'})}
+h+='</div></div>';
+var lt=ms.filter(function(m){return act(m)<=2}).slice(0,6);
+h+='<div class="g2"><div class="card"><h2>Free to take work</h2><p class="why">Who has room to help?</p><p class="hint" style="margin-bottom:6px">Members with 2 or fewer open tasks</p>';
+if(!lt.length)h+='<p class="meta">Everyone is busy right now.</p>';
+lt.forEach(function(m){h+='<div class="ar" style="grid-template-columns:minmax(0,1fr) auto"><div class="nm"><div class="av">'+init(m.n)+'</div><span>'+m.n+' <em>'+m.c+'</em></span></div><span class="meta">'+act(m)+' open</span></div>'});
+h+='</div><div class="card"><h2>Backup requests</h2><p class="why">Is help being given?</p><p class="hint" style="margin-bottom:8px">Open requests for extra hands</p><div class="two"><div><b style="color:var(--prog)">'+hw+'</b><span class="meta">Waiting</span></div><div><b style="color:var(--done)">'+(hw*2+1)+'</b><span class="meta">Helped this month</span></div></div>'+(hw?'<p class="meta" style="margin:8px 0 0">Oldest request waiting: <b>2 days</b></p>':'')+'</div></div>';
+h+='<div class="card"><h2>Active events</h2><p class="why">Are our events on schedule?</p><p class="hint" style="margin-bottom:8px">Progress by event</p>';
+EVS.forEach(function(e){h+='<div class="ev"><div class="top"><span>'+e[0]+'</span><span>'+e[2]+'%</span></div><div class="meter"><i style="width:'+e[2]+'%"></i></div><div class="meta">'+e[1]+(e[3]?' · <b style="color:var(--over)">'+e[3]+' overdue</b>':'')+'</div></div>'});
+h+='</div>';
+v.innerHTML=h;
+v.querySelectorAll('[data-c]').forEach(function(b){b.onclick=function(){drill=b.dataset.c;render();scrollTo(0,0)}});
+v.querySelectorAll('[data-t]').forEach(function(b){b.onclick=function(){toast('Opens the task page for “'+b.dataset.t+'”')}});
+v.querySelectorAll('[data-dl]').forEach(function(b){b.onclick=function(){toast('Opens the list of deadlines on Nov '+b.dataset.dl)}});
+v.querySelectorAll('[data-v]').forEach(function(b){b.onclick=function(){vmode=b.dataset.v;render()}});
+v.querySelectorAll('[data-w]').forEach(function(b){b.onclick=function(){wmode=b.dataset.w;render()}});
+if($('bk'))$('bk').onclick=function(){drill=null;render()}}
+document.querySelectorAll('[data-r]').forEach(function(b){b.onclick=function(){role=b.dataset.r;drill=null;document.querySelectorAll('[data-r]').forEach(function(x){x.className='pill'+(x===b?' on':'')});render()}});
+$('theme').onclick=function(){var e=document.documentElement,d=e.dataset.theme?e.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;e.dataset.theme=d?'light':'dark';$('theme').textContent=d?'Dark mode':'Light mode'};
+render();
+</script>
+</body>
+</html>

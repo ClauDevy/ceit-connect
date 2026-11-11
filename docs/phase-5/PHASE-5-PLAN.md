@@ -12,9 +12,9 @@ current batch completes its full stage order.
 | N2 | Notification bell, paged list, unread badge, individual mark-read, mark-all-read, current-user Realtime refresh, offline/refresh behavior, and shared motion | `feature/notification-bell` | Medium | Live on Dev and Prod; list/badge correction also live with no recurrence (owner-confirmed) |
 | I1 | Installable app basics | `feature/installable-app` | Medium | Live on Prod (owner-confirmed) |
 | N3a | Active-owner notification deletion, 60-day bounded read cleanup, private run history, catalog, database tests, and Prod schedule runbook | `feature/notification-housekeeping` | High | Merged and live on Dev and Prod; Prod cleanup job scheduled; first scheduled-run check pending and non-blocking |
-| N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Implemented locally; 1,186 tests and lint pass; TypeScript reaches only the documented missing Next-generated globals; manual review pending |
-| P1 | Web push | `feature/web-push-database` then `feature/web-push` | High | P1a live on Dev and Prod; P1b locally verified (1,261 tests, lint, and diff check pass; TypeScript does not pass because of three known missing Next-generated-type errors), owner browser/rollout gates pending |
-| D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Not started |
+| N3b | Notification-row Delete and inline-confirmed Clear read UI, cross-device refetch reconciliation, accessibility, motion, and UI tests | `feature/notification-housekeeping-ui` | Medium | Live on Dev and Prod (owner-confirmed 2026-11-11) |
+| P1 | Web push | `feature/web-push-database` then `feature/web-push` | High | P1a and P1b live on Dev and Prod; production push proven end to end (owner-confirmed 2026-11-11) |
+| D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | In progress |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Not started |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Not started |
 
@@ -93,7 +93,6 @@ counts. The dump stays outside the repository in a private location.
 These are not part of the currently implemented N1/N2 behavior:
 
 - daily digest email;
-- council-wide Discord webhook;
 - Live Operation call-time rules;
 - two-hour preparation reminder;
 - alert grouping or coalescing;
@@ -105,8 +104,10 @@ These are not part of the currently implemented N1/N2 behavior:
 
 - N3a is merged and live on Dev and Prod, and the owner-created Prod cron row is
   scheduled. Only the first scheduled-run check remains; it does not block N3b.
-- I1 remains separate and live; it does not absorb push, email, Discord, or
+- I1 remains separate and live; it does not absorb push, email, or
   notification housekeeping behavior.
+
+Discord (X1) was cancelled by the owner on 2026-11-11 and will not be built.
 
 ## Approved secure-sender decision
 
@@ -118,8 +119,7 @@ per-device Settings control, and best-effort current-device sign-out cleanup.
 The worker only focuses an existing same-origin window without navigating it;
 it opens fixed `/` only when no same-origin window exists or focusing fails.
 P1a's stale `/notifications` target is an unrelated future jump-to-comment
-follow-up. Discord remains postponed to the final step after dashboard and
-polish and is not planned here.
+follow-up.
 
 ## Phase 5 gate checks
 
