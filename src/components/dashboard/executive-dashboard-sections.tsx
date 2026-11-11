@@ -167,7 +167,7 @@ export function FreeMembersCard({ section }: { section: DashboardSection<FreeMem
       {section.status !== "ready" ? (
         <SectionError label="Free members" />
       ) : section.data.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Everyone is busy right now.</p>
+        <p className="text-sm text-muted-foreground">No members available to take work.</p>
       ) : (
         <ul className="divide-y divide-border/70">
           {section.data.map((member) => (
