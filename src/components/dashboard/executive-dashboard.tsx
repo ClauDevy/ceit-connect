@@ -155,21 +155,27 @@ export function ExecutiveDashboard({
           refreshedTotals?.status === "access-denied" ||
           refreshedPush?.status === "access-denied"
         ) {
+          const nextCache = { ...cacheRef.current };
+          delete nextCache[key];
+          cacheRef.current = nextCache;
+          setCache(nextCache);
           setDeniedScopeKeys((current) => new Set(current).add(key));
           return;
         }
-        setDeniedScopeKeys((current) => {
-          if (!current.has(key)) return current;
-          const next = new Set(current);
-          next.delete(key);
-          return next;
-        });
         const previousCached = cacheRef.current[key];
         const attemptedAt = Date.now();
         const refreshFailed =
           dashboardHasReaderError(scopeData) ||
           refreshedTotals?.status === "error" ||
           refreshedPush?.status === "error";
+        if (!refreshFailed) {
+          setDeniedScopeKeys((current) => {
+            if (!current.has(key)) return current;
+            const next = new Set(current);
+            next.delete(key);
+            return next;
+          });
+        }
         const nextCached = {
           data: preserveSuccessfulSections(previousCached?.data, scopeData),
           loadedAt: refreshFailed ? previousCached?.loadedAt ?? 0 : attemptedAt,
@@ -248,11 +254,13 @@ export function ExecutiveDashboard({
   useEffect(() => {
     const refreshActiveScopeIfStale = () => {
       const active = cacheRef.current[activeKey];
+      const now = Date.now();
       if (
         active &&
         !isPending &&
         !accessDenied &&
-        Date.now() - active.loadedAt > DASHBOARD_CACHE_MAX_AGE_MS
+        now - active.loadedAt > DASHBOARD_CACHE_MAX_AGE_MS &&
+        now - active.lastAttemptAt > DASHBOARD_CACHE_MAX_AGE_MS
       ) {
         void refreshScope(activeScope);
       }

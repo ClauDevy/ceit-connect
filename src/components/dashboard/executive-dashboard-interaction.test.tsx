@@ -317,6 +317,9 @@ describe("Executive Dashboard scope cache", () => {
     expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
     expect(screen.getByText("overview:5")).toBeTruthy();
 
+    fireEvent.focus(window);
+    expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
+
     now += DASHBOARD_CACHE_MAX_AGE_MS + 1;
     fireEvent.focus(window);
 
@@ -344,6 +347,42 @@ describe("Executive Dashboard scope cache", () => {
     expect(await screen.findByText("overview:2")).toBeTruthy();
     expect(screen.queryByText(/not available for this account/i)).toBeNull();
     expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a denied scope blocked through an inconclusive retry", async () => {
+    const errorData: DashboardScopeData = {
+      ...scopeData("Alpha", 0),
+      overview: { status: "error" },
+    };
+    mocks.loadDashboardScope
+      .mockResolvedValueOnce(scopeData("Alpha", 2))
+      .mockResolvedValueOnce(deniedScopeData())
+      .mockResolvedValueOnce(errorData)
+      .mockResolvedValueOnce(scopeData("Alpha", 4));
+    render(
+      <ExecutiveDashboard
+        viewerRole="Admin"
+        initialScope={{ kind: "council" }}
+        initialData={scopeData(null, 5)}
+        initialCommitteeTotals={committeeTotals as never}
+        initialPushAdoption={{ status: "ready", data: { activeProfilesWithPushCount: 1, activeProfileCount: 2 } }}
+        initialLoadedAt={Date.now()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Alpha" }));
+    expect(await screen.findByText("overview:2")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh dashboard" }));
+    expect(await screen.findByText(/not available for this account/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry access" }));
+    await waitFor(() => expect(mocks.loadDashboardScope).toHaveBeenCalledTimes(3));
+    expect(screen.getByText(/not available for this account/i)).toBeTruthy();
+    expect(screen.queryByText("overview:2")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry access" }));
+    expect(await screen.findByText("overview:4")).toBeTruthy();
+    expect(screen.queryByText(/not available for this account/i)).toBeNull();
   });
 
   it("treats server-fetched data as fresh at this component's initialization time", async () => {
