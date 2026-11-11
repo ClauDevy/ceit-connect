@@ -71,7 +71,7 @@ function DeadlineRows({ rows, animate }: { rows: DeadlineDay[]; animate: boolean
     <div className="space-y-3">
       {allZero ? <p className="text-sm text-muted-foreground">No deadlines this week</p> : null}
       <div className="grid grid-cols-7 gap-1.5" role="img" aria-label={rows.map((row) => `${row.calendarDate}: ${row.openTaskCount}`).join(", ")}>
-        {rows.map((row, index) => {
+        {rows.map((row) => {
           const height = barDisplayPercent(row.openTaskCount, values);
           return (
             <div key={row.calendarDate} className="flex min-w-0 flex-col items-center gap-1.5">
@@ -88,7 +88,7 @@ function DeadlineRows({ rows, animate }: { rows: DeadlineDay[]; animate: boolean
                 )}
               </div>
               <span className="text-center text-[10px] leading-tight text-muted-foreground">
-                {index === 0 ? "Today" : formatCalendarDate(row.calendarDate)}
+                {formatCalendarDate(row.calendarDate)}
               </span>
             </div>
           );
