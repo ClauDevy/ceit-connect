@@ -206,3 +206,35 @@ D1 creates no table, index, policy, trigger, or foreign key. It replaces no
 existing function and does not alter `tasks`, `events`, `users`, `committees`,
 `list_active_task_assignees_with_workload()`, or any task/event writer.
 
+## `20261114120000_executive_dashboard_extras_data.sql`
+
+### Private classifier
+
+- `ceit_connect_private.classify_executive_dashboard_task(timestamptz,text,timestamptz)`
+  returns overdue, due-in-24-hours, and at-risk booleans plus one fixed bucket.
+  It is postgres-owned, stable, fixed-empty-path `SECURITY DEFINER`, performs no
+  authorization, has no overload, and grants execute to no application role.
+
+### Public readers
+
+- `public.get_executive_dashboard_extras_overview(uuid)` returns six KPI counts
+  and five mutually exclusive donut counts. Its open total is read through the
+  unchanged D1 committee aggregate.
+- `public.list_executive_dashboard_needs_attention(uuid)` returns at most 20
+  deterministic confidential-safe rows.
+- `public.list_executive_dashboard_deadlines(uuid)` returns exactly seven
+  ordered Asia/Manila dates including zero-count dates.
+- `public.list_executive_dashboard_free_members(uuid)` returns scoped active
+  Co-Admins/Members with at most two council-wide open assignments.
+- `public.list_executive_dashboard_member_slipping_signals(uuid)` returns the
+  D1 member population with committee-owned open, overdue, and at-risk counts.
+- `public.get_executive_dashboard_push_adoption()` returns only two counts and
+  is active-Admin-only.
+
+All public D1b readers are postgres-owned, stable, fixed-empty-path `SECURITY
+DEFINER` functions with no overload. Execute is revoked from `PUBLIC`, `anon`,
+`authenticated`, and `service_role`, then granted only to `authenticated`.
+Optional committee omission means Admin-only council scope; an active Co-Admin
+must pass their own existing committee. D1b creates no table, index, policy,
+trigger, or foreign key and replaces no D1 or other existing function.
+
