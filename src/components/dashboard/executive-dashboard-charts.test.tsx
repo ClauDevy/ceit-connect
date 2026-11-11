@@ -3,9 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/shared/motion", () => ({
-  ChartBarGrow: ({ axis, ...props }: ComponentProps<"div"> & { axis?: string }) => {
+  ChartBarGrow: ({ axis, observeParent, ...props }: ComponentProps<"div"> & {
+    axis?: string;
+    observeParent?: boolean;
+  }) => {
     void axis;
-    return <div {...props} />;
+    return <div data-observe-parent={observeParent ? "true" : "false"} {...props} />;
   },
   useVisibilityAnimation: () => () => undefined,
 }));
@@ -32,6 +35,7 @@ describe("Executive Dashboard chart accessibility", () => {
     expect(markup).toContain("COEXA committee");
     expect(markup).toContain("break-words");
     expect(markup).toContain("overflow-wrap:anywhere");
+    expect(markup).toContain('data-observe-parent="true"');
     expect(markup).not.toContain("truncate");
   });
 
