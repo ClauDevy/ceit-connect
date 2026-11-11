@@ -36,7 +36,45 @@ import {
   StatusCard,
 } from "@/components/dashboard/executive-dashboard-sections";
 
-type CachedScope = { data: DashboardScopeData; loadedAt: number };
+type CachedScope = {
+  data: DashboardScopeData;
+  loadedAt: number;
+  lastAttemptAt: number;
+};
+
+function dashboardHasReaderError(data: DashboardScopeData) {
+  return Object.values(data).some((section) => section.status === "error");
+}
+
+function preserveSuccessfulSections(
+  previous: DashboardScopeData | undefined,
+  next: DashboardScopeData,
+): DashboardScopeData {
+  if (!previous) return next;
+  return {
+    overview: next.overview.status === "error" && previous.overview.status === "ready"
+      ? previous.overview
+      : next.overview,
+    attention: next.attention.status === "error" && previous.attention.status === "ready"
+      ? previous.attention
+      : next.attention,
+    deadlines: next.deadlines.status === "error" && previous.deadlines.status === "ready"
+      ? previous.deadlines
+      : next.deadlines,
+    freeMembers: next.freeMembers.status === "error" && previous.freeMembers.status === "ready"
+      ? previous.freeMembers
+      : next.freeMembers,
+    summary: next.summary.status === "error" && previous.summary.status === "ready"
+      ? previous.summary
+      : next.summary,
+    members: next.members.status === "error" && previous.members.status === "ready"
+      ? previous.members
+      : next.members,
+    signals: next.signals.status === "error" && previous.signals.status === "ready"
+      ? previous.signals
+      : next.signals,
+  };
+}
 
 export function ExecutiveDashboard({
   viewerRole,
@@ -58,15 +96,14 @@ export function ExecutiveDashboard({
   const initialKey = dashboardScopeKey(initialScope);
   const [activeScope, setActiveScope] = useState(initialScope);
   const [seenScopeKeys, setSeenScopeKeys] = useState<Set<string>>(new Set());
-  const [cache, setCache] = useState<Record<string, CachedScope>>(() => ({
-    [initialKey]: {
-      data: initialData,
-      loadedAt:
-        initialLoadedAt === DASHBOARD_SERVER_FRESH_CACHE_SENTINEL
-          ? Date.now()
-          : initialLoadedAt,
-    },
-  }));
+  const [cache, setCache] = useState<Record<string, CachedScope>>(() => {
+    const loadedAt = initialLoadedAt === DASHBOARD_SERVER_FRESH_CACHE_SENTINEL
+      ? Date.now()
+      : initialLoadedAt;
+    return {
+      [initialKey]: { data: initialData, loadedAt, lastAttemptAt: loadedAt },
+    };
+  });
   const cacheRef = useRef(cache);
   const [committeeTotals, setCommitteeTotals] = useState(initialCommitteeTotals);
   const [pushAdoption, setPushAdoption] = useState(initialPushAdoption);
@@ -126,11 +163,35 @@ export function ExecutiveDashboard({
         next.delete(key);
         return next;
       });
-      const nextCached = { data: scopeData, loadedAt: Date.now() };
+      const previousCached = cacheRef.current[key];
+      const attemptedAt = Date.now();
+      const refreshFailed =
+        dashboardHasReaderError(scopeData) ||
+        refreshedTotals?.status === "error" ||
+        refreshedPush?.status === "error";
+      const nextCached = {
+        data: preserveSuccessfulSections(previousCached?.data, scopeData),
+        loadedAt: refreshFailed ? previousCached?.loadedAt ?? 0 : attemptedAt,
+        lastAttemptAt: refreshFailed
+          ? Math.max(attemptedAt, (previousCached?.loadedAt ?? 0) + 1)
+          : attemptedAt,
+      };
       cacheRef.current = { ...cacheRef.current, [key]: nextCached };
       setCache(cacheRef.current);
-      if (refreshedTotals) setCommitteeTotals(refreshedTotals);
-      if (refreshedPush) setPushAdoption(refreshedPush);
+      if (refreshedTotals) {
+        setCommitteeTotals((current) =>
+          refreshedTotals.status === "error" && current.status === "ready"
+            ? current
+            : refreshedTotals,
+        );
+      }
+      if (refreshedPush) {
+        setPushAdoption((current) =>
+          refreshedPush.status === "error" && current?.status === "ready"
+            ? current
+            : refreshedPush,
+        );
+      }
     },
     [viewerRole],
   );
@@ -158,6 +219,8 @@ export function ExecutiveDashboard({
     if (
       activeCache &&
       !isPending &&
+      !accessDenied &&
+      activeCache.lastAttemptAt <= activeCache.loadedAt &&
       Date.now() - activeCache.loadedAt > DASHBOARD_CACHE_MAX_AGE_MS
     ) {
       let cancelled = false;
@@ -168,7 +231,7 @@ export function ExecutiveDashboard({
         cancelled = true;
       };
     }
-  }, [activeCache, activeKey, activeScope, isPending, refreshScope]);
+  }, [accessDenied, activeCache, activeKey, activeScope, isPending, refreshScope]);
 
   useEffect(() => {
     const refreshActiveScopeIfStale = () => {
@@ -176,6 +239,7 @@ export function ExecutiveDashboard({
       if (
         active &&
         !isPending &&
+        !accessDenied &&
         Date.now() - active.loadedAt > DASHBOARD_CACHE_MAX_AGE_MS
       ) {
         void refreshScope(activeScope);
@@ -191,7 +255,7 @@ export function ExecutiveDashboard({
       window.removeEventListener("focus", refreshActiveScopeIfStale);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [activeKey, activeScope, isPending, refreshScope]);
+  }, [accessDenied, activeKey, activeScope, isPending, refreshScope]);
 
   if (accessDenied) {
     return (

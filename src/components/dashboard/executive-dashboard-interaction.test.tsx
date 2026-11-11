@@ -132,8 +132,11 @@ describe("Executive Dashboard scope cache", () => {
     beta.resolve(scopeData("Beta", 3));
     expect((await screen.findAllByText("Beta")).length).toBeGreaterThan(0);
     expect(screen.queryByText("push")).toBeNull();
-    alpha.resolve(scopeData("Alpha", 2));
-    await waitFor(() => expect(screen.queryByText("Alpha")).toBeNull());
+    await act(async () => {
+      alpha.resolve(scopeData("Alpha", 2));
+      await alpha.promise;
+    });
+    expect(screen.queryByText("Alpha")).toBeNull();
     expect(screen.getAllByText("Beta").length).toBeGreaterThan(0);
   });
 
@@ -240,6 +243,60 @@ describe("Executive Dashboard scope cache", () => {
       await waitFor(() => expect(mocks.loadDashboardScope).toHaveBeenCalledOnce());
     },
   );
+
+  it("does not refresh a denied scope on mount, focus, or visibility changes", async () => {
+    render(
+      <ExecutiveDashboard
+        viewerRole="Co-Admin"
+        initialScope={{ kind: "committee", committeeId: "unavailable" }}
+        initialData={deniedScopeData()}
+        initialCommitteeTotals={{ status: "ready", data: [] }}
+        initialPushAdoption={null}
+        initialLoadedAt={0}
+        initialAccessDenied
+      />,
+    );
+
+    await act(async () => Promise.resolve());
+    fireEvent.focus(window);
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    fireEvent(document, new Event("visibilitychange"));
+
+    expect(mocks.loadDashboardScope).not.toHaveBeenCalled();
+  });
+
+  it("keeps successful cached sections after a failed refresh and retries on focus", async () => {
+    let now = DASHBOARD_CACHE_MAX_AGE_MS + 10;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    mocks.loadDashboardScope
+      .mockResolvedValueOnce({ ...scopeData(null, 9), overview: { status: "error" } })
+      .mockResolvedValueOnce(scopeData(null, 9));
+    mocks.loadCommitteeTotals.mockResolvedValue(committeeTotals);
+    mocks.loadPushAdoption.mockResolvedValue({
+      status: "ready",
+      data: { activeProfilesWithPushCount: 2, activeProfileCount: 3 },
+    });
+    render(
+      <ExecutiveDashboard
+        viewerRole="Admin"
+        initialScope={{ kind: "council" }}
+        initialData={scopeData(null, 5)}
+        initialCommitteeTotals={committeeTotals as never}
+        initialPushAdoption={{ status: "ready", data: { activeProfilesWithPushCount: 1, activeProfileCount: 2 } }}
+        initialLoadedAt={0}
+      />,
+    );
+
+    await waitFor(() => expect(mocks.loadDashboardScope).toHaveBeenCalledOnce());
+    expect(screen.getByText("overview:5")).toBeTruthy();
+    expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
+
+    now += DASHBOARD_CACHE_MAX_AGE_MS + 1;
+    fireEvent.focus(window);
+
+    await waitFor(() => expect(mocks.loadDashboardScope).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("overview:9")).toBeTruthy();
+  });
 
   it("treats server-fetched data as fresh at this component's initialization time", async () => {
     vi.spyOn(Date, "now").mockReturnValue(1_000_000);

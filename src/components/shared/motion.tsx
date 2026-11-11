@@ -132,13 +132,15 @@ export function useVisibilityAnimation<T extends Element = HTMLElement>({
 
 export function ChartBarGrow({
   axis = "y",
+  observeParent = false,
   className,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { axis?: "x" | "y" }) {
+}: HTMLAttributes<HTMLDivElement> & { axis?: "x" | "y"; observeParent?: boolean }) {
   const motionClass =
     axis === "x" ? "motion-chart-grow-x" : "motion-chart-grow-y";
   const visibilityRef = useVisibilityAnimation<HTMLDivElement>({
     className: motionClass,
+    observeParent,
   });
   return (
     <div

@@ -1,7 +1,15 @@
+import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/components/shared/motion", () => ({
+  ChartBarGrow: ({ observeParent, ...props }: ComponentProps<"div"> & {
+    observeParent?: boolean;
+  }) => <div data-observe-parent={observeParent ? "true" : "false"} {...props} />,
+}));
 import {
   AttentionCard,
+  DeadlinesCard,
   FreeMembersCard,
   attentionCategoryLabel,
 } from "./executive-dashboard-sections";
@@ -67,5 +75,18 @@ describe("Executive Dashboard free-member empty state", () => {
 
     expect(markup).toContain("No members available to take work.");
     expect(markup).not.toContain("Everyone is busy");
+  });
+});
+
+describe("Executive Dashboard deadline motion", () => {
+  it("observes the visible deadline track when revealing a clipped bar", () => {
+    const markup = renderToStaticMarkup(
+      <DeadlinesCard
+        section={{ status: "ready", data: [{ calendarDate: "2026-11-11", openTaskCount: 1 }] }}
+        animate
+      />,
+    );
+
+    expect(markup).toContain('data-observe-parent="true"');
   });
 });

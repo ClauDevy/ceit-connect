@@ -46,6 +46,7 @@ function WorkloadBar({
         {animate ? (
           <ChartBarGrow
             axis="x"
+            observeParent
             className="h-full rounded-full bg-primary"
             style={{ width: `${width}%` }}
           />

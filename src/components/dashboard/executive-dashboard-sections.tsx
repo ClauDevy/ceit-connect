@@ -78,7 +78,11 @@ function DeadlineRows({ rows, animate }: { rows: DeadlineDay[]; animate: boolean
               <span className="text-xs font-semibold tabular-nums">{row.openTaskCount}</span>
               <div className="flex h-20 w-full items-end overflow-hidden rounded-md bg-muted">
                 {animate ? (
-                  <ChartBarGrow className="w-full rounded-md bg-primary" style={{ height: `${height}%` }} />
+                  <ChartBarGrow
+                    observeParent
+                    className="w-full rounded-md bg-primary"
+                    style={{ height: `${height}%` }}
+                  />
                 ) : (
                   <div className="w-full rounded-md bg-primary" style={{ height: `${height}%` }} />
                 )}
