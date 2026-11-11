@@ -53,6 +53,18 @@ describe("Executive Dashboard attention links", () => {
     expect(malformed).not.toContain("<a");
   });
 
+  it("uses the validated task id rather than display text to decide whether to link", () => {
+    const markup = renderToStaticMarkup(
+      <AttentionCard section={{ status: "ready", data: [{
+        category: "overdue", taskId, label: "Confidential task",
+        committeeId: "committee", committeeName: "COEXA", dueDate: null,
+        sourceCreatedAt: "2026-11-11T10:00:00+08:00",
+      }] }} />,
+    );
+
+    expect(markup).toContain(`href="/tasks/${taskId}"`);
+  });
+
   it.each([
     ["overdue", "Overdue"],
     ["due_in_24_hours", "Due in 24 hours"],

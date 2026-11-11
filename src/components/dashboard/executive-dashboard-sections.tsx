@@ -129,7 +129,7 @@ export function attentionCategoryLabel(category: string) {
 }
 
 function AttentionItem({ row }: { row: AttentionRow }) {
-  const href = row.label === "Confidential task" ? null : safeTaskHref(row.taskId);
+  const href = safeTaskHref(row.taskId);
   const content = (
     <div className="flex min-w-0 flex-1 items-start justify-between gap-3 py-3">
       <div className="min-w-0">
