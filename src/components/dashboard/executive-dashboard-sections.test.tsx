@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AttentionCard, attentionCategoryLabel } from "./executive-dashboard-sections";
+import {
+  AttentionCard,
+  FreeMembersCard,
+  attentionCategoryLabel,
+} from "./executive-dashboard-sections";
 
 const taskId = "123e4567-e89b-12d3-a456-426614174000";
 
@@ -52,5 +56,16 @@ describe("Executive Dashboard attention links", () => {
   ])("maps %s to a safe human-readable label", (readerValue, label) => {
     expect(attentionCategoryLabel(readerValue)).toBe(label);
     expect(attentionCategoryLabel(readerValue)).not.toBe(readerValue);
+  });
+});
+
+describe("Executive Dashboard free-member empty state", () => {
+  it("does not infer that members are busy from an empty reader result", () => {
+    const markup = renderToStaticMarkup(
+      <FreeMembersCard section={{ status: "ready", data: [] }} />,
+    );
+
+    expect(markup).toContain("No members available to take work.");
+    expect(markup).not.toContain("Everyone is busy");
   });
 });

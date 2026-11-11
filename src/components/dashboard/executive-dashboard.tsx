@@ -71,11 +71,13 @@ export function ExecutiveDashboard({
   const [committeeTotals, setCommitteeTotals] = useState(initialCommitteeTotals);
   const [pushAdoption, setPushAdoption] = useState(initialPushAdoption);
   const [pendingScopes, setPendingScopes] = useState<Set<string>>(new Set());
-  const [accessDenied, setAccessDenied] = useState(
+  const [deniedScopeKeys, setDeniedScopeKeys] = useState<Set<string>>(() =>
     initialAccessDenied ||
-      dashboardHasAccessDenied(initialData) ||
-      initialCommitteeTotals.status === "access-denied" ||
-      initialPushAdoption?.status === "access-denied",
+    dashboardHasAccessDenied(initialData) ||
+    initialCommitteeTotals.status === "access-denied" ||
+    initialPushAdoption?.status === "access-denied"
+      ? new Set([initialKey])
+      : new Set(),
   );
   const latestRequestByScope = useRef(new Map<string, number>());
   const requestSequence = useRef(0);
@@ -115,9 +117,15 @@ export function ExecutiveDashboard({
         refreshedTotals?.status === "access-denied" ||
         refreshedPush?.status === "access-denied"
       ) {
-        setAccessDenied(true);
+        setDeniedScopeKeys((current) => new Set(current).add(key));
         return;
       }
+      setDeniedScopeKeys((current) => {
+        if (!current.has(key)) return current;
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
       const nextCached = { data: scopeData, loadedAt: Date.now() };
       cacheRef.current = { ...cacheRef.current, [key]: nextCached };
       setCache(cacheRef.current);
@@ -144,6 +152,7 @@ export function ExecutiveDashboard({
   const activeCache = cache[activeKey];
   const isPending = pendingScopes.has(activeKey);
   const animate = !seenScopeKeys.has(activeKey);
+  const accessDenied = deniedScopeKeys.has(activeKey);
 
   useEffect(() => {
     if (
@@ -186,10 +195,17 @@ export function ExecutiveDashboard({
 
   if (accessDenied) {
     return (
-      <InlineAlert>
-        The Executive Dashboard is not available for this account. Return Home or ask an Admin to
-        check your committee assignment.
-      </InlineAlert>
+      <div className="space-y-4">
+        {viewerRole === "Admin" && activeScope.kind === "committee" ? (
+          <Button variant="outline" onClick={() => openScope({ kind: "council" })}>
+            <ChevronLeft aria-hidden /> All committees
+          </Button>
+        ) : null}
+        <InlineAlert>
+          The Executive Dashboard is not available for this account. Return Home or ask an Admin to
+          check your committee assignment.
+        </InlineAlert>
+      </div>
     );
   }
 

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DASHBOARD_CACHE_MAX_AGE_MS,
@@ -89,6 +89,13 @@ function scopeData(name: string | null, openTaskCount: number): DashboardScopeDa
   };
 }
 
+function deniedScopeData(): DashboardScopeData {
+  return {
+    ...scopeData("Alpha", 0),
+    overview: { status: "access-denied" },
+  };
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((done) => { resolve = done; });
@@ -128,6 +135,53 @@ describe("Executive Dashboard scope cache", () => {
     alpha.resolve(scopeData("Alpha", 2));
     await waitFor(() => expect(screen.queryByText("Alpha")).toBeNull());
     expect(screen.getAllByText("Beta").length).toBeGreaterThan(0);
+  });
+
+  it("keeps a route back to council when a committee scope is denied", async () => {
+    mocks.loadDashboardScope.mockResolvedValue(deniedScopeData());
+    render(
+      <ExecutiveDashboard
+        viewerRole="Admin"
+        initialScope={{ kind: "council" }}
+        initialData={scopeData(null, 5)}
+        initialCommitteeTotals={committeeTotals as never}
+        initialPushAdoption={{ status: "ready", data: { activeProfilesWithPushCount: 1, activeProfileCount: 2 } }}
+        initialLoadedAt={Date.now()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Alpha" }));
+    expect(await screen.findByText(/not available for this account/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /All committees/i }));
+
+    expect(screen.getByText("overview:5")).toBeTruthy();
+    expect(screen.queryByText(/not available for this account/i)).toBeNull();
+  });
+
+  it("does not let a delayed committee denial disable the active council scope", async () => {
+    const alpha = deferred<DashboardScopeData>();
+    mocks.loadDashboardScope.mockReturnValue(alpha.promise);
+    render(
+      <ExecutiveDashboard
+        viewerRole="Admin"
+        initialScope={{ kind: "council" }}
+        initialData={scopeData(null, 5)}
+        initialCommitteeTotals={committeeTotals as never}
+        initialPushAdoption={{ status: "ready", data: { activeProfilesWithPushCount: 1, activeProfileCount: 2 } }}
+        initialLoadedAt={Date.now()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: /All committees/i }));
+    await act(async () => {
+      alpha.resolve(deniedScopeData());
+      await alpha.promise;
+    });
+
+    expect(mocks.loadDashboardScope).toHaveBeenCalledOnce();
+    expect(screen.getByText("overview:5")).toBeTruthy();
+    expect(screen.queryByText(/not available for this account/i)).toBeNull();
   });
 
   it("shows stale cached data immediately and refreshes it quietly", async () => {
