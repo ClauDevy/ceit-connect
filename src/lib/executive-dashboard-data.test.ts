@@ -53,12 +53,14 @@ describe("Executive Dashboard reader scope", () => {
       calls.push([name, args]);
       return { data: resultFor(name), error: null };
     });
-    await loadDashboardScope(rpc, { kind: "council" });
+    const councilResult = await loadDashboardScope(rpc, { kind: "council" });
+    expect(Object.values(councilResult).every((section) => section.status === "ready")).toBe(true);
     expect(calls).toHaveLength(4);
     expect(calls.every(([, args]) => args === undefined)).toBe(true);
 
     calls.length = 0;
-    await loadDashboardScope(rpc, { kind: "committee", committeeId: id });
+    const committeeResult = await loadDashboardScope(rpc, { kind: "committee", committeeId: id });
+    expect(Object.values(committeeResult).every((section) => section.status === "ready")).toBe(true);
     expect(calls).toHaveLength(7);
     expect(calls.every(([, args]) => args?.p_committee_id === id)).toBe(true);
   });

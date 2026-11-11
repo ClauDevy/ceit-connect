@@ -95,6 +95,8 @@ describe("Executive Dashboard number mapping", () => {
   it("only creates the existing task-detail route for a safe UUID", () => {
     const id = "123e4567-e89b-12d3-a456-426614174000";
     expect(safeTaskHref(id)).toBe(`/tasks/${id}`);
+    expect(safeTaskHref(id.toUpperCase())).toBe(`/tasks/${id.toUpperCase()}`);
+    expect(safeTaskHref("123e4567-e89b-12d3-a4564-26614174000")).toBeNull();
     expect(safeTaskHref("bad-target")).toBeNull();
     expect(safeTaskHref(null)).toBeNull();
   });

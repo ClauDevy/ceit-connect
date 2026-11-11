@@ -234,7 +234,7 @@ export function formatCalendarDate(calendarDate: string) {
 }
 
 export function safeTaskHref(taskId: string | null) {
-  return taskId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(taskId)
+  return taskId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId)
     ? `/tasks/${taskId}`
     : null;
 }
