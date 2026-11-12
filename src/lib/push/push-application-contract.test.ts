@@ -16,15 +16,22 @@ describe("P1b service worker contract", () => {
     expect(worker).toContain("tag: payload.tag")
   })
 
-  it("has no fetch/cache behavior and navigates only to the fixed root", () => {
+  it("has no fetch/cache behavior and navigates only to validated same-origin task paths", () => {
     expect(worker).not.toContain('addEventListener("fetch"')
     expect(worker).not.toMatch(/caches\.|CacheStorage/)
     expect(worker).toContain('const FIXED_TARGET = "/"')
-    expect(worker).not.toMatch(/payload\.(url|target|address)/)
-    expect(worker).not.toContain(".navigate(")
-    expect(worker).toContain("await existing.focus()")
-    expect(worker).toContain("return self.clients.openWindow(FIXED_TARGET)")
+    expect(worker).not.toMatch(/payload\.(url|address)/)
+    expect(worker).toContain("validatedTargetPath")
+    expect(worker).toContain("await existing.navigate(targetPath)")
+    expect(worker).toContain("return self.clients.openWindow(targetPath)")
     expect(worker).not.toContain("badge:")
+  })
+
+  it("preserves valid legacy payload content while defaulting a missing target to root", () => {
+    expect(worker).toContain(
+      '(value.targetPath === undefined || typeof value.targetPath === "string")',
+    )
+    expect(worker).toContain("return { ...value, targetPath: validatedTargetPath(value.targetPath) }")
   })
 })
 

@@ -5,6 +5,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -20,7 +21,10 @@ import {
   X,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { MotionPresence } from "@/components/shared/motion";
+import {
+  MotionPresence,
+  useReducedMotionPreference,
+} from "@/components/shared/motion";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,11 +48,13 @@ import {
   isTaskComment,
   isTaskCommentMentionCandidate,
   isTaskCommentRetryableError,
+  isTaskCommentTargetPageAnchor,
   isTaskCommentUnavailableError,
   MAX_TASK_COMMENT_CODE_POINTS,
   MAX_TASK_COMMENT_MENTIONS,
   MAX_TASK_COMMENT_MENTION_SEARCH_CODE_POINTS,
   mergeTaskCommentPages,
+  parseTaskCommentTargetHash,
   replaceTaskCommentNewestPage,
   TASK_COMMENT_PAGE_SIZE,
   trimTaskCommentBody,
@@ -63,6 +69,7 @@ import { createClient } from "@/lib/supabase/client";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const POLL_INTERVAL_MS = 15_000;
+const TASK_COMMENT_TARGET_PAGE_ATTEMPTS = 2;
 
 const commentDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -464,6 +471,11 @@ export function TaskComments({
 }: TaskCommentsProps) {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
+  const reducedMotion = useReducedMotionPreference();
+  const highlightedRef = useRef<string | null>(null);
+  const [hashReady, setHashReady] = useState(false);
+  const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
+  const [targetActivation, setTargetActivation] = useState(0);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [mutationAction, setMutationAction] =
     useState<TaskCommentAction | null>(null);
@@ -478,21 +490,40 @@ export function TaskComments({
     () => ["task-comments", taskId, "newest"] as const,
     [taskId],
   );
+  const targetQueryKey = useMemo(
+    () => ["task-comments", taskId, "target", targetCommentId] as const,
+    [taskId, targetCommentId],
+  );
+
+  useEffect(() => {
+    const updateTarget = () => {
+      highlightedRef.current = null;
+      setTargetCommentId(parseTaskCommentTargetHash(window.location.hash));
+      setTargetActivation((current) => current + 1);
+      setHashReady(true);
+    };
+    updateTarget();
+    window.addEventListener("hashchange", updateTarget);
+    return () => window.removeEventListener("hashchange", updateTarget);
+  }, [taskId]);
 
   const handleUnavailable = useCallback(
     async (error: unknown) => {
-      queryClient.setQueryData(newestQueryKey, {
+      queryClient.setQueriesData<TaskCommentThreadCache>(
+        { queryKey: ["task-comments", taskId] },
+        {
         comments: [],
         hasMore: false,
         olderPagingStarted: false,
-      });
+        },
+      );
       setUnavailableError(getTaskCommentErrorMessage(error, "read"));
       setThreadError(null);
       setEditingComment(null);
       setDeleteTarget(null);
       await onRefreshTask();
     },
-    [newestQueryKey, onRefreshTask, queryClient],
+    [onRefreshTask, queryClient, taskId],
   );
 
   const newestQuery = useQuery({
@@ -530,25 +561,134 @@ export function TaskComments({
     refetchOnWindowFocus: mutationAction === null,
     refetchInterval: mutationAction === null ? POLL_INTERVAL_MS : false,
     refetchIntervalInBackground: false,
+    enabled: hashReady && targetCommentId === null,
   });
+
+  const targetQuery = useQuery({
+    queryKey: targetQueryKey,
+    queryFn: async ({ signal }) => {
+      for (
+        let attempt = 0;
+        attempt < TASK_COMMENT_TARGET_PAGE_ATTEMPTS;
+        attempt += 1
+      ) {
+        const anchorResult = await supabase
+          .rpc("get_task_comment_target_page_anchor", {
+            p_task_id: taskId,
+            p_comment_id: targetCommentId,
+            p_page_size: TASK_COMMENT_PAGE_SIZE,
+          })
+          .abortSignal(signal);
+        if (anchorResult.error) {
+          if (isTaskCommentUnavailableError(anchorResult.error)) {
+            await handleUnavailable(anchorResult.error);
+          }
+          throw anchorResult.error;
+        }
+        if (
+          !Array.isArray(anchorResult.data) ||
+          anchorResult.data.length !== 1 ||
+          !isTaskCommentTargetPageAnchor(anchorResult.data[0])
+        ) {
+          throw new Error("The target comment anchor returned an invalid response.");
+        }
+        const anchor = anchorResult.data[0];
+        const pageResult = await supabase
+          .rpc("list_task_comments", {
+            p_task_id: taskId,
+            p_limit: TASK_COMMENT_PAGE_SIZE,
+            p_before_created_at: anchor.out_before_created_at,
+            p_before_id: anchor.out_before_id,
+          })
+          .abortSignal(signal);
+        if (pageResult.error) {
+          if (isTaskCommentUnavailableError(pageResult.error)) {
+            await handleUnavailable(pageResult.error);
+          }
+          throw pageResult.error;
+        }
+        if (
+          !Array.isArray(pageResult.data) ||
+          !pageResult.data.every(isTaskComment)
+        ) {
+          throw new Error("The comment reader returned an invalid response.");
+        }
+        if (
+          !pageResult.data.some(
+            (comment) => comment.out_id === targetCommentId,
+          )
+        ) {
+          continue;
+        }
+        const current =
+          queryClient.getQueryData<TaskCommentThreadCache>(targetQueryKey);
+        return {
+          comments: replaceTaskCommentNewestPage(
+            current?.comments ?? [],
+            pageResult.data,
+          ),
+          hasMore: current?.olderPagingStarted
+            ? current.hasMore
+            : (pageResult.data[0]?.out_has_more ?? false),
+          olderPagingStarted: current?.olderPagingStarted ?? false,
+          hasNewer: anchor.out_has_newer,
+        };
+      }
+      throw new Error("The target comment is no longer in its page.");
+    },
+    enabled: hashReady && targetCommentId !== null,
+    retry: false,
+    refetchOnWindowFocus: mutationAction === null,
+    refetchInterval: mutationAction === null ? POLL_INTERVAL_MS : false,
+    refetchIntervalInBackground: false,
+  });
+
+  const activeQuery = targetCommentId ? targetQuery : newestQuery;
+  const activeQueryKey = targetCommentId ? targetQueryKey : newestQueryKey;
+
+  useEffect(() => {
+    if (
+      !targetCommentId ||
+      !targetQuery.data?.comments.some((comment) => comment.out_id === targetCommentId) ||
+      highlightedRef.current === targetCommentId
+    ) {
+      return;
+    }
+    const target = document.getElementById(`comment-${targetCommentId}`);
+    if (!target) return;
+    highlightedRef.current = targetCommentId;
+    target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" });
+    target.focus({ preventScroll: true });
+  }, [reducedMotion, targetActivation, targetCommentId, targetQuery.data]);
+
+  function backToNewest() {
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    highlightedRef.current = null;
+    setTargetCommentId(null);
+  }
 
   const unavailable =
     unavailableError !== null ||
-    isTaskCommentUnavailableError(newestQuery.error);
-  const comments = unavailable ? [] : (newestQuery.data?.comments ?? []);
-  const hasMore = unavailable ? false : (newestQuery.data?.hasMore ?? false);
-  const newestError = newestQuery.error
+    (targetCommentId === null && isTaskCommentUnavailableError(newestQuery.error)) ||
+    (targetCommentId !== null && isTaskCommentUnavailableError(targetQuery.error));
+  const comments = unavailable ? [] : (activeQuery.data?.comments ?? []);
+  const hasMore = unavailable ? false : (activeQuery.data?.hasMore ?? false);
+  const newestError = targetCommentId === null && newestQuery.error
     ? getTaskCommentErrorMessage(newestQuery.error, "read")
     : null;
-  const displayedThreadError = unavailableError ?? threadError ?? newestError;
+  const targetError = targetCommentId !== null && targetQuery.error
+    ? "The mentioned comment is unavailable. Return to the newest comments."
+    : null;
+  const displayedThreadError = unavailableError ?? threadError ?? newestError ?? targetError;
 
   async function refreshAfterMutation() {
-    await Promise.all([newestQuery.refetch(), onRefreshTask()]);
+    await Promise.all([activeQuery.refetch(), onRefreshTask()]);
   }
 
   async function runMutation(
     action: Exclude<TaskCommentAction, "read" | "candidates">,
     mutation: () => Promise<void>,
+    refreshSaved: () => Promise<void> = refreshAfterMutation,
   ) {
     if (mutationAction) return false;
     setMutationAction(action);
@@ -574,7 +714,7 @@ export function TaskComments({
       }
     } finally {
       try {
-        if (saved) await refreshAfterMutation();
+        if (saved) await refreshSaved();
       } finally {
         setMutationAction(null);
       }
@@ -587,22 +727,29 @@ export function TaskComments({
     isHeadsUp: boolean;
     mentionedUserIds: string[];
   }) {
-    return runMutation("add", async () => {
-      const { data, error } = await supabase.rpc("add_task_comment", {
-        p_task_id: taskId,
-        p_body: input.body,
-        p_is_heads_up: input.isHeadsUp,
-        p_mentioned_user_ids: input.mentionedUserIds,
-      });
-      if (error) throw error;
-      if (
-        !Array.isArray(data) ||
-        data.length !== 1 ||
-        !isAddTaskCommentResult(data[0])
-      ) {
-        throw new Error("The comment writer returned an invalid response.");
-      }
-    });
+    return runMutation(
+      "add",
+      async () => {
+        const { data, error } = await supabase.rpc("add_task_comment", {
+          p_task_id: taskId,
+          p_body: input.body,
+          p_is_heads_up: input.isHeadsUp,
+          p_mentioned_user_ids: input.mentionedUserIds,
+        });
+        if (error) throw error;
+        if (
+          !Array.isArray(data) ||
+          data.length !== 1 ||
+          !isAddTaskCommentResult(data[0])
+        ) {
+          throw new Error("The comment writer returned an invalid response.");
+        }
+      },
+      async () => {
+        backToNewest();
+        await Promise.all([newestQuery.refetch(), onRefreshTask()]);
+      },
+    );
   }
 
   async function editComment(
@@ -637,15 +784,25 @@ export function TaskComments({
   async function deleteComment() {
     if (!deleteTarget) return;
     const targetId = deleteTarget.out_id;
-    const saved = await runMutation("delete", async () => {
-      const { error } = await supabase.rpc("delete_task_comment", {
-        p_comment_id: targetId,
-      });
-      if (error) throw error;
-    });
+    const deletingSelectedTarget = targetId === targetCommentId;
+    const saved = await runMutation(
+      "delete",
+      async () => {
+        const { error } = await supabase.rpc("delete_task_comment", {
+          p_comment_id: targetId,
+        });
+        if (error) throw error;
+      },
+      deletingSelectedTarget
+        ? async () => {
+            backToNewest();
+            await Promise.all([newestQuery.refetch(), onRefreshTask()]);
+          }
+        : refreshAfterMutation,
+    );
     if (saved) {
       queryClient.setQueryData<TaskCommentThreadCache>(
-        newestQueryKey,
+        activeQueryKey,
         (current) => ({
           comments: (current?.comments ?? []).filter(
             (comment) => comment.out_id !== targetId,
@@ -675,7 +832,7 @@ export function TaskComments({
         throw new Error("The comment reader returned an invalid response.");
       }
       queryClient.setQueryData<TaskCommentThreadCache>(
-        newestQueryKey,
+        activeQueryKey,
         (current) => ({
           comments: mergeTaskCommentPages(current?.comments ?? [], data),
           hasMore: data[0]?.out_has_more ?? false,
@@ -715,7 +872,11 @@ export function TaskComments({
                 disabled={commentsBusy}
                 onClick={() => {
                   setThreadError(null);
-                  void newestQuery.refetch();
+                  if (targetCommentId) {
+                    void targetQuery.refetch();
+                  } else {
+                    void newestQuery.refetch();
+                  }
                 }}
               >
                 <RefreshCw aria-hidden /> Retry
@@ -737,7 +898,20 @@ export function TaskComments({
         ) : null}
 
         <div className="border-t pt-5">
-          {newestQuery.isPending ? (
+          <span className="sr-only" aria-live="polite">
+            {targetCommentId && targetQuery.data ? "Mentioned comment reached." : ""}
+          </span>
+          {targetCommentId ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/40 p-3">
+              <p className="text-sm text-muted-foreground">
+                Showing the page containing the mentioned comment.
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={backToNewest}>
+                Back to newest
+              </Button>
+            </div>
+          ) : null}
+          {activeQuery.isPending || !hashReady ? (
             <div className="space-y-4" aria-label="Loading comments">
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
@@ -749,7 +923,16 @@ export function TaskComments({
           ) : (
             <div className="space-y-5">
               {comments.map((comment) => (
-                <article key={comment.out_id} className="flex gap-3">
+                <article
+                  key={comment.out_id}
+                  id={`comment-${comment.out_id}`}
+                  tabIndex={comment.out_id === targetCommentId ? -1 : undefined}
+                  className={
+                    comment.out_id === targetCommentId
+                      ? "motion-comment-target-highlight flex gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      : "flex gap-3"
+                  }
+                >
                   <UserAvatar
                     name={comment.out_author_full_name}
                     src={comment.out_author_avatar_url}

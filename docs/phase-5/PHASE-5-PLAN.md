@@ -20,6 +20,7 @@ current batch completes its full stage order.
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Done; real Prod export and matching 31-table proof recorded (owner-confirmed 2026-11-12) |
 | R1 | Volunteer-offer and leave-request notifications across storage, bell, push, cleanup compatibility, tests, and docs | current feature branch | High | Implemented and locally documented; validation and rollout pending |
 | R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Implemented locally; validation and owner rollout pending |
+| J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Implemented locally; review, app-first rollout, migration, and Dev paste pending |
 
 Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. I1
 started after the N2 notification UI gate and is now live. Every later batch
@@ -125,7 +126,10 @@ These are not part of the currently implemented N1/N2 behavior:
 - alert grouping or coalescing;
 - `pushsubscriptionchange` recovery; a rotated browser subscription currently
   requires the person to explicitly enable notifications again in Settings;
-- backup restore drill.
+- backup restore drill;
+- signed-out return to a mentioned comment. Auth, Login, and the auth callback
+  remain unchanged; signed-out recipients go to Login and then Home until a
+  separately reviewed validated same-origin return-path flow exists.
 
 ## Open items
 
@@ -145,13 +149,16 @@ implements the isolated wake route, VAPID sender, push-only worker, explicit
 per-device Settings control, and best-effort current-device sign-out cleanup.
 The worker only focuses an existing same-origin window without navigating it;
 it opens fixed `/` only when no same-origin window exists or focusing fails.
-P1a's stale `/notifications` target is an unrelated future jump-to-comment
-follow-up.
+J1 replaces P1a's stale `/notifications` target. Deploy the tolerant app and
+service worker first, then apply migration 80: the app accepts a missing
+`out_comment_id`, while an old worker ignores `targetPath` and opens `/`, which
+is safe. Push stays generic and carries only a validated `/tasks/{UUID}` path
+with an optional exact `#comment-{UUID}` fragment.
 
 ## Phase 5 gate checks
 
 - Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
-  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, and R2 — has completed review and
+  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, R2, and J1 — has completed review and
   rollout.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.
