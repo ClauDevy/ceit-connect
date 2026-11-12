@@ -132,12 +132,15 @@ run-history rows cleaned, and one fixed safe status (`Completed.`,
 `Skipped because another reminder run is active.`). Per-occurrence failures
 are contained so one malformed/racing row does not prevent later candidates or
 retention. Migration `20261117120000_deadline_reminder_retry_backoff.sql`
-persists content-free occurrence retry state outside the caught exception,
-backs failures off for 15, 30, 60, then 120 minutes, and stops selecting an
-occurrence after five failed attempts or its target, whichever comes first.
-Successful retry deletes that state; failed notifications never receive a
-ledger row. Retry rows older than the same 30-day retention window are cleaned
-500 at a time. Run history exposes no task/person/content value.
+persists content-free, recipient-scoped occurrence retry state outside the
+caught exception, backs failures off for 15, 30, 60, then 120 minutes, and
+stops selecting that recipient after five failed attempts or its target,
+whichever comes first. A newly assigned active person has a distinct retry key
+and remains eligible even when another recipient is exhausted. Successful
+retry deletes only state backed by that recipient's new sent-ledger key;
+failed notifications never receive one. Retry rows older than the same 30-day
+retention window are cleaned 500 at a time. Run history exposes no
+task/person/content value.
 
 Prod runs every 15 minutes: 4 invocations/hour, 96/day, or about 2,880 in a
 30-day month. Each scans indexed near-term targets, handles at most 100
