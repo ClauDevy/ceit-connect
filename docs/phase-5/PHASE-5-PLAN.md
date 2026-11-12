@@ -16,8 +16,8 @@ current batch completes its full stage order.
 | P1 | Web push | `feature/web-push-database` then `feature/web-push` | High | P1a and P1b live on Dev and Prod; production push proven end to end (owner-confirmed 2026-11-11) |
 | D1 | Executive Dashboard database readers and authorization | `feature/executive-dashboard-data` | High | Live on Dev and Prod (owner-confirmed 2026-11-11) |
 | D1b | Executive Dashboard extra database readers | `feature/executive-dashboard-extras-data` | High | Live on Dev and Prod (owner-confirmed 2026-11-11) |
-| D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | In progress |
-| O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Not started |
+| D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Live on Dev and Prod (owner-confirmed 2026-11-12) |
+| O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Done; real Prod export and matching 31-table proof recorded (owner-confirmed 2026-11-12) |
 
 Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. I1
 started after the N2 notification UI gate and is now live. Every later batch
