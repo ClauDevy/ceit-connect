@@ -116,6 +116,7 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
       out_read_at: readAt,
       out_created_at: createdAt,
     } = candidate;
+    if (typeof type === "string" && !isNotificationType(type)) continue;
     if (
       !isUuid(id) ||
       ids.has(id) ||
