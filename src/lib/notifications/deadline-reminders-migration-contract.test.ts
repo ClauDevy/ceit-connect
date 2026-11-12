@@ -170,6 +170,24 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     }
     expect(catalogPaste).toContain("records exactly **25** result rows");
     expect(catalogPaste).toContain("TEST RESULTS 25/25 PASS");
+    for (const type of [
+      "mention",
+      "heads_up",
+      "assignment",
+      "status_change",
+      "unlock",
+      "backup_request",
+      "volunteer_offer",
+      "leave_requested",
+      "leave_cancelled",
+      "leave_approved",
+      "leave_denied",
+      "task_due_soon",
+      "live_operation_prep",
+    ]) {
+      expect(catalogPaste).toContain(`('${type}')`);
+    }
+    expect(catalogPaste).toContain("and 26=(select count(*)");
     expect(behaviorPaste).toContain("records exactly **26** result rows");
     expect(behaviorPaste).toContain("TEST RESULTS 26/26 PASS");
     expect(behaviorPaste).toContain("bootstrap creates no notifications");
@@ -179,7 +197,6 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     expect(retryPaste).not.toMatch(/create\s+(?:temporary|temp)\s+table/i);
     expect(retryPaste).toContain("TEST RESULTS 12/12 PASS");
     expect(retryPaste).toContain("one failure does not block the later healthy occurrence");
-    expect(retryPaste).toContain("successful retry creates notification and clears retry state");
   });
 
   it("documents exact replacements and owner-only cron lifecycle", () => {
@@ -197,7 +214,7 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
       "create table ceit_connect_private.deadline_reminder_retry_state",
     );
     expect(retryMigration).toContain(
-      "primary key (task_id, reminder_kind, target_at)",
+      "primary key (task_id, reminder_kind, target_at, user_id)",
     );
     expect(retryMigration).toContain("failure_count between 1 and 5");
     const retryTable = retryMigration.slice(
@@ -208,7 +225,8 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
         "alter table ceit_connect_private.deadline_reminder_retry_state owner",
       ),
     );
-    expect(retryTable).not.toMatch(/user_id|recipient_id|task_title|description/);
+    expect(retryTable).toContain("user_id uuid not null");
+    expect(retryTable).not.toMatch(/task_title|description/);
 
     const runner = retryMigration.slice(
       retryMigration.indexOf(
@@ -223,12 +241,15 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     );
     expect(runner).toContain("retry_row.failure_count >= 5");
     expect(runner).toContain("retry_row.next_retry_at > p_as_of");
+    expect(runner).toContain("retry_row.user_id = proposed.user_id");
     expect(runner).toContain("v_candidate_sqlstate := null;");
     expect(runner).toContain("get stacked diagnostics v_candidate_sqlstate = returned_sqlstate;");
     expect(runner.indexOf("if v_candidate_sqlstate is null then")).toBeGreaterThan(
       runner.indexOf("exception when others then"),
     );
-    expect(runner).toContain("on conflict (task_id, reminder_kind, target_at) do update");
+    expect(runner).toContain(
+      "on conflict (task_id, reminder_kind, target_at, user_id) do update",
+    );
     for (const delay of ["15 minutes", "30 minutes", "1 hour", "2 hours"]) {
       expect(runner).toContain(`interval '${delay}'`);
     }
@@ -258,6 +279,12 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     expect(publicRunner).toContain(
       "pg_catalog.set_config('ceit_connect.deadline_reminder_live_clock', 'on', true)",
     );
+    expect(publicRunner).toContain("v_previous_live_clock");
+    expect(publicRunner).toContain("if session_user <> 'postgres' then");
+    expect(publicRunner).toContain("exception when others then");
+    expect(
+      publicRunner.match(/reset ceit_connect\.deadline_reminder_live_clock/g),
+    ).toHaveLength(2);
     expect(publicRunner).toContain("pg_catalog.clock_timestamp()");
     expect(publicRunner).toContain(
       "revoke all on function public.run_deadline_reminders()\nfrom public, anon, authenticated, service_role",
@@ -278,6 +305,12 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     expect(retryMigration).toContain("limit 500\n    for update skip locked");
     expect(retryMigration).not.toMatch(/grant execute[^;]*service_role/i);
     expect(step).toContain("20261117120000_deadline_reminder_retry_backoff.sql");
+    expect(retryPaste).toContain(
+      "repeated failures cap one recipient while a new assignee still receives",
+    );
+    expect(retryPaste).toContain(
+      "conflict update increments failure and lengthens backoff",
+    );
     expect(step).toContain("Never approve a\nfailed scheduled rollout from a later manual run.");
   });
 });

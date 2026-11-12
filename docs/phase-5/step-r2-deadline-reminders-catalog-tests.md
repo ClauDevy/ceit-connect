@@ -44,10 +44,28 @@ reset role;
 
 select pg_temp.r2_catalog_record('01 both constraints contain all thirteen types',
   2=(select count(*) from pg_catalog.pg_constraint c
-    where c.conname in ('notifications_type_check','push_delivery_queue_notification_type_check')
+    where ((c.conrelid='public.notifications'::regclass
+            and c.conname='notifications_type_check')
+        or (c.conrelid='ceit_connect_private.push_delivery_queue'::regclass
+            and c.conname='push_delivery_queue_notification_type_check'))
+      and c.convalidated)
+  and 26=(select count(*)
+    from pg_catalog.pg_constraint c
+    cross join (values
+      ('mention'),('heads_up'),('assignment'),('status_change'),('unlock'),
+      ('backup_request'),('volunteer_offer'),('leave_requested'),
+      ('leave_cancelled'),('leave_approved'),('leave_denied'),
+      ('task_due_soon'),('live_operation_prep')
+    ) as expected(type_name)
+    where ((c.conrelid='public.notifications'::regclass
+            and c.conname='notifications_type_check')
+        or (c.conrelid='ceit_connect_private.push_delivery_queue'::regclass
+            and c.conname='push_delivery_queue_notification_type_check'))
       and c.convalidated
-      and pg_catalog.strpos(pg_catalog.pg_get_constraintdef(c.oid),'''task_due_soon''')>0
-      and pg_catalog.strpos(pg_catalog.pg_get_constraintdef(c.oid),'''live_operation_prep''')>0));
+      and pg_catalog.strpos(
+        pg_catalog.pg_get_constraintdef(c.oid),
+        pg_catalog.quote_literal(expected.type_name)
+      )>0));
 
 select pg_temp.r2_catalog_record('02 reminder ledger has exact primary key and no foreign keys',
   (select pg_catalog.pg_get_constraintdef(c.oid)=

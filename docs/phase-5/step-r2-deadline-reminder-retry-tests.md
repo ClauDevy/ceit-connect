@@ -25,7 +25,12 @@ select pg_temp.r2_retry_record('01 retry table is postgres-owned zero-policy RLS
    from pg_catalog.pg_class c
    where c.oid='ceit_connect_private.deadline_reminder_retry_state'::regclass)
   and 0=(select count(*) from pg_catalog.pg_policy
-         where polrelid='ceit_connect_private.deadline_reminder_retry_state'::regclass));
+         where polrelid='ceit_connect_private.deadline_reminder_retry_state'::regclass)
+  and (select pg_catalog.pg_get_constraintdef(c.oid)=
+        'PRIMARY KEY (task_id, reminder_kind, target_at, user_id)'
+       from pg_catalog.pg_constraint c
+       where c.conrelid='ceit_connect_private.deadline_reminder_retry_state'::regclass
+         and c.contype='p'));
 
 select pg_temp.r2_retry_record('02 application roles have no retry-table privilege',
   not has_table_privilege('anon','ceit_connect_private.deadline_reminder_retry_state','SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
@@ -42,7 +47,7 @@ select pg_temp.r2_retry_record('03 retry cleanup is hardened and ungranted',
   and not has_function_privilege('service_role','ceit_connect_private.purge_deadline_reminder_retry_state(timestamptz)','EXECUTE'));
 
 select pg_temp.r2_retry_record('04 latest worker filters retry state before the cap',
-  (select pg_get_functiondef(p.oid) like '%deadline_reminder_retry_state as retry_row%retry_row.next_retry_at > p_as_of%limit public.deadline_reminder_batch_size()%'
+  (select pg_get_functiondef(p.oid) like '%retry_row.user_id = proposed.user_id%retry_row.next_retry_at > p_as_of%limit public.deadline_reminder_batch_size()%'
    from pg_catalog.pg_proc p
    where p.oid='ceit_connect_private.run_deadline_reminders_at(timestamptz)'::regprocedure));
 
@@ -56,13 +61,15 @@ insert into auth.users(
   'authenticated','authenticated',fixture.email,'',now(),'{}','{}',now(),now()
 from (values
  ('74000000-0000-4000-8000-000000000001'::uuid,'r2-retry-admin@test.local'),
- ('74000000-0000-4000-8000-000000000002'::uuid,'r2-retry-member@test.local')
+ ('74000000-0000-4000-8000-000000000002'::uuid,'r2-retry-member@test.local'),
+ ('74000000-0000-4000-8000-000000000003'::uuid,'r2-retry-new-member@test.local')
 ) fixture(id,email);
 
 select set_config('ceit_connect.officer_writer','invite_new_officer',true);
 insert into public.users(id,email,full_name,role,committee_id,is_active) values
 ('74000000-0000-4000-8000-000000000001','r2-retry-admin@test.local','R2 Retry Admin','Admin',null,true),
-('74000000-0000-4000-8000-000000000002','r2-retry-member@test.local','R2 Retry Member','Member','7400c000-0000-4000-8000-000000000001',true);
+('74000000-0000-4000-8000-000000000002','r2-retry-member@test.local','R2 Retry Member','Member','7400c000-0000-4000-8000-000000000001',true),
+('74000000-0000-4000-8000-000000000003','r2-retry-new-member@test.local','R2 Retry New Member','Member','7400c000-0000-4000-8000-000000000001',true);
 select set_config('ceit_connect.officer_writer','',true);
 
 insert into public.events(id,name,start_date,end_date,status,created_by) values
@@ -83,17 +90,14 @@ select set_config('ceit_connect.task_assignee_writer','',true);
 select set_config('ceit_connect.task_access_writer','',true);
 delete from public.notifications where task_id::text like '74003%';
 
-insert into ceit_connect_private.deadline_reminder_retry_state(
-  task_id,reminder_kind,target_at,failure_count,next_retry_at,last_failed_at,last_error_sqlstate
-) values (
-  '74003000-0000-4000-8000-000000000003','task_due_soon','2026-11-20 12:02+00',5,
-  '2026-11-20 12:02+00','2026-11-20 00:00+00','P0001'
-);
-
 create function pg_temp.r2_force_notification_failure()
 returns trigger language plpgsql set search_path=''
 as $$ begin
-  if new.task_id='74003000-0000-4000-8000-000000000001'::uuid
+  if new.task_id in (
+       '74003000-0000-4000-8000-000000000001'::uuid,
+       '74003000-0000-4000-8000-000000000003'::uuid
+     )
+     and new.user_id='74000000-0000-4000-8000-000000000002'::uuid
      and new.type='task_due_soon' then
     raise exception using errcode='P0001',message='Forced R2 retry test failure.';
   end if;
@@ -129,28 +133,71 @@ select pg_temp.r2_retry_record('08 occurrence is skipped before its retry instan
   not exists(select 1 from public.notifications
              where task_id='74003000-0000-4000-8000-000000000001')
   and exists(select 1 from ceit_connect_private.deadline_reminder_retry_state
-             where task_id='74003000-0000-4000-8000-000000000001' and failure_count=1));
+             where task_id='74003000-0000-4000-8000-000000000001'
+               and user_id='74000000-0000-4000-8000-000000000002'
+               and failure_count=1));
 
-drop trigger r2_force_notification_failure on public.notifications;
 select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 00:15+00');
-select pg_temp.r2_retry_record('09 successful retry creates notification and clears retry state',
+select pg_temp.r2_retry_record('09 conflict update increments failure and lengthens backoff',
+  exists(select 1 from ceit_connect_private.deadline_reminder_retry_state
+         where task_id='74003000-0000-4000-8000-000000000001'
+           and user_id='74000000-0000-4000-8000-000000000002'
+           and failure_count=2
+           and last_failed_at='2026-11-20 00:15+00'
+           and next_retry_at='2026-11-20 00:45+00')
+  and exists(select 1 from ceit_connect_private.deadline_reminder_retry_state
+         where task_id='74003000-0000-4000-8000-000000000003'
+           and user_id='74000000-0000-4000-8000-000000000002'
+           and failure_count=2
+           and next_retry_at='2026-11-20 00:45+00'));
+
+create or replace function pg_temp.r2_force_notification_failure()
+returns trigger language plpgsql set search_path=''
+as $$ begin
+  if new.task_id='74003000-0000-4000-8000-000000000003'::uuid
+     and new.user_id='74000000-0000-4000-8000-000000000002'::uuid
+     and new.type='task_due_soon' then
+    raise exception using errcode='P0001',message='Forced R2 retry test failure.';
+  end if;
+  return new;
+end $$;
+
+select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 00:45+00');
+select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 01:45+00');
+select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 03:45+00');
+select set_config('ceit_connect.task_assignee_writer','edit_active_event_task',true);
+update public.tasks
+set assist_assignees=array['74000000-0000-4000-8000-000000000003'::uuid]
+where id='74003000-0000-4000-8000-000000000003';
+select set_config('ceit_connect.task_assignee_writer','',true);
+select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 03:45+00');
+select pg_temp.r2_retry_record('10 repeated failures cap one recipient while a new assignee still receives',
   exists(select 1 from public.notifications
          where task_id='74003000-0000-4000-8000-000000000001'
+           and user_id='74000000-0000-4000-8000-000000000002'
            and type='task_due_soon')
   and not exists(select 1 from ceit_connect_private.deadline_reminder_retry_state
-                 where task_id='74003000-0000-4000-8000-000000000001'));
+                 where task_id='74003000-0000-4000-8000-000000000001')
+  and exists(select 1 from ceit_connect_private.deadline_reminder_retry_state
+             where task_id='74003000-0000-4000-8000-000000000003'
+               and user_id='74000000-0000-4000-8000-000000000002'
+               and failure_count=5
+               and next_retry_at='2026-11-20 12:02+00')
+  and not exists(select 1 from public.notifications
+                 where task_id='74003000-0000-4000-8000-000000000003'
+                   and user_id='74000000-0000-4000-8000-000000000002')
+  and exists(select 1 from public.notifications
+             where task_id='74003000-0000-4000-8000-000000000003'
+               and user_id='74000000-0000-4000-8000-000000000003'
+               and type='task_due_soon'));
 
-select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 00:15+00');
-select pg_temp.r2_retry_record('10 five-failure occurrence no longer consumes a batch slot',
-  not exists(select 1 from public.notifications
-             where task_id='74003000-0000-4000-8000-000000000003')
-  and not exists(select 1 from ceit_connect_private.task_deadline_reminder_ledger
-                 where task_id='74003000-0000-4000-8000-000000000003'));
+drop trigger r2_force_notification_failure on public.notifications;
 
 insert into ceit_connect_private.deadline_reminder_retry_state(
-  task_id,reminder_kind,target_at,failure_count,next_retry_at,last_failed_at,last_error_sqlstate
+  task_id,reminder_kind,target_at,user_id,failure_count,next_retry_at,last_failed_at,last_error_sqlstate
 ) values (
-  '74003fff-0000-4000-8000-000000000001','task_due_soon','2026-09-01 00:00+00',1,
+  '74003fff-0000-4000-8000-000000000001','task_due_soon','2026-09-01 00:00+00',
+  '74000000-0000-4000-8000-000000000002',1,
   '2026-09-01 00:00+00','2026-08-31 23:45+00','P0001'
 );
 select set_config('r2.retry_rows_cleaned',
@@ -162,7 +209,11 @@ select pg_temp.r2_retry_record('11 old retry state is cleaned by the bounded hel
 
 select pg_temp.r2_retry_record('12 public runner shape and service-role denial are unchanged',
   pg_get_function_result('public.run_deadline_reminders()'::regprocedure) like 'TABLE(out_occurrences_handled integer, out_notifications_created integer, out_skipped_concurrent boolean, out_ledger_rows_cleaned integer, out_run_history_rows_cleaned integer, out_status text)'
-  and not has_function_privilege('service_role','public.run_deadline_reminders()','EXECUTE'));
+  and not has_function_privilege('service_role','public.run_deadline_reminders()','EXECUTE')
+  and (select pg_get_functiondef(p.oid) like
+        '%v_previous_live_clock%exception when others then%reset ceit_connect.deadline_reminder_live_clock%'
+       from pg_catalog.pg_proc p
+       where p.oid='public.run_deadline_reminders()'::regprocedure));
 
 do $$
 declare v_total integer; v_failed integer; v_failed_labels text;
