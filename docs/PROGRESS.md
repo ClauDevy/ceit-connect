@@ -22,6 +22,8 @@ The approved Phase 5 batch map, decisions, gate checks, and release checklist ar
 
 - **Phase 5 R1 request notifications are implemented and locally verified; Dev/Prod application and SQL verification remain owner steps.** New migration `20261115120000_request_notifications.sql` is later than the documented Dev/Prod tip `20261114120000_executive_dashboard_extras_data.sql`. It adds five request types across constraints, private generation, bell copy, fixed generic push copy, catalog/tests, and docs without a service-role exception. Offer submission notifies active eligible approvers and real-access primary assignees; leave submit/cancel notifies active eligible approvers; approval/denial notifies the requester. Actor, inactive, failed/repeated/no-op, withdrawal, backup-cancel, stale-cleanup, system-closure, and other-approver cases stay silent. Same-kind trigger-name ordering lets `leave_approved` survive while N1's marker still suppresses the approval's assignee-removal task notification. The self-contained Dev pastes expect 25 catalog and 38 behavior result lines. All 1,323 tests across 128 files pass; lint has zero errors and the unrelated existing `mascot.tsx` warning; whitespace passes. The direct TypeScript check has no R1 error and remains blocked only by the known missing Next-generated `PageProps`/`LayoutProps` globals while `.next` is absent; no build was run.
 
+- **Phase 5 R2 base migration is applied and SQL-verified on Dev; its retry follow-up and Prod rollout remain pending.** Migration `20261116120000_deadline_reminders.sql` supplies the two actorless reminder types, private per-person ledger, silent bootstrap, active-assignee/current-state rechecks, earliest-first 100-occurrence runner, overlap guard, cleanup, and generic push copy. The owner confirmed the rollback-safe Dev pastes at 25/25 catalog and 26/26 behavior. New follow-up `20261117120000_deadline_reminder_retry_backoff.sql` keeps migration 78 immutable while adding content-free, recipient-scoped five-attempt 15/30/60/120-minute backoff, independent per-recipient exception boundaries so healthy recipients survive another person's insert failure, preserved eligibility for people assigned after another recipient is exhausted, safe production-clock marker restoration, and a fresh final clock. The bell parser now skips unknown types while preserving raw-page pagination metadata. Prod still requires the compatible client deployment, migration 79 verification, then both migrations in order before the owner-created 15-minute cron job.
+
 - **Phase 5 D1, D1b, and D2 Executive Dashboard are live on Dev and Prod (owner-confirmed 2026-11-12).** D1 adds confidential-safe committee totals, a Level 2 summary, true per-member workloads, explicit no-bar counts, and database-enforced Admin/Co-Admin scope. D1b adds the scoped overview, attention, deadline, free-member, slipping-signal, and Admin-only push-adoption readers. D2 supplies the approved responsive UI without changing those database boundaries.
 
 - **Discord (X1) was cancelled by the owner on 2026-11-11 and will not be built.**
@@ -274,18 +276,37 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
   validator rejects empty or over-200-character titles. Current app writers
   enforce the bound, but the database-wide invariant remains absent.
 - Phase 5 completion gate: Phase 5 cannot be marked complete until N1, N2, I1,
-  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, and R1 have each completed review
+  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, and R2 have each completed review
   and rollout.
 - N3a database follow-up: the Dev-applied migration intentionally remains
   immutable. Its `notification_cleanup_batch_size()` value of 500 is coupled
   to the run-history `deleted_count` and `retention_deleted_count` constraints,
   which also hard-code 500. Any future batch-size change must use a new later
   migration that updates the function and both constraints together.
+- Date-only due dates are treated as 8:00 AM Manila on that day by priority, dashboard, leave rules and R2 reminders; end-of-day semantics would be a separate cross-cutting change.
+- R2 quiet hours are deferred; the scheduled reminder batch does not delay or
+  suppress delivery by local time.
+- Tolerant bell-parser compatibility release is implemented locally: it skips
+  unknown notification types instead of rejecting the page. Deploy it before
+  enabling R2 generation on Prod.
+- Task-writer cap follow-up: `claim_task` can add one primary to a zero-primary
+  task that already has 100 assists; add the same combined-assignee guard used
+  by the assignment and create/edit writers in a separately reviewed change.
 
 ## Open items
 
 - The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. N1, N2, the bell correction, I1, N3a, N3b, P1, D1, D1b, and D2 are live on Dev and Prod; O1 is done, with the real Prod export and matching 31-table proof recorded in `docs/BACKUP.md` (owner-confirmed 2026-11-12).
 - R1 is implemented locally; apply migration 77 on Dev first, run its 25/25 and 38/38 rollback-safe pastes, then repeat on Prod only after review.
+- R2 migration 78 is applied on Dev and its 25/25 and 26/26 rollback-safe
+  pastes passed. Migration 79 adds recipient-scoped bounded retry state,
+  per-recipient failure isolation, an exception-safe production clock marker,
+  and a fresh final production-clock check so expired targets cannot be sent
+  late; apply and
+  verify it on Dev. Before any Prod runner invocation or
+  cron activation, deploy the tolerant bell-parser compatibility release, wait
+  until Vercel is Ready, and use the normal browser/PWA refresh path for open
+  clients. Only then apply migrations 78 and 79 on Prod and create/verify the
+  documented owner-only 15-minute cron job.
 - The post-Phase-5 notification follow-up is the daily digest email. Its background sender follows the approved P1 secure-sender decision: the public anon key plus a separately hashed capability, with no service-role exception.
 - N3a rollout is complete except for the first scheduled Prod cleanup-run check, which is non-blocking for N3b.
 - Phase 5 idea: consider an automatic email queue for rate-limited invitations. Batch 8 deliberately uses sequential sends and explicit retry only.

@@ -1,6 +1,6 @@
 # Phase 5 migration-tied catalog
 
-This catalog currently contains **N1, N3a, P1a, D1/D1b, and R1 objects**. Historical Phase 4 and
+This catalog currently contains **N1, N3a, P1a, D1/D1b, R1, and R2 objects**. Historical Phase 4 and
 Phase 4B counts remain unchanged; do not invent a new global total before the
 owner supplies live Dev catalog output.
 
@@ -276,4 +276,57 @@ trigger, or foreign key and replaces no D1 or other existing function.
 R1 adds no table, index, policy, foreign key, cleanup branch, dashboard reader,
 or service-role exception. N3a remains type-agnostic, and D1b reads task state
 rather than notification rows.
+
+## `20261116120000_deadline_reminders.sql`
+
+- Both notification constraints and the private insert-helper allowlist contain
+  thirteen types. `claim_push_deliveries(integer)` retains its exact R1
+  boundary and adds only the two fixed generic R2 bodies.
+- `ceit_connect_private.task_deadline_reminder_ledger` is a postgres-owned,
+  zero-policy RLS table keyed by `(task_id,reminder_kind,target_at,user_id)`;
+  it has no foreign key and no application-role privileges.
+- `ceit_connect_private.deadline_reminder_runs` is an aggregate-only,
+  postgres-owned, zero-policy RLS table with no application-role privileges.
+- Private ungranted functions are
+  `bootstrap_deadline_reminders_at(timestamptz)`,
+  `emit_deadline_reminder_occurrence(uuid,text,timestamptz,timestamptz)`,
+  `purge_deadline_reminder_ledger(timestamptz)`,
+  `purge_deadline_reminder_runs(timestamptz,uuid)`, and
+  `run_deadline_reminders_at(timestamptz)`. All are postgres-owned volatile
+  fixed-empty-path definers. Bootstrap alone accepts a `session_user` that is
+  a member of postgres so the Supabase CLI temporary login role can run the
+  migration; its exact membership mode is unverified, and it remains ungranted
+  to browser roles, service role, and authenticator. The emitter, purge helpers,
+  and clock-injected runner require a strict postgres session.
+- `public.run_deadline_reminders()` is the equally ungranted real-clock
+  postgres-session wrapper. It returns one six-field safe aggregate row. The
+  immutable ungranted constants fix the occurrence cap at 100 and retention at
+  30 days.
+- R2 adds four supporting indexes and no policy, FK, browser/service-role
+  grant, dashboard reader, or cron catalog row.
+
+## `20261117120000_deadline_reminder_retry_backoff.sql`
+
+- Adds the postgres-owned, zero-policy
+  `ceit_connect_private.deadline_reminder_retry_state` table keyed by exact
+  `(task_id,reminder_kind,target_at,user_id)`. It stores only the private
+  recipient key, bounded failure count, retry/failed instants, and SQLSTATE—no
+  task title, description, or other content.
+- Replaces `ceit_connect_private.run_deadline_reminders_at(timestamptz)` and
+  adds the ungranted five-argument recipient emitter overload. Backed-off or
+  exhausted recipients are filtered before the earliest-first cap and again
+  at emission, so a newly assigned unledgered person remains eligible. The
+  cap remains 100 task/kind/target occurrences; inside each occurrence, every
+  recipient has an independent exception boundary. A caught failure is
+  persisted only for that recipient, healthy recipients commit immediately,
+  and success deletes only retry state whose recipient now has the original
+  sent-ledger key.
+- Retries occur after 15, 30, 60, and 120 minutes, stop after five failures or
+  at the target, and therefore cannot monopolize every later batch.
+- Adds a strict postgres-session-only, application-role-revoked cleanup helper
+  that removes at most 500 retry rows older than 30 days per run. No policy,
+  FK, service-role exception, public runner shape, or cron row changes. The
+  replaced public runner enables the fresh production clock only around its
+  private call and restores the prior transaction-local value on success or
+  error.
 

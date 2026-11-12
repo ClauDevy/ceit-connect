@@ -219,6 +219,9 @@ Branch `feature/notification-housekeeping-ui`, after N3a is merged and live:
   ownership, `read_at`, age, and stable ID rather than by notification type.
   Read request notifications therefore age out under the same 60-day bound,
   while unread request notifications remain protected.
+- R2's two reminder types follow the same type-agnostic rule. Clearing or aging
+  out a read reminder cascades its push work but deliberately leaves R2's
+  separate dedupe ledger, so cleanup cannot cause a reminder to be recreated.
 - Unread rows are retained forever and may grow without bound; measurements
   decide whether a later, separately approved policy is needed.
 - Cleanup drains a large read backlog over multiple daily runs by design.

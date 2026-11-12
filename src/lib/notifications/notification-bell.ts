@@ -15,6 +15,8 @@ export const NOTIFICATION_TYPES = [
   "leave_cancelled",
   "leave_approved",
   "leave_denied",
+  "task_due_soon",
+  "live_operation_prep",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -38,6 +40,14 @@ export type NotificationPage = {
   hasMore: boolean;
   cursor: NotificationCursor | null;
 };
+
+type ParsedPageMetadata = {
+  items: NotificationRow[];
+  hasMore: boolean;
+  cursor: NotificationCursor | null;
+};
+
+const parsedPageMetadata = new WeakMap<NotificationRow[], ParsedPageMetadata>();
 
 export type NotificationListState = {
   rows: NotificationRow[];
@@ -104,7 +114,9 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
 
   const ids = new Set<string>();
   const rows: NotificationRow[] = [];
-  for (const candidate of value) {
+  const pageItems: NotificationRow[] = [];
+  let rawBoundary: NotificationCursor | null = null;
+  for (const [index, candidate] of value.entries()) {
     if (!isRecord(candidate)) return null;
     const {
       out_id: id,
@@ -114,10 +126,15 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
       out_read_at: readAt,
       out_created_at: createdAt,
     } = candidate;
+    if (!isUuid(id) || ids.has(id) || typeof type !== "string" || !isTimestamp(createdAt)) {
+      return null;
+    }
+    ids.add(id);
+    if (index < NOTIFICATION_PAGE_SIZE) {
+      rawBoundary = { createdAt, id };
+    }
+    if (!isNotificationType(type)) continue;
     if (
-      !isUuid(id) ||
-      ids.has(id) ||
-      !isNotificationType(type) ||
       (taskId !== null && !isUuid(taskId)) ||
       typeof taskTitle !== "string" ||
       taskTitle.length === 0 ||
@@ -127,15 +144,24 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
     ) {
       return null;
     }
-    ids.add(id);
-    rows.push({ id, type, taskId, taskTitle, readAt, createdAt });
+    const row = { id, type, taskId, taskTitle, readAt, createdAt };
+    rows.push(row);
+    if (index < NOTIFICATION_PAGE_SIZE) pageItems.push(row);
   }
+  parsedPageMetadata.set(rows, {
+    items: pageItems,
+    hasMore: value.length > NOTIFICATION_PAGE_SIZE,
+    cursor: rawBoundary,
+  });
   return rows;
 }
 
 export function normalizeNotificationPage(
   rows: readonly NotificationRow[],
 ): NotificationPage {
+  const metadata = parsedPageMetadata.get(rows as NotificationRow[]);
+  if (metadata) return metadata;
+
   const items = rows.slice(0, NOTIFICATION_PAGE_SIZE);
   const last = items.at(-1);
   return {
@@ -235,6 +261,10 @@ export function notificationSentence(row: NotificationRow) {
       return `Your leave request for ${row.taskTitle} was approved.`;
     case "leave_denied":
       return `Your leave request for ${row.taskTitle} was denied.`;
+    case "task_due_soon":
+      return `${row.taskTitle} is due soon.`;
+    case "live_operation_prep":
+      return `Prepare for ${row.taskTitle}. Call time is soon.`;
   }
 }
 

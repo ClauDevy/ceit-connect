@@ -67,6 +67,12 @@ The migration also widens, under their existing names,
 functions plus one AFTER trigger on each authoritative child table. It adds no
 table, column, index, policy, or foreign key.
 
+R2 later replaces the same two functions from this exact R1 baseline. It keeps
+every R1 trigger, recipient, actor-exclusion, error, grant, and fixed-copy rule,
+then appends only `task_due_soon` and `live_operation_prep` to the helper
+allowlist and push `CASE`. R1's migration and its historical 25/25 and 38/38
+pastes remain immutable.
+
 ## Trigger ordering and approval suppression
 
 PostgreSQL fires same-kind triggers for the same event in trigger-name order.
@@ -101,6 +107,9 @@ R1 Paste B proves both halves and proves the marker is consumed.
   automatically removed. Notification deletion still cascades queue work.
 - D1b continues to read pending offers and leave requests directly. R1 observes
   those rows and does not change their validity, counts, ordering, or fields.
+- R2 is independent of R1's trigger path: its scheduled reminders have no
+  actor, use their own exact-occurrence ledger, and do not alter any request
+  row or R1 notification.
 
 ## Verification
 
