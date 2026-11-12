@@ -40,6 +40,10 @@ insert into public.events(id,name,start_date,end_date,status,created_by) values
 ('81000000-0000-4000-8000-000000000101','J1 Active',current_date,current_date,'Active','81000000-0000-4000-8000-000000000011'),
 ('81000000-0000-4000-8000-000000000102','J1 Delete',current_date,current_date,'Draft','81000000-0000-4000-8000-000000000011');
 
+-- Tasks and comments both have guarded application-writer paths. This
+-- rollback-scoped postgres fixture window bypasses those triggers so the
+-- boundary fixtures can retain deterministic IDs, assignees, and timestamps.
+set local session_replication_role = replica;
 insert into public.tasks(
   id,event_id,committee_id,title,phase,status,priority,task_type,created_by,
   is_confidential,primary_assignees,assist_assignees,allowed_viewers,sort_order
@@ -49,11 +53,6 @@ insert into public.tasks(
 ('81000000-0000-4000-8000-000000000203','81000000-0000-4000-8000-000000000102','81000000-0000-4000-8000-000000000001','J1 Event Delete','Planning','To Do','Medium','Deliverable','81000000-0000-4000-8000-000000000011',false,'{}','{}','{}',1024);
 
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000011","role":"authenticated"}',true);
--- task_comments deliberately grants authenticated no direct INSERT, and its
--- guard derives/overwrites identity timestamps. Keep the authenticated JWT
--- context, but use this transaction-local postgres fixture window so the exact
--- IDs/timestamps needed for boundary tests remain deterministic.
-set local session_replication_role = replica;
 insert into public.task_comments(id,task_id,created_by,body,created_at)
 select ('81000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
        '81000000-0000-4000-8000-000000000201',
@@ -106,11 +105,11 @@ select pg_temp.j1_record('08 boundary 50 stays second page',
 select pg_temp.j1_record('09 boundary 51 starts third page',
   (select out_before_id='81000000-0000-4000-8000-000000000002' from public.get_task_comment_target_page_anchor(
     '81000000-0000-4000-8000-000000000201','81000000-0000-4000-8000-000000000001',25)));
+reset role;
 select pg_temp.j1_record('10 timestamp tie follows id descending',
   (select array_agg(id order by created_at desc,id desc) from public.task_comments
    where id in ('81000000-0000-4000-8000-000000000024','81000000-0000-4000-8000-000000000025'))
   =array['81000000-0000-4000-8000-000000000025','81000000-0000-4000-8000-000000000024']::uuid[]);
-reset role;
 
 select public.configure_push_sender_credential_hash(
   'current',8101,repeat('81',32),

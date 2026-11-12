@@ -816,7 +816,9 @@ function NotificationRows({
           target.pathname === window.location.pathname &&
           target.search === window.location.search
         ) {
+          const repeatsCurrentTarget = target.hash === window.location.hash;
           window.location.hash = target.hash;
+          if (repeatsCurrentTarget) window.dispatchEvent(new Event("hashchange"));
           return;
         }
         router.push(targetPath);

@@ -475,6 +475,7 @@ export function TaskComments({
   const highlightedRef = useRef<string | null>(null);
   const [hashReady, setHashReady] = useState(false);
   const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
+  const [targetActivation, setTargetActivation] = useState(0);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [mutationAction, setMutationAction] =
     useState<TaskCommentAction | null>(null);
@@ -496,7 +497,9 @@ export function TaskComments({
 
   useEffect(() => {
     const updateTarget = () => {
+      highlightedRef.current = null;
       setTargetCommentId(parseTaskCommentTargetHash(window.location.hash));
+      setTargetActivation((current) => current + 1);
       setHashReady(true);
     };
     updateTarget();
@@ -506,18 +509,21 @@ export function TaskComments({
 
   const handleUnavailable = useCallback(
     async (error: unknown) => {
-      queryClient.setQueryData(newestQueryKey, {
+      queryClient.setQueriesData<TaskCommentThreadCache>(
+        { queryKey: ["task-comments", taskId] },
+        {
         comments: [],
         hasMore: false,
         olderPagingStarted: false,
-      });
+        },
+      );
       setUnavailableError(getTaskCommentErrorMessage(error, "read"));
       setThreadError(null);
       setEditingComment(null);
       setDeleteTarget(null);
       await onRefreshTask();
     },
-    [newestQueryKey, onRefreshTask, queryClient],
+    [onRefreshTask, queryClient, taskId],
   );
 
   const newestQuery = useQuery({
@@ -573,7 +579,12 @@ export function TaskComments({
             p_page_size: TASK_COMMENT_PAGE_SIZE,
           })
           .abortSignal(signal);
-        if (anchorResult.error) throw anchorResult.error;
+        if (anchorResult.error) {
+          if (isTaskCommentUnavailableError(anchorResult.error)) {
+            await handleUnavailable(anchorResult.error);
+          }
+          throw anchorResult.error;
+        }
         if (
           !Array.isArray(anchorResult.data) ||
           anchorResult.data.length !== 1 ||
@@ -590,7 +601,12 @@ export function TaskComments({
             p_before_id: anchor.out_before_id,
           })
           .abortSignal(signal);
-        if (pageResult.error) throw pageResult.error;
+        if (pageResult.error) {
+          if (isTaskCommentUnavailableError(pageResult.error)) {
+            await handleUnavailable(pageResult.error);
+          }
+          throw pageResult.error;
+        }
         if (
           !Array.isArray(pageResult.data) ||
           !pageResult.data.every(isTaskComment)
@@ -641,7 +657,7 @@ export function TaskComments({
     highlightedRef.current = targetCommentId;
     target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" });
     target.focus({ preventScroll: true });
-  }, [reducedMotion, targetCommentId, targetQuery.data]);
+  }, [reducedMotion, targetActivation, targetCommentId, targetQuery.data]);
 
   function backToNewest() {
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
@@ -651,7 +667,8 @@ export function TaskComments({
 
   const unavailable =
     unavailableError !== null ||
-    (targetCommentId === null && isTaskCommentUnavailableError(newestQuery.error));
+    (targetCommentId === null && isTaskCommentUnavailableError(newestQuery.error)) ||
+    (targetCommentId !== null && isTaskCommentUnavailableError(targetQuery.error));
   const comments = unavailable ? [] : (activeQuery.data?.comments ?? []);
   const hasMore = unavailable ? false : (activeQuery.data?.hasMore ?? false);
   const newestError = targetCommentId === null && newestQuery.error
@@ -669,6 +686,7 @@ export function TaskComments({
   async function runMutation(
     action: Exclude<TaskCommentAction, "read" | "candidates">,
     mutation: () => Promise<void>,
+    refreshSaved: () => Promise<void> = refreshAfterMutation,
   ) {
     if (mutationAction) return false;
     setMutationAction(action);
@@ -694,7 +712,7 @@ export function TaskComments({
       }
     } finally {
       try {
-        if (saved) await refreshAfterMutation();
+        if (saved) await refreshSaved();
       } finally {
         setMutationAction(null);
       }
@@ -707,22 +725,29 @@ export function TaskComments({
     isHeadsUp: boolean;
     mentionedUserIds: string[];
   }) {
-    return runMutation("add", async () => {
-      const { data, error } = await supabase.rpc("add_task_comment", {
-        p_task_id: taskId,
-        p_body: input.body,
-        p_is_heads_up: input.isHeadsUp,
-        p_mentioned_user_ids: input.mentionedUserIds,
-      });
-      if (error) throw error;
-      if (
-        !Array.isArray(data) ||
-        data.length !== 1 ||
-        !isAddTaskCommentResult(data[0])
-      ) {
-        throw new Error("The comment writer returned an invalid response.");
-      }
-    });
+    return runMutation(
+      "add",
+      async () => {
+        const { data, error } = await supabase.rpc("add_task_comment", {
+          p_task_id: taskId,
+          p_body: input.body,
+          p_is_heads_up: input.isHeadsUp,
+          p_mentioned_user_ids: input.mentionedUserIds,
+        });
+        if (error) throw error;
+        if (
+          !Array.isArray(data) ||
+          data.length !== 1 ||
+          !isAddTaskCommentResult(data[0])
+        ) {
+          throw new Error("The comment writer returned an invalid response.");
+        }
+      },
+      async () => {
+        backToNewest();
+        await Promise.all([newestQuery.refetch(), onRefreshTask()]);
+      },
+    );
   }
 
   async function editComment(
