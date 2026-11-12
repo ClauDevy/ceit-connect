@@ -25,7 +25,8 @@ from (values
   ('81000000-0000-4000-8000-000000000011'::uuid,'j1-admin@test.local'),
   ('81000000-0000-4000-8000-000000000012'::uuid,'j1-real@test.local'),
   ('81000000-0000-4000-8000-000000000013'::uuid,'j1-masked@test.local'),
-  ('81000000-0000-4000-8000-000000000014'::uuid,'j1-inactive@test.local')
+  ('81000000-0000-4000-8000-000000000014'::uuid,'j1-inactive@test.local'),
+  ('81000000-0000-4000-8000-000000000015'::uuid,'j1-coadmin@test.local')
 ) fixture(id,email);
 
 select set_config('ceit_connect.officer_writer','invite_new_officer',true);
@@ -33,7 +34,8 @@ insert into public.users(id,email,full_name,role,committee_id,is_active) values
 ('81000000-0000-4000-8000-000000000011','j1-admin@test.local','J1 Admin','Admin',null,true),
 ('81000000-0000-4000-8000-000000000012','j1-real@test.local','J1 Real','Member','81000000-0000-4000-8000-000000000001',true),
 ('81000000-0000-4000-8000-000000000013','j1-masked@test.local','J1 Masked','Member','81000000-0000-4000-8000-000000000001',true),
-('81000000-0000-4000-8000-000000000014','j1-inactive@test.local','J1 Inactive','Member','81000000-0000-4000-8000-000000000001',true);
+('81000000-0000-4000-8000-000000000014','j1-inactive@test.local','J1 Inactive','Member','81000000-0000-4000-8000-000000000001',true),
+('81000000-0000-4000-8000-000000000015','j1-coadmin@test.local','J1 Co-Admin','Co-Admin','81000000-0000-4000-8000-000000000001',true);
 select set_config('ceit_connect.officer_writer','',true);
 
 insert into public.events(id,name,start_date,end_date,status,created_by) values
@@ -206,7 +208,7 @@ select public.register_push_subscription(
 reset role;
 insert into public.notifications(id,user_id,type,task_id) values
 ('81000000-0000-4000-8000-000000000304','81000000-0000-4000-8000-000000000014','assignment','81000000-0000-4000-8000-000000000202');
-select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000011","role":"authenticated"}',true);
+select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000015","role":"authenticated"}',true);
 set local role authenticated;
 select public.deactivate_committee_member('81000000-0000-4000-8000-000000000014');
 reset role;
