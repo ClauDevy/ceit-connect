@@ -304,6 +304,18 @@ select public.configure_push_sender_credential_hash(
   ),'hex')
 );
 select set_config('request.headers','{"x-ceit-push-capability":"r1-test-capability"}',true);
+-- This paste runs against a shared Dev queue. Keep earlier pending deliveries
+-- out of the bounded claim; the enclosing rollback restores them unchanged.
+update ceit_connect_private.push_delivery_queue as queue
+set next_attempt_at=pg_catalog.clock_timestamp()+interval '1 hour'
+where queue.state='pending'
+  and queue.notification_id not in (
+    '72006000-0000-4000-8000-000000000001'::uuid,
+    '72006000-0000-4000-8000-000000000002'::uuid,
+    '72006000-0000-4000-8000-000000000003'::uuid,
+    '72006000-0000-4000-8000-000000000004'::uuid,
+    '72006000-0000-4000-8000-000000000005'::uuid
+  );
 create table r1_push_claim as select * from public.claim_push_deliveries(100);
 select pg_temp.r1_record('32 push claims all five R1 types',not exists(
   select expected.type_name from (values('volunteer_offer'),('leave_requested'),('leave_cancelled'),('leave_approved'),('leave_denied')) expected(type_name)
