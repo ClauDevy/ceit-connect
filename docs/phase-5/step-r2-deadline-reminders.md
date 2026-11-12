@@ -66,9 +66,12 @@ RLS-enabled with zero policies, has no foreign key, and grants no access to
 
 The occurrence emitter rechecks the current Active parent, non-Completed task,
 exact target, time window, task type, current assignment arrays, and active
-profiles. It inserts previously missing ledger claims and their notification
-rows in one data-modifying statement and transaction. A failed notification
-insert therefore cannot commit a claim by itself.
+profiles. The real-clock public runner also reads a fresh database clock at
+that final recheck, so a target that expires during a run cannot create a late
+ledger claim or notification; the private test worker continues to use its
+injected clock. It inserts previously missing ledger claims and their
+notification rows in one data-modifying statement and transaction. A failed
+notification insert therefore cannot commit a claim by itself.
 
 - Re-running the same task/kind/target/person sends nothing.
 - Moving `due_date` or `call_time` creates a new target key and may send once
@@ -128,7 +131,13 @@ run-history rows cleaned, and one fixed safe status (`Completed.`,
 `Completed with failures.`, or
 `Skipped because another reminder run is active.`). Per-occurrence failures
 are contained so one malformed/racing row does not prevent later candidates or
-retention; run history exposes no task/person/content value.
+retention. Migration `20261117120000_deadline_reminder_retry_backoff.sql`
+persists content-free occurrence retry state outside the caught exception,
+backs failures off for 15, 30, 60, then 120 minutes, and stops selecting an
+occurrence after five failed attempts or its target, whichever comes first.
+Successful retry deletes that state; failed notifications never receive a
+ledger row. Retry rows older than the same 30-day retention window are cleaned
+500 at a time. Run history exposes no task/person/content value.
 
 Prod runs every 15 minutes: 4 invocations/hour, 96/day, or about 2,880 in a
 30-day month. Each scans indexed near-term targets, handles at most 100
@@ -222,8 +231,9 @@ Once that protection is verified, use this order:
    until that deployment is **Ready**.
 2. Use the verified update mechanism for browser tabs and installed apps, and
    confirm clients run the compatible bell parser.
-3. Only then push `20261116120000_deadline_reminders.sql` through the owner's
-   normal Prod migration process and confirm both Dev pastes have passed.
+3. Only then push `20261116120000_deadline_reminders.sql` and
+   `20261117120000_deadline_reminder_retry_backoff.sql` through the owner's
+   normal Prod migration process and confirm the R2 Dev pastes have passed.
 4. Create `ceit-connect-deadline-reminders` last with the owner-run paste below.
 
 The migration deliberately never creates or changes a `cron.job` row. With no
@@ -283,7 +293,29 @@ where job_row.jobname = 'ceit-connect-deadline-reminders'
 order by detail.start_time desc
 limit 5;
 
+with latest_cron as materialized (
+  select detail.runid,
+         detail.start_time,
+         detail.end_time,
+         detail.status as cron_status,
+         detail.return_message
+  from cron.job as job_row
+  join cron.job_run_details as detail on detail.jobid = job_row.jobid
+  where job_row.jobname = 'ceit-connect-deadline-reminders'
+  order by detail.start_time desc
+  limit 1
+), matching_runs as materialized (
+  select run_row.*
+  from ceit_connect_private.deadline_reminder_runs as run_row
+  cross join latest_cron
+  where run_row.started_at >= latest_cron.start_time
+    and run_row.finished_at is not null
+    and latest_cron.end_time is not null
+    and run_row.finished_at <= latest_cron.end_time
+)
 select
+  latest_cron.runid as cron_run_id,
+  latest_cron.cron_status,
   run_row.id,
   run_row.started_at,
   run_row.finished_at,
@@ -299,14 +331,17 @@ select
   run_row.cleanup_error_message,
   run_row.run_history_error_sqlstate,
   run_row.run_history_error_message
-from ceit_connect_private.deadline_reminder_runs as run_row
-order by run_row.started_at desc, run_row.id desc
-limit 1;
+from matching_runs as run_row
+cross join latest_cron
+where (select count(*) from matching_runs) = 1;
 ```
 
-Accept the rollout only when the latest private run row has
-`status = 'completed'`. Any other status requires investigation before the
-rollout is accepted, even when the matching cron detail says `succeeded`.
+Accept the rollout only when this correlated query returns exactly one row and
+that row has `cron_status = 'succeeded'` and private `status = 'completed'`.
+Zero rows means no private run matched that cron execution or the cron run has
+not finished; more than one candidate is deliberately collapsed to zero and
+means overlapping/manual activity made verification ambiguous. Never approve a
+failed scheduled rollout from a later manual run.
 
 If the owner must remove the schedule, run this separate paste. It is
 idempotent and does not delete reminder data:
@@ -338,6 +373,7 @@ where jobname = 'ceit-connect-deadline-reminders';
 
 - Paste A: `step-r2-deadline-reminders-catalog-tests.md` — **25/25**.
 - Paste B: `step-r2-deadline-reminders-behavior-tests.md` — **26/26**.
+- Retry follow-up: `step-r2-deadline-reminder-retry-tests.md` — **12/12**.
 - Each is one Dev-only rollback paste with its own `auth.users` rows, explicit
   impersonation, **Run without RLS**, no temporary table, controlled time where
   behavior depends on a window, and one intentional final exception.
@@ -345,7 +381,7 @@ where jobname = 'ceit-connect-deadline-reminders';
   `npm.cmd run lint`, and `git diff --check`. No build or Supabase command is
   part of R2 implementation.
 
-Created or changed: the new migration and two SQL-paste docs; this step doc;
+Created or changed: the R2 migration, its retry-backoff follow-up, and SQL-paste docs; this step doc;
 the bell type/parser/copy and tests; an R2 migration contract test; the Phase 5
 plan/catalog and N1/N2/N3a/P1 interaction docs; `DATABASE.md`; and
 `PROGRESS.md`. No already-applied migration is edited.

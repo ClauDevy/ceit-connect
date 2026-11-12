@@ -31,9 +31,12 @@ next batch starts.
 N1 plus R1 and R2 generate thirteen persistent in-app types: `mention`, `heads_up`,
 `assignment`, `status_change`, `unlock`, `backup_request`, `volunteer_offer`,
 `leave_requested`, `leave_cancelled`, `leave_approved`, `leave_denied`,
-`task_due_soon`, and `live_operation_prep`. In-app rows are inserted
-set-wise and are never throttled, delayed, or dropped. Nobody receives a
-notification for their own action, including self-claims and volunteering.
+`task_due_soon`, and `live_operation_prep`. Actor-driven N1/R1 in-app rows are
+inserted set-wise and are never throttled, delayed, or dropped. R2 is a bounded
+scheduled delivery: it handles at most 100 eligible occurrences per run, may
+delay later occurrences behind earlier targets, and sends nothing after a
+target expires. Nobody receives a notification for their own action, including
+self-claims and volunteering.
 Inactive users receive no notification. Actor exclusion applies to actor-driven
 types; R2 is clock-driven and has no actor.
 
@@ -71,7 +74,8 @@ The recipient rules are:
 R2 handles at most 100 earliest-target occurrences every 15 minutes: the
 accepted delivery capacity is 800 occurrences within any two-hour window and
 9,600 per day, with later targets waiting behind an earliest-target-first
-backlog rather than displacing reminders that are closer to expiry.
+backlog rather than displacing reminders that are closer to expiry. A reminder
+can expire unsent if the bounded backlog does not reach it before its target.
 
 Draft and Archived events generate nothing. No-op saves do not replay rows.
 R1 reverses N1's silent request decision. Member volunteer submission notifies

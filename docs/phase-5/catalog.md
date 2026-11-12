@@ -305,3 +305,20 @@ rather than notification rows.
 - R2 adds four supporting indexes and no policy, FK, browser/service-role
   grant, dashboard reader, or cron catalog row.
 
+## `20261117120000_deadline_reminder_retry_backoff.sql`
+
+- Adds the postgres-owned, zero-policy
+  `ceit_connect_private.deadline_reminder_retry_state` table keyed by exact
+  `(task_id,reminder_kind,target_at)`. It stores only bounded failure count,
+  retry/failed instants, and SQLSTATE—no recipient or task content.
+- Replaces only `ceit_connect_private.run_deadline_reminders_at(timestamptz)`.
+  Backed-off or exhausted occurrences are filtered before the earliest-first
+  cap. A caught failure is persisted after its exception subtransaction;
+  success deletes retry state and still relies on the original per-person sent
+  ledger.
+- Retries occur after 15, 30, 60, and 120 minutes, stop after five failures or
+  at the target, and therefore cannot monopolize every later batch.
+- Adds a strict postgres-session-only, application-role-revoked cleanup helper
+  that removes at most 500 retry rows older than 30 days per run. No policy,
+  FK, service-role exception, public runner shape, or cron row changes.
+
