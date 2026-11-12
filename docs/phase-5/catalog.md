@@ -1,6 +1,6 @@
 # Phase 5 migration-tied catalog
 
-This catalog currently contains **N1, N3a, P1a, D1/D1b, and R1 objects**. Historical Phase 4 and
+This catalog currently contains **N1, N3a, P1a, D1/D1b, R1, and R2 objects**. Historical Phase 4 and
 Phase 4B counts remain unchanged; do not invent a new global total before the
 owner supplies live Dev catalog output.
 
@@ -276,4 +276,28 @@ trigger, or foreign key and replaces no D1 or other existing function.
 R1 adds no table, index, policy, foreign key, cleanup branch, dashboard reader,
 or service-role exception. N3a remains type-agnostic, and D1b reads task state
 rather than notification rows.
+
+## `20261116120000_deadline_reminders.sql`
+
+- Both notification constraints and the private insert-helper allowlist contain
+  thirteen types. `claim_push_deliveries(integer)` retains its exact R1
+  boundary and adds only the two fixed generic R2 bodies.
+- `ceit_connect_private.task_deadline_reminder_ledger` is a postgres-owned,
+  zero-policy RLS table keyed by `(task_id,reminder_kind,target_at,user_id)`;
+  it has no foreign key and no application-role privileges.
+- `ceit_connect_private.deadline_reminder_runs` is an aggregate-only,
+  postgres-owned, zero-policy RLS table with no application-role privileges.
+- Private ungranted functions are
+  `bootstrap_deadline_reminders_at(timestamptz)`,
+  `emit_deadline_reminder_occurrence(uuid,text,timestamptz,timestamptz)`,
+  `purge_deadline_reminder_ledger(timestamptz)`,
+  `purge_deadline_reminder_runs(timestamptz,uuid)`, and
+  `run_deadline_reminders_at(timestamptz)`. All are postgres-owned volatile
+  fixed-empty-path definers and require a postgres session.
+- `public.run_deadline_reminders()` is the equally ungranted real-clock
+  postgres-session wrapper. It returns one six-field safe aggregate row. The
+  immutable ungranted constants fix the occurrence cap at 100 and retention at
+  30 days.
+- R2 adds four supporting indexes and no policy, FK, browser/service-role
+  grant, dashboard reader, or cron catalog row.
 

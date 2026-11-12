@@ -14,6 +14,11 @@ N2 renders the durable rows already owned by N1. It calls only
 change SQL, RLS, triggers, notification generation, retention, email, Discord,
 push, dashboards, or installable-app behavior.
 
+R1 and R2 later extend the same strict parser/sentence switch to thirteen
+types. R2 renders exact bell sentences from the reader-returned safe title:
+`{task title} is due soon.` and
+`Prepare for {task title}. Call time is soon.`
+
 The unread badge comes only from `get_notification_unread_count`. Realtime
 payloads never enter the list and never change a client counter; an INSERT for
 the current user only refetches the readers. Refresh, focus, visible-again,
@@ -121,7 +126,7 @@ sheet, row, and spinner movement and exposes every final state immediately.
 
 ## Automated and manual acceptance
 
-Unit and source-contract tests cover strict readers/writers, all eleven messages,
+Unit and source-contract tests cover strict readers/writers, all thirteen messages,
 fetch-21/show-20, cursor choice, dedupe, refresh-with-older-pages, local read
 settlement without badge arithmetic, personal invalidation-only Realtime,
 offline/focus/visibility/token/channel recovery, dev double-mount channel

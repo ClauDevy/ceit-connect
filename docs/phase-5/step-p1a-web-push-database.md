@@ -123,6 +123,8 @@ of these lock-screen bodies:
 | `leave_cancelled` | `A leave request was cancelled.` |
 | `leave_approved` | `Your leave request was approved.` |
 | `leave_denied` | `Your leave request was denied.` |
+| `task_due_soon` | `A task is due soon.` |
+| `live_operation_prep` | `A Live Operation call time is soon.` |
 
 No task title, event name, person name, comment text, confidential content, or
 task ID enters the push payload.
@@ -130,6 +132,9 @@ task ID enters the push payload.
 R1 extends the same fixed-copy boundary to the five request types above. The
 event wording itself is the only outcome disclosed; no task or person metadata
 is added.
+
+R2 extends that same boundary to the two scheduled reminder types. Their push
+copy stays generic even when the underlying task is confidential.
 
 The queue has foreign keys only to `notifications` and `users`; CCE09 and all
 existing task/notification functions remain unchanged. Deleting a notification
