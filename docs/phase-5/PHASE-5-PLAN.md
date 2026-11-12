@@ -18,6 +18,7 @@ current batch completes its full stage order.
 | D1b | Executive Dashboard extra database readers | `feature/executive-dashboard-extras-data` | High | Live on Dev and Prod (owner-confirmed 2026-11-11) |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Live on Dev and Prod (owner-confirmed 2026-11-12) |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Done; real Prod export and matching 31-table proof recorded (owner-confirmed 2026-11-12) |
+| R1 | Volunteer-offer and leave-request notifications across storage, bell, push, cleanup compatibility, tests, and docs | current feature branch | High | Implemented and locally documented; validation and rollout pending |
 
 Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. I1
 started after the N2 notification UI gate and is now live. Every later batch
@@ -26,8 +27,9 @@ next batch starts.
 
 ## Approved notification decisions
 
-N1 generates six persistent in-app types: `mention`, `heads_up`, `assignment`,
-`status_change`, `unlock`, and `backup_request`. In-app rows are inserted
+N1 plus R1 generate eleven persistent in-app types: `mention`, `heads_up`,
+`assignment`, `status_change`, `unlock`, `backup_request`, `volunteer_offer`,
+`leave_requested`, `leave_cancelled`, `leave_approved`, and `leave_denied`. In-app rows are inserted
 set-wise and are never throttled, delayed, or dropped. Nobody receives a
 notification for their own action, including self-claims and volunteering.
 Inactive users receive no notification.
@@ -58,7 +60,14 @@ The recipient rules are:
   committee, excluding the requester.
 
 Draft and Archived events generate nothing. No-op saves do not replay rows.
-Leave requests, cancellation, approval, and denial remain silent. Confidential
+R1 reverses N1's silent request decision. Member volunteer submission notifies
+active Admins, the active owning-committee Co-Admin, and current primary
+assignees who retain real task access. Leave submission and caller cancellation
+notify active Admins and the active owning-committee Co-Admin; approval and
+denial notify the requester. The actor is always excluded. Withdrawal, backup
+cancellation, stale-offer cleanup, failed/repeated operations, cancel after
+resolution, system-driven leave closure, and other approvers after resolution
+remain silent. Confidential
 task text is resolved at read time: real access receives the title, masked
 access receives a generic title with a usable task ID, and hidden access
 receives the generic title with no task ID or link.
@@ -125,7 +134,7 @@ follow-up.
 ## Phase 5 gate checks
 
 - Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
-  the bell correction, N3a, N3b, P1, D1, D2, and O1 — has completed review and
+  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, and R1 — has completed review and
   rollout.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.

@@ -69,15 +69,15 @@ many task writers. No existing task writer is replaced.
 | `edit_active_event_task` / `assign_task_people` | Updates assignment arrays and possibly resets status | Added people receive `assignment`; real status changes notify other remaining active assignees. Removal alone is silent. |
 | `claim_task` | Adds caller as primary | Silent because the only newly assigned person is the actor. |
 | Officer automatic volunteer | Adds caller as assist through `assign_task_people` | Silent because the only newly assigned person is the actor. |
-| Member volunteer offer | Inserts `task_volunteers`, not tasks | Silent. |
+| Member volunteer offer | Inserts `task_volunteers`, not tasks | N1 shipped this as silent. R1 supersedes that decision: `volunteer_offer` goes to active Admins, the active owning-committee Co-Admin, and current primary assignees with real access, excluding the actor. |
 | Volunteer acceptance | Adds the still-active volunteer as assist | `assignment` to the accepted volunteer; acceptor is excluded. |
 | Backup request | `request_backup: false→true` | `backup_request` to active Admins and the active owning-committee Co-Admin, excluding requester. Cancel and no-op are silent. |
 | `move_task` / raw authorized status move | Updates status/rank | Real status change emits `status_change` to other active assignees. Rank-only/no-op moves are silent. Completing a prerequisite may also emit `unlock`. |
 | Reopen completed phase | Completed→In Progress | `status_change` to other active assignees; never `unlock`. Draft reopen is silent; Archived reopen remains blocked. |
 | Prerequisite completion | Status becomes Completed | `unlock` only for active primary/assist assignees of non-Completed dependents in Active events. |
 | Comment add/edit | Stores Heads Up and mention UUIDs | Active only. New mentions emit `mention`; Heads Up emits `heads_up` to other active assignees. Mention wins for the same recipient/comment. No-op edits and removed/unchanged mentions are silent. |
-| Leave request/cancel/deny | Changes only leave-request rows | Silent. |
-| Leave approval | Marks request approved then removes requester | Exact private transaction context suppresses task notifications for that task. |
+| Leave request/cancel/deny | Changes only leave-request rows | N1 shipped these as silent. R1 supersedes that decision: submit/cancel notify active eligible approvers, while denial notifies the requester. |
+| Leave approval | Marks request approved then removes requester | R1 notifies the requester with `leave_approved`; the exact private transaction context still suppresses only the resulting assignee-removal task notification. |
 | Immediate self-leave | Removes the actor | Removal itself is silent; an authoritative status reset can notify other remaining active assignees. |
 | Former-member eligibility/anonymization | Refuses users with open task assignments; writes no task row | Silent. |
 | Active→Archived / auto-archive | Changes event lifecycle only | Silent. Archived task/comment writes remain blocked. |

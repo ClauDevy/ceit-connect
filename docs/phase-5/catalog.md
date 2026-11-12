@@ -1,6 +1,6 @@
 # Phase 5 migration-tied catalog
 
-This catalog currently contains **N1, N3a, P1a, and D1 objects**. Historical Phase 4 and
+This catalog currently contains **N1, N3a, P1a, D1/D1b, and R1 objects**. Historical Phase 4 and
 Phase 4B counts remain unchanged; do not invent a new global total before the
 owner supplies live Dev catalog output.
 
@@ -237,4 +237,43 @@ DEFINER` functions with no overload. Execute is revoked from `PUBLIC`, `anon`,
 Optional committee omission means Admin-only council scope; an active Co-Admin
 must pass their own existing committee. D1b creates no table, index, policy,
 trigger, or foreign key and replaces no D1 or other existing function.
+
+## `20261115120000_request_notifications.sql`
+
+### Type constraints and replaced functions
+
+- `notifications_type_check` and
+  `push_delivery_queue_notification_type_check` retain the original six types
+  and add `volunteer_offer`, `leave_requested`, `leave_cancelled`,
+  `leave_approved`, and `leave_denied`.
+- `ceit_connect_private.insert_notifications(text,uuid,uuid,uuid[])` retains
+  its active-recipient, actor-exclusion, set-wise deduplication, fixed error,
+  owner, volatility, empty path, and zero application-role execute boundary;
+  only the accepted type allowlist expands.
+- `public.claim_push_deliveries(integer)` retains authentication before input
+  validation, leases, retry/cleanup behavior, return shape, fixed errors, and
+  anon-only capability boundary. Its only behavior change is five fixed generic
+  bodies. Output-name collisions remain avoided through qualified columns.
+
+### Private trigger functions and triggers
+
+- `ceit_connect_private.notify_task_volunteer_offer()` and
+  `task_volunteers_z8_notifications` emit submission-only offer rows to active
+  Admins, the active owning Co-Admin, and current primary assignees with real
+  access, excluding the volunteer.
+- `ceit_connect_private.notify_task_leave_request()` and
+  `task_leave_requests_z8_request_notifications` emit submit/cancel rows to
+  active eligible approvers and approved/denied rows to the requester.
+- Both functions are postgres-owned volatile fixed-empty-path `SECURITY
+  DEFINER` functions with execute revoked from `PUBLIC`, `anon`,
+  `authenticated`, and `service_role`.
+- PostgreSQL's same-kind trigger-name ordering runs
+  `task_leave_requests_z8_notification_suppression` before
+  `task_leave_requests_z8_request_notifications`, then the existing `z9`
+  activity trigger. Approval therefore creates `leave_approved`, while the
+  marker still suppresses the subsequent assignee-removal task notification.
+
+R1 adds no table, index, policy, foreign key, cleanup branch, dashboard reader,
+or service-role exception. N3a remains type-agnostic, and D1b reads task state
+rather than notification rows.
 
