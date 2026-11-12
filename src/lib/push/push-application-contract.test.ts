@@ -26,6 +26,13 @@ describe("P1b service worker contract", () => {
     expect(worker).toContain("return self.clients.openWindow(targetPath)")
     expect(worker).not.toContain("badge:")
   })
+
+  it("preserves valid legacy payload content while defaulting a missing target to root", () => {
+    expect(worker).toContain(
+      '(value.targetPath === undefined || typeof value.targetPath === "string")',
+    )
+    expect(worker).toContain("return { ...value, targetPath: validatedTargetPath(value.targetPath) }")
+  })
 })
 
 describe("P1b route and security source contract", () => {

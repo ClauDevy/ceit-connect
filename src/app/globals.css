@@ -401,7 +401,10 @@ html.theme-fade *::after {
   .motion-nav-active::before,
   .motion-control-pop,
   .motion-toast-enter,
-  .motion-empty-breathe,
+  .motion-empty-breathe {
+    animation: none;
+  }
+
   .motion-comment-target-highlight {
     animation: none;
     background: color-mix(in oklab, var(--primary) 12%, transparent);

@@ -158,7 +158,7 @@ with an optional exact `#comment-{UUID}` fragment.
 ## Phase 5 gate checks
 
 - Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
-  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, and R2 — has completed review and
+  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, R2, and J1 — has completed review and
   rollout.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.

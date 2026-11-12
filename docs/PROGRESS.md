@@ -308,6 +308,10 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
   clears cached comment pages after an access denial, makes repeated activation
   of the same comment target scroll and focus again, returns successful adds to
   the newest thread, and gives reduced-motion users a static target highlight.
+- J1's completion gate now explicitly requires its review and rollout. The
+  worker preserves valid legacy push content when `targetPath` is absent, target
+  pages refresh while open, deleting the selected target returns to newest, and
+  the Dev event-deletion fixture proves its comment and notification cascade.
 - Signed-out mention return is deferred. This batch does not touch auth, Login,
   or the auth callback; signed-out users continue to land on Login and then
   Home until a separately reviewed validated same-origin return path exists.

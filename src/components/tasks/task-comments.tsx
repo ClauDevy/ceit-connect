@@ -638,7 +638,9 @@ export function TaskComments({
     },
     enabled: hashReady && targetCommentId !== null,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: mutationAction === null,
+    refetchInterval: mutationAction === null ? POLL_INTERVAL_MS : false,
+    refetchIntervalInBackground: false,
   });
 
   const activeQuery = targetCommentId ? targetQuery : newestQuery;
@@ -782,12 +784,22 @@ export function TaskComments({
   async function deleteComment() {
     if (!deleteTarget) return;
     const targetId = deleteTarget.out_id;
-    const saved = await runMutation("delete", async () => {
-      const { error } = await supabase.rpc("delete_task_comment", {
-        p_comment_id: targetId,
-      });
-      if (error) throw error;
-    });
+    const deletingSelectedTarget = targetId === targetCommentId;
+    const saved = await runMutation(
+      "delete",
+      async () => {
+        const { error } = await supabase.rpc("delete_task_comment", {
+          p_comment_id: targetId,
+        });
+        if (error) throw error;
+      },
+      deletingSelectedTarget
+        ? async () => {
+            backToNewest();
+            await Promise.all([newestQuery.refetch(), onRefreshTask()]);
+          }
+        : refreshAfterMutation,
+    );
     if (saved) {
       queryClient.setQueryData<TaskCommentThreadCache>(
         activeQueryKey,
