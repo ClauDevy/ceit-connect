@@ -295,6 +295,27 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 ## Open items
 
+- J1 jump-to-comment is implemented locally with migration 80, bounded
+  25-comment target pages, task-only fallback for old/deleted comment targets,
+  two-attempt anchor/page race recovery, retained loaded-older pages after
+  edits, same-task hash navigation for read and unread rows, access-aware
+  bell/push links, and a Back to newest control. The 23-check Dev paste uses a
+  privileged deterministic comment-fixture window and makes its fixture the
+  first eligible push delivery without changing pre-existing queue rows. Review the full
+  migration and self-contained Dev paste first; deploy the tolerant app before
+  applying the migration.
+- J1 review follow-up fixes the Dev fixture window and authenticated tie check,
+  clears cached comment pages after an access denial, makes repeated activation
+  of the same comment target scroll and focus again, returns successful adds to
+  the newest thread, and gives reduced-motion users a static target highlight.
+- J1's completion gate now explicitly requires its review and rollout. The
+  worker preserves valid legacy push content when `targetPath` is absent, target
+  pages refresh while open, deleting the selected target returns to newest, and
+  the Dev event-deletion fixture proves its comment and notification cascade.
+- Signed-out mention return is deferred. This batch does not touch auth, Login,
+  or the auth callback; signed-out users continue to land on Login and then
+  Home until a separately reviewed validated same-origin return path exists.
+
 - The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. N1, N2, the bell correction, I1, N3a, N3b, P1, D1, D1b, and D2 are live on Dev and Prod; O1 is done, with the real Prod export and matching 31-table proof recorded in `docs/BACKUP.md` (owner-confirmed 2026-11-12).
 - R1 is implemented locally; apply migration 77 on Dev first, run its 25/25 and 38/38 rollback-safe pastes, then repeat on Prod only after review.
 - R2 migration 78 is applied on Dev and its 25/25 and 26/26 rollback-safe

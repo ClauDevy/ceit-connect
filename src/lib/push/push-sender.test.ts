@@ -46,7 +46,7 @@ function delivery(change: Partial<ClaimedPushDelivery> = {}): ClaimedPushDeliver
     out_p256dh: validP256dh,
     out_run_id: "30000000-0000-4000-8000-000000000001",
     out_run_token: "40000000-0000-4000-8000-000000000001",
-    out_target_path: "/notifications",
+    out_target_path: "/tasks/50000000-0000-4000-8000-000000000001#comment-60000000-0000-4000-8000-000000000001",
     out_title: "CEIT Connect",
     ...change,
   }
@@ -92,22 +92,25 @@ describe("push sender constants and payload", () => {
     expect(PUSH_WAVE_START_MINIMUM_MS).toBe(9_000)
   })
 
-  it("uses the delivery id as tag and adds no other payload field", () => {
+  it("uses the delivery id as tag and includes only the validated local target", () => {
     expect(JSON.parse(buildPushPayload(delivery()))).toEqual({
       title: "CEIT Connect",
       body: "You were mentioned in a task.",
       tag: "10000000-0000-4000-8000-000000000001",
+      targetPath: "/tasks/50000000-0000-4000-8000-000000000001#comment-60000000-0000-4000-8000-000000000001",
     })
   })
 
-  it("keeps a request outcome payload generic and limited to three fields", () => {
+  it("keeps a request outcome payload generic and rejects an unapproved target", () => {
     expect(JSON.parse(buildPushPayload(delivery({
       out_body: "Your leave request was approved.",
       out_notification_type: "leave_approved",
+      out_target_path: "https://example.com/tasks/50000000-0000-4000-8000-000000000001",
     })))).toEqual({
       title: "CEIT Connect",
       body: "Your leave request was approved.",
       tag: "10000000-0000-4000-8000-000000000001",
+      targetPath: "/",
     })
   })
 

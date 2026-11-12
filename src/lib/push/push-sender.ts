@@ -124,11 +124,22 @@ export function hasValidPushKeys(p256dh: string, auth: string) {
   return decodeBase64Url(p256dh)?.length === 65 && decodeBase64Url(auth)?.length === 16
 }
 
+const PUSH_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+const PUSH_TARGET_PATTERN = new RegExp(
+  `^/tasks/${PUSH_UUID}(?:#comment-${PUSH_UUID})?$`,
+  "i",
+)
+
+export function validatedPushTargetPath(value: string) {
+  return value === "/" || PUSH_TARGET_PATTERN.test(value) ? value : "/"
+}
+
 export function buildPushPayload(delivery: ClaimedPushDelivery) {
   return JSON.stringify({
     title: delivery.out_title,
     body: delivery.out_body,
     tag: delivery.out_delivery_id,
+    targetPath: validatedPushTargetPath(delivery.out_target_path),
   })
 }
 

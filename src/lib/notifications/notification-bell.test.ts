@@ -6,6 +6,7 @@ import {
   markNotificationRowsRead,
   mergeRefreshedNotificationPage,
   normalizeNotificationPage,
+  notificationTargetPath,
   notificationBadgeLabel,
   notificationBellLabel,
   notificationCountAnnouncement,
@@ -30,6 +31,7 @@ function row(index: number, overrides: Partial<NotificationRow> = {}): Notificat
     id: ids[index],
     type: "mention",
     taskId: `20000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    commentId: null,
     taskTitle: `Task ${index + 1}`,
     readAt: null,
     createdAt: new Date(Date.UTC(2026, 10, 9, 12, 0, 30 - index)).toISOString(),
@@ -42,6 +44,7 @@ function rpcRow(value: NotificationRow) {
     out_id: value.id,
     out_type: value.type,
     out_task_id: value.taskId,
+    out_comment_id: value.commentId,
     out_task_title: value.taskTitle,
     out_read_at: value.readAt,
     out_created_at: value.createdAt,
@@ -104,6 +107,15 @@ describe("notification bell response contracts", () => {
       parseNotificationRows([value[0], { ...value[1], out_created_at: "bad" }]),
     ).toBeNull();
     expect(parseNotificationRows([value[0], value[0]])).toBeNull();
+  });
+
+  it("accepts a missing comment field during app-first rollout and validates it when present", () => {
+    const legacy = rpcRow(row(0));
+    delete (legacy as Partial<typeof legacy>).out_comment_id;
+    expect(parseNotificationRows([legacy])?.[0].commentId).toBeNull();
+    expect(
+      parseNotificationRows([{ ...rpcRow(row(0)), out_comment_id: "not-a-uuid" }]),
+    ).toBeNull();
   });
 });
 
@@ -211,6 +223,15 @@ describe("notification paging and settlement", () => {
 });
 
 describe("notification presentation", () => {
+  it("targets a mentioned comment, safely falls back for old rows, and hides masked rows", () => {
+    const commentId = "30000000-0000-4000-8000-000000000001";
+    expect(notificationTargetPath(row(0, { commentId }))).toBe(
+      `/tasks/${row(0).taskId}#comment-${commentId}`,
+    );
+    expect(notificationTargetPath(row(0))).toBe(`/tasks/${row(0).taskId}`);
+    expect(notificationTargetPath(row(0, { taskId: null }))).toBeNull();
+  });
+
   it.each([
     ["mention", "You were mentioned in Task 1."],
     ["heads_up", "A teammate sent a heads-up on Task 1."],

@@ -194,6 +194,17 @@
   @keyframes cc-breathe {
     50% { transform: scale(1.03); }
   }
+
+  @keyframes cc-comment-target-highlight {
+    0%, 45% {
+      background-color: color-mix(in oklab, var(--primary) 16%, transparent);
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 38%, transparent);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
 }
 
 .motion-route-enter {
@@ -363,6 +374,9 @@ html.theme-fade *::after {
 .motion-control-trigger:active .motion-control-pop { animation: cc-control-pop 450ms var(--motion-enter-easing); }
 .motion-toast-enter { animation: cc-toast-enter 520ms var(--motion-enter-easing) backwards; }
 .motion-empty-breathe { animation: cc-breathe 3.4s ease-in-out infinite; }
+.motion-comment-target-highlight {
+  animation: cc-comment-target-highlight var(--motion-enter-duration) var(--motion-enter-easing) 2 alternate;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .motion-route-enter,
@@ -389,6 +403,12 @@ html.theme-fade *::after {
   .motion-toast-enter,
   .motion-empty-breathe {
     animation: none;
+  }
+
+  .motion-comment-target-highlight {
+    animation: none;
+    background: color-mix(in oklab, var(--primary) 12%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 45%, transparent);
   }
 
   [data-motion-pending] {

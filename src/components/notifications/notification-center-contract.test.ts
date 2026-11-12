@@ -96,11 +96,14 @@ describe("notification center application contract", () => {
     expect(handleClick.indexOf("isModifiedNotificationActivation")).toBeLessThan(
       handleClick.indexOf("if (row.readAt !== null)"),
     );
+    expect(handleClick).toContain("navigate(targetPath)");
+    expect(center).toContain("window.location.hash = target.hash");
+    expect(center).toContain('window.dispatchEvent(new Event("hashchange"))');
   });
 
   it("renders hidden rows without a link and accessible labels with the full sentence", () => {
-    expect(center).toContain("{row.taskId ? (");
-    expect(center).toContain('href={`/tasks/${row.taskId}`}');
+    expect(center).toContain("{notificationTargetPath(row) ? (");
+    expect(center).toContain("href={notificationTargetPath(row)!}");
     expect(center).toContain("aria-label={accessibleLabel}");
     expect(center).toContain("Mark notification as read: ${sentence}");
     expect(center).not.toContain("dangerouslySetInnerHTML");
