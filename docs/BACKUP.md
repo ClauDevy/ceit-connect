@@ -37,7 +37,7 @@ Logins are tied to Supabase Auth. This public/private-schema dump cannot restore
 
 ## Repeat backups (quick path)
 
-One-time setup is not repeated: do not reinstall Docker Desktop or WSL, rerun the `db dump --help` flag check unless the Supabase CLI version changed, or recreate the private root folder. For every backup, make sure Docker is running; open a new Git Bash window; follow **Export Prod** for the connection-string prompt, new dated folder, both dumps, and `unset`; follow **Check the local files and count exported rows**; follow **Count live Prod rows** and compare the results; then add a new dated proof entry without replacing an older proof.
+One-time setup is not repeated: do not reinstall Docker Desktop or WSL or rerun the `db dump --help` flag check unless the Supabase CLI version changed. For every backup, make sure Docker is running; open a new Git Bash window; follow **Export Prod** for the connection-string prompt, a new uniquely dated UTC folder with seconds in its name, both dumps, and `unset`; follow **Check the local files and count exported rows**; follow **Count live Prod rows** and compare the results; then add a new dated proof entry without replacing an older proof. The fixed private root folder is reused, but each dated backup folder must be newly created.
 
 ## How often and how long to keep
 
@@ -109,22 +109,24 @@ Check the project ref without printing the connection string:
 [[ "$CEIT_PROD_DB_URL" == *mgeoqfzsfgbxnujywdnu* ]] && printf 'Prod project ref confirmed.\n' || printf 'STOP: wrong project ref; do not run either dump.\n' >&2
 ```
 
-If the check says `STOP`, run `unset CEIT_PROD_DB_URL` and start again. Otherwise, paste this one-line folder command. Git Bash ignored `TZ=Asia/Manila` during the real run, so the folder stamp is deliberately and honestly UTC. Write the Philippine date and time in the proof record by hand.
+If the check says `STOP`, run `unset CEIT_PROD_DB_URL` and start again. Otherwise, paste this one-line folder command. It reuses or creates the fixed private root, gives the new backup a UTC stamp including seconds, and refuses to accept an existing dated folder. Git Bash ignored `TZ=Asia/Manila` during the real run, so the folder stamp is deliberately and honestly UTC. Write the Philippine date and time in the proof record by hand.
 
 ```bash
-CEIT_BACKUP_DIR="$HOME/CEIT-Connect-Private-Backups/ceit-connect-prod-$(date -u +%Y-%m-%d-%H%M)"; mkdir -p "$CEIT_BACKUP_DIR"; printf 'Private backup folder created with a UTC stamp.\n'
+CEIT_BACKUP_ROOT="$HOME/CEIT-Connect-Private-Backups"; mkdir -p "$CEIT_BACKUP_ROOT" && CEIT_BACKUP_DIR="$CEIT_BACKUP_ROOT/ceit-connect-prod-$(date -u +%Y-%m-%d-%H%M%S)" && mkdir "$CEIT_BACKUP_DIR" && printf 'New private backup folder created with a UTC stamp.\n' || { printf 'STOP: could not create a new dated backup folder; do not run either dump.\n' >&2; unset CEIT_BACKUP_DIR; }
 ```
 
-Paste the schema dump as one long line and wait for it to succeed:
+From immediately before the schema dump until after the live row counts are taken, do not run any migration, Prod push, or deployment. If one happens during that window, discard this backup and repeat the whole export so the schema, data, and live comparison describe one unchanged Prod state.
+
+Paste the schema dump as one long line and wait for it to succeed. The destination guard stops the command if the dated folder variable is empty:
 
 ```bash
-npx supabase db dump --db-url "$CEIT_PROD_DB_URL" --schema public,ceit_connect_private --file "$CEIT_BACKUP_DIR/schema.sql"
+npx supabase db dump --db-url "$CEIT_PROD_DB_URL" --schema public,ceit_connect_private --file "${CEIT_BACKUP_DIR:?STOP: CEIT_BACKUP_DIR is empty; create the dated backup folder first.}/schema.sql"
 ```
 
-Only after the schema dump succeeds, paste the data dump as one long line and wait for it to succeed:
+Only after the schema dump succeeds, paste the data dump as one long line and wait for it to succeed. It uses the same empty-variable guard:
 
 ```bash
-npx supabase db dump --db-url "$CEIT_PROD_DB_URL" --schema public,ceit_connect_private --data-only --use-copy --file "$CEIT_BACKUP_DIR/data.sql"
+npx supabase db dump --db-url "$CEIT_PROD_DB_URL" --schema public,ceit_connect_private --data-only --use-copy --file "${CEIT_BACKUP_DIR:?STOP: CEIT_BACKUP_DIR is empty; create the dated backup folder first.}/data.sql"
 ```
 
 Finally, clear the connection string with its own paste:
