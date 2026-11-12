@@ -43,6 +43,11 @@ Approved copy:
 - status change: “The status changed for {task title}.”
 - unlock: “{task title} is ready to continue.”
 - backup request: “{task title} needs backup.”
+- volunteer offer: “{task title} has a new volunteer offer.”
+- leave requested: “{task title} has a new leave request.”
+- leave cancelled: “A leave request was cancelled for {task title}.”
+- leave approved: “Your leave request for {task title} was approved.”
+- leave denied: “Your leave request for {task title} was denied.”
 
 Masked and hidden rows receive `Confidential Task` from N1. A non-null task ID
 is a real `/tasks/{id}` link for Active and Archived tasks alike. A null task ID
@@ -116,7 +121,7 @@ sheet, row, and spinner movement and exposes every final state immediately.
 
 ## Automated and manual acceptance
 
-Unit and source-contract tests cover strict readers/writers, six messages,
+Unit and source-contract tests cover strict readers/writers, all eleven messages,
 fetch-21/show-20, cursor choice, dedupe, refresh-with-older-pages, local read
 settlement without badge arithmetic, personal invalidation-only Realtime,
 offline/focus/visibility/token/channel recovery, dev double-mount channel
