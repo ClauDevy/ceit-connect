@@ -24,6 +24,16 @@ requires `due_date >= as_of`. At risk means a `To Do` task with
 `due_date <= as_of + 48 hours`. Public readers derive one `as_of` from
 `statement_timestamp()`; the browser never supplies it.
 
+R2 later uses that same exact stored `due_date` instant for its 24-hour
+`task_due_soon` window, but remains a separate write path: it requires the
+target to be strictly after its controlled run clock, targets active current
+primary/assist assignees, and records per-person delivery in its private
+ledger. D1b keeps reading task/event state only and neither reads nor writes R2
+notifications or ledger rows. An unassigned task therefore still appears in
+the needs-attention data while R2 correctly has nobody to notify. R2's separate
+two-hour Live Operation rule reads `call_time`; D1b and the existing priority
+classifier remain due-date-only, and `end_time` triggers nothing.
+
 ## Private classification
 
 `ceit_connect_private.classify_executive_dashboard_task(

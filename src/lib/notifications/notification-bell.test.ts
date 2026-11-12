@@ -74,7 +74,7 @@ describe("notification bell response contracts", () => {
     expect(parseClearReadNotificationsResult("4")).toBeNull();
   });
 
-  it("strictly parses all eleven list types, nullable task ids, and timestamps", () => {
+  it("strictly parses all thirteen list types, nullable task ids, and timestamps", () => {
     const types = [
       "mention",
       "heads_up",
@@ -87,13 +87,18 @@ describe("notification bell response contracts", () => {
       "leave_cancelled",
       "leave_approved",
       "leave_denied",
+      "task_due_soon",
+      "live_operation_prep",
     ] as const;
     const value = types.map((type, index) =>
       rpcRow(row(index, { type, taskId: index === types.length - 1 ? null : row(index).taskId })),
     );
     expect(parseNotificationRows(value)?.map((item) => item.type)).toEqual(types);
     expect(parseNotificationRows(value)?.at(-1)?.taskId).toBeNull();
-    expect(parseNotificationRows([{ ...value[0], out_type: "unknown" }])).toBeNull();
+    expect(
+      parseNotificationRows([value[0], { ...value[1], out_type: "unknown" }]),
+    )?.toEqual([row(0)]);
+    expect(parseNotificationRows([{ ...value[0], out_type: "unknown" }])).toEqual([]);
     expect(parseNotificationRows([{ ...value[0], out_created_at: "bad" }])).toBeNull();
     expect(
       parseNotificationRows([value[0], { ...value[1], out_created_at: "bad" }]),
@@ -109,6 +114,34 @@ describe("notification paging and settlement", () => {
     expect(page.hasMore).toBe(true);
     expect(page.cursor).toEqual({ createdAt: row(19).createdAt, id: row(19).id });
     expect(page.items.some((item) => item.id === row(20).id)).toBe(false);
+  });
+
+  it("derives paging from raw rows when unknown types are skipped", () => {
+    const raw: Record<string, unknown>[] = Array.from({ length: 21 }, (_, index) =>
+      rpcRow(row(index, { type: index === 5 ? "mention" : "assignment" })),
+    );
+    raw[19] = { ...raw[19], out_type: "future_type" };
+    const parsed = parseNotificationRows(raw);
+    expect(parsed).not.toBeNull();
+    const page = normalizeNotificationPage(parsed!);
+    expect(page.items).toHaveLength(19);
+    expect(page.hasMore).toBe(true);
+    expect(page.cursor).toEqual({ createdAt: row(19).createdAt, id: row(19).id });
+    expect(page.items.some((item) => item.id === row(20).id)).toBe(false);
+  });
+
+  it("keeps a cursor for an all-unknown page so older known rows remain reachable", () => {
+    const raw = Array.from({ length: 21 }, (_, index) => ({
+      ...rpcRow(row(index)),
+      out_type: "future_type",
+    }));
+    const parsed = parseNotificationRows(raw);
+    expect(parsed).toEqual([]);
+    expect(normalizeNotificationPage(parsed!)).toEqual({
+      items: [],
+      hasMore: true,
+      cursor: { createdAt: row(19).createdAt, id: row(19).id },
+    });
   });
 
   it("deduplicates appended pages without disturbing existing order", () => {
@@ -190,6 +223,8 @@ describe("notification presentation", () => {
     ["leave_cancelled", "A leave request was cancelled for Task 1."],
     ["leave_approved", "Your leave request for Task 1 was approved."],
     ["leave_denied", "Your leave request for Task 1 was denied."],
+    ["task_due_soon", "Task 1 is due soon."],
+    ["live_operation_prep", "Prepare for Task 1. Call time is soon."],
   ] as const)("formats %s with reader-returned text only", (type, expected) => {
     expect(notificationSentence(row(0, { type }))).toBe(expected);
     expect(notificationSentence(row(0, { type, taskTitle: "Confidential Task" }))).toContain(

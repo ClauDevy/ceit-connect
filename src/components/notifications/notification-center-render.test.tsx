@@ -95,6 +95,28 @@ describe("notification center rendered list", () => {
     expect(markup).toContain("Your leave request for Orientation was approved.");
   });
 
+  it.each([
+    ["task_due_soon", "Orientation is due soon."],
+    ["live_operation_prep", "Prepare for Orientation. Call time is soon."],
+  ])("renders %s reminder copy from the reader-returned safe title", (type, copy) => {
+    const rows = parseNotificationRows([{ ...PROD_ROW, out_type: type }]);
+    expect(rows).not.toBeNull();
+    const refreshed = normalizeNotificationPage(rows!);
+    const merged = mergeRefreshedNotificationPage({
+      current: [],
+      refreshed,
+      olderPagesLoaded: false,
+      currentHasMore: false,
+      currentCursor: null,
+    });
+    const markup = renderRows({
+      count: 1,
+      list: { ...EMPTY_LIST, ...merged, loaded: true },
+    });
+
+    expect(markup).toContain(copy);
+  });
+
   it("never claims the list is empty while count is positive, refreshing, or errored", () => {
     const positive = renderRows({
       count: 1,

@@ -19,6 +19,7 @@ current batch completes its full stage order.
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Live on Dev and Prod (owner-confirmed 2026-11-12) |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Done; real Prod export and matching 31-table proof recorded (owner-confirmed 2026-11-12) |
 | R1 | Volunteer-offer and leave-request notifications across storage, bell, push, cleanup compatibility, tests, and docs | current feature branch | High | Implemented and locally documented; validation and rollout pending |
+| R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Implemented locally; validation and owner rollout pending |
 
 Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. I1
 started after the N2 notification UI gate and is now live. Every later batch
@@ -27,12 +28,17 @@ next batch starts.
 
 ## Approved notification decisions
 
-N1 plus R1 generate eleven persistent in-app types: `mention`, `heads_up`,
+N1 plus R1 and R2 generate thirteen persistent in-app types: `mention`, `heads_up`,
 `assignment`, `status_change`, `unlock`, `backup_request`, `volunteer_offer`,
-`leave_requested`, `leave_cancelled`, `leave_approved`, and `leave_denied`. In-app rows are inserted
-set-wise and are never throttled, delayed, or dropped. Nobody receives a
-notification for their own action, including self-claims and volunteering.
-Inactive users receive no notification.
+`leave_requested`, `leave_cancelled`, `leave_approved`, `leave_denied`,
+`task_due_soon`, and `live_operation_prep`. Actor-driven N1/R1 in-app rows are
+inserted set-wise and are never throttled, delayed, or dropped. R2 is a bounded
+scheduled delivery: it handles at most 100 eligible occurrences per run, may
+delay later occurrences behind earlier targets, and sends nothing after a
+target expires. Nobody receives a notification for their own action, including
+self-claims and volunteering.
+Inactive users receive no notification. Actor exclusion applies to actor-driven
+types; R2 is clock-driven and has no actor.
 
 N3a deletes read notifications automatically 60 days after `read_at`, never
 auto-removes unread notifications, processes at most 500 oldest eligible rows
@@ -58,6 +64,18 @@ The recipient rules are:
   is not Completed, and the event is Active.
 - `backup_request`: all active Admins and the active Co-Admin of the task's
   committee, excluding the requester.
+- `task_due_soon`: every active current primary or assist assignee of a
+  non-Completed task in an Active event, once per exact stored due timestamp
+  and person while the timestamp is inside the next 24 hours.
+- `live_operation_prep`: the same active assignment set for non-Completed
+  Live Operations, once per exact non-null call time and person while the call
+  time is inside the next two hours. `end_time` never triggers a reminder.
+
+R2 handles at most 100 earliest-target occurrences every 15 minutes: the
+accepted delivery capacity is 800 occurrences within any two-hour window and
+9,600 per day, with later targets waiting behind an earliest-target-first
+backlog rather than displacing reminders that are closer to expiry. A reminder
+can expire unsent if the bounded backlog does not reach it before its target.
 
 Draft and Archived events generate nothing. No-op saves do not replay rows.
 R1 reverses N1's silent request decision. Member volunteer submission notifies
@@ -103,8 +121,7 @@ counts. The dump stays outside the repository in a private location.
 These are not part of the currently implemented N1/N2 behavior:
 
 - daily digest email;
-- Live Operation call-time rules;
-- two-hour preparation reminder;
+- R2 quiet hours (not part of the deadline-reminder batch);
 - alert grouping or coalescing;
 - `pushsubscriptionchange` recovery; a rotated browser subscription currently
   requires the person to explicitly enable notifications again in Settings;
@@ -134,7 +151,7 @@ follow-up.
 ## Phase 5 gate checks
 
 - Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
-  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, and R1 — has completed review and
+  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, and R2 — has completed review and
   rollout.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.
