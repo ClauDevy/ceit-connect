@@ -15,6 +15,8 @@ export const NOTIFICATION_TYPES = [
   "leave_cancelled",
   "leave_approved",
   "leave_denied",
+  "task_due_soon",
+  "live_operation_prep",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -235,6 +237,10 @@ export function notificationSentence(row: NotificationRow) {
       return `Your leave request for ${row.taskTitle} was approved.`;
     case "leave_denied":
       return `Your leave request for ${row.taskTitle} was denied.`;
+    case "task_due_soon":
+      return `${row.taskTitle} is due soon.`;
+    case "live_operation_prep":
+      return `Prepare for ${row.taskTitle}. Call time is soon.`;
   }
 }
 

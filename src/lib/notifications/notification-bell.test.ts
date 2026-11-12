@@ -74,7 +74,7 @@ describe("notification bell response contracts", () => {
     expect(parseClearReadNotificationsResult("4")).toBeNull();
   });
 
-  it("strictly parses all eleven list types, nullable task ids, and timestamps", () => {
+  it("strictly parses all thirteen list types, nullable task ids, and timestamps", () => {
     const types = [
       "mention",
       "heads_up",
@@ -87,6 +87,8 @@ describe("notification bell response contracts", () => {
       "leave_cancelled",
       "leave_approved",
       "leave_denied",
+      "task_due_soon",
+      "live_operation_prep",
     ] as const;
     const value = types.map((type, index) =>
       rpcRow(row(index, { type, taskId: index === types.length - 1 ? null : row(index).taskId })),
@@ -190,6 +192,8 @@ describe("notification presentation", () => {
     ["leave_cancelled", "A leave request was cancelled for Task 1."],
     ["leave_approved", "Your leave request for Task 1 was approved."],
     ["leave_denied", "Your leave request for Task 1 was denied."],
+    ["task_due_soon", "Task 1 is due soon."],
+    ["live_operation_prep", "Prepare for Task 1. Call time is soon."],
   ] as const)("formats %s with reader-returned text only", (type, expected) => {
     expect(notificationSentence(row(0, { type }))).toBe(expected);
     expect(notificationSentence(row(0, { type, taskTitle: "Confidential Task" }))).toContain(

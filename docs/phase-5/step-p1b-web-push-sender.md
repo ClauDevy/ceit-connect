@@ -11,7 +11,7 @@ application tests. P1a is already live on Dev and Prod. P1b adds no migration,
 policy, function, table, service-role exception, offline cache, or public
 sign-up path.
 
-R1 later expands the database-owned fixed message catalog from six to eleven
+R1 and R2 expand the database-owned fixed message catalog from six to thirteen
 types. The sender remains type-agnostic and forwards only the already generic
 title/body/target returned by `claim_push_deliveries`; it never receives task
 titles, task IDs, or person names.
