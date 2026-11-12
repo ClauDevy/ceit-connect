@@ -30,13 +30,11 @@ insert into auth.users(
   'authenticated','authenticated','r1-catalog-admin@test.local','',now(),
   '{}','{}',now(),now()
 );
-select set_config('ceit_connect.officer_writer','invite_new_officer',true);
 insert into public.users(id,email,full_name,role,committee_id,is_active)
 values(
   '71a00000-0000-4000-8000-000000000001',
-  'r1-catalog-admin@test.local','R1 Catalog Admin','Admin',null,true
+  'r1-catalog-admin@test.local','R1 Catalog Member','Member',null,true
 );
-select set_config('ceit_connect.officer_writer','',true);
 select set_config(
   'request.jwt.claims',
   '{"sub":"71a00000-0000-4000-8000-000000000001","role":"authenticated"}',

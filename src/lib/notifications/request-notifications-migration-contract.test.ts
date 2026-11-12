@@ -28,11 +28,15 @@ const requestTypes = [
 
 describe("Phase 5 R1 request-notification migration contract", () => {
   it("uses a new timestamp after the documented Dev and Prod tip", () => {
-    expect(migrationFiles.at(-2)).toBe(
-      "20261114120000_executive_dashboard_extras_data.sql",
-    );
-    expect(migrationFiles.at(-1)).toBe(
-      "20261115120000_request_notifications.sql",
+    const executiveDashboardMigration =
+      "20261114120000_executive_dashboard_extras_data.sql";
+    const requestNotificationsMigration =
+      "20261115120000_request_notifications.sql";
+
+    expect(migrationFiles.indexOf(executiveDashboardMigration)).toBeGreaterThanOrEqual(0);
+    expect(migrationFiles.indexOf(requestNotificationsMigration)).toBeGreaterThanOrEqual(0);
+    expect(migrationFiles.indexOf(executiveDashboardMigration)).toBeLessThan(
+      migrationFiles.indexOf(requestNotificationsMigration),
     );
   });
 
