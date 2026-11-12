@@ -96,6 +96,8 @@ describe("notification center application contract", () => {
     expect(handleClick.indexOf("isModifiedNotificationActivation")).toBeLessThan(
       handleClick.indexOf("if (row.readAt !== null)"),
     );
+    expect(handleClick).toContain("navigate(targetPath)");
+    expect(center).toContain("window.location.hash = target.hash");
   });
 
   it("renders hidden rows without a link and accessible labels with the full sentence", () => {

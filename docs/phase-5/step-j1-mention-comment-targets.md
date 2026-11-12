@@ -86,12 +86,17 @@ redirects. Database access masking decides whether any task/comment identifier
 is emitted; the URL contains no confidential text.
 
 The task page requests one page anchor and then one normal 25-row comment page.
-It never downloads intervening pages. It scrolls/focuses and briefly highlights
-the exact row, announces arrival, and provides **Back to newest**. Deleted or
-edited targets fail safely; editing preserves the ID. Archived tasks work for
-current authorized viewers. Lost-access, deactivated, and wrong-task targets
-receive the same unavailable state. Old null-target notifications open the
-task normally. Signed-out return is deferred; auth files are untouched.
+It never downloads intervening pages. If concurrent writes move the target
+across a page boundary, it recomputes the anchor once before reporting the
+existing unavailable state. Refresh after an edit retains any explicitly
+loaded older pages. Same-task notification navigation assigns the validated
+hash directly so both read and unread rows emit `hashchange`; cross-task
+navigation remains an App Router push. The page scrolls/focuses and briefly
+highlights the exact row, announces arrival, and provides **Back to newest**.
+Deleted or edited targets fail safely; editing preserves the ID. Archived tasks
+work for current authorized viewers. Lost-access, deactivated, and wrong-task
+targets receive the same unavailable state. Old null-target notifications open
+the task normally. Signed-out return is deferred; auth files are untouched.
 
 ## Verification scope
 

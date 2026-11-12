@@ -77,6 +77,10 @@ describe("mention target app contract", () => {
     expect(comments).toContain("Back to newest");
     expect(comments).toContain("scrollIntoView");
     expect(comments).toContain("motion-comment-target-highlight");
+    expect(comments).toContain("TASK_COMMENT_TARGET_PAGE_ATTEMPTS = 2");
+    expect(comments).toContain("attempt < TASK_COMMENT_TARGET_PAGE_ATTEMPTS");
+    expect(comments).toContain("current?.olderPagingStarted");
+    expect(comments).toContain("replaceTaskCommentNewestPage(");
   });
 
   it("keeps service-worker navigation to an exact allowlist", () => {

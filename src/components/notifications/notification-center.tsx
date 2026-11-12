@@ -628,11 +628,12 @@ export function NotificationRowsView({
       event.preventDefault();
       return;
     }
+    event.preventDefault();
     if (row.readAt !== null) {
       close();
+      navigate(targetPath);
       return;
     }
-    event.preventDefault();
     if (await markOne(row.id)) {
       close();
       navigate(targetPath);
@@ -809,7 +810,17 @@ function NotificationRows({
       markOne={markOne}
       deleteOne={deleteOne}
       refreshList={refreshList}
-      navigate={(targetPath) => router.push(targetPath)}
+      navigate={(targetPath) => {
+        const target = new URL(targetPath, window.location.origin);
+        if (
+          target.pathname === window.location.pathname &&
+          target.search === window.location.search
+        ) {
+          window.location.hash = target.hash;
+          return;
+        }
+        router.push(targetPath);
+      }}
       emptyFocusRef={emptyFocusRef}
     />
   );
