@@ -69,6 +69,7 @@ import { createClient } from "@/lib/supabase/client";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const POLL_INTERVAL_MS = 15_000;
+const TASK_COMMENT_TARGET_PAGE_ATTEMPTS = 2;
 
 const commentDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -560,43 +561,64 @@ export function TaskComments({
   const targetQuery = useQuery({
     queryKey: targetQueryKey,
     queryFn: async ({ signal }) => {
-      const anchorResult = await supabase
-        .rpc("get_task_comment_target_page_anchor", {
-          p_task_id: taskId,
-          p_comment_id: targetCommentId,
-          p_page_size: TASK_COMMENT_PAGE_SIZE,
-        })
-        .abortSignal(signal);
-      if (anchorResult.error) throw anchorResult.error;
-      if (
-        !Array.isArray(anchorResult.data) ||
-        anchorResult.data.length !== 1 ||
-        !isTaskCommentTargetPageAnchor(anchorResult.data[0])
+      for (
+        let attempt = 0;
+        attempt < TASK_COMMENT_TARGET_PAGE_ATTEMPTS;
+        attempt += 1
       ) {
-        throw new Error("The target comment anchor returned an invalid response.");
+        const anchorResult = await supabase
+          .rpc("get_task_comment_target_page_anchor", {
+            p_task_id: taskId,
+            p_comment_id: targetCommentId,
+            p_page_size: TASK_COMMENT_PAGE_SIZE,
+          })
+          .abortSignal(signal);
+        if (anchorResult.error) throw anchorResult.error;
+        if (
+          !Array.isArray(anchorResult.data) ||
+          anchorResult.data.length !== 1 ||
+          !isTaskCommentTargetPageAnchor(anchorResult.data[0])
+        ) {
+          throw new Error("The target comment anchor returned an invalid response.");
+        }
+        const anchor = anchorResult.data[0];
+        const pageResult = await supabase
+          .rpc("list_task_comments", {
+            p_task_id: taskId,
+            p_limit: TASK_COMMENT_PAGE_SIZE,
+            p_before_created_at: anchor.out_before_created_at,
+            p_before_id: anchor.out_before_id,
+          })
+          .abortSignal(signal);
+        if (pageResult.error) throw pageResult.error;
+        if (
+          !Array.isArray(pageResult.data) ||
+          !pageResult.data.every(isTaskComment)
+        ) {
+          throw new Error("The comment reader returned an invalid response.");
+        }
+        if (
+          !pageResult.data.some(
+            (comment) => comment.out_id === targetCommentId,
+          )
+        ) {
+          continue;
+        }
+        const current =
+          queryClient.getQueryData<TaskCommentThreadCache>(targetQueryKey);
+        return {
+          comments: replaceTaskCommentNewestPage(
+            current?.comments ?? [],
+            pageResult.data,
+          ),
+          hasMore: current?.olderPagingStarted
+            ? current.hasMore
+            : (pageResult.data[0]?.out_has_more ?? false),
+          olderPagingStarted: current?.olderPagingStarted ?? false,
+          hasNewer: anchor.out_has_newer,
+        };
       }
-      const anchor = anchorResult.data[0];
-      const pageResult = await supabase
-        .rpc("list_task_comments", {
-          p_task_id: taskId,
-          p_limit: TASK_COMMENT_PAGE_SIZE,
-          p_before_created_at: anchor.out_before_created_at,
-          p_before_id: anchor.out_before_id,
-        })
-        .abortSignal(signal);
-      if (pageResult.error) throw pageResult.error;
-      if (!Array.isArray(pageResult.data) || !pageResult.data.every(isTaskComment)) {
-        throw new Error("The comment reader returned an invalid response.");
-      }
-      if (!pageResult.data.some((comment) => comment.out_id === targetCommentId)) {
-        throw new Error("The target comment is no longer in its page.");
-      }
-      return {
-        comments: pageResult.data,
-        hasMore: pageResult.data[0]?.out_has_more ?? false,
-        olderPagingStarted: false,
-        hasNewer: anchor.out_has_newer,
-      };
+      throw new Error("The target comment is no longer in its page.");
     },
     enabled: hashReady && targetCommentId !== null,
     retry: false,

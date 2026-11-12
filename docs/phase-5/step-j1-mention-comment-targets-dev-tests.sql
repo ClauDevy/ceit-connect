@@ -49,7 +49,11 @@ insert into public.tasks(
 ('81000000-0000-4000-8000-000000000203','81000000-0000-4000-8000-000000000102','81000000-0000-4000-8000-000000000001','J1 Event Delete','Planning','To Do','Medium','Deliverable','81000000-0000-4000-8000-000000000011',false,'{}','{}','{}',1024);
 
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000011","role":"authenticated"}',true);
-set local role authenticated;
+-- task_comments deliberately grants authenticated no direct INSERT, and its
+-- guard derives/overwrites identity timestamps. Keep the authenticated JWT
+-- context, but use this transaction-local postgres fixture window so the exact
+-- IDs/timestamps needed for boundary tests remain deterministic.
+set local session_replication_role = replica;
 insert into public.task_comments(id,task_id,created_by,body,created_at)
 select ('81000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
        '81000000-0000-4000-8000-000000000201',
@@ -57,7 +61,7 @@ select ('81000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
        case when n=24 then '2026-11-13 00:25:00+08'::timestamptz
             else '2026-11-13 00:00:00+08'::timestamptz+n*interval '1 minute' end
 from generate_series(1,51) n;
-reset role;
+set local session_replication_role = origin;
 
 select pg_temp.j1_record('01 exactly five replaced function names and no overloads',
   5=(select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
@@ -83,6 +87,11 @@ select pg_temp.j1_record('04 nullable comment FK is mention-only SET NULL',exist
 select pg_temp.j1_record('05 no notification update guard trigger blocks FK action',not exists(
   select 1 from pg_trigger where tgrelid='public.notifications'::regclass and not tgisinternal
   and (tgtype & 16)=16));
+select pg_temp.j1_record('05a comment fixtures require the guarded privileged setup',
+  not has_table_privilege('authenticated','public.task_comments','INSERT')
+  and (select relrowsecurity from pg_class where oid='public.task_comments'::regclass)
+  and exists(select 1 from pg_trigger where tgrelid='public.task_comments'::regclass
+    and tgname='task_comments_guard_writes' and not tgisinternal));
 
 set local role authenticated;
 select pg_temp.j1_record('06 boundary 25 remains newest page',
@@ -120,6 +129,12 @@ insert into public.notifications(id,user_id,type,task_id,comment_id) values
 ('81000000-0000-4000-8000-000000000301','81000000-0000-4000-8000-000000000012','mention','81000000-0000-4000-8000-000000000201','81000000-0000-4000-8000-000000000026'),
 ('81000000-0000-4000-8000-000000000302','81000000-0000-4000-8000-000000000013','mention','81000000-0000-4000-8000-000000000201','81000000-0000-4000-8000-000000000025'),
 ('81000000-0000-4000-8000-000000000303','81000000-0000-4000-8000-000000000012','mention','81000000-0000-4000-8000-000000000203',null);
+-- claim_push_deliveries orders by next_attempt_at, created_at, id. Only the
+-- transaction-created fixture receives this earliest value, so older Dev work
+-- may remain eligible but cannot consume the one-row claim; rollback removes it.
+update ceit_connect_private.push_delivery_queue
+set next_attempt_at='-infinity'::timestamptz,updated_at=clock_timestamp()
+where notification_id='81000000-0000-4000-8000-000000000302';
 
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000012","role":"authenticated"}',true);
 set local role authenticated;
@@ -138,10 +153,22 @@ reset role;
 create temporary table j1_masked_claim as
 select * from public.claim_push_deliveries(1) with no data;
 grant select,insert on j1_masked_claim to anon;
+select pg_temp.j1_record('13 fixture is the first eligible delivery',
+  '81000000-0000-4000-8000-000000000302'::uuid=(
+    select queue.notification_id
+    from ceit_connect_private.push_delivery_queue as queue
+    join public.notifications as notification on notification.id=queue.notification_id
+    join public.push_subscriptions as subscription on subscription.id=queue.subscription_id
+      and subscription.user_id=queue.user_id
+    join public.users as profile on profile.id=queue.user_id and profile.is_active
+    where queue.state='pending' and queue.next_attempt_at<=clock_timestamp()
+      and queue.retry_deadline_at>clock_timestamp() and queue.attempt_count<8
+      and (subscription.expires_at is null or subscription.expires_at>clock_timestamp())
+    order by queue.next_attempt_at,queue.created_at,queue.id limit 1));
 set local role anon;
 insert into j1_masked_claim select * from public.claim_push_deliveries(1);
 reset role;
-select pg_temp.j1_record('13 masked push receives task-only generic target',exists(
+select pg_temp.j1_record('14 masked push receives task-only generic target',exists(
   select 1 from j1_masked_claim
   where out_notification_type='mention'
     and out_target_path='/tasks/81000000-0000-4000-8000-000000000201'
@@ -151,14 +178,14 @@ select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-00000000
 set local role authenticated;
 select public.delete_task_comment('81000000-0000-4000-8000-000000000026');
 reset role;
-select pg_temp.j1_record('14 comment delete sets notification target null',exists(
+select pg_temp.j1_record('15 comment delete sets notification target null',exists(
   select 1 from public.notifications where id='81000000-0000-4000-8000-000000000301' and comment_id is null));
 
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000011","role":"authenticated"}',true);
 set local role authenticated;
 select public.delete_task('81000000-0000-4000-8000-000000000201');
 reset role;
-select pg_temp.j1_record('15 task deletion cascades notifications without FK blockage',
+select pg_temp.j1_record('16 task deletion cascades notifications without FK blockage',
   not exists(select 1 from public.notifications where task_id='81000000-0000-4000-8000-000000000201'));
 
 set local role service_role;
@@ -166,7 +193,7 @@ select * from public.delete_event(
   '81000000-0000-4000-8000-000000000102','81000000-0000-4000-8000-000000000011',
   (select updated_at from public.events where id='81000000-0000-4000-8000-000000000102'));
 reset role;
-select pg_temp.j1_record('16 event deletion traverses task/comment/notification cascade',
+select pg_temp.j1_record('17 event deletion traverses task/comment/notification cascade',
   not exists(select 1 from public.events where id='81000000-0000-4000-8000-000000000102')
   and not exists(select 1 from public.notifications where id='81000000-0000-4000-8000-000000000303'));
 
@@ -181,29 +208,29 @@ select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-00000000
 set local role authenticated;
 select public.deactivate_committee_member('81000000-0000-4000-8000-000000000014');
 reset role;
-select pg_temp.j1_record('17 deactivated recipient has no subscription or queued push',
+select pg_temp.j1_record('18 deactivated recipient has no subscription or queued push',
   not exists(select 1 from public.push_subscriptions where user_id='81000000-0000-4000-8000-000000000014')
   and not exists(select 1 from ceit_connect_private.push_delivery_queue where user_id='81000000-0000-4000-8000-000000000014'));
 
-select pg_temp.j1_record('18 all thirteen generic body arms remain present',
+select pg_temp.j1_record('19 all thirteen generic body arms remain present',
   (select count(*) from regexp_matches(pg_get_functiondef('public.claim_push_deliveries(integer)'::regprocedure),
     'when ''(mention|heads_up|assignment|status_change|unlock|backup_request|volunteer_offer|leave_requested|leave_cancelled|leave_approved|leave_denied|task_due_soon|live_operation_prep)'' then','g'))=13);
-select pg_temp.j1_record('19 claim authorization precedes every queue mutation',
+select pg_temp.j1_record('20 claim authorization precedes every queue mutation',
   strpos(pg_get_functiondef('public.claim_push_deliveries(integer)'::regprocedure),'authenticate_push_sender()')
   < strpos(pg_get_functiondef('public.claim_push_deliveries(integer)'::regprocedure),'delete from ceit_connect_private.push_delivery_queue'));
-select pg_temp.j1_record('20 target SQL has no stale notifications route or content text',
+select pg_temp.j1_record('21 target SQL has no stale notifications route or content text',
   strpos(pg_get_functiondef('public.claim_push_deliveries(integer)'::regprocedure),'/notifications')=0
   and strpos(pg_get_functiondef('public.claim_push_deliveries(integer)'::regprocedure),'/tasks/%s#comment-%s')>0);
-select pg_temp.j1_record('21 old null comment target remains safe task fallback',exists(
+select pg_temp.j1_record('22 old null comment target remains safe task fallback',exists(
   select 1 from public.notifications where id='81000000-0000-4000-8000-000000000304' and comment_id is null));
 
 do $$
 declare v_pass integer; v_total integer;
 begin
   select count(*) filter(where passed),count(*) into v_pass,v_total from j1_results;
-  if v_pass<>21 or v_total<>21 then
+  if v_pass<>23 or v_total<>23 then
     raise exception 'TEST RESULTS %/% PASS; failures: %',v_pass,v_total,
       (select string_agg(label,', ' order by label) from j1_results where not passed);
   end if;
-  raise exception 'TEST RESULTS 21/21 PASS';
+  raise exception 'TEST RESULTS 23/23 PASS';
 end $$;

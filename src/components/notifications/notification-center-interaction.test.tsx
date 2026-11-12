@@ -122,6 +122,7 @@ async function renderCenter() {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  window.history.replaceState(null, "", "/");
 });
 
 beforeEach(() => {
@@ -130,6 +131,35 @@ beforeEach(() => {
 });
 
 describe("notification housekeeping interactions", () => {
+  it.each([false, true])(
+    "navigates a %s same-task mention through a native hash change",
+    async (unread) => {
+      const taskId = "20000000-0000-4000-8000-000000000001";
+      const commentId = "30000000-0000-4000-8000-000000000026";
+      const targetRow = {
+        ...PROD_ROW,
+        out_task_id: taskId,
+        out_comment_id: commentId,
+        out_read_at: unread ? null : PROD_ROW.out_read_at,
+      };
+      window.history.replaceState(null, "", `/tasks/${taskId}`);
+      mocks.rpc.mockImplementation((name: string) => {
+        if (name === "get_notification_unread_count") return ok(unread ? 1 : 0);
+        if (name === "list_notifications") return ok([targetRow]);
+        if (name === "mark_notification_read") return ok(true);
+        throw new Error(`Unexpected RPC ${name}`);
+      });
+
+      await renderCenter();
+      fireEvent.click(await screen.findByRole("link", { name: /Orientation/ }));
+
+      await waitFor(() =>
+        expect(window.location.hash).toBe(`#comment-${commentId}`),
+      );
+      expect(mocks.router.push).not.toHaveBeenCalled();
+    },
+  );
+
   it("renders the exact Prod row and treats delete false as success", async () => {
     let deleted = false;
     mocks.rpc.mockImplementation((name: string) => {

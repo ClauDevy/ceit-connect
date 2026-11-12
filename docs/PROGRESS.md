@@ -297,7 +297,11 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 - J1 jump-to-comment is implemented locally with migration 80, bounded
   25-comment target pages, task-only fallback for old/deleted comment targets,
-  access-aware bell/push links, and a Back to newest control. Review the full
+  two-attempt anchor/page race recovery, retained loaded-older pages after
+  edits, same-task hash navigation for read and unread rows, access-aware
+  bell/push links, and a Back to newest control. The 23-check Dev paste uses a
+  privileged deterministic comment-fixture window and makes its fixture the
+  first eligible push delivery without changing pre-existing queue rows. Review the full
   migration and self-contained Dev paste first; deploy the tolerant app before
   applying the migration.
 - Signed-out mention return is deferred. This batch does not touch auth, Login,
