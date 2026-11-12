@@ -116,6 +116,34 @@ describe("notification paging and settlement", () => {
     expect(page.items.some((item) => item.id === row(20).id)).toBe(false);
   });
 
+  it("derives paging from raw rows when unknown types are skipped", () => {
+    const raw: Record<string, unknown>[] = Array.from({ length: 21 }, (_, index) =>
+      rpcRow(row(index, { type: index === 5 ? "mention" : "assignment" })),
+    );
+    raw[19] = { ...raw[19], out_type: "future_type" };
+    const parsed = parseNotificationRows(raw);
+    expect(parsed).not.toBeNull();
+    const page = normalizeNotificationPage(parsed!);
+    expect(page.items).toHaveLength(19);
+    expect(page.hasMore).toBe(true);
+    expect(page.cursor).toEqual({ createdAt: row(19).createdAt, id: row(19).id });
+    expect(page.items.some((item) => item.id === row(20).id)).toBe(false);
+  });
+
+  it("keeps a cursor for an all-unknown page so older known rows remain reachable", () => {
+    const raw = Array.from({ length: 21 }, (_, index) => ({
+      ...rpcRow(row(index)),
+      out_type: "future_type",
+    }));
+    const parsed = parseNotificationRows(raw);
+    expect(parsed).toEqual([]);
+    expect(normalizeNotificationPage(parsed!)).toEqual({
+      items: [],
+      hasMore: true,
+      cursor: { createdAt: row(19).createdAt, id: row(19).id },
+    });
+  });
+
   it("deduplicates appended pages without disturbing existing order", () => {
     expect(appendUniqueNotifications([row(0), row(1)], [row(1), row(2)]).map((item) => item.id)).toEqual([
       row(0).id,
