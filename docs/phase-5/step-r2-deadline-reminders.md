@@ -206,17 +206,15 @@ that can collide with OUT parameters are referenced through aliases such as
 
 ## Prod rollout — owner only
 
-Do not enable R2 generation until every active client can safely read its two
-new notification types. The current bell parser rejects the notification page
-when it encounters an unknown type; deploying a new Vercel version or
-hard-refreshing the owner's browser does not prove that another member's
-already-open tab or installed app has updated.
+Do not enable R2 generation until the tolerant bell-parser release is deployed.
+It skips unknown notification types instead of rejecting the notification page,
+so a later notification type cannot lock a compatible client out of its list.
+Deploying a new Vercel version or hard-refreshing the owner's browser does not
+prove that another member's already-open tab or installed app has updated.
 
-Before continuing, establish and verify a client-update mechanism that reaches
-those open tabs and installed apps, or first ship a compatible tolerant parser
-that skips unknown notification types rather than rejecting the page. Until one
-of those protections is verified, do not manually invoke the runner or create
-the Prod cron job.
+Before continuing, deploy this tolerant-parser release and use the normal
+browser/PWA refresh path for open clients. Until that release is deployed, do
+not manually invoke the runner or create the Prod cron job.
 
 Once that protection is verified, use this order:
 

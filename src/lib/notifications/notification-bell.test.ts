@@ -95,7 +95,10 @@ describe("notification bell response contracts", () => {
     );
     expect(parseNotificationRows(value)?.map((item) => item.type)).toEqual(types);
     expect(parseNotificationRows(value)?.at(-1)?.taskId).toBeNull();
-    expect(parseNotificationRows([{ ...value[0], out_type: "unknown" }])).toBeNull();
+    expect(
+      parseNotificationRows([value[0], { ...value[1], out_type: "unknown" }]),
+    )?.toEqual([row(0)]);
+    expect(parseNotificationRows([{ ...value[0], out_type: "unknown" }])).toEqual([]);
     expect(parseNotificationRows([{ ...value[0], out_created_at: "bad" }])).toBeNull();
     expect(
       parseNotificationRows([value[0], { ...value[1], out_created_at: "bad" }]),
