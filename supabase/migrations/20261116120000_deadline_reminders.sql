@@ -229,7 +229,7 @@ as $$
 declare
   v_inserted integer;
 begin
-  if session_user <> 'postgres' then
+  if not pg_catalog.pg_has_role(session_user, 'postgres', 'MEMBER') then
     raise exception using errcode = '42501', message = 'Postgres session required.';
   end if;
   if p_as_of is null then

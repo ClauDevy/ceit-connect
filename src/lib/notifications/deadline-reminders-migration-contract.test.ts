@@ -51,8 +51,15 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     );
     const bootstrap = migration.slice(
       migration.indexOf("create function ceit_connect_private.bootstrap_deadline_reminders_at("),
-      migration.indexOf("create function ceit_connect_private.emit_deadline_reminder_occurrence("),
+      migration.indexOf("alter function ceit_connect_private.bootstrap_deadline_reminders_at("),
     );
+    expect(bootstrap).toContain(
+      "if not pg_catalog.pg_has_role(session_user, 'postgres', 'MEMBER') then",
+    );
+    expect(bootstrap).toContain(
+      "raise exception using errcode = '42501', message = 'Postgres session required.';",
+    );
+    expect(bootstrap).not.toContain("if session_user <> 'postgres' then");
     expect(bootstrap).not.toContain("insert into public.notifications");
     expect(migration).toContain(
       "perform ceit_connect_private.bootstrap_deadline_reminders_at(",
@@ -100,6 +107,35 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
       "revoke all on function public.run_deadline_reminders()\nfrom public, anon, authenticated, service_role",
     );
     expect(migration).not.toMatch(/grant execute[^;]*service_role/i);
+
+    for (const [start, end] of [
+      [
+        "create function ceit_connect_private.emit_deadline_reminder_occurrence(",
+        "alter function ceit_connect_private.emit_deadline_reminder_occurrence(",
+      ],
+      [
+        "create function ceit_connect_private.purge_deadline_reminder_ledger(",
+        "alter function ceit_connect_private.purge_deadline_reminder_ledger(",
+      ],
+      [
+        "create function ceit_connect_private.purge_deadline_reminder_runs(",
+        "alter function ceit_connect_private.purge_deadline_reminder_runs(",
+      ],
+      [
+        "create function ceit_connect_private.run_deadline_reminders_at(",
+        "alter function ceit_connect_private.run_deadline_reminders_at(",
+      ],
+    ]) {
+      const definition = migration.slice(migration.indexOf(start), migration.indexOf(end));
+      expect(definition).toContain("if session_user <> 'postgres' then");
+    }
+
+    const publicRunner = migration.slice(
+      migration.indexOf("create function public.run_deadline_reminders()"),
+      migration.indexOf("alter function public.run_deadline_reminders()"),
+    );
+    expect(publicRunner).toContain("ceit_connect_private.run_deadline_reminders_at(");
+    expect(publicRunner).toContain("pg_catalog.clock_timestamp()");
   });
 
   it("returns one safe six-field row and retains bounded cleanup", () => {
