@@ -133,7 +133,11 @@ run-history rows cleaned, and one fixed safe status (`Completed.`,
 are contained so one malformed/racing row does not prevent later candidates or
 retention. Migration `20261117120000_deadline_reminder_retry_backoff.sql`
 persists content-free, recipient-scoped occurrence retry state outside the
-caught exception, backs failures off for 15, 30, 60, then 120 minutes, and
+caught exception. The worker retains the 100 cap at the task/kind/target
+occurrence level, then gives each eligible recipient a separate exception
+boundary: one person's insert failure rolls back and backs off only that
+person, while healthy recipients for the same occurrence commit immediately.
+Retries back off for 15, 30, 60, then 120 minutes, and
 stops selecting that recipient after five failed attempts or its target,
 whichever comes first. A newly assigned active person has a distinct retry key
 and remains eligible even when another recipient is exhausted. Successful

@@ -44,10 +44,13 @@ select pg_temp.r2_retry_record('03 retry cleanup is hardened and ungranted',
    where p.oid='ceit_connect_private.purge_deadline_reminder_retry_state(timestamptz)'::regprocedure)
   and not has_function_privilege('anon','ceit_connect_private.purge_deadline_reminder_retry_state(timestamptz)','EXECUTE')
   and not has_function_privilege('authenticated','ceit_connect_private.purge_deadline_reminder_retry_state(timestamptz)','EXECUTE')
-  and not has_function_privilege('service_role','ceit_connect_private.purge_deadline_reminder_retry_state(timestamptz)','EXECUTE'));
+  and not has_function_privilege('service_role','ceit_connect_private.purge_deadline_reminder_retry_state(timestamptz)','EXECUTE')
+  and not has_function_privilege('anon','ceit_connect_private.emit_deadline_reminder_occurrence(uuid,text,timestamptz,uuid,timestamptz)','EXECUTE')
+  and not has_function_privilege('authenticated','ceit_connect_private.emit_deadline_reminder_occurrence(uuid,text,timestamptz,uuid,timestamptz)','EXECUTE')
+  and not has_function_privilege('service_role','ceit_connect_private.emit_deadline_reminder_occurrence(uuid,text,timestamptz,uuid,timestamptz)','EXECUTE'));
 
 select pg_temp.r2_retry_record('04 latest worker filters retry state before the cap',
-  (select pg_get_functiondef(p.oid) like '%retry_row.user_id = proposed.user_id%retry_row.next_retry_at > p_as_of%limit public.deadline_reminder_batch_size()%'
+  (select pg_get_functiondef(p.oid) like '%retry_row.user_id = proposed.user_id%limit public.deadline_reminder_batch_size()%for v_recipient in%v_recipient_sqlstate%'
    from pg_catalog.pg_proc p
    where p.oid='ceit_connect_private.run_deadline_reminders_at(timestamptz)'::regprocedure));
 
@@ -83,7 +86,7 @@ select set_config('ceit_connect.task_assignee_writer','create_event_with_tasks',
 select set_config('ceit_connect.task_access_writer','create_active_event_task',true);
 insert into public.tasks(id,event_id,committee_id,title,phase,status,task_type,due_date,
   primary_assignees,assist_assignees,is_confidential,request_backup) values
-('74003000-0000-4000-8000-000000000001','74002000-0000-4000-8000-000000000001','7400c000-0000-4000-8000-000000000001','R2 forced failure','R2','To Do','Deliverable','2026-11-20 12:00+00',array['74000000-0000-4000-8000-000000000002'::uuid],'{}',false,false),
+('74003000-0000-4000-8000-000000000001','74002000-0000-4000-8000-000000000001','7400c000-0000-4000-8000-000000000001','R2 forced failure','R2','To Do','Deliverable','2026-11-20 12:00+00',array['74000000-0000-4000-8000-000000000002'::uuid],array['74000000-0000-4000-8000-000000000003'::uuid],false,false),
 ('74003000-0000-4000-8000-000000000002','74002000-0000-4000-8000-000000000001','7400c000-0000-4000-8000-000000000001','R2 healthy later','R2','To Do','Deliverable','2026-11-20 12:01+00',array['74000000-0000-4000-8000-000000000002'::uuid],'{}',false,false),
 ('74003000-0000-4000-8000-000000000003','74002000-0000-4000-8000-000000000001','7400c000-0000-4000-8000-000000000001','R2 exhausted','R2','To Do','Deliverable','2026-11-20 12:02+00',array['74000000-0000-4000-8000-000000000002'::uuid],'{}',false,false);
 select set_config('ceit_connect.task_assignee_writer','',true);
@@ -109,17 +112,27 @@ execute function pg_temp.r2_force_notification_failure();
 
 create table r2_retry_first_run as
 select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 00:00+00');
-select pg_temp.r2_retry_record('05 one failure does not block the later healthy occurrence',
+select pg_temp.r2_retry_record('05 one recipient failure does not block a healthy recipient or later occurrence',
   (select out_status='Completed with failures.' and out_notifications_created>=1
    from r2_retry_first_run)
+  and exists(select 1 from public.notifications
+             where task_id='74003000-0000-4000-8000-000000000001'
+               and user_id='74000000-0000-4000-8000-000000000003'
+               and type='task_due_soon')
+  and exists(select 1 from ceit_connect_private.task_deadline_reminder_ledger
+             where task_id='74003000-0000-4000-8000-000000000001'
+               and user_id='74000000-0000-4000-8000-000000000003'
+               and reminder_kind='task_due_soon')
   and exists(select 1 from public.notifications
              where task_id='74003000-0000-4000-8000-000000000002'
                and type='task_due_soon'));
 select pg_temp.r2_retry_record('06 failed occurrence is not marked sent',
   not exists(select 1 from public.notifications
-             where task_id='74003000-0000-4000-8000-000000000001')
+             where task_id='74003000-0000-4000-8000-000000000001'
+               and user_id='74000000-0000-4000-8000-000000000002')
   and not exists(select 1 from ceit_connect_private.task_deadline_reminder_ledger
-                 where task_id='74003000-0000-4000-8000-000000000001'));
+                 where task_id='74003000-0000-4000-8000-000000000001'
+                   and user_id='74000000-0000-4000-8000-000000000002'));
 select pg_temp.r2_retry_record('07 caught failure persists a 15-minute retry outside the exception',
   exists(select 1 from ceit_connect_private.deadline_reminder_retry_state
          where task_id='74003000-0000-4000-8000-000000000001'
@@ -131,7 +144,8 @@ select pg_temp.r2_retry_record('07 caught failure persists a 15-minute retry out
 select * from ceit_connect_private.run_deadline_reminders_at('2026-11-20 00:05+00');
 select pg_temp.r2_retry_record('08 occurrence is skipped before its retry instant',
   not exists(select 1 from public.notifications
-             where task_id='74003000-0000-4000-8000-000000000001')
+             where task_id='74003000-0000-4000-8000-000000000001'
+               and user_id='74000000-0000-4000-8000-000000000002')
   and exists(select 1 from ceit_connect_private.deadline_reminder_retry_state
              where task_id='74003000-0000-4000-8000-000000000001'
                and user_id='74000000-0000-4000-8000-000000000002'

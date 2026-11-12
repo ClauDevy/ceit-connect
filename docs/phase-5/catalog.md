@@ -313,11 +313,14 @@ rather than notification rows.
   recipient key, bounded failure count, retry/failed instants, and SQLSTATE—no
   task title, description, or other content.
 - Replaces `ceit_connect_private.run_deadline_reminders_at(timestamptz)` and
-  `ceit_connect_private.emit_deadline_reminder_occurrence(...)`. Backed-off or
+  adds the ungranted five-argument recipient emitter overload. Backed-off or
   exhausted recipients are filtered before the earliest-first cap and again
-  at emission, so a newly assigned unledgered person remains eligible. A
-  caught failure is persisted after its exception subtransaction; success
-  deletes only retry rows whose recipient now has the original sent-ledger key.
+  at emission, so a newly assigned unledgered person remains eligible. The
+  cap remains 100 task/kind/target occurrences; inside each occurrence, every
+  recipient has an independent exception boundary. A caught failure is
+  persisted only for that recipient, healthy recipients commit immediately,
+  and success deletes only retry state whose recipient now has the original
+  sent-ledger key.
 - Retries occur after 15, 30, 60, and 120 minutes, stop after five failures or
   at the target, and therefore cannot monopolize every later batch.
 - Adds a strict postgres-session-only, application-role-revoked cleanup helper

@@ -99,8 +99,9 @@ declare
   v_started_at timestamptz := pg_catalog.clock_timestamp();
   v_finished_at timestamptz;
   v_candidate record;
+  v_recipient record;
   v_created integer;
-  v_candidate_sqlstate text;
+  v_recipient_sqlstate text;
   v_generation_sqlstate text;
   v_cleanup_sqlstate text;
   v_retry_cleanup_sqlstate text;
@@ -209,124 +210,129 @@ begin
     limit public.deadline_reminder_batch_size()
   loop
     out_occurrences_handled := out_occurrences_handled + 1;
-    v_candidate_sqlstate := null;
-    begin
-      v_created := ceit_connect_private.emit_deadline_reminder_occurrence(
-        v_candidate.task_id,
-        v_candidate.reminder_kind,
-        v_candidate.target_at,
-        p_as_of
-      );
-      out_notifications_created := out_notifications_created + v_created;
-    exception when others then
-      get stacked diagnostics v_candidate_sqlstate = returned_sqlstate;
-      if v_generation_sqlstate is null then
-        v_generation_sqlstate := v_candidate_sqlstate;
-      end if;
-    end;
-
-    if v_candidate_sqlstate is null then
-      delete from ceit_connect_private.deadline_reminder_retry_state as retry_row
-      where retry_row.task_id = v_candidate.task_id
-        and retry_row.reminder_kind = v_candidate.reminder_kind
-        and retry_row.target_at = v_candidate.target_at
-        and exists (
+    for v_recipient in
+      select distinct proposed.user_id
+      from public.tasks as task_row
+      join public.events as event_row on event_row.id = task_row.event_id
+      cross join lateral pg_catalog.unnest(
+        coalesce(task_row.primary_assignees, '{}'::uuid[])
+        || coalesce(task_row.assist_assignees, '{}'::uuid[])
+      ) as proposed(user_id)
+      join public.users as profile
+        on profile.id = proposed.user_id
+       and profile.is_active is true
+      where task_row.id = v_candidate.task_id
+        and event_row.status = 'Active'
+        and task_row.status <> 'Completed'
+        and proposed.user_id is not null
+        and (
+          (
+            v_candidate.reminder_kind = 'task_due_soon'
+            and task_row.due_date = v_candidate.target_at
+          )
+          or (
+            v_candidate.reminder_kind = 'live_operation_prep'
+            and task_row.task_type = 'LiveOperation'
+            and task_row.call_time = v_candidate.target_at
+          )
+        )
+        and not exists (
           select 1
           from ceit_connect_private.task_deadline_reminder_ledger as ledger_row
-          where ledger_row.task_id = retry_row.task_id
-            and ledger_row.reminder_kind = retry_row.reminder_kind
-            and ledger_row.target_at = retry_row.target_at
-            and ledger_row.user_id = retry_row.user_id
+          where ledger_row.task_id = v_candidate.task_id
+            and ledger_row.reminder_kind = v_candidate.reminder_kind
+            and ledger_row.target_at = v_candidate.target_at
+            and ledger_row.user_id = proposed.user_id
+        )
+        and not exists (
+          select 1
+          from ceit_connect_private.deadline_reminder_retry_state as retry_row
+          where retry_row.task_id = v_candidate.task_id
+            and retry_row.reminder_kind = v_candidate.reminder_kind
+            and retry_row.target_at = v_candidate.target_at
+            and retry_row.user_id = proposed.user_id
+            and (
+              retry_row.failure_count >= 5
+              or retry_row.next_retry_at > p_as_of
+            )
+        )
+      order by proposed.user_id
+    loop
+      v_recipient_sqlstate := null;
+      begin
+        v_created := ceit_connect_private.emit_deadline_reminder_occurrence(
+          v_candidate.task_id,
+          v_candidate.reminder_kind,
+          v_candidate.target_at,
+          v_recipient.user_id,
+          p_as_of
         );
-    else
-      insert into ceit_connect_private.deadline_reminder_retry_state (
-        task_id,
-        reminder_kind,
-        target_at,
-        user_id,
-        failure_count,
-        next_retry_at,
-        last_failed_at,
-        last_error_sqlstate
-      )
-      select v_candidate.task_id,
-             v_candidate.reminder_kind,
-             v_candidate.target_at,
-             failed_recipient.user_id,
-             1,
-             least(
-               v_candidate.target_at,
-               p_as_of + interval '15 minutes'
-             ),
-             p_as_of,
-             v_candidate_sqlstate
-      from (
-        select distinct proposed.user_id
-        from public.tasks as task_row
-        join public.events as event_row on event_row.id = task_row.event_id
-        cross join lateral pg_catalog.unnest(
-          coalesce(task_row.primary_assignees, '{}'::uuid[])
-          || coalesce(task_row.assist_assignees, '{}'::uuid[])
-        ) as proposed(user_id)
-        join public.users as profile
-          on profile.id = proposed.user_id
-         and profile.is_active is true
-        where task_row.id = v_candidate.task_id
-          and event_row.status = 'Active'
-          and task_row.status <> 'Completed'
-          and proposed.user_id is not null
-          and (
-            (
-              v_candidate.reminder_kind = 'task_due_soon'
-              and task_row.due_date = v_candidate.target_at
-            )
-            or (
-              v_candidate.reminder_kind = 'live_operation_prep'
-              and task_row.task_type = 'LiveOperation'
-              and task_row.call_time = v_candidate.target_at
-            )
-          )
-          and not exists (
+        out_notifications_created := out_notifications_created + v_created;
+      exception when others then
+        get stacked diagnostics v_recipient_sqlstate = returned_sqlstate;
+        if v_generation_sqlstate is null then
+          v_generation_sqlstate := v_recipient_sqlstate;
+        end if;
+      end;
+
+      if v_recipient_sqlstate is null then
+        delete from ceit_connect_private.deadline_reminder_retry_state as retry_row
+        where retry_row.task_id = v_candidate.task_id
+          and retry_row.reminder_kind = v_candidate.reminder_kind
+          and retry_row.target_at = v_candidate.target_at
+          and retry_row.user_id = v_recipient.user_id
+          and exists (
             select 1
             from ceit_connect_private.task_deadline_reminder_ledger as ledger_row
-            where ledger_row.task_id = v_candidate.task_id
-              and ledger_row.reminder_kind = v_candidate.reminder_kind
-              and ledger_row.target_at = v_candidate.target_at
-              and ledger_row.user_id = proposed.user_id
-          )
-          and not exists (
-            select 1
-            from ceit_connect_private.deadline_reminder_retry_state as retry_row
-            where retry_row.task_id = v_candidate.task_id
-              and retry_row.reminder_kind = v_candidate.reminder_kind
-              and retry_row.target_at = v_candidate.target_at
-              and retry_row.user_id = proposed.user_id
-              and (
-                retry_row.failure_count >= 5
-                or retry_row.next_retry_at > p_as_of
-              )
-          )
-      ) as failed_recipient
-      on conflict (task_id, reminder_kind, target_at, user_id) do update
-      set failure_count = least(
-            ceit_connect_private.deadline_reminder_retry_state.failure_count + 1,
-            5
+            where ledger_row.task_id = retry_row.task_id
+              and ledger_row.reminder_kind = retry_row.reminder_kind
+              and ledger_row.target_at = retry_row.target_at
+              and ledger_row.user_id = retry_row.user_id
+          );
+      else
+        insert into ceit_connect_private.deadline_reminder_retry_state (
+          task_id,
+          reminder_kind,
+          target_at,
+          user_id,
+          failure_count,
+          next_retry_at,
+          last_failed_at,
+          last_error_sqlstate
+        ) values (
+          v_candidate.task_id,
+          v_candidate.reminder_kind,
+          v_candidate.target_at,
+          v_recipient.user_id,
+          1,
+          least(
+            v_candidate.target_at,
+            p_as_of + interval '15 minutes'
           ),
-          next_retry_at = least(
-            excluded.target_at,
-            excluded.last_failed_at + case
-              when ceit_connect_private.deadline_reminder_retry_state.failure_count = 1
-                then interval '30 minutes'
-              when ceit_connect_private.deadline_reminder_retry_state.failure_count = 2
-                then interval '1 hour'
-              when ceit_connect_private.deadline_reminder_retry_state.failure_count = 3
-                then interval '2 hours'
-              else excluded.target_at - excluded.last_failed_at
-            end
-          ),
-          last_failed_at = excluded.last_failed_at,
-          last_error_sqlstate = excluded.last_error_sqlstate;
-    end if;
+          p_as_of,
+          v_recipient_sqlstate
+        )
+        on conflict (task_id, reminder_kind, target_at, user_id) do update
+        set failure_count = least(
+              ceit_connect_private.deadline_reminder_retry_state.failure_count + 1,
+              5
+            ),
+            next_retry_at = least(
+              excluded.target_at,
+              excluded.last_failed_at + case
+                when ceit_connect_private.deadline_reminder_retry_state.failure_count = 1
+                  then interval '30 minutes'
+                when ceit_connect_private.deadline_reminder_retry_state.failure_count = 2
+                  then interval '1 hour'
+                when ceit_connect_private.deadline_reminder_retry_state.failure_count = 3
+                  then interval '2 hours'
+                else excluded.target_at - excluded.last_failed_at
+              end
+            ),
+            last_failed_at = excluded.last_failed_at,
+            last_error_sqlstate = excluded.last_error_sqlstate;
+      end if;
+    end loop;
   end loop;
 
   begin
@@ -404,6 +410,7 @@ create or replace function ceit_connect_private.emit_deadline_reminder_occurrenc
   p_task_id uuid,
   p_reminder_kind text,
   p_target_at timestamptz,
+  p_user_id uuid,
   p_as_of timestamptz
 )
 returns integer
@@ -421,6 +428,7 @@ begin
   if p_task_id is null
      or p_reminder_kind not in ('task_due_soon', 'live_operation_prep')
      or p_target_at is null
+     or p_user_id is null
      or p_as_of is null then
     raise exception using errcode = '22023', message = 'Reminder occurrence is invalid.';
   end if;
@@ -458,23 +466,22 @@ begin
         )
       )
   ), eligible_recipient as materialized (
-    select distinct proposed.user_id
+    select profile.id as user_id
     from stored_occurrence
-    cross join lateral pg_catalog.unnest(
+    join public.users as profile
+      on profile.id = p_user_id
+     and profile.is_active is true
+    where p_user_id = any(
       coalesce(stored_occurrence.primary_assignees, '{}'::uuid[])
       || coalesce(stored_occurrence.assist_assignees, '{}'::uuid[])
-    ) as proposed(user_id)
-    join public.users as profile
-      on profile.id = proposed.user_id
-     and profile.is_active is true
-    where proposed.user_id is not null
+    )
       and not exists (
         select 1
         from ceit_connect_private.deadline_reminder_retry_state as retry_row
         where retry_row.task_id = p_task_id
           and retry_row.reminder_kind = p_reminder_kind
           and retry_row.target_at = p_target_at
-          and retry_row.user_id = proposed.user_id
+          and retry_row.user_id = p_user_id
           and (
             retry_row.failure_count >= 5
             or retry_row.next_retry_at > p_as_of
@@ -507,10 +514,10 @@ begin
 end;
 $$;
 alter function ceit_connect_private.emit_deadline_reminder_occurrence(
-  uuid, text, timestamptz, timestamptz
+  uuid, text, timestamptz, uuid, timestamptz
 ) owner to postgres;
 revoke all on function ceit_connect_private.emit_deadline_reminder_occurrence(
-  uuid, text, timestamptz, timestamptz
+  uuid, text, timestamptz, uuid, timestamptz
 ) from public, anon, authenticated, service_role;
 
 create or replace function public.run_deadline_reminders()
