@@ -282,7 +282,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 ## Open items
 
-- The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. N1, N2, the bell correction, I1, N3a, N3b, P1, D1, and D1b are live; D2 is in progress.
+- The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. N1, N2, the bell correction, I1, N3a, N3b, P1, D1, D1b, and D2 are live on Dev and Prod; O1 is done, with the real Prod export and matching 31-table proof recorded in `docs/BACKUP.md` (owner-confirmed 2026-11-12).
 - The post-Phase-5 notification follow-up is the daily digest email. Its background sender follows the approved P1 secure-sender decision: the public anon key plus a separately hashed capability, with no service-role exception.
 - N3a rollout is complete except for the first scheduled Prod cleanup-run check, which is non-blocking for N3b.
 - Phase 5 idea: consider an automatic email queue for rate-limited invitations. Batch 8 deliberately uses sequential sends and explicit retry only.
@@ -302,7 +302,6 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - Future Batch 11 rendered-component coverage: replace or supplement the seven source-only contracts for (1) Add/Edit field inventory, (2) submit/busy/refetch settlement, (3) failed-option Retry and disabled Submit, (4) invalid-field focus/scroll, (5) committee labels/viewer filtering/bulk controls, (6) zero-match/cap-state clearing, and (7) Last updated ordering plus capability-gated Edit. A Happy DOM rendered-test harness now exists for N3b, but all seven outstanding Batch 11 coverage gaps remain intentionally separate.
 - Batch 14 UUID follow-up: if event IDs or banner file IDs can ever be non-v1-5, replace `can_write_event_banner_object`, `event_banner_url_is_valid`, and the matching event-banner route checks together through a new later-timestamp migration so the application and Storage rules remain aligned.
 - Deactivate the mistyped fake-email test account on Prod.
-- Write `docs/BACKUP.md`.
 
 Batch 12 and Batch 12b are merged and live, and their migrations are applied on Dev and Prod (owner-confirmed; 12b confirmed 2026-11-02). The 12b 19-case rollback-safe Dev paste passed. Scheduler run-history checks were not separately reported.
 

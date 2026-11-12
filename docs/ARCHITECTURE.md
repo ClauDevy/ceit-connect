@@ -76,7 +76,7 @@ White/slate backgrounds; orange only for primary actions (login buttons, progres
 
 ## 9. Backup and recovery
 
-Supabase free tier has no automated backups. A designated Technical Lead exports the database weekly from the dashboard; recovery = re-import the latest export. Documented as a runbook at `/docs/BACKUP.md` (to be written in Phase 5, and the export must actually be run once to prove it works). A paid plan would add daily backups/PITR later.
+CEIT Connect does not rely on a managed free-tier backup. A designated Technical Lead follows `/docs/BACKUP.md` to create a private Docker-backed Supabase CLI export of the `public` and `ceit_connect_private` schemas, then compares every exported table count with Prod; weekly is recommended, and the council chooses the frequency. Current free-tier dashboard export availability was not verified offline, so the runbook does not claim or depend on it. Recovery means re-importing the latest verified schema export first and data export second; that outline is untested, and the full restore drill remains a later batch. Supabase Auth sign-ins and Storage are outside this export and are not recoverable from it. A paid plan could add managed daily backups/PITR later.
 
 ## 10. Phased build plan
 
