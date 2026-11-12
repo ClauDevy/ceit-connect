@@ -48,6 +48,7 @@ import {
   notificationBellLabel,
   notificationCountAnnouncement,
   notificationSentence,
+  notificationTargetPath,
   NOTIFICATION_FETCH_LIMIT,
   parseMarkAllNotificationsReadResult,
   parseMarkNotificationReadResult,
@@ -561,7 +562,7 @@ type NotificationRowsViewProps = {
   markOne: (id: string) => Promise<boolean>;
   deleteOne: (id: string) => Promise<boolean>;
   refreshList: () => void;
-  navigate: (taskId: string) => void;
+  navigate: (targetPath: string) => void;
   emptyFocusRef?: RefObject<HTMLElement | null>;
 };
 
@@ -610,8 +611,8 @@ export function NotificationRowsView({
   }
 
   async function handleClick(event: MouseEvent<HTMLAnchorElement>, row: NotificationRow) {
-    const taskId = row.taskId;
-    if (!taskId) return;
+    const targetPath = notificationTargetPath(row);
+    if (!targetPath) return;
     if (
       isModifiedNotificationActivation({
         button: event.button,
@@ -634,7 +635,7 @@ export function NotificationRowsView({
     event.preventDefault();
     if (await markOne(row.id)) {
       close();
-      navigate(taskId);
+      navigate(targetPath);
     }
   }
 
@@ -712,9 +713,9 @@ export function NotificationRowsView({
             {...reveal.getRevealProps(row.id)}
             className={cn("relative flex items-stretch", unread && "bg-primary/5")}
           >
-            {row.taskId ? (
+            {notificationTargetPath(row) ? (
               <Link
-                href={`/tasks/${row.taskId}`}
+                href={notificationTargetPath(row)!}
                 aria-label={accessibleLabel}
                 aria-busy={busy || undefined}
                 onClick={(event) => void handleClick(event, row)}
@@ -808,7 +809,7 @@ function NotificationRows({
       markOne={markOne}
       deleteOne={deleteOne}
       refreshList={refreshList}
-      navigate={(taskId) => router.push(`/tasks/${taskId}`)}
+      navigate={(targetPath) => router.push(targetPath)}
       emptyFocusRef={emptyFocusRef}
     />
   );

@@ -7,8 +7,10 @@ import {
   isTaskComment,
   isTaskCommentMentionCandidate,
   isTaskCommentRetryableError,
+  isTaskCommentTargetPageAnchor,
   isTaskCommentUnavailableError,
   mergeTaskCommentPages,
+  parseTaskCommentTargetHash,
   replaceTaskCommentNewestPage,
   trimTaskCommentBody,
   truncateCodePoints,
@@ -71,6 +73,29 @@ describe("task comments", () => {
         out_edited_at: "2026-10-23T00:01:00Z",
       }),
     ).toBe(true);
+  });
+
+  it("validates bounded target anchors and exact UUID comment hashes", () => {
+    expect(isTaskCommentTargetPageAnchor({
+      out_before_created_at: null,
+      out_before_id: null,
+      out_has_newer: false,
+    })).toBe(true);
+    expect(isTaskCommentTargetPageAnchor({
+      out_before_created_at: "2026-11-13T00:00:00Z",
+      out_before_id: "10000000-0000-4000-8000-000000000025",
+      out_has_newer: true,
+    })).toBe(true);
+    expect(isTaskCommentTargetPageAnchor({
+      out_before_created_at: null,
+      out_before_id: "10000000-0000-4000-8000-000000000025",
+      out_has_newer: true,
+    })).toBe(false);
+    expect(parseTaskCommentTargetHash(
+      "#comment-10000000-0000-4000-8000-000000000026",
+    )).toBe("10000000-0000-4000-8000-000000000026");
+    expect(parseTaskCommentTargetHash("#comment-not-a-uuid")).toBeNull();
+    expect(parseTaskCommentTargetHash("#other-10000000-0000-4000-8000-000000000026")).toBeNull();
   });
 
   it("trims before submission and counts Unicode code points", () => {

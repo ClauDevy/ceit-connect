@@ -25,6 +25,7 @@ export type NotificationRow = {
   id: string;
   type: NotificationType;
   taskId: string | null;
+  commentId: string | null;
   taskTitle: string;
   readAt: string | null;
   createdAt: string;
@@ -122,6 +123,7 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
       out_id: id,
       out_type: type,
       out_task_id: taskId,
+      out_comment_id: rawCommentId,
       out_task_title: taskTitle,
       out_read_at: readAt,
       out_created_at: createdAt,
@@ -134,8 +136,10 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
       rawBoundary = { createdAt, id };
     }
     if (!isNotificationType(type)) continue;
+    const commentId = rawCommentId === undefined ? null : rawCommentId;
     if (
       (taskId !== null && !isUuid(taskId)) ||
+      (commentId !== null && !isUuid(commentId)) ||
       typeof taskTitle !== "string" ||
       taskTitle.length === 0 ||
       taskTitle.length > 200 ||
@@ -144,7 +148,7 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
     ) {
       return null;
     }
-    const row = { id, type, taskId, taskTitle, readAt, createdAt };
+    const row = { id, type, taskId, commentId, taskTitle, readAt, createdAt };
     rows.push(row);
     if (index < NOTIFICATION_PAGE_SIZE) pageItems.push(row);
   }
@@ -154,6 +158,14 @@ export function parseNotificationRows(value: unknown): NotificationRow[] | null 
     cursor: rawBoundary,
   });
   return rows;
+}
+
+export function notificationTargetPath(row: Pick<NotificationRow, "taskId" | "commentId" | "type">) {
+  if (!row.taskId) return null;
+  if (row.type === "mention" && row.commentId) {
+    return `/tasks/${row.taskId}#comment-${row.commentId}`;
+  }
+  return `/tasks/${row.taskId}`;
 }
 
 export function normalizeNotificationPage(

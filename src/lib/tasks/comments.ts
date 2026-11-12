@@ -41,6 +41,12 @@ export type EditTaskCommentResult = {
   out_edited_at: string;
 };
 
+export type TaskCommentTargetPageAnchor = {
+  out_before_created_at: string | null;
+  out_before_id: string | null;
+  out_has_newer: boolean;
+};
+
 export type TaskCommentAction =
   "read" | "candidates" | "add" | "edit" | "delete";
 
@@ -106,6 +112,25 @@ export function isEditTaskCommentResult(
   return (
     typeof row.out_id === "string" && typeof row.out_edited_at === "string"
   );
+}
+
+export function isTaskCommentTargetPageAnchor(
+  value: unknown,
+): value is TaskCommentTargetPageAnchor {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return (
+    isNullableString(row.out_before_created_at) &&
+    isNullableString(row.out_before_id) &&
+    (row.out_before_created_at === null) === (row.out_before_id === null) &&
+    typeof row.out_has_newer === "boolean" &&
+    row.out_has_newer === (row.out_before_id !== null)
+  );
+}
+
+export function parseTaskCommentTargetHash(hash: string) {
+  const match = /^#comment-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(hash);
+  return match?.[1]?.toLowerCase() ?? null;
 }
 
 export function trimTaskCommentBody(body: string) {
