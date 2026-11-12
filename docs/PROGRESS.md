@@ -1,6 +1,6 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-11-11. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-11-12. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 The approved Phase 5 batch map, decisions, gate checks, and release checklist are in `docs/phase-5/PHASE-5-PLAN.md`.
 
@@ -20,7 +20,9 @@ The approved Phase 5 batch map, decisions, gate checks, and release checklist ar
 
 - **Phase 5 P1a database and P1b application are live on Dev and Prod (owner-confirmed 2026-11-11); production push is proven end to end.** P1a supplies private five-device subscriptions, strict provider hosts and key validation, shared-device transfer, deactivation cleanup, a notification/user-only queue, two-minute leases, transient-only retries, 404/410 removal, a hashed capability boundary, generic lock-screen copy, wake coalescing, due-work fallback, and counts-only history. P1b adds the isolated wake route, VAPID sender, push-only worker, explicit per-device Settings controls, and best-effort current-device sign-out cleanup without a service-role exception. The stale P1a `/notifications` target and unhandled `pushsubscriptionchange` recovery remain parked follow-ups. See `docs/phase-5/step-p1a-web-push-database.md` and `docs/phase-5/step-p1b-web-push-sender.md`.
 
-- **Phase 5 D1 and D1b Executive Dashboard readers are live on Dev and Prod (owner-confirmed 2026-11-11), and D2 UI is in progress.** D1 adds confidential-safe committee totals, a Level 2 summary, true per-member workloads, explicit no-bar counts, and database-enforced Admin/Co-Admin scope. D1b adds the scoped overview, attention, deadline, free-member, slipping-signal, and Admin-only push-adoption readers. No UI, route, or application code belongs to D1 or D1b.
+- **Phase 5 R1 request notifications are implemented and locally verified; Dev/Prod application and SQL verification remain owner steps.** New migration `20261115120000_request_notifications.sql` is later than the documented Dev/Prod tip `20261114120000_executive_dashboard_extras_data.sql`. It adds five request types across constraints, private generation, bell copy, fixed generic push copy, catalog/tests, and docs without a service-role exception. Offer submission notifies active eligible approvers and real-access primary assignees; leave submit/cancel notifies active eligible approvers; approval/denial notifies the requester. Actor, inactive, failed/repeated/no-op, withdrawal, backup-cancel, stale-cleanup, system-closure, and other-approver cases stay silent. Same-kind trigger-name ordering lets `leave_approved` survive while N1's marker still suppresses the approval's assignee-removal task notification. The self-contained Dev pastes expect 25 catalog and 38 behavior result lines. All 1,323 tests across 128 files pass; lint has zero errors and the unrelated existing `mascot.tsx` warning; whitespace passes. The direct TypeScript check has no R1 error and remains blocked only by the known missing Next-generated `PageProps`/`LayoutProps` globals while `.next` is absent; no build was run.
+
+- **Phase 5 D1, D1b, and D2 Executive Dashboard are live on Dev and Prod (owner-confirmed 2026-11-12).** D1 adds confidential-safe committee totals, a Level 2 summary, true per-member workloads, explicit no-bar counts, and database-enforced Admin/Co-Admin scope. D1b adds the scoped overview, attention, deadline, free-member, slipping-signal, and Admin-only push-adoption readers. D2 supplies the approved responsive UI without changing those database boundaries.
 
 - **Discord (X1) was cancelled by the owner on 2026-11-11 and will not be built.**
 
@@ -272,7 +274,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
   validator rejects empty or over-200-character titles. Current app writers
   enforce the bound, but the database-wide invariant remains absent.
 - Phase 5 completion gate: Phase 5 cannot be marked complete until N1, N2, I1,
-  the bell correction, N3a, N3b, P1, D1, D2, and O1 have each completed review
+  the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, and R1 have each completed review
   and rollout.
 - N3a database follow-up: the Dev-applied migration intentionally remains
   immutable. Its `notification_cleanup_batch_size()` value of 500 is coupled
@@ -283,6 +285,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 ## Open items
 
 - The owner-approved Phase 5 order is N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. N1, N2, the bell correction, I1, N3a, N3b, P1, D1, D1b, and D2 are live on Dev and Prod; O1 is done, with the real Prod export and matching 31-table proof recorded in `docs/BACKUP.md` (owner-confirmed 2026-11-12).
+- R1 is implemented locally; apply migration 77 on Dev first, run its 25/25 and 38/38 rollback-safe pastes, then repeat on Prod only after review.
 - The post-Phase-5 notification follow-up is the daily digest email. Its background sender follows the approved P1 secure-sender decision: the public anon key plus a separately hashed capability, with no service-role exception.
 - N3a rollout is complete except for the first scheduled Prod cleanup-run check, which is non-blocking for N3b.
 - Phase 5 idea: consider an automatic email queue for rate-limited invitations. Batch 8 deliberately uses sequential sends and explicit retry only.

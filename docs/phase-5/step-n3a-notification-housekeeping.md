@@ -215,6 +215,10 @@ Branch `feature/notification-housekeeping-ui`, after N3a is merged and live:
 
 ## Risks and deferred observations
 
+- R1's five request types need no cleanup-function change: N3a selects by
+  ownership, `read_at`, age, and stable ID rather than by notification type.
+  Read request notifications therefore age out under the same 60-day bound,
+  while unread request notifications remain protected.
 - Unread rows are retained forever and may grow without bound; measurements
   decide whether a later, separately approved policy is needed.
 - Cleanup drains a large read backlog over multiple daily runs by design.

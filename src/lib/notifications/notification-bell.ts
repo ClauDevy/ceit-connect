@@ -10,6 +10,11 @@ export const NOTIFICATION_TYPES = [
   "status_change",
   "unlock",
   "backup_request",
+  "volunteer_offer",
+  "leave_requested",
+  "leave_cancelled",
+  "leave_approved",
+  "leave_denied",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -220,6 +225,16 @@ export function notificationSentence(row: NotificationRow) {
       return `${row.taskTitle} is ready to continue.`;
     case "backup_request":
       return `${row.taskTitle} needs backup.`;
+    case "volunteer_offer":
+      return `${row.taskTitle} has a new volunteer offer.`;
+    case "leave_requested":
+      return `${row.taskTitle} has a new leave request.`;
+    case "leave_cancelled":
+      return `A leave request was cancelled for ${row.taskTitle}.`;
+    case "leave_approved":
+      return `Your leave request for ${row.taskTitle} was approved.`;
+    case "leave_denied":
+      return `Your leave request for ${row.taskTitle} was denied.`;
   }
 }
 
