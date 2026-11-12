@@ -196,7 +196,9 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     expect(retryPaste).toContain("insert into auth.users");
     expect(retryPaste).not.toMatch(/create\s+(?:temporary|temp)\s+table/i);
     expect(retryPaste).toContain("TEST RESULTS 12/12 PASS");
-    expect(retryPaste).toContain("one failure does not block the later healthy occurrence");
+    expect(retryPaste).toContain(
+      "one recipient failure does not block a healthy recipient or later occurrence",
+    );
   });
 
   it("documents exact replacements and owner-only cron lifecycle", () => {
@@ -242,10 +244,14 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     expect(runner).toContain("retry_row.failure_count >= 5");
     expect(runner).toContain("retry_row.next_retry_at > p_as_of");
     expect(runner).toContain("retry_row.user_id = proposed.user_id");
-    expect(runner).toContain("v_candidate_sqlstate := null;");
-    expect(runner).toContain("get stacked diagnostics v_candidate_sqlstate = returned_sqlstate;");
-    expect(runner.indexOf("if v_candidate_sqlstate is null then")).toBeGreaterThan(
+    expect(runner).toContain("for v_recipient in");
+    expect(runner).toContain("v_recipient_sqlstate := null;");
+    expect(runner).toContain("get stacked diagnostics v_recipient_sqlstate = returned_sqlstate;");
+    expect(runner.indexOf("if v_recipient_sqlstate is null then")).toBeGreaterThan(
       runner.indexOf("exception when others then"),
+    );
+    expect(runner).toContain(
+      "v_candidate.target_at,\n          v_recipient.user_id,\n          p_as_of",
     );
     expect(runner).toContain(
       "on conflict (task_id, reminder_kind, target_at, user_id) do update",
@@ -272,6 +278,8 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     );
     expect(emitter).toContain("then pg_catalog.clock_timestamp()");
     expect(emitter).toContain("else p_as_of");
+    expect(emitter).toContain("p_user_id uuid");
+    expect(emitter).toContain("on profile.id = p_user_id");
 
     const publicRunner = retryMigration.slice(
       retryMigration.lastIndexOf("create or replace function public.run_deadline_reminders()"),
@@ -301,6 +309,9 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     expect(retryMigration).toContain(
       "revoke all on function ceit_connect_private.purge_deadline_reminder_retry_state(timestamptz)\nfrom public, anon, authenticated, service_role",
     );
+    expect(retryMigration).toContain(
+      "revoke all on function ceit_connect_private.emit_deadline_reminder_occurrence(\n  uuid, text, timestamptz, uuid, timestamptz\n) from public, anon, authenticated, service_role",
+    );
     expect(retryMigration).toContain("if session_user <> 'postgres' then");
     expect(retryMigration).toContain("limit 500\n    for update skip locked");
     expect(retryMigration).not.toMatch(/grant execute[^;]*service_role/i);
@@ -310,6 +321,9 @@ describe("Phase 5 R2 deadline-reminder migration contract", () => {
     );
     expect(retryPaste).toContain(
       "conflict update increments failure and lengthens backoff",
+    );
+    expect(retryPaste).toContain(
+      "one recipient failure does not block a healthy recipient or later occurrence",
     );
     expect(step).toContain("Never approve a\nfailed scheduled rollout from a later manual run.");
   });
