@@ -7,6 +7,7 @@ const migration = read(
   "supabase/migrations/20261118120000_mention_notification_comment_targets.sql",
 ).toLowerCase();
 const devTests = read("docs/phase-5/step-j1-mention-comment-targets-dev-tests.sql");
+const phaseFivePlan = read("docs/phase-5/PHASE-5-PLAN.md");
 
 describe("mention comment target migration contract", () => {
   it("adds a nullable, mention-only comment reference with deletion fallback", () => {
@@ -88,6 +89,8 @@ describe("mention target app contract", () => {
     expect(comments).toContain('{ queryKey: ["task-comments", taskId] }');
     expect(comments).toContain("isTaskCommentUnavailableError(targetQuery.error)");
     expect(comments).toContain("await Promise.all([newestQuery.refetch(), onRefreshTask()])");
+    expect(comments).toContain("deletingSelectedTarget");
+    expect(comments).toContain("refetchInterval: mutationAction === null ? POLL_INTERVAL_MS : false");
     expect(center).toContain('window.dispatchEvent(new Event("hashchange"))');
     expect(styles).toMatch(
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.motion-comment-target-highlight \{[\s\S]*background: color-mix/,
@@ -108,5 +111,18 @@ describe("mention target Dev paste contract", () => {
       devTests.indexOf("insert into public.tasks("),
     );
     expect(devTests.indexOf("reset role;\nselect pg_temp.j1_record('10 timestamp tie")).toBeGreaterThan(-1);
+    expect(devTests).toContain(
+      "and not exists(select 1 from public.task_comments where id='81000000-0000-4000-8000-000000000052')",
+    );
+  });
+});
+
+describe("Phase 5 completion gate", () => {
+  it("requires J1 review and rollout before Phase 5 can complete", () => {
+    const gate = phaseFivePlan.slice(
+      phaseFivePlan.indexOf("## Phase 5 gate checks"),
+      phaseFivePlan.indexOf("## Deferred", phaseFivePlan.indexOf("## Phase 5 gate checks")),
+    );
+    expect(gate).toMatch(/R1, R2, and J1[^.]*completed review and\s+rollout\./);
   });
 });

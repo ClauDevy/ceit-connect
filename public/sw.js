@@ -25,7 +25,7 @@ function validatedPayload(event) {
       typeof value.tag === "string" &&
       value.tag.length > 0 &&
       value.tag.length <= 80 &&
-      typeof value.targetPath === "string"
+      (value.targetPath === undefined || typeof value.targetPath === "string")
     ) {
       return { ...value, targetPath: validatedTargetPath(value.targetPath) };
     }

@@ -60,6 +60,8 @@ select ('81000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
        case when n=24 then '2026-11-13 00:25:00+08'::timestamptz
             else '2026-11-13 00:00:00+08'::timestamptz+n*interval '1 minute' end
 from generate_series(1,51) n;
+insert into public.task_comments(id,task_id,created_by,body,created_at) values
+('81000000-0000-4000-8000-000000000052','81000000-0000-4000-8000-000000000203','81000000-0000-4000-8000-000000000011','Event deletion comment','2026-11-13 01:00:00+08');
 set local session_replication_role = origin;
 
 select pg_temp.j1_record('01 exactly five replaced function names and no overloads',
@@ -127,7 +129,7 @@ reset role;
 insert into public.notifications(id,user_id,type,task_id,comment_id) values
 ('81000000-0000-4000-8000-000000000301','81000000-0000-4000-8000-000000000012','mention','81000000-0000-4000-8000-000000000201','81000000-0000-4000-8000-000000000026'),
 ('81000000-0000-4000-8000-000000000302','81000000-0000-4000-8000-000000000013','mention','81000000-0000-4000-8000-000000000201','81000000-0000-4000-8000-000000000025'),
-('81000000-0000-4000-8000-000000000303','81000000-0000-4000-8000-000000000012','mention','81000000-0000-4000-8000-000000000203',null);
+('81000000-0000-4000-8000-000000000303','81000000-0000-4000-8000-000000000012','mention','81000000-0000-4000-8000-000000000203','81000000-0000-4000-8000-000000000052');
 -- claim_push_deliveries orders by next_attempt_at, created_at, id. Only the
 -- transaction-created fixture receives this earliest value, so older Dev work
 -- may remain eligible but cannot consume the one-row claim; rollback removes it.
@@ -194,6 +196,7 @@ select * from public.delete_event(
 reset role;
 select pg_temp.j1_record('17 event deletion traverses task/comment/notification cascade',
   not exists(select 1 from public.events where id='81000000-0000-4000-8000-000000000102')
+  and not exists(select 1 from public.task_comments where id='81000000-0000-4000-8000-000000000052')
   and not exists(select 1 from public.notifications where id='81000000-0000-4000-8000-000000000303'));
 
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000014","role":"authenticated"}',true);
