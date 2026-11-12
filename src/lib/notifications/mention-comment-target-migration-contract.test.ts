@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8"
 const migration = read(
   "supabase/migrations/20261118120000_mention_notification_comment_targets.sql",
 ).toLowerCase();
+const devTests = read("docs/phase-5/step-j1-mention-comment-targets-dev-tests.sql");
 
 describe("mention comment target migration contract", () => {
   it("adds a nullable, mention-only comment reference with deletion fallback", () => {
@@ -69,6 +70,8 @@ describe("mention comment target migration contract", () => {
 
 describe("mention target app contract", () => {
   const comments = read("src/components/tasks/task-comments.tsx");
+  const center = read("src/components/notifications/notification-center.tsx");
+  const styles = read("src/app/globals.css");
   const worker = read("public/sw.js");
 
   it("loads one bounded target page and exposes Back to newest", () => {
@@ -81,11 +84,29 @@ describe("mention target app contract", () => {
     expect(comments).toContain("attempt < TASK_COMMENT_TARGET_PAGE_ATTEMPTS");
     expect(comments).toContain("current?.olderPagingStarted");
     expect(comments).toContain("replaceTaskCommentNewestPage(");
+    expect(comments).toContain("setTargetActivation((current) => current + 1)");
+    expect(comments).toContain('{ queryKey: ["task-comments", taskId] }');
+    expect(comments).toContain("isTaskCommentUnavailableError(targetQuery.error)");
+    expect(comments).toContain("await Promise.all([newestQuery.refetch(), onRefreshTask()])");
+    expect(center).toContain('window.dispatchEvent(new Event("hashchange"))');
+    expect(styles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.motion-comment-target-highlight \{[\s\S]*background: color-mix/,
+    );
   });
 
   it("keeps service-worker navigation to an exact allowlist", () => {
     expect(worker).toContain("TARGET_PATTERN");
     expect(worker).toContain("validatedTargetPath");
     expect(worker).toContain("existing.navigate(targetPath)");
+  });
+});
+
+describe("mention target Dev paste contract", () => {
+  it("uses one privileged fixture window and returns to postgres for direct tie inspection", () => {
+    expect(devTests.match(/set local session_replication_role = replica;/g)).toHaveLength(1);
+    expect(devTests.indexOf("set local session_replication_role = replica;")).toBeLessThan(
+      devTests.indexOf("insert into public.tasks("),
+    );
+    expect(devTests.indexOf("reset role;\nselect pg_temp.j1_record('10 timestamp tie")).toBeGreaterThan(-1);
   });
 });

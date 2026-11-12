@@ -304,6 +304,10 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
   first eligible push delivery without changing pre-existing queue rows. Review the full
   migration and self-contained Dev paste first; deploy the tolerant app before
   applying the migration.
+- J1 review follow-up fixes the Dev fixture window and authenticated tie check,
+  clears cached comment pages after an access denial, makes repeated activation
+  of the same comment target scroll and focus again, returns successful adds to
+  the newest thread, and gives reduced-motion users a static target highlight.
 - Signed-out mention return is deferred. This batch does not touch auth, Login,
   or the auth callback; signed-out users continue to land on Login and then
   Home until a separately reviewed validated same-origin return path exists.

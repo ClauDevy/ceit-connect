@@ -404,6 +404,8 @@ html.theme-fade *::after {
   .motion-empty-breathe,
   .motion-comment-target-highlight {
     animation: none;
+    background: color-mix(in oklab, var(--primary) 12%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 45%, transparent);
   }
 
   [data-motion-pending] {
