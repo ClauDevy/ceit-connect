@@ -293,7 +293,11 @@ rather than notification rows.
   `purge_deadline_reminder_ledger(timestamptz)`,
   `purge_deadline_reminder_runs(timestamptz,uuid)`, and
   `run_deadline_reminders_at(timestamptz)`. All are postgres-owned volatile
-  fixed-empty-path definers and require a postgres session.
+  fixed-empty-path definers. Bootstrap alone accepts a `session_user` that is
+  a member of postgres so the Supabase CLI temporary login role can run the
+  migration; its exact membership mode is unverified, and it remains ungranted
+  to browser roles, service role, and authenticator. The emitter, purge helpers,
+  and clock-injected runner require a strict postgres session.
 - `public.run_deadline_reminders()` is the equally ungranted real-clock
   postgres-session wrapper. It returns one six-field safe aggregate row. The
   immutable ungranted constants fix the occurrence cap at 100 and retention at

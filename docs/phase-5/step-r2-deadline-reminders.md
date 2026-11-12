@@ -89,6 +89,15 @@ notification, and uses `ON CONFLICT DO NOTHING`, so it is idempotent. A person
 assigned after bootstrap is still missing and receives one reminder. The
 routine is executable by no application role, including service role.
 
+Bootstrap is the sole R2 session-guard exception: because Supabase CLI
+`db push` connects through a temporary login role and then acts as postgres,
+this migration-only function accepts a `session_user` that is a member of the
+`postgres` role. The temporary role's exact membership mode is unverified. The
+first Dev attempt rolled back, and the next dry-run listing
+`20261116120000_deadline_reminders.sql` again will confirm it; a successful Dev
+push is the real proof of the membership boundary. The bootstrap remains
+ungranted to browser roles, service role, and authenticator.
+
 Ledger rows whose target is more than 30 days old are removed oldest-first in
 batches of 500 with `FOR UPDATE SKIP LOCKED`. This is long after the target, so
 cleanup cannot make a still-sendable occurrence eligible again. The aggregate
@@ -101,7 +110,8 @@ SQLSTATE, and fixed safe failure text.
 controlled-clock worker used by tests. `public.run_deadline_reminders()` is a
 thin real-clock wrapper. Both require a real postgres session before validating
 input or taking locks. Execute is revoked from browser roles and service role;
-there is no service-role exception.
+there is no service-role exception. The emitter and both purge helpers retain
+the same strict `session_user = 'postgres'` boundary.
 
 The worker takes a transaction advisory lock. A concurrent invocation returns
 one safe skipped row without scanning or mutating candidates. Each normal run
@@ -196,21 +206,32 @@ that can collide with OUT parameters are referenced through aliases such as
 
 ## Prod rollout — owner only
 
-Use this order so the strict bell parser is deployed before either new type can
-be generated:
+Do not enable R2 generation until every active client can safely read its two
+new notification types. The current bell parser rejects the notification page
+when it encounters an unknown type; deploying a new Vercel version or
+hard-refreshing the owner's browser does not prove that another member's
+already-open tab or installed app has updated.
+
+Before continuing, establish and verify a client-update mechanism that reaches
+those open tabs and installed apps, or first ship a compatible tolerant parser
+that skips unknown notification types rather than rejecting the page. Until one
+of those protections is verified, do not manually invoke the runner or create
+the Prod cron job.
+
+Once that protection is verified, use this order:
 
 1. Merge the application change so Vercel deploys the new client, and wait
    until that deployment is **Ready**.
-2. Hard-refresh the site and fully reopen the installed app so those clients
-   run the new bell parser.
+2. Use the verified update mechanism for browser tabs and installed apps, and
+   confirm clients run the compatible bell parser.
 3. Only then push `20261116120000_deadline_reminders.sql` through the owner's
    normal Prod migration process and confirm both Dev pastes have passed.
 4. Create `ceit-connect-deadline-reminders` last with the owner-run paste below.
 
-The migration deliberately never creates or changes a `cron.job` row. With
-this rollout order and no manual invocation of the runner, no R2 notification
-can exist before the cron job runs, so older clients are not exposed to an R2
-type.
+The migration deliberately never creates or changes a `cron.job` row. With no
+manual invocation of the runner, no R2 notification can exist before the cron
+job runs. That delay alone is not client compatibility: do not activate cron
+until the protection above is verified.
 
 After the migration is live on Prod, run this complete paste once in the Prod
 SQL Editor. It refuses to create a duplicate name and then displays the stored

@@ -125,14 +125,23 @@ select pg_temp.r2_catalog_record('07 constants are private immutable 100 and 30'
     where p.oid='public.deadline_reminder_batch_size()'::regprocedure)
   and not has_function_privilege('service_role','public.deadline_reminder_batch_size()','EXECUTE'));
 
-select pg_temp.r2_catalog_record('08 bootstrap is hardened postgres-only definer',
+select pg_temp.r2_catalog_record('08 bootstrap is hardened postgres-member migration definer',
   exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_roles r on r.oid=p.proowner
     where p.oid='ceit_connect_private.bootstrap_deadline_reminders_at(timestamptz)'::regprocedure
       and r.rolname='postgres' and p.prosecdef and p.provolatile='v'
-      and p.proconfig=array['search_path=""']::text[])
+      and p.proconfig=array['search_path=""']::text[]
+      and pg_catalog.strpos(pg_get_functiondef(p.oid),
+        'pg_catalog.pg_has_role(session_user, ''postgres'', ''MEMBER'')')>0
+      and pg_catalog.strpos(pg_get_functiondef(p.oid),
+        'raise exception using errcode = ''42501'', message = ''Postgres session required.''')>0)
+  and not has_function_privilege('authenticator','ceit_connect_private.bootstrap_deadline_reminders_at(timestamptz)','EXECUTE')
   and not has_function_privilege('anon','ceit_connect_private.bootstrap_deadline_reminders_at(timestamptz)','EXECUTE')
   and not has_function_privilege('authenticated','ceit_connect_private.bootstrap_deadline_reminders_at(timestamptz)','EXECUTE')
-  and not has_function_privilege('service_role','ceit_connect_private.bootstrap_deadline_reminders_at(timestamptz)','EXECUTE'));
+  and not has_function_privilege('service_role','ceit_connect_private.bootstrap_deadline_reminders_at(timestamptz)','EXECUTE')
+  and not pg_catalog.pg_has_role('authenticator','postgres','MEMBER')
+  and not pg_catalog.pg_has_role('anon','postgres','MEMBER')
+  and not pg_catalog.pg_has_role('authenticated','postgres','MEMBER')
+  and not pg_catalog.pg_has_role('service_role','postgres','MEMBER'));
 
 select pg_temp.r2_catalog_record('09 bootstrap is idempotent and notification-free',
   (select pg_get_functiondef(p.oid) like '%on conflict (task_id, reminder_kind, target_at, user_id) do nothing%'
@@ -178,12 +187,29 @@ select pg_temp.r2_catalog_record('14 public runner returns exactly six readable 
     'out_skipped_concurrent','out_ledger_rows_cleaned','out_run_history_rows_cleaned','out_status']
    from pg_catalog.pg_proc p where p.oid='public.run_deadline_reminders()'::regprocedure));
 
-select pg_temp.r2_catalog_record('15 runner authorizes before advisory lock',
+select pg_temp.r2_catalog_record('15 strict runner helpers authorize before work and wrapper delegates',
   (select pg_catalog.strpos(pg_get_functiondef(p.oid),'session_user <> ''postgres''')>0
       and pg_catalog.strpos(pg_get_functiondef(p.oid),'session_user <> ''postgres''')
         < pg_catalog.strpos(pg_get_functiondef(p.oid),'pg_try_advisory_xact_lock')
    from pg_catalog.pg_proc p
-   where p.oid='ceit_connect_private.run_deadline_reminders_at(timestamptz)'::regprocedure));
+   where p.oid='ceit_connect_private.run_deadline_reminders_at(timestamptz)'::regprocedure)
+  and not exists (
+    select 1
+    from (values
+      ('ceit_connect_private.emit_deadline_reminder_occurrence(uuid,text,timestamptz,timestamptz)'::regprocedure),
+      ('ceit_connect_private.purge_deadline_reminder_ledger(timestamptz)'::regprocedure),
+      ('ceit_connect_private.purge_deadline_reminder_runs(timestamptz,uuid)'::regprocedure),
+      ('ceit_connect_private.run_deadline_reminders_at(timestamptz)'::regprocedure)
+    ) as strict_function(function_oid)
+    where pg_catalog.strpos(
+      pg_get_functiondef(strict_function.function_oid),
+      'session_user <> ''postgres'''
+    )=0
+  )
+  and (select pg_catalog.strpos(pg_get_functiondef(p.oid),
+      'ceit_connect_private.run_deadline_reminders_at')>0
+    from pg_catalog.pg_proc p
+    where p.oid='public.run_deadline_reminders()'::regprocedure));
 
 select pg_temp.r2_catalog_record('16 candidate cap ignores fully-ledgered occurrences',
   (select pg_get_functiondef(p.oid) like '%where exists (%task_deadline_reminder_ledger%limit public.deadline_reminder_batch_size()%'
@@ -196,8 +222,8 @@ select pg_temp.r2_catalog_record('17 candidates are earliest-target first',
    where p.oid='ceit_connect_private.run_deadline_reminders_at(timestamptz)'::regprocedure));
 
 select pg_temp.r2_catalog_record('18 exact 24-hour and 2-hour windows are pinned',
-  (select pg_get_functiondef(p.oid) like '%due_date > p_as_of%due_date <= p_as_of + ''24:00:00''::interval%'
-      and pg_get_functiondef(p.oid) like '%call_time > p_as_of%call_time <= p_as_of + ''02:00:00''::interval%'
+  (select pg_get_functiondef(p.oid) like '%due_date > p_as_of%due_date <= p_as_of + interval ''24 hours''%'
+      and pg_get_functiondef(p.oid) like '%call_time > p_as_of%call_time <= p_as_of + interval ''2 hours''%'
    from pg_catalog.pg_proc p
    where p.oid='ceit_connect_private.run_deadline_reminders_at(timestamptz)'::regprocedure));
 

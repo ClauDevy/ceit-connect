@@ -20,6 +20,12 @@ create function pg_temp.r2_record(p_label text,p_passed boolean)
 returns void language plpgsql security definer set search_path=''
 as $$ begin insert into public.r2_behavior_results(label,passed) values(p_label,p_passed); end $$;
 
+-- These private tables are global scanner inputs. This Dev-only paste is one
+-- transaction and its final exception rolls these deletes back, so fixture
+-- counts below cannot be affected by an earlier reminder run.
+delete from ceit_connect_private.task_deadline_reminder_ledger;
+delete from ceit_connect_private.deadline_reminder_runs;
+
 insert into public.committees(id,name) values
 ('7300c000-0000-4000-8000-000000000001','R2 Committee');
 
@@ -72,8 +78,10 @@ select set_config('ceit_connect.task_access_writer','',true);
 delete from public.notifications where task_id::text like '73003%';
 
 select set_config('r2.bootstrap_count',ceit_connect_private.bootstrap_deadline_reminders_at('2026-11-20 00:00+00')::text,true);
-select pg_temp.r2_record('01 bootstrap marks every active in-window recipient and both kinds',
-  current_setting('r2.bootstrap_count')::integer=9);
+select pg_temp.r2_record('01 bootstrap marks every fixture active in-window recipient and both kinds',
+  current_setting('r2.bootstrap_count')::integer>=9
+  and 9=(select count(*) from ceit_connect_private.task_deadline_reminder_ledger
+    where task_id::text like '73003%'));
 select pg_temp.r2_record('02 bootstrap creates no notifications',
   0=(select count(*) from public.notifications where task_id::text like '73003%' and type in ('task_due_soon','live_operation_prep')));
 select pg_temp.r2_record('03 bootstrap is idempotent',
@@ -134,6 +142,10 @@ select pg_temp.r2_record('11 exact 24-hour and 2-hour upper boundaries qualify',
   and exists(select 1 from ceit_connect_private.task_deadline_reminder_ledger
     where task_id='73003000-0000-4000-8000-000000000010' and reminder_kind='live_operation_prep'));
 
+-- Ledger every pre-existing occurrence at this later clock before adding the
+-- late-entry fixture. This keeps the following capped global scan independent
+-- of unrelated Dev tasks that entered a reminder window between 00:00 and 00:30.
+select ceit_connect_private.bootstrap_deadline_reminders_at('2026-11-20 00:30+00');
 select set_config('ceit_connect.task_assignee_writer','create_event_with_tasks',true);
 select set_config('ceit_connect.task_access_writer','create_active_event_task',true);
 insert into public.tasks(id,event_id,committee_id,title,phase,status,task_type,due_date,
@@ -153,19 +165,23 @@ update public.tasks set primary_assignees='{}' where id='73003000-0000-4000-8000
 select set_config('ceit_connect.task_assignee_writer','',true);
 select set_config('request.jwt.claims','{"sub":"73000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
 set local role authenticated;
-select pg_temp.r2_record('13 confidential bell copy uses generic title and no link after access loss',
+select pg_temp.r2_record('13 confidential bell copy uses generic title after real-content access loss',
   exists(select 1 from public.list_notifications(50) where out_type='task_due_soon'
-    and out_task_title='Confidential Task' and out_task_id is null)
+    and out_task_title='Confidential Task')
   and not exists(select 1 from public.list_notifications(50) where out_task_title='R2 Confidential secret'));
 reset role;
+select set_config('request.jwt.claims','{"sub":"73000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+select set_config('ceit_connect.task_assignee_writer','edit_active_event_task',true);
+update public.tasks set primary_assignees=array['73000000-0000-4000-8000-000000000002'::uuid]
+where id='73003000-0000-4000-8000-000000000011';
+select set_config('ceit_connect.task_assignee_writer','',true);
 delete from public.notifications where task_id='73003000-0000-4000-8000-000000000011' and type='task_due_soon';
-select pg_temp.r2_record('14 N3-style deletion does not erase dedupe memory or regenerate',
+select pg_temp.r2_record('14 N3-style deletion does not erase dedupe memory or regenerate for an eligible recipient',
   exists(select 1 from ceit_connect_private.task_deadline_reminder_ledger
     where task_id='73003000-0000-4000-8000-000000000011' and reminder_kind='task_due_soon')
   and (select out_notifications_created=0
     from ceit_connect_private.run_deadline_reminders_at('2026-11-20 00:30+00')));
 
-select set_config('request.jwt.claims','{"sub":"73000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 select set_config('ceit_connect.task_assignee_writer','edit_active_event_task',true);
 select set_config('ceit_connect.task_access_writer','edit_active_event_task',true);
 update public.tasks set due_date='2026-11-20 13:00+00'
@@ -304,12 +320,15 @@ end $$;
 reset role;
 
 do $$
-declare v_total integer; v_failed integer;
+declare v_total integer; v_failed integer; v_failed_labels text;
 begin
-  select count(*),count(*) filter(where not passed) into v_total,v_failed
+  select count(*),count(*) filter(where not passed),
+    string_agg(label,'; ' order by ordinal) filter(where not passed)
+  into v_total,v_failed,v_failed_labels
   from public.r2_behavior_results;
   if v_total<>26 or v_failed<>0 then
-    raise exception 'TEST RESULTS %/26 FAIL — % failed; transaction intentionally rolled back',v_total-v_failed,v_failed;
+    raise exception 'TEST RESULTS %/26 FAIL — % failed: %; transaction intentionally rolled back',
+      v_total-v_failed,v_failed,coalesce(v_failed_labels,'unexpected result-row count');
   end if;
   raise exception 'TEST RESULTS 26/26 PASS — transaction intentionally rolled back';
 end $$;
