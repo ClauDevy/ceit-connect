@@ -118,9 +118,18 @@ of these lock-screen bodies:
 | `status_change` | `A task you’re assigned to changed status.` |
 | `unlock` | `A task you’re assigned to is now unlocked.` |
 | `backup_request` | `A task needs backup help.` |
+| `volunteer_offer` | `A task has a new volunteer offer.` |
+| `leave_requested` | `A task has a new leave request.` |
+| `leave_cancelled` | `A leave request was cancelled.` |
+| `leave_approved` | `Your leave request was approved.` |
+| `leave_denied` | `Your leave request was denied.` |
 
 No task title, event name, person name, comment text, confidential content, or
 task ID enters the push payload.
+
+R1 extends the same fixed-copy boundary to the five request types above. The
+event wording itself is the only outcome disclosed; no task or person metadata
+is added.
 
 The queue has foreign keys only to `notifications` and `users`; CCE09 and all
 existing task/notification functions remain unchanged. Deleting a notification

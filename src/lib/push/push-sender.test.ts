@@ -100,6 +100,17 @@ describe("push sender constants and payload", () => {
     })
   })
 
+  it("keeps a request outcome payload generic and limited to three fields", () => {
+    expect(JSON.parse(buildPushPayload(delivery({
+      out_body: "Your leave request was approved.",
+      out_notification_type: "leave_approved",
+    })))).toEqual({
+      title: "CEIT Connect",
+      body: "Your leave request was approved.",
+      tag: "10000000-0000-4000-8000-000000000001",
+    })
+  })
+
   it("pins TTL and urgency on the transport", async () => {
     const send = vi.fn().mockResolvedValue({ statusCode: 201 })
     await expect(sendClaimedDelivery(delivery(), send)).resolves.toEqual({

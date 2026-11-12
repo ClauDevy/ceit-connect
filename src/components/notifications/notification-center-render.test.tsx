@@ -76,6 +76,25 @@ describe("notification center rendered list", () => {
     expect(markup).not.toContain("No notifications yet");
   });
 
+  it("renders request notification copy from the reader-returned safe title", () => {
+    const rows = parseNotificationRows([{ ...PROD_ROW, out_type: "leave_approved" }]);
+    expect(rows).not.toBeNull();
+    const refreshed = normalizeNotificationPage(rows!);
+    const merged = mergeRefreshedNotificationPage({
+      current: [],
+      refreshed,
+      olderPagesLoaded: false,
+      currentHasMore: false,
+      currentCursor: null,
+    });
+    const markup = renderRows({
+      count: 1,
+      list: { ...EMPTY_LIST, ...merged, loaded: true },
+    });
+
+    expect(markup).toContain("Your leave request for Orientation was approved.");
+  });
+
   it("never claims the list is empty while count is positive, refreshing, or errored", () => {
     const positive = renderRows({
       count: 1,
