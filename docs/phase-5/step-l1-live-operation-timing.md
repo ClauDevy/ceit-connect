@@ -238,12 +238,26 @@ revoke all on function ceit_connect_private.l1_rewrite_function(
 select ceit_connect_private.l1_rewrite_function(
   'public.list_event_board_tasks_pre13c(uuid,uuid)'::regprocedure,
   array[
-    E'      task_row.priority,\n      task_row.due_date,',
-    E'          bt.priority,\n          bt.due_date,\n          v_as_of,\n          bt.status'
+    $l1$      task_row.priority,
+      task_row.due_date,$l1$,
+    $l1$          bt.priority,
+          bt.due_date,
+          v_as_of,
+          bt.status$l1$
   ],
   array[
-    E'      task_row.priority,\n      task_row.task_type,\n      task_row.due_date,\n      task_row.call_time,\n      task_row.end_time,',
-    E'          bt.priority,\n          bt.task_type,\n          bt.due_date,\n          bt.call_time,\n          bt.end_time,\n          v_as_of,\n          bt.status'
+    $l1$      task_row.priority,
+      task_row.task_type,
+      task_row.due_date,
+      task_row.call_time,
+      task_row.end_time,$l1$,
+    $l1$          bt.priority,
+          bt.task_type,
+          bt.due_date,
+          bt.call_time,
+          bt.end_time,
+          v_as_of,
+          bt.status$l1$
   ]
 );
 
@@ -251,10 +265,13 @@ select ceit_connect_private.l1_rewrite_function(
 select ceit_connect_private.l1_rewrite_function(
   'public.list_event_board_tasks_pre13b_ui(uuid,uuid)'::regprocedure,
   array[
-    E'      editor_row.out_priority, editor_row.out_due_date,\n      pg_catalog.statement_timestamp(), editor_row.out_status'
+    $l1$      editor_row.out_priority, editor_row.out_due_date,
+      pg_catalog.statement_timestamp(), editor_row.out_status$l1$
   ],
   array[
-    E'      editor_row.out_priority, editor_row.out_task_type,\n      editor_row.out_due_date, editor_row.out_call_time, editor_row.out_end_time,\n      pg_catalog.statement_timestamp(), editor_row.out_status'
+    $l1$      editor_row.out_priority, editor_row.out_task_type,
+      editor_row.out_due_date, editor_row.out_call_time, editor_row.out_end_time,
+      pg_catalog.statement_timestamp(), editor_row.out_status$l1$
   ]
 );
 
@@ -262,30 +279,57 @@ select ceit_connect_private.l1_rewrite_function(
 select ceit_connect_private.l1_rewrite_function(
   'public.get_task_detail_pre13b_ui(uuid)'::regprocedure,
   array[
-    E'      dr.priority,\n      dr.due_date,\n      v_as_of,\n      dr.status'
+    $l1$      dr.priority,
+      dr.due_date,
+      v_as_of,
+      dr.status$l1$
   ],
   array[
-    E'      dr.priority,\n      dr.task_type,\n      dr.due_date,\n      dr.call_time,\n      dr.end_time,\n      v_as_of,\n      dr.status'
+    $l1$      dr.priority,
+      dr.task_type,
+      dr.due_date,
+      dr.call_time,
+      dr.end_time,
+      v_as_of,
+      dr.status$l1$
   ]
 );
 
 select ceit_connect_private.l1_rewrite_function(
   'public.list_my_tasks(text,text,integer,integer)'::regprocedure,
   array[
-    E'        task_row.priority,\n        task_row.due_date,\n        v_as_of,\n        task_row.status'
+    $l1$        task_row.priority,
+        task_row.due_date,
+        v_as_of,
+        task_row.status$l1$
   ],
   array[
-    E'        task_row.priority,\n        task_row.task_type,\n        task_row.due_date,\n        task_row.call_time,\n        task_row.end_time,\n        v_as_of,\n        task_row.status'
+    $l1$        task_row.priority,
+        task_row.task_type,
+        task_row.due_date,
+        task_row.call_time,
+        task_row.end_time,
+        v_as_of,
+        task_row.status$l1$
   ]
 );
 
 select ceit_connect_private.l1_rewrite_function(
   'public.list_help_wanted_tasks(integer,integer)'::regprocedure,
   array[
-    E'      task_row.priority,\n      task_row.due_date,\n      statement_timestamp(),\n      task_row.status'
+    $l1$      task_row.priority,
+      task_row.due_date,
+      statement_timestamp(),
+      task_row.status$l1$
   ],
   array[
-    E'      task_row.priority,\n      task_row.task_type,\n      task_row.due_date,\n      task_row.call_time,\n      task_row.end_time,\n      statement_timestamp(),\n      task_row.status'
+    $l1$      task_row.priority,
+      task_row.task_type,
+      task_row.due_date,
+      task_row.call_time,
+      task_row.end_time,
+      statement_timestamp(),
+      task_row.status$l1$
   ]
 );
 
@@ -293,16 +337,52 @@ select ceit_connect_private.l1_rewrite_function(
 select ceit_connect_private.l1_rewrite_function(
   'public.get_task_edit_controls_pre13c(uuid)'::regprocedure,
   array[
-    E'  v_task_due_date timestamptz;\n  v_task_dependency_id uuid;',
-    E'    task_row.due_date,\n    task_row.depends_on_task_id,',
-    E'    v_task_due_date,\n    v_task_dependency_id,',
-    E'  v_self_unassign_block_code := case\n    when not v_is_self_assigned or v_task_event_status <> \'Active\' then null\n    when v_task_status = \'Completed\' then \'completed\'\n    when v_task_due_date is not null\n         and v_task_due_date <= statement_timestamp() + c_self_unassign_cutoff\n      then \'due\'\n    else null\n  end;'
+    $l1$  v_task_due_date timestamptz;
+  v_task_dependency_id uuid;$l1$,
+    $l1$    task_row.due_date,
+    task_row.depends_on_task_id,$l1$,
+    $l1$    v_task_due_date,
+    v_task_dependency_id,$l1$,
+    $l1$  v_self_unassign_block_code := case
+    when not v_is_self_assigned or v_task_event_status <> 'Active' then null
+    when v_task_status = 'Completed' then 'completed'
+    when v_task_due_date is not null
+         and v_task_due_date <= statement_timestamp() + c_self_unassign_cutoff
+      then 'due'
+    else null
+  end;$l1$
   ],
   array[
-    E'  v_task_type text;\n  v_task_due_date timestamptz;\n  v_task_call_time timestamptz;\n  v_task_end_time timestamptz;\n  v_task_start timestamptz;\n  v_task_dependency_id uuid;',
-    E'    task_row.task_type,\n    task_row.due_date,\n    task_row.call_time,\n    task_row.end_time,\n    task_row.depends_on_task_id,',
-    E'    v_task_type,\n    v_task_due_date,\n    v_task_call_time,\n    v_task_end_time,\n    v_task_dependency_id,',
-    E'  select timing_row.out_start into v_task_start\n  from ceit_connect_private.task_timing_reference(\n    v_task_type, v_task_due_date, v_task_call_time, v_task_end_time,\n    v_task_status, statement_timestamp()\n  ) as timing_row;\n\n  v_self_unassign_block_code := case\n    when not v_is_self_assigned or v_task_event_status <> \'Active\' then null\n    when v_task_status = \'Completed\' then \'completed\'\n    when v_task_start is not null\n         and v_task_start <= statement_timestamp() + c_self_unassign_cutoff\n      then \'due\'\n    else null\n  end;'
+    $l1$  v_task_type text;
+  v_task_due_date timestamptz;
+  v_task_call_time timestamptz;
+  v_task_end_time timestamptz;
+  v_task_start timestamptz;
+  v_task_dependency_id uuid;$l1$,
+    $l1$    task_row.task_type,
+    task_row.due_date,
+    task_row.call_time,
+    task_row.end_time,
+    task_row.depends_on_task_id,$l1$,
+    $l1$    v_task_type,
+    v_task_due_date,
+    v_task_call_time,
+    v_task_end_time,
+    v_task_dependency_id,$l1$,
+    $l1$  select timing_row.out_start into v_task_start
+  from ceit_connect_private.task_timing_reference(
+    v_task_type, v_task_due_date, v_task_call_time, v_task_end_time,
+    v_task_status, statement_timestamp()
+  ) as timing_row;
+
+  v_self_unassign_block_code := case
+    when not v_is_self_assigned or v_task_event_status <> 'Active' then null
+    when v_task_status = 'Completed' then 'completed'
+    when v_task_start is not null
+         and v_task_start <= statement_timestamp() + c_self_unassign_cutoff
+      then 'due'
+    else null
+  end;$l1$
   ]
 );
 
@@ -310,14 +390,15 @@ select ceit_connect_private.l1_rewrite_function(
 select ceit_connect_private.l1_rewrite_function(
   'public.unassign_self(uuid)'::regprocedure,
   array[
-    E'declare v_id uuid:=auth.uid(); v_role text; v_due timestamptz; v_status text;',
-    E'  select due_date,status,primary_assignees,assist_assignees into v_due,v_status,v_primary,v_assist from public.tasks where id=p_task_id and event_id=v_event for update;',
-    E'  if v_due is null or v_due>statement_timestamp()+interval \'72 hours\' then'
+    $l1$declare v_id uuid:=auth.uid(); v_role text; v_due timestamptz; v_status text;$l1$,
+    $l1$  select due_date,status,primary_assignees,assist_assignees into v_due,v_status,v_primary,v_assist from public.tasks where id=p_task_id and event_id=v_event for update;$l1$,
+    $l1$  if v_due is null or v_due>statement_timestamp()+interval '72 hours' then$l1$
   ],
   array[
-    E'declare v_id uuid:=auth.uid(); v_role text; v_type text; v_due timestamptz; v_call timestamptz; v_end timestamptz; v_start timestamptz; v_status text;',
-    E'  select task_type,due_date,call_time,end_time,status,primary_assignees,assist_assignees into v_type,v_due,v_call,v_end,v_status,v_primary,v_assist from public.tasks where id=p_task_id and event_id=v_event for update;',
-    E'  select timing_row.out_start into v_start from ceit_connect_private.task_timing_reference(v_type,v_due,v_call,v_end,v_status,statement_timestamp()) as timing_row;\n  if v_start is null or v_start>statement_timestamp()+interval \'72 hours\' then'
+    $l1$declare v_id uuid:=auth.uid(); v_role text; v_type text; v_due timestamptz; v_call timestamptz; v_end timestamptz; v_start timestamptz; v_status text;$l1$,
+    $l1$  select task_type,due_date,call_time,end_time,status,primary_assignees,assist_assignees into v_type,v_due,v_call,v_end,v_status,v_primary,v_assist from public.tasks where id=p_task_id and event_id=v_event for update;$l1$,
+    $l1$  select timing_row.out_start into v_start from ceit_connect_private.task_timing_reference(v_type,v_due,v_call,v_end,v_status,statement_timestamp()) as timing_row;
+  if v_start is null or v_start>statement_timestamp()+interval '72 hours' then$l1$
   ]
 );
 
@@ -325,16 +406,44 @@ select ceit_connect_private.l1_rewrite_function(
 select ceit_connect_private.l1_rewrite_function(
   'public.unassign_self_step12(uuid)'::regprocedure,
   array[
-    E'  v_task_due_date timestamptz;\n  v_stored_primary_assignees uuid[];',
-    E'    task_row.sort_order,\n    task_row.due_date,\n    task_row.primary_assignees,',
-    E'    v_task_sort_order,\n    v_task_due_date,\n    v_stored_primary_assignees,',
-    E'  if v_task_due_date is not null\n     and v_task_due_date <= pg_catalog.clock_timestamp() + c_self_unassign_cutoff then'
+    $l1$  v_task_due_date timestamptz;
+  v_stored_primary_assignees uuid[];$l1$,
+    $l1$    task_row.sort_order,
+    task_row.due_date,
+    task_row.primary_assignees,$l1$,
+    $l1$    v_task_sort_order,
+    v_task_due_date,
+    v_stored_primary_assignees,$l1$,
+    $l1$  if v_task_due_date is not null
+     and v_task_due_date <= pg_catalog.clock_timestamp() + c_self_unassign_cutoff then$l1$
   ],
   array[
-    E'  v_task_type text;\n  v_task_due_date timestamptz;\n  v_task_call_time timestamptz;\n  v_task_end_time timestamptz;\n  v_task_start timestamptz;\n  v_stored_primary_assignees uuid[];',
-    E'    task_row.sort_order,\n    task_row.task_type,\n    task_row.due_date,\n    task_row.call_time,\n    task_row.end_time,\n    task_row.primary_assignees,',
-    E'    v_task_sort_order,\n    v_task_type,\n    v_task_due_date,\n    v_task_call_time,\n    v_task_end_time,\n    v_stored_primary_assignees,',
-    E'  select timing_row.out_start into v_task_start\n  from ceit_connect_private.task_timing_reference(\n    v_task_type, v_task_due_date, v_task_call_time, v_task_end_time,\n    v_task_status, pg_catalog.clock_timestamp()\n  ) as timing_row;\n\n  if v_task_start is not null\n     and v_task_start <= pg_catalog.clock_timestamp() + c_self_unassign_cutoff then'
+    $l1$  v_task_type text;
+  v_task_due_date timestamptz;
+  v_task_call_time timestamptz;
+  v_task_end_time timestamptz;
+  v_task_start timestamptz;
+  v_stored_primary_assignees uuid[];$l1$,
+    $l1$    task_row.sort_order,
+    task_row.task_type,
+    task_row.due_date,
+    task_row.call_time,
+    task_row.end_time,
+    task_row.primary_assignees,$l1$,
+    $l1$    v_task_sort_order,
+    v_task_type,
+    v_task_due_date,
+    v_task_call_time,
+    v_task_end_time,
+    v_stored_primary_assignees,$l1$,
+    $l1$  select timing_row.out_start into v_task_start
+  from ceit_connect_private.task_timing_reference(
+    v_task_type, v_task_due_date, v_task_call_time, v_task_end_time,
+    v_task_status, pg_catalog.clock_timestamp()
+  ) as timing_row;
+
+  if v_task_start is not null
+     and v_task_start <= pg_catalog.clock_timestamp() + c_self_unassign_cutoff then$l1$
   ]
 );
 
@@ -410,60 +519,116 @@ revoke all on function ceit_connect_private.classify_executive_dashboard_task(
 select ceit_connect_private.l1_rewrite_function(
   'public.get_executive_dashboard_extras_overview(uuid)'::regprocedure,
   array[
-    E'      task_row.status,\n      task_row.due_date,',
-    E'      scoped_task.due_date,\n      scoped_task.status,\n      v_as_of'
+    $l1$      task_row.status,
+      task_row.due_date,$l1$,
+    $l1$      scoped_task.due_date,
+      scoped_task.status,
+      v_as_of$l1$
   ],
   array[
-    E'      task_row.status,\n      task_row.task_type,\n      task_row.due_date,\n      task_row.call_time,\n      task_row.end_time,',
-    E'      scoped_task.task_type,\n      scoped_task.due_date,\n      scoped_task.call_time,\n      scoped_task.end_time,\n      scoped_task.status,\n      v_as_of'
+    $l1$      task_row.status,
+      task_row.task_type,
+      task_row.due_date,
+      task_row.call_time,
+      task_row.end_time,$l1$,
+    $l1$      scoped_task.task_type,
+      scoped_task.due_date,
+      scoped_task.call_time,
+      scoped_task.end_time,
+      scoped_task.status,
+      v_as_of$l1$
   ]
 );
 
 select ceit_connect_private.l1_rewrite_function(
   'public.list_executive_dashboard_needs_attention(uuid)'::regprocedure,
   array[
-    E'      task_row.status,\n      task_row.due_date,',
-    E'      classification.out_is_overdue,\n      classification.out_is_due_in_24_hours',
-    E'      scoped_task.due_date,\n      scoped_task.status,\n      v_as_of',
-    E'      classified.due_date,\n      classified.created_at as source_created_at,',
-    E'    join scoped_tasks as scoped_task\n      on scoped_task.id = leave_request.task_id',
-    E'      scoped_task.due_date,\n      leave_request.created_at as source_created_at,',
-    E'    join scoped_tasks as scoped_task\n      on scoped_task.id = volunteer_offer.task_id',
-    E'      scoped_task.due_date,\n      volunteer_offer.created_at,'
+    $l1$      task_row.status,
+      task_row.due_date,$l1$,
+    $l1$      classification.out_is_overdue,
+      classification.out_is_due_in_24_hours$l1$,
+    $l1$      scoped_task.due_date,
+      scoped_task.status,
+      v_as_of$l1$,
+    $l1$      classified.due_date,
+      classified.created_at as source_created_at,$l1$,
+    $l1$    join scoped_tasks as scoped_task
+      on scoped_task.id = leave_request.task_id$l1$,
+    $l1$      scoped_task.due_date,
+      leave_request.created_at as source_created_at,$l1$,
+    $l1$    join scoped_tasks as scoped_task
+      on scoped_task.id = volunteer_offer.task_id$l1$,
+    $l1$      scoped_task.due_date,
+      volunteer_offer.created_at,$l1$
   ],
   array[
-    E'      task_row.status,\n      task_row.task_type,\n      task_row.due_date,\n      task_row.call_time,\n      task_row.end_time,',
-    E'      classification.out_is_overdue,\n      classification.out_is_due_in_24_hours,\n      classification.out_start,\n      classification.out_end',
-    E'      scoped_task.task_type,\n      scoped_task.due_date,\n      scoped_task.call_time,\n      scoped_task.end_time,\n      scoped_task.status,\n      v_as_of',
-    E'      case when classified.out_is_overdue\n        then classified.out_end else classified.out_start end as due_date,\n      classified.created_at as source_created_at,',
-    E'    join classified as scoped_task\n      on scoped_task.id = leave_request.task_id',
-    E'      scoped_task.out_start,\n      leave_request.created_at as source_created_at,',
-    E'    join classified as scoped_task\n      on scoped_task.id = volunteer_offer.task_id',
-    E'      scoped_task.out_start,\n      volunteer_offer.created_at,'
+    $l1$      task_row.status,
+      task_row.task_type,
+      task_row.due_date,
+      task_row.call_time,
+      task_row.end_time,$l1$,
+    $l1$      classification.out_is_overdue,
+      classification.out_is_due_in_24_hours,
+      classification.out_start,
+      classification.out_end$l1$,
+    $l1$      scoped_task.task_type,
+      scoped_task.due_date,
+      scoped_task.call_time,
+      scoped_task.end_time,
+      scoped_task.status,
+      v_as_of$l1$,
+    $l1$      case when classified.out_is_overdue
+        then classified.out_end else classified.out_start end as due_date,
+      classified.created_at as source_created_at,$l1$,
+    $l1$    join classified as scoped_task
+      on scoped_task.id = leave_request.task_id$l1$,
+    $l1$      scoped_task.out_start,
+      leave_request.created_at as source_created_at,$l1$,
+    $l1$    join classified as scoped_task
+      on scoped_task.id = volunteer_offer.task_id$l1$,
+    $l1$      scoped_task.out_start,
+      volunteer_offer.created_at,$l1$
   ]
 );
 
 select ceit_connect_private.l1_rewrite_function(
   'public.list_executive_dashboard_deadlines(uuid)'::regprocedure,
   array[
-    E'      (task_row.due_date at time zone \'Asia/Manila\')::date as calendar_date,',
-    E'    where task_row.status <> \'Completed\'\n      and task_row.due_date is not null',
-    E'      and (task_row.due_date at time zone \'Asia/Manila\')::date\n        between v_today and v_today + 6\n    group by (task_row.due_date at time zone \'Asia/Manila\')::date'
+    $l1$      (task_row.due_date at time zone 'Asia/Manila')::date as calendar_date,$l1$,
+    $l1$    where task_row.status <> 'Completed'
+      and task_row.due_date is not null$l1$,
+    $l1$      and (task_row.due_date at time zone 'Asia/Manila')::date
+        between v_today and v_today + 6
+    group by (task_row.due_date at time zone 'Asia/Manila')::date$l1$
   ],
   array[
-    E'      (timing_row.out_start at time zone \'Asia/Manila\')::date as calendar_date,',
-    E'    cross join lateral ceit_connect_private.task_timing_reference(\n      task_row.task_type, task_row.due_date, task_row.call_time, task_row.end_time,\n      task_row.status, statement_timestamp()\n    ) as timing_row\n    where task_row.status <> \'Completed\'\n      and timing_row.out_start is not null',
-    E'      and (timing_row.out_start at time zone \'Asia/Manila\')::date\n        between v_today and v_today + 6\n    group by (timing_row.out_start at time zone \'Asia/Manila\')::date'
+    $l1$      (timing_row.out_start at time zone 'Asia/Manila')::date as calendar_date,$l1$,
+    $l1$    cross join lateral ceit_connect_private.task_timing_reference(
+      task_row.task_type, task_row.due_date, task_row.call_time, task_row.end_time,
+      task_row.status, statement_timestamp()
+    ) as timing_row
+    where task_row.status <> 'Completed'
+      and timing_row.out_start is not null$l1$,
+    $l1$      and (timing_row.out_start at time zone 'Asia/Manila')::date
+        between v_today and v_today + 6
+    group by (timing_row.out_start at time zone 'Asia/Manila')::date$l1$
   ]
 );
 
 select ceit_connect_private.l1_rewrite_function(
   'public.list_executive_dashboard_member_slipping_signals(uuid)'::regprocedure,
   array[
-    E'      task_row.due_date,\n      task_row.status,\n      v_as_of'
+    $l1$      task_row.due_date,
+      task_row.status,
+      v_as_of$l1$
   ],
   array[
-    E'      task_row.task_type,\n      task_row.due_date,\n      task_row.call_time,\n      task_row.end_time,\n      task_row.status,\n      v_as_of'
+    $l1$      task_row.task_type,
+      task_row.due_date,
+      task_row.call_time,
+      task_row.end_time,
+      task_row.status,
+      v_as_of$l1$
   ]
 );
 
