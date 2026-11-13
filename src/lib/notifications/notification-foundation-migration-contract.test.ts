@@ -41,7 +41,7 @@ const peerAdmin = readText(
 
 describe("Phase 5 N1 notification foundation migration contract", () => {
   it("orders housekeeping after N1 without replacing the notification policy pair", () => {
-    expect(migrationFiles.slice(-8)).toEqual([
+    expect(migrationFiles.slice(-9)).toEqual([
       "20261111120000_notification_housekeeping.sql",
       "20261112120000_web_push_database.sql",
       "20261113120000_executive_dashboard_data.sql",
@@ -50,6 +50,7 @@ describe("Phase 5 N1 notification foundation migration contract", () => {
       "20261116120000_deadline_reminders.sql",
       "20261117120000_deadline_reminder_retry_backoff.sql",
       "20261118120000_mention_notification_comment_targets.sql",
+      "20261119120000_live_operation_timing_rules.sql",
     ]);
     const priorSql = migrationFiles
       .filter((name) => name < "20261110120000_notification_foundation.sql")
