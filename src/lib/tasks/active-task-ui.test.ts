@@ -26,10 +26,10 @@ import {
 import type { TaskDetail } from "./detail";
 import type { TaskEditControlData } from "./edit-controls";
 
-const eventBoardSource = readFileSync(
-  "src/components/events/event-board.tsx",
-  "utf8",
-);
+const eventBoardSource = [
+  readFileSync("src/components/events/event-board.tsx", "utf8"),
+  readFileSync("src/components/events/event-board-phase-controls.tsx", "utf8"),
+].join("\n");
 const eventBoardPageSource = readFileSync(
   "src/app/(dashboard)/events/[eventId]/page.tsx",
   "utf8",

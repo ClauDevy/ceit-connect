@@ -23,7 +23,7 @@ current batch completes its full stage order.
 | J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
 | B2 | Local-only backup restore drill, count proof, cleanup, and disaster limitations | `docs/backup-restore-drill` | Medium | Merged; owner-run drill pending |
 | U1 | Event-board initial phase, President picker exclusions, and archived-template deadline reset | `fix/event-board-template-and-picker-ux` | Medium | Implemented locally; no migration |
-| U2 | Event board component split (refactor only, no behavior change) | planned UI branch | Medium | Planned; UI-only, no migration |
+| U2 | Event board component split (refactor only, no behavior change) | planned UI branch | Medium | Implemented locally; UI-only, no migration |
 | V1 | Manila-date Active-task deadline guard and Admin-only President committee invariant | planned database/UI branch | High | Planned; read-only Prod preflight required |
 | H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Planned; UI-only, no migration |
 | U3 | Optional event form component split (refactor only, no behavior change) | optional later UI branch | Medium | Optional later; UI-only, no migration |

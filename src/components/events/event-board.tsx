@@ -1,11 +1,7 @@
 "use client";
 
-import { formatDateSafe } from "@/lib/safe-date";
-import { EmptyState } from "@/components/shared/empty-state";
-import { Mascot } from "@/components/ui/mascot";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -13,23 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  closestCenter,
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import {
   QueryClient,
   QueryClientProvider,
@@ -38,51 +19,11 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  Filter,
-  Inbox,
-  Plus,
-  RefreshCw,
-  X,
-} from "lucide-react";
-import Link from "next/link";
-import { EventBanner } from "@/components/events/event-banner";
-import { EventBoardProgressRing } from "@/components/events/event-board-progress-ring";
-import {
-  Collapse,
-  MotionPresence,
-  TabPanel,
-  useReducedMotionPreference,
-} from "@/components/shared/motion";
-import { EventBoardSkeleton } from "@/components/events/event-board-skeleton";
-import { ActiveTaskDialog } from "@/components/tasks/active-task-dialog";
-import { CompletedPhaseReopenDialog } from "@/components/tasks/completed-phase-reopen-dialog";
-import {
-  EventBoardTaskCard,
-  SortableEventBoardTaskCard,
-} from "@/components/events/event-board-task-card";
-import { getPriorityDotClass } from "@/components/shared/priority-badge";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { InlineAlert } from "@/components/ui/inline-alert";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { useReducedMotionPreference } from "@/components/shared/motion";
 import {
   BOARD_PRIORITIES,
   BOARD_STATUSES,
   parseBoardTask,
-  type BoardCommittee,
-  type BoardEvent,
   type BoardPriority,
   type BoardStatus,
   type BoardTask,
@@ -103,167 +44,35 @@ import {
   tryAcquireBoardOperation,
   undoReducer,
   type BoardDragSnapshot,
-  type BoardViewer,
-  type MoveIntent,
-  type NeighborHints,
 } from "@/lib/events/board-move";
 import {
   getActiveMobileLane,
   getAssignedPhaseTasks,
-  getMobileLanePosition,
   toggleCollapsedLane,
 } from "@/lib/events/mobile-board";
 import {
   getTaskBackupErrorMessage,
   isClaimTaskResult,
 } from "@/lib/tasks/backup";
-import { canShowBoardTaskEdit } from "@/lib/tasks/active-task-ui";
 import {
   canonicalPhaseName,
   getReopenCandidates,
   initializePhaseDisclosure,
-  isCompletedNamedPhase,
   reconcilePhaseDisclosureAfterRefresh,
   revealReopenedPhase,
   selectPhaseDisclosure,
-  setPhaseDisclosureExpanded,
 } from "@/lib/tasks/phase-completion";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
-import {
-  formatEventAutoArchiveWarning,
-  type EventAutoArchiveWarning,
-} from "@/lib/events/auto-archive-warning";
-
-type EventBoardProps = {
-  event: BoardEvent;
-  viewer: BoardViewer;
-  committees: BoardCommittee[];
-  initialTasks?: BoardTask[];
-  autoArchiveWarning: EventAutoArchiveWarning | null;
-};
-
-const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-function formatEventDate(date: string) {
-  return formatDateSafe(eventDateFormatter, `${date}T00:00:00Z`);
-}
-
-function getBoardPhaseNames(tasks: readonly BoardTask[]) {
-  return Array.from(
-    new Set(tasks.map((task) => canonicalPhaseName(task.phase))),
-  );
-}
-
-function getCompleteBoardPhases(tasks: readonly BoardTask[]) {
-  return new Set(tasks.flatMap((task) =>
-    isCompletedNamedPhase(task.phase, task.phaseComplete)
-      ? [canonicalPhaseName(task.phase)]
-      : []));
-}
-
-function formatEventDateRange(event: BoardEvent) {
-  if (!event.end_date || event.end_date === event.start_date) {
-    return formatEventDate(event.start_date);
-  }
-  return `${formatEventDate(event.start_date)} – ${formatEventDate(event.end_date)}`;
-}
-
-function formatTaskCount(count: number) {
-  return `${count} ${count === 1 ? "task" : "tasks"}`;
-}
-
-function PriorityChoices({
-  selected,
-  onToggle,
-}: {
-  selected: Set<BoardPriority>;
-  onToggle: (priority: BoardPriority) => void;
-}) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:block sm:space-y-3">
-      <p className="shrink-0 font-display text-sm font-semibold">
-        Filter by priority
-      </p>
-      <div className="grid min-h-0 grid-cols-2 gap-2 overflow-y-auto overscroll-contain sm:overflow-visible">
-        {BOARD_PRIORITIES.map((priority) => {
-          const active = selected.has(priority);
-          return (
-            <Button
-              key={priority}
-              type="button"
-              variant="outline"
-              className={cn(
-                "h-11 justify-between",
-                active && "border-primary bg-primary/10 text-primary",
-              )}
-              aria-pressed={active}
-              onClick={() => onToggle(priority)}
-            >
-              <span className="flex items-center gap-2">
-                <span
-                  className={`size-2 rounded-full ${getPriorityDotClass(priority)}`}
-                  aria-hidden="true"
-                />
-                {priority}
-              </span>
-              {active ? <Check aria-hidden /> : null}
-            </Button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function BoardLaneDropZone({
-  id,
-  status,
-  disabled,
-  collapsed = false,
-  children,
-}: {
-  id?: string;
-  status: BoardStatus;
-  disabled: boolean;
-  collapsed?: boolean;
-  children: ReactNode;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `lane:${status}`,
-    disabled,
-    data: { type: "lane", status, collapsed },
-  });
-
-  return (
-    <div
-      id={id}
-      ref={setNodeRef}
-      className={cn(
-        "min-h-20 space-y-3 rounded-xl transition-colors duration-300 motion-reduce:transition-none",
-        isOver && !disabled && "bg-primary/5 ring-2 ring-primary/30",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-type MoveMutationVariables = {
-  task: BoardTask;
-  intent: MoveIntent;
-  originalNeighbors: NeighborHints;
-  undo: boolean;
-};
-
-type MoveMutationContext = {
-  previousTasks: BoardTask[] | undefined;
-};
+import { EventBoardDialogs } from "./event-board-dialogs";
+import { getBoardPhaseNames, getCompleteBoardPhases } from "./event-board-helpers";
+import { EventBoardHeader } from "./event-board-header";
+import { EventBoardLanes } from "./event-board-lanes";
+import { EventBoardPhaseControls } from "./event-board-phase-controls";
+import type {
+  EventBoardProps,
+  MoveMutationContext,
+  MoveMutationVariables,
+} from "./event-board-types";
 
 function BoardContents({
   event,
@@ -1002,726 +811,132 @@ function BoardContents({
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/home"
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "sm" }),
-          "transition-colors duration-300 active:bg-muted motion-reduce:transition-none",
-        )}
-      >
-        <ArrowLeft aria-hidden /> Home
-      </Link>
-
-      <section className="overflow-hidden rounded-2xl border bg-card">
-        <div className="flex flex-col md:flex-row">
-          <EventBanner
-            src={event.banner_url}
-            alt={`${event.name} banner`}
-            className="aspect-video w-full md:w-[clamp(20rem,35vw,26.25rem)] md:shrink-0"
-          />
-          <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5 md:flex-row md:items-center">
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <h1 className="min-w-0 break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                  {event.name}
-                </h1>
-                <Badge
-                  variant="outline"
-                  className="border-primary/60 bg-primary/10"
-                >
-                  Active
-                </Badge>
-              </div>
-              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <CalendarDays className="size-4 shrink-0" aria-hidden />
-                {formatEventDateRange(event)}
-              </p>
-              {event.description ? (
-                <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                  {event.description}
-                </p>
-              ) : null}
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-                {completed} of {formatTaskCount(tasks.length)} completed
-              </p>
-            </div>
-            <div className="self-end md:self-auto">
-              <EventBoardProgressRing percentage={completion} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {autoArchiveWarning ? (
-        <InlineAlert variant="warning">
-          {formatEventAutoArchiveWarning(
-            autoArchiveWarning,
-            viewer.role === "Admin" || viewer.role === "Co-Admin",
-          )}
-        </InlineAlert>
-      ) : null}
-
-      {moveError ? (
-        <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
-          <span>{moveError}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setMoveError(null)}
-          >
-            Dismiss
-          </Button>
-        </InlineAlert>
-      ) : null}
-
-      {query.error ? (
-        <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
-          <span>
-            The board could not refresh. The last successful result is still
-            shown.
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void query.refetch()}
-          >
-            <RefreshCw aria-hidden /> Retry
-          </Button>
-        </InlineAlert>
-      ) : null}
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div
-          className="-mx-1 flex w-[calc(100%+0.5rem)] min-w-0 gap-6 overflow-x-auto border-b px-1 md:flex-1"
-          role="tablist"
-          aria-label="Event phases"
-        >
-          {phases.map((phase) => {
-            const count = tasks.filter(
-              (task) => (task.phase?.trim() || "Unphased") === phase,
-            ).length;
-            return (
-              <button
-                key={phase}
-                ref={(node) => {
-                  if (node) phaseTabRefs.current.set(phase, node);
-                  else phaseTabRefs.current.delete(phase);
-                }}
-                type="button"
-                role="tab"
-                aria-selected={selectedPhase === phase}
-                title={phase}
-                className={cn(
-                  "flex h-11 max-w-[75vw] shrink-0 items-center rounded-t-md border-b-2 px-1 font-display text-sm font-semibold whitespace-nowrap transition-colors duration-300 hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none sm:h-10 sm:max-w-xs sm:text-base",
-                  selectedPhase === phase
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground",
-                )}
-                disabled={boardBusy}
-                onClick={() => selectPhase(phase)}
-              >
-                <span className="flex min-w-0 items-center">
-                  {completePhases.has(phase) ? <CheckCircle2 className="mr-1.5 size-4 shrink-0" aria-hidden /> : null}
-                  <span className={cn("truncate", completePhases.has(phase) && "line-through")}>{phase}</span>
-                  {completePhases.has(phase) ? <span className="sr-only"> complete</span> : null}
-                  <span className="ml-1.5 shrink-0 font-sans text-xs font-normal text-muted-foreground">
-                    {formatTaskCount(count)}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-        {!selectedPhaseComplete || !isUnfilteredSelectedPhase ? (
-        <div
-          className={cn(
-            "col-span-2 grid gap-2 sm:flex sm:max-w-full sm:flex-wrap sm:items-center",
-            isAdmin ? "grid-cols-2" : "grid-cols-1",
-          )}
-        >
-          <div className="relative max-w-full">
-            <Button
-              ref={priorityTriggerRef}
-              variant="outline"
-              className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
-              aria-haspopup="dialog"
-              aria-expanded={priorityOpen}
-              aria-controls="priority-filter-panel"
-              aria-label={priorityButtonLabel}
-              disabled={boardBusy}
-              onClick={() =>
-                priorityOpen ? closePriorityFilter() : openPriorityFilter()
-              }
-            >
-              <Filter aria-hidden />
-              <span className="min-w-0 max-w-44 truncate text-left">
-                {selectedPriorities.size > 0
-                  ? `Priority (${selectedPriorities.size})`
-                  : "Priority"}
-              </span>
-              <ChevronDown
-                className={cn(
-                  "ml-auto transition-transform duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none",
-                  priorityOpen && "rotate-180",
-                )}
-                aria-hidden
-              />
-            </Button>
-            <MotionPresence open={priorityOpen}>
-              <>
-                <button
-                  ref={priorityOverlayRef}
-                  type="button"
-                  className={cn("fixed inset-0 z-40 bg-black/40 sm:hidden")}
-                  aria-label="Close priority filter"
-                  onClick={() => closePriorityFilter()}
-                />
-                <div
-                  id="priority-filter-panel"
-                  ref={priorityPanelRef}
-                  role="dialog"
-                  aria-label="Priority filter"
-                  className={cn(
-                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] flex-col overflow-hidden rounded-2xl border bg-popover p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:block sm:max-h-none sm:w-72 sm:max-w-[calc(100vw-1rem)] sm:overflow-visible",
-                  )}
-                >
-                  <PriorityChoices
-                    selected={selectedPriorities}
-                    onToggle={togglePriority}
-                  />
-                  <div className="mt-4 flex shrink-0 items-center justify-between gap-3">
-                    {selectedPriorities.size > 0 ? (
-                      <Button
-                        variant="link"
-                        className="h-11 px-0 lg:h-10"
-                        onClick={clearPriorities}
-                      >
-                        Clear
-                      </Button>
-                    ) : (
-                      <span />
-                    )}
-                    <Button
-                      className="h-11 sm:hidden"
-                      onClick={() => closePriorityFilter()}
-                    >
-                      Done
-                    </Button>
-                  </div>
-                </div>
-              </>
-            </MotionPresence>
-          </div>
-
-          {isAdmin ? (
-            <div className="relative max-w-full">
-              <Button
-                ref={committeeTriggerRef}
-                variant="outline"
-                className="h-11 w-full max-w-full justify-start px-3 text-sm transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto"
-                aria-haspopup="listbox"
-                aria-expanded={committeeOpen}
-                aria-controls="committee-filter-panel"
-                aria-label={`Committee: ${committeeButtonLabel}`}
-                disabled={boardBusy}
-                onClick={() =>
-                  committeeOpen ? closeCommitteeFilter() : openCommitteeFilter()
-                }
-              >
-                <span className="min-w-0 max-w-52 truncate text-left">
-                  {committeeButtonLabel}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "ml-auto transition-transform duration-[var(--motion-interaction-duration)] ease-[var(--motion-enter-easing)] motion-reduce:transition-none",
-                    committeeOpen && "rotate-180",
-                  )}
-                  aria-hidden
-                />
-              </Button>
-              <MotionPresence open={committeeOpen}>
-                <div
-                  id="committee-filter-panel"
-                  ref={committeePanelRef}
-                  role="listbox"
-                  aria-label="Committee filter"
-                  aria-activedescendant={`committee-filter-option-${committeeActiveIndex}`}
-                  className={cn(
-                    "fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] flex-col overflow-hidden rounded-2xl border bg-popover p-2 shadow-2xl sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:block sm:max-h-none sm:w-72 sm:max-w-[calc(100vw-1rem)] sm:overflow-visible",
-                  )}
-                >
-                  <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain sm:max-h-60">
-                    {committeeOptions.map((committee, index) => {
-                      const selected = committee.id === committeeId;
-                      return (
-                        <Button
-                          key={committee.id ?? "all"}
-                          id={`committee-filter-option-${index}`}
-                          ref={(element) => {
-                            committeeOptionRefs.current[index] = element;
-                          }}
-                          type="button"
-                          role="option"
-                          variant="ghost"
-                          className={cn(
-                            "h-11 w-full justify-between px-3 text-left",
-                            selected && "bg-primary/10 text-primary",
-                          )}
-                          aria-selected={selected}
-                          onClick={() => selectCommittee(committee.id)}
-                          onFocus={() => setCommitteeActiveIndex(index)}
-                          onKeyDown={(event) =>
-                            handleCommitteeOptionKeyDown(event, index)
-                          }
-                        >
-                          <span className="min-w-0 truncate">
-                            {committee.name}
-                          </span>
-                          {selected ? <Check aria-hidden /> : null}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </MotionPresence>
-            </div>
-          ) : null}
-        </div>
-        ) : null}
-
-        {selectedPhaseComplete ? (
-          <CompletedPhaseReopenDialog
-            key={selectedPhase}
-            phase={selectedPhase!}
-            candidates={selectedReopenCandidates}
-            onRefresh={async () => {
-              await queryClient.refetchQueries({ queryKey: eventQueryKey, type: "active" });
-              await queryClient.refetchQueries({
-                predicate: ({ queryKey: key }) => ["draft-event-editor-tasks", "task-detail", "task-edit-controls", "task-work-links", "task-comments", "task-backup-state"].includes(String(key[0])),
-                type: "active",
-              });
-              window.dispatchEvent(new Event("task-leave-requests:changed"));
-            }}
-            onReopened={(candidate) => {
-              setPhaseDisclosure((current) =>
-                revealReopenedPhase(current, candidate.phase));
-              requestAnimationFrame(() => phaseTabRefs.current.get(candidate.phase)?.focus());
-            }}
-          />
-        ) : null}
-
-        {canAddTask && !selectedPhaseComplete ? (
-          <Button
-            type="button"
-            className="h-11 w-full min-w-11 transition-colors duration-300 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring active:bg-primary/80 motion-reduce:transition-none sm:ml-auto sm:h-10 sm:w-auto"
-            disabled={boardBusy}
-            onClick={() => setTaskDialog({ mode: "add" })}
-          >
-            <Plus aria-hidden /> Add Task
-          </Button>
-        ) : null}
-
-        <Button
-          id="event-board-backlog-button"
-          ref={backlogButtonRef}
-          variant="outline"
-          className={cn(
-            "h-11 w-full min-w-11 shrink-0 px-2.5 transition-colors duration-300 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring active:bg-muted motion-reduce:transition-none sm:h-10 sm:w-auto sm:min-w-10",
-            !canAddTask && "col-span-2 sm:col-span-1 sm:ml-auto",
-          )}
-          aria-label={`Open Backlog, ${formatTaskCount(backlogTasks.length)}`}
-          onClick={() => setBacklogOpen(true)}
-        >
-          <Inbox aria-hidden />
-          <span>Backlog</span>
-          <Badge variant="neutral" className="px-1.5">
-            {backlogTasks.length}
-          </Badge>
-        </Button>
-      </div>
-
-      {committeeId !== null ? (
-        <InlineAlert variant="info">
-          Clear the committee filter to drag cards. Status controls remain
-          available; drag ordering needs the complete lane so neighbor hints
-          cannot skip hidden committees.
-        </InlineAlert>
-      ) : null}
-
-      {query.isPending ? (
-        <EventBoardSkeleton />
-      ) : tasks.length === 0 ? (
-        <EmptyState
-          pose="searching"
-          title="No tasks are available"
-          description="Try another committee filter or refresh the board."
-        />
-      ) : (
-        <div className="motion-content-ready" aria-busy={query.isPlaceholderData}>
-          <TabPanel motionKey={phaseMotionKey} opacityOnly>
-            {isUnfilteredBacklogOnlyPhase || isUnfilteredMixedPhase ? (
-              <div
-                role="status"
-                className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-900 dark:text-amber-100"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <Inbox className="size-4 shrink-0" aria-hidden />
-                  <span>
-                    {isUnfilteredBacklogOnlyPhase ? (
-                      <>
-                        {formatTaskCount(selectedPhaseTasks.length)} in this phase{" "}
-                        {selectedPhaseTasks.length === 1 ? "is" : "are"}{" "}
-                        unassigned.
-                      </>
-                    ) : (
-                      <>
-                        {unassignedSelectedPhaseTasks.length} of{" "}
-                        {formatTaskCount(selectedPhaseTasks.length)} unassigned.
-                      </>
-                    )}
-                  </span>
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 shrink-0 border-amber-500/50 bg-transparent px-3 text-xs font-semibold transition-colors duration-300 hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-                  onClick={() => setBacklogOpen(true)}
-                >
-                  Open Backlog
-                </Button>
-              </div>
-            ) : null}
-
-            {selectedPhaseComplete ? (
-              <div className="mb-3 flex flex-col items-center gap-0.5 text-center">
-                <Mascot pose="celebrating" size={72} />
-                <p className="text-sm font-semibold">Phase complete. Great work, team!</p>
-              </div>
-            ) : null}
-            {selectedPhaseComplete ? (
-              <section className="rounded-2xl border bg-card">
-                <div className="flex items-center gap-3 border-b bg-muted/40 p-3">
-                  <CheckCircle2 className="size-5 text-primary" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <h2 className="font-semibold line-through">{selectedPhase}</h2>
-                    <p className="text-xs text-muted-foreground">Complete · read only</p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-expanded={!selectedCompletePhaseCollapsed}
-                    aria-controls="event-board-completed-phase-content"
-                    onClick={() => setPhaseDisclosure((current) =>
-                      setPhaseDisclosureExpanded(
-                        reconcilePhaseDisclosureAfterRefresh(
-                          current,
-                          phases,
-                          completePhases,
-                        ),
-                        selectedPhase!,
-                        selectedCompletePhaseCollapsed,
-                      ))}
-                  >
-                    <ChevronDown className={cn("transition-transform motion-reduce:transition-none", selectedCompletePhaseCollapsed && "-rotate-90")} />
-                    {selectedCompletePhaseCollapsed ? "Expand" : "Collapse"}
-                  </Button>
-                </div>
-                <Collapse open={!selectedCompletePhaseCollapsed}>
-                  <div id="event-board-completed-phase-content" className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {selectedPhaseTasks.filter(matchesPriority).map((task) => <EventBoardTaskCard key={task.id} task={task} />)}
-                  </div>
-                </Collapse>
-              </section>
-            ) : <DndContext
-              key={dndContextKey}
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragAbort={handleDragCancel}
-              onDragCancel={handleDragCancel}
-              onDragEnd={handleDragEnd}
-            >
-              <div
-                ref={mobileBoardRef}
-                className={cn(
-                  "flex gap-4 overflow-x-auto overscroll-x-contain pb-2 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:pb-0 md:[scroll-snap-type:none]",
-                  snapSuspended ? "snap-none" : "snap-x snap-mandatory",
-                )}
-              >
-                {BOARD_STATUSES.map((status) => {
-                  const laneTasks = assignedPhaseTasks.filter(
-                    (task) => task.status === status,
-                  );
-                  const collapsed = collapsedLanes.has(status);
-                  const laneId = `lane-${status.replaceAll(" ", "-")}`;
-                  const contentId = `${laneId}-content`;
-                  return (
-                    <section
-                      key={status}
-                      ref={(node) => {
-                        if (node) laneRefs.current.set(status, node);
-                        else laneRefs.current.delete(status);
-                      }}
-                      data-lane-status={status}
-                      className="w-[calc(100%-1.5rem)] shrink-0 snap-start md:w-auto md:min-w-0 md:shrink md:[scroll-snap-align:none]"
-                      aria-labelledby={laneId}
-                    >
-                      <div className="mb-3 flex min-h-11 items-center gap-2 rounded-xl bg-muted/50 py-0.5 pr-0.5 pl-3">
-                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                          <span
-                            className={cn(
-                              "size-2 rounded-full",
-                              status === "To Do" && "bg-muted-foreground",
-                              status === "In Progress" && "bg-primary",
-                              status === "Completed" && "bg-emerald-500",
-                            )}
-                          />
-                          <h2
-                            id={laneId}
-                            className="truncate text-sm font-semibold tracking-wide uppercase"
-                          >
-                            {status}
-                          </h2>
-                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs leading-none text-muted-foreground">
-                            {laneTasks.length}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="size-11 shrink-0 transition-colors duration-300 active:bg-muted motion-reduce:transition-none md:size-8 md:min-w-0"
-                          aria-expanded={!collapsed}
-                          aria-controls={contentId}
-                          aria-label={`${collapsed ? "Expand" : "Collapse"} ${status}`}
-                          onClick={() => toggleLane(status)}
-                        >
-                          <ChevronDown
-                            className={cn("transition-transform duration-[var(--motion-interaction-duration)] motion-reduce:transition-none", collapsed && "-rotate-90")}
-                            aria-hidden
-                          />
-                        </Button>
-                      </div>
-                      <SortableContext
-                        items={laneTasks.map((task) => task.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <BoardLaneDropZone
-                          id={contentId}
-                          status={status}
-                          collapsed={collapsed}
-                          disabled={boardBusy || reorderBlocked}
-                        >
-                          <Collapse open={!collapsed}>
-                            <div className="space-y-3">
-                              {laneTasks.map((task) => {
-                                const permission = getMovePermission(
-                                  task,
-                                  viewer,
-                                );
-                                return (
-                                  <SortableEventBoardTaskCard
-                                    key={task.id}
-                                    task={task}
-                                    permission={permission}
-                                    busy={boardBusy}
-                                    dragDisabled={
-                                      boardBusy ||
-                                      collapsed ||
-                                      reorderBlocked ||
-                                      permission === "none"
-                                    }
-                                    onMoveStatus={handleStatusMove}
-                                    canEdit={canShowBoardTaskEdit(viewer, task)}
-                                    onEdit={() =>
-                                      setTaskDialog({
-                                        mode: "edit",
-                                        taskId: task.id,
-                                      })
-                                    }
-                                  />
-                                );
-                              })}
-                              {laneTasks.length === 0 ? (
-                                <div className="grid min-h-16 place-items-center rounded-xl border-2 border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
-                                  {selectedPriorities.size > 0
-                                    ? "No tasks match this filter."
-                                    : "No tasks yet"}
-                                </div>
-                              ) : null}
-                            </div>
-                          </Collapse>
-                          {collapsed ? (
-                            <div className="grid min-h-11 place-items-center rounded-xl border border-dashed px-3 py-1.5 text-center text-xs text-muted-foreground">
-                              {activeTaskId
-                                ? `Drop to move to ${status}`
-                                : `${status} is collapsed`}
-                            </div>
-                          ) : null}
-                        </BoardLaneDropZone>
-                      </SortableContext>
-                    </section>
-                  );
-                })}
-              </div>
-              <div className="mt-2 flex items-center justify-center gap-3 md:hidden">
-                <p
-                  className="text-xs font-medium text-muted-foreground"
-                  aria-live="polite"
-                >
-                  Column {getMobileLanePosition(activeMobileStatus)} of{" "}
-                  {BOARD_STATUSES.length}
-                  <span aria-hidden="true"> · </span>
-                  {activeMobileStatus}
-                </p>
-                <ol className="flex items-center gap-1.5" aria-hidden="true">
-                  {BOARD_STATUSES.map((status) => (
-                    <li
-                      key={status}
-                      className={cn(
-                        "h-1.5 rounded-full transition-[width,background-color] duration-300 motion-reduce:transition-none",
-                        status === activeMobileStatus
-                          ? "w-6 bg-primary"
-                          : "w-2 bg-muted-foreground/35",
-                      )}
-                    />
-                  ))}
-                </ol>
-              </div>
-              <DragOverlay
-                dropAnimation={
-                  reducedMotion
-                    ? null
-                    : { duration: 400, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
-                }
-              >
-                {activeDragTask ? (
-                  <div className="w-80 max-w-[calc(100vw-2rem)]">
-                    <EventBoardTaskCard task={activeDragTask} overlay />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>}
-          </TabPanel>
-        </div>
-      )}
-
-      <Sheet open={backlogOpen} onOpenChange={setBacklogOpen}>
-        <SheetContent
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="event-board-backlog-title"
-          aria-describedby="event-board-backlog-description"
-          finalFocus={backlogButtonRef}
-          className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-full md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-full md:data-[starting-style]:translate-y-0 md:motion-reduce:data-[starting-style]:translate-x-0"
-        >
-          <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-4 py-3.5">
-            <div className="min-w-0 flex-1">
-              <SheetTitle
-                id="event-board-backlog-title"
-                className="not-sr-only font-display text-lg font-semibold"
-              >
-                Task Backlog
-              </SheetTitle>
-              <SheetDescription
-                id="event-board-backlog-description"
-                className="text-xs"
-              >
-                Unassigned tasks
-              </SheetDescription>
-            </div>
-            <Badge variant="neutral" className="shrink-0 px-2">
-              {formatTaskCount(backlogTasks.length)}
-            </Badge>
-            <SheetClose
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-11 transition-colors duration-300 active:bg-muted motion-reduce:transition-none sm:size-8"
-                  aria-label="Close backlog"
-                />
-              }
-            >
-              <X aria-hidden />
-            </SheetClose>
-          </div>
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            {backlogTasks.map((task) => (
-              <EventBoardTaskCard
-                key={task.id}
-                task={task}
-                backlog
-                busy={boardBusy}
-                claimBusy={claimingTaskId === task.id}
-                onClaim={handleClaim}
-                canEdit={canShowBoardTaskEdit(viewer, task)}
-                onEdit={() => {
-                  setBacklogOpen(false);
-                  setTaskDialog({ mode: "edit", taskId: task.id });
-                }}
-              />
-            ))}
-            {backlogTasks.length === 0 ? (
-              <p className="rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                {selectedPriorities.size > 0
-                  ? "No unassigned tasks match this filter."
-                  : "No unassigned tasks."}
-              </p>
-            ) : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {taskDialog ? (
-        <ActiveTaskDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setTaskDialog(null);
-          }}
-          mode={taskDialog.mode}
-          eventId={taskDialog.mode === "add" ? event.id : undefined}
-          eventEndDate={event.end_date}
-          taskId={taskDialog.mode === "edit" ? taskDialog.taskId : undefined}
-          defaultPhase={selectedPhase}
-          completedPhaseNames={[...completePhases]}
-          phaseOptions={phases.filter((phase) => !completePhases.has(phase))}
-          viewer={viewer}
-          committees={committees}
-          onSettled={refetchBoardAfterTaskSettlement}
-        />
-      ) : null}
-
-      <div
-        className="fixed right-4 bottom-20 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 md:bottom-4"
-        aria-live="polite"
-        aria-atomic="false"
-      >
-        {undoState.entries.map((entry) => (
-          <div
-            key={`${entry.taskId}-${entry.expiresAt}`}
-            role="status"
-            className="motion-toast-enter flex items-center justify-between gap-3 rounded-xl border bg-popover px-4 py-3 text-sm shadow-lg"
-          >
-            <span className="min-w-0 truncate">Moved to {entry.toStatus}</span>
-            <Button
-              type="button"
-              variant="link"
-              className="h-9 shrink-0 px-0"
-              disabled={boardBusy || undoState.undoingTaskId === entry.taskId}
-              onClick={() => handleUndo(entry.taskId)}
-            >
-              Undo
-            </Button>
-          </div>
-        ))}
-      </div>
+      <EventBoardHeader
+        event={event}
+        viewer={viewer}
+        autoArchiveWarning={autoArchiveWarning}
+        completed={completed}
+        taskCount={tasks.length}
+        completion={completion}
+        moveError={moveError}
+        onDismissMoveError={() => setMoveError(null)}
+        queryError={query.error}
+        onRetry={() => void query.refetch()}
+      />
+      <EventBoardPhaseControls
+        phases={phases}
+        tasks={tasks}
+        phaseTabRefs={phaseTabRefs}
+        selectedPhase={selectedPhase}
+        completePhases={completePhases}
+        boardBusy={boardBusy}
+        selectPhase={selectPhase}
+        selectedPhaseComplete={selectedPhaseComplete}
+        isUnfilteredSelectedPhase={isUnfilteredSelectedPhase}
+        isAdmin={isAdmin}
+        priorityTriggerRef={priorityTriggerRef}
+        priorityOpen={priorityOpen}
+        priorityButtonLabel={priorityButtonLabel}
+        closePriorityFilter={closePriorityFilter}
+        openPriorityFilter={openPriorityFilter}
+        priorityOverlayRef={priorityOverlayRef}
+        priorityPanelRef={priorityPanelRef}
+        selectedPriorities={selectedPriorities}
+        togglePriority={togglePriority}
+        clearPriorities={clearPriorities}
+        committeeTriggerRef={committeeTriggerRef}
+        committeeOpen={committeeOpen}
+        committeeButtonLabel={committeeButtonLabel}
+        closeCommitteeFilter={closeCommitteeFilter}
+        openCommitteeFilter={openCommitteeFilter}
+        committeePanelRef={committeePanelRef}
+        committeeActiveIndex={committeeActiveIndex}
+        committeeOptions={committeeOptions}
+        committeeId={committeeId}
+        committeeOptionRefs={committeeOptionRefs}
+        selectCommittee={selectCommittee}
+        setCommitteeActiveIndex={setCommitteeActiveIndex}
+        handleCommitteeOptionKeyDown={handleCommitteeOptionKeyDown}
+        selectedReopenCandidates={selectedReopenCandidates}
+        onRefreshReopen={async () => {
+          await queryClient.refetchQueries({ queryKey: eventQueryKey, type: "active" });
+          await queryClient.refetchQueries({
+            predicate: ({ queryKey: key }) => ["draft-event-editor-tasks", "task-detail", "task-edit-controls", "task-work-links", "task-comments", "task-backup-state"].includes(String(key[0])),
+            type: "active",
+          });
+          window.dispatchEvent(new Event("task-leave-requests:changed"));
+        }}
+        onReopened={(candidate) => {
+          setPhaseDisclosure((current) =>
+            revealReopenedPhase(current, candidate.phase));
+          requestAnimationFrame(() => phaseTabRefs.current.get(candidate.phase)?.focus());
+        }}
+        canAddTask={canAddTask}
+        setTaskDialog={setTaskDialog}
+        backlogButtonRef={backlogButtonRef}
+        backlogCount={backlogTasks.length}
+        setBacklogOpen={setBacklogOpen}
+      />
+      <EventBoardLanes
+        queryPending={query.isPending}
+        queryPlaceholder={query.isPlaceholderData}
+        tasks={tasks}
+        phaseMotionKey={phaseMotionKey}
+        isUnfilteredBacklogOnlyPhase={isUnfilteredBacklogOnlyPhase}
+        isUnfilteredMixedPhase={isUnfilteredMixedPhase}
+        selectedPhaseTasks={selectedPhaseTasks}
+        unassignedSelectedPhaseTasks={unassignedSelectedPhaseTasks}
+        setBacklogOpen={setBacklogOpen}
+        selectedPhaseComplete={selectedPhaseComplete}
+        selectedPhase={selectedPhase}
+        selectedPriorities={selectedPriorities}
+        selectedCompletePhaseCollapsed={selectedCompletePhaseCollapsed}
+        setPhaseDisclosure={setPhaseDisclosure}
+        phases={phases}
+        completePhases={completePhases}
+        matchesPriority={matchesPriority}
+        dndContextKey={dndContextKey}
+        sensors={sensors}
+        handleDragStart={handleDragStart}
+        handleDragCancel={handleDragCancel}
+        handleDragEnd={handleDragEnd}
+        mobileBoardRef={mobileBoardRef}
+        snapSuspended={snapSuspended}
+        assignedPhaseTasks={assignedPhaseTasks}
+        collapsedLanes={collapsedLanes}
+        laneRefs={laneRefs}
+        boardBusy={boardBusy}
+        reorderBlocked={reorderBlocked}
+        toggleLane={toggleLane}
+        activeTaskId={activeTaskId}
+        viewer={viewer}
+        handleStatusMove={handleStatusMove}
+        setTaskDialog={setTaskDialog}
+        activeMobileStatus={activeMobileStatus}
+        reducedMotion={reducedMotion}
+        activeDragTask={activeDragTask}
+      />
+      <EventBoardDialogs
+        backlogOpen={backlogOpen}
+        setBacklogOpen={setBacklogOpen}
+        backlogButtonRef={backlogButtonRef}
+        backlogTasks={backlogTasks}
+        boardBusy={boardBusy}
+        claimingTaskId={claimingTaskId}
+        handleClaim={handleClaim}
+        viewer={viewer}
+        selectedPriorities={selectedPriorities}
+        taskDialog={taskDialog}
+        setTaskDialog={setTaskDialog}
+        event={event}
+        selectedPhase={selectedPhase}
+        completePhases={completePhases}
+        phases={phases}
+        committees={committees}
+        refetchBoardAfterTaskSettlement={refetchBoardAfterTaskSettlement}
+        undoState={undoState}
+        handleUndo={handleUndo}
+      />
     </div>
   );
 }

@@ -94,10 +94,16 @@ describe("mobile board column state", () => {
 });
 
 describe("mobile board source contracts", () => {
-  const boardSource = readFileSync(
-    resolve(process.cwd(), "src/components/events/event-board.tsx"),
-    "utf8",
-  );
+  const boardSource = [
+    readFileSync(
+      resolve(process.cwd(), "src/components/events/event-board.tsx"),
+      "utf8",
+    ),
+    readFileSync(
+      resolve(process.cwd(), "src/components/events/event-board-lanes.tsx"),
+      "utf8",
+    ),
+  ].join("\n");
   const cardSource = readFileSync(
     resolve(process.cwd(), "src/components/events/event-board-task-card.tsx"),
     "utf8",

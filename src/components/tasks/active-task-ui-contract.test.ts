@@ -5,7 +5,11 @@ const dialog = readFileSync(
   "src/components/tasks/active-task-dialog.tsx",
   "utf8",
 );
-const board = readFileSync("src/components/events/event-board.tsx", "utf8");
+const board = [
+  readFileSync("src/components/events/event-board.tsx", "utf8"),
+  readFileSync("src/components/events/event-board-phase-controls.tsx", "utf8"),
+  readFileSync("src/components/events/event-board-lanes.tsx", "utf8"),
+].join("\n");
 const card = readFileSync(
   "src/components/events/event-board-task-card.tsx",
   "utf8",
