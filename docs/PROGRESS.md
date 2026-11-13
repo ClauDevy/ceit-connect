@@ -27,6 +27,8 @@ The approved Phase 5 batch map, decisions, gate checks, and release checklist ar
 - **Phase 5 D1, D1b, and D2 Executive Dashboard are live on Dev and Prod (owner-confirmed 2026-11-12).** D1 adds confidential-safe committee totals, a Level 2 summary, true per-member workloads, explicit no-bar counts, and database-enforced Admin/Co-Admin scope. D1b adds the scoped overview, attention, deadline, free-member, slipping-signal, and Admin-only push-adoption readers. D2 supplies the approved responsive UI without changing those database boundaries.
 - **Phase 5 L1 Live Operation timing is implemented and locally checked; owner-run Dev SQL pastes remain pending.** Migration `20261119120000_live_operation_timing_rules.sql` centralizes START/END/running, keeps Deliverables bit-identical, uses END for overdue and START for priority/dashboard/Member leave rules, preserves the outer and inner leave clocks, and changes no runtime app shape, table, column, policy, or service-role boundary. Its temporary rewrite helper strips carriage returns before the exactly-once checks and is owned by `postgres`; the runbook requires a reviewed `npx supabase db push --dry-run` followed by `npx supabase db push`, never migration execution through the SQL Editor. Catalog and behaviour pastes expect 14 and 39 result lines; every behaviour dashboard assertion scopes to the rollback fixture committee, masked rows run as an authorized fixture Co-Admin, and catalog scans match each legacy call's top-level argument shape with nested-expression timing-token fixtures. The migration-order contract passes after adding migration 81; 1,359 tests pass while three unrelated J1 CRLF-sensitive assertions remain failing. Lint has zero errors and the existing `mascot.tsx` warning, whitespace passes, and direct TypeScript remains blocked only by the known missing Next-generated `PageProps`/`LayoutProps` globals. See `docs/phase-5/step-l1-live-operation-timing.md`.
 
+- **Phase 5 G1 alert grouping is implemented and locally checked; owner-run Dev SQL pastes remain pending.** Migration `20261120120000_alert_grouping.sql` keeps every bell row unchanged while grouping only launch assignment, due-soon, Live Operation prep, and unlock pushes by person/type/window. Joins close at 25 seconds, delivery stays at 30, grouped rows share one window-start retry deadline, one-row groups keep the queue id and exact single copy, and summaries use a stable window id, counts-only copy, and `/`. Claim and acknowledgement keep their public signatures and capability boundary; legacy null-group rows remain individual. The self-contained Dev pastes expect 24/24 catalog and 36/36 behavior results. Migration 82 must follow L1 migration 81. The migration-order contract now includes G1; 1,360 tests pass while the same three unrelated J1 CRLF/fixture-order assertions fail. Lint has zero errors and the existing `mascot.tsx` warning. Direct TypeScript remains blocked only by the known missing Next-generated `PageProps`/`LayoutProps` globals. See `docs/phase-5/step-g1-alert-grouping.md`.
+
 - **Discord (X1) was cancelled by the owner on 2026-11-11 and will not be built.**
 
 - **Batch 14 Part 1 is live and fully passed on Dev and Prod.** The owner applied all three tracked migrations and confirmed the 33/33 Batch 14 paste plus Step 8, Batch A, Batch B, and Batch D 46/46 reruns. The migrations remove only authenticated TRUNCATE/REFERENCES/TRIGGER from events, tasks, notifications, users, and activity_log, enable non-forced zero-policy RLS on both Batch D run-history tables, deny inactive/profile-less event readers while preserving active role behavior and its Activity Log mirror, and enable the global officer-cap row. Dev's target revokes had been applied manually before the tracked migration; the migration is the tracked record of truth in both environments. A, B, and D remain live on Dev and Prod; Prod's external cron row was owner-verified 2026-11-07 and Dev has none.
@@ -295,6 +297,17 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - Task-writer cap follow-up: `claim_task` can add one primary to a zero-primary
   task that already has 100 assists; add the same combined-assignee guard used
   by the assignment and create/edit writers in a separately reviewed change.
+- G1 accepted partial-read behavior: when at least one alert in a grouped window
+  is unread, its summary count includes the already-read alerts in that window.
+- G1 accepted concurrency limit: two large transactions can acquire different
+  people's group locks in opposite order. A detected deadlock is swallowed by
+  the best-effort enqueue handler, so one push can be lost while its bell row
+  remains.
+- G1 run counters count one logical window/subscription delivery, not every
+  underlying queue row.
+- G1 rollout ordering is fixed: migration `20261120120000_alert_grouping.sql`
+  must be pushed after L1 migration `20261119120000_live_operation_timing_rules.sql`.
+- G1: if a notification is deleted while a grouped push is retrying, the retry's tag and count can differ from the first attempt (needs a persisted first-claim delivery id).
 
 ## Open items
 

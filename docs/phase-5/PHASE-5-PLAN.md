@@ -22,6 +22,7 @@ current batch completes its full stage order.
 | R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Implemented locally; validation and owner rollout pending |
 | J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Implemented locally; review, app-first rollout, migration, and Dev paste pending |
 | L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Implemented locally; validation and owner-run Dev pastes pending |
+| G1 | Counts-only phone-push grouping for launch assignment, due-soon, Live Operation prep, and unlock bursts | `feature/alert-grouping` | High | Implemented locally; validation and owner-run Dev pastes pending |
 
 Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. I1
 started after the N2 notification UI gate and is now live. Every later batch
@@ -124,13 +125,19 @@ These are not part of the currently implemented N1/N2 behavior:
 
 - daily digest email;
 - R2 quiet hours (not part of the deadline-reminder batch);
-- alert grouping or coalescing;
 - `pushsubscriptionchange` recovery; a rotated browser subscription currently
   requires the person to explicitly enable notifications again in Settings;
 - backup restore drill;
 - signed-out return to a mentioned comment. Auth, Login, and the auth callback
   remain unchanged; signed-out recipients go to Login and then Home until a
   separately reviewed validated same-origin return-path flow exists.
+
+G1 accepted constraints remain recorded with the deferred list: a partially
+read window counts both read and unread alerts; opposite person-lock order in
+two large concurrent transactions may deadlock and lose one best-effort push
+while retaining its bell row; delivery-run counters count one logical
+window/subscription delivery rather than each queue row; and migration 82 must
+be applied only after L1 migration `20261119120000_live_operation_timing_rules.sql`.
 
 ## Open items
 
