@@ -21,6 +21,7 @@ current batch completes its full stage order.
 | R1 | Volunteer-offer and leave-request notifications across storage, bell, push, cleanup compatibility, tests, and docs | current feature branch | High | Implemented and locally documented; validation and rollout pending |
 | R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Implemented locally; validation and owner rollout pending |
 | J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Implemented locally; review, app-first rollout, migration, and Dev paste pending |
+| L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Implemented locally; validation and owner-run Dev pastes pending |
 
 Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. I1
 started after the N2 notification UI gate and is now live. Every later batch
