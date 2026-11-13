@@ -91,31 +91,80 @@ where p.oid=any(array[
   'public.list_executive_dashboard_member_slipping_signals(uuid)'::regprocedure
 ]);
 
--- Scan every SQL/PLpgSQL body in both schemas. Any surviving call with the
--- historical four-argument priority shape or three-argument classifier shape
--- lacks the newly mandatory task_type/call_time/end_time tokens and fails.
+-- Scan every SQL/PLpgSQL invocation in both schemas. Count the arguments of
+-- each call itself: timing tokens elsewhere in a body cannot mask an old call.
+with negative_fixture(body) as (
+  values ($l1$begin
+  perform public.calculate_effective_task_priority(
+    p_priority, p_due_date, p_as_of, p_status
+  );
+  perform p_task_type || task_type || call_time::text || end_time::text;
+end;$l1$)
+)
 insert into public.l1_catalog_results
-select 13,'no function body references old priority call shape',not exists(
+select 13,'no old priority invocation; timing-token fixture is detected',not exists(
   select 1
   from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace
   cross join lateral (select pg_catalog.pg_get_functiondef(p.oid) as body) d
+  cross join lateral pg_catalog.regexp_matches(
+    d.body,
+    'calculate_effective_task_priority[[:space:]]*\\(([^()]*)\\)',
+    'g'
+  ) as invocation(arguments)
   where n.nspname in ('public','ceit_connect_private')
     and p.prokind='f'
-    and d.body like '%calculate_effective_task_priority(%'
-    and d.body not like '%p_task_type%'
-    and d.body not like '%task_type%call_time%end_time%'
+    and pg_catalog.cardinality(
+      pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
+    )=4
+)
+and exists(
+  select 1
+  from negative_fixture
+  cross join lateral pg_catalog.regexp_matches(
+    negative_fixture.body,
+    'calculate_effective_task_priority[[:space:]]*\\(([^()]*)\\)',
+    'g'
+  ) as invocation(arguments)
+  where pg_catalog.cardinality(
+    pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
+  )=4
 );
 
+with negative_fixture(body) as (
+  values ($l1$begin
+  perform ceit_connect_private.classify_executive_dashboard_task(
+    p_due_date, p_status, p_as_of
+  );
+  perform p_task_type || task_type || call_time::text || end_time::text;
+end;$l1$)
+)
 insert into public.l1_catalog_results
-select 14,'no function body references old classifier call shape',not exists(
+select 14,'no old classifier invocation; timing-token fixture is detected',not exists(
   select 1
   from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace
   cross join lateral (select pg_catalog.pg_get_functiondef(p.oid) as body) d
+  cross join lateral pg_catalog.regexp_matches(
+    d.body,
+    'classify_executive_dashboard_task[[:space:]]*\\(([^()]*)\\)',
+    'g'
+  ) as invocation(arguments)
   where n.nspname in ('public','ceit_connect_private')
     and p.prokind='f'
-    and d.body like '%classify_executive_dashboard_task(%'
-    and d.body not like '%p_task_type%'
-    and d.body not like '%task_type%due_date%call_time%end_time%'
+    and pg_catalog.cardinality(
+      pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
+    )=3
+)
+and exists(
+  select 1
+  from negative_fixture
+  cross join lateral pg_catalog.regexp_matches(
+    negative_fixture.body,
+    'classify_executive_dashboard_task[[:space:]]*\\(([^()]*)\\)',
+    'g'
+  ) as invocation(arguments)
+  where pg_catalog.cardinality(
+    pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
+  )=3
 );
 
 -- This paste owns independent rollback fixtures even though its assertions are

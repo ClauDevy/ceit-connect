@@ -13,6 +13,22 @@ create table public.l1_behaviour_results(
   passed boolean not null
 );
 
+do $$
+begin
+  if not pg_catalog.has_table_privilege(
+    'authenticated', 'public.l1_behaviour_results', 'INSERT'
+  ) then
+    grant insert on table public.l1_behaviour_results to authenticated;
+  end if;
+
+  if not pg_catalog.has_table_privilege(
+    'authenticated', 'public.l1_behaviour_results', 'INSERT'
+  ) then
+    raise exception 'L1 behaviour paste cannot record authenticated results.';
+  end if;
+end
+$$;
+
 -- Deterministic helper/priority/classifier checks run as postgres before the
 -- first SET ROLE or JWT impersonation line. Exact boundaries are tested only
 -- here because these functions accept an explicit as_of timestamp.
@@ -163,18 +179,27 @@ insert into public.l1_behaviour_results
 select 28,'running task excluded from dashboard at risk count',out_at_risk_task_count=0
 from public.list_executive_dashboard_member_slipping_signals('1b100000-0000-4000-8000-000000000001')
 where out_member_id='1b110000-0000-4000-8000-000000000002';
+select pg_catalog.set_config('request.jwt.claims','{"sub":"1b110000-0000-4000-8000-000000000003","role":"authenticated"}',true);
 insert into public.l1_behaviour_results
 select 29,'confidential dashboard task stays masked',out_task_id is null and out_label='Confidential task'
 from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
 where out_category='help_wanted' and out_label='Confidential task';
 insert into public.l1_behaviour_results
-select 30,'overdue dashboard row returns END as relevant time',out_due_date between statement_timestamp()-interval '1 day 1 minute' and statement_timestamp()-interval '23 hours 59 minutes'
-from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
-where out_label='Overdue relevant end';
-insert into public.l1_behaviour_results
-select 31,'running attention row returns START as relevant time',out_due_date between statement_timestamp()-interval '1 hour 1 minute' and statement_timestamp()-interval '59 minutes'
+select 31,'masked running attention row returns START as relevant time',out_due_date between statement_timestamp()-interval '1 hour 1 minute' and statement_timestamp()-interval '59 minutes'
 from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
 where out_label='Confidential task';
+select pg_catalog.set_config('request.jwt.claims','{"sub":"1b110000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+insert into public.l1_behaviour_results
+select 30,'Admin dashboard rows return END and START as relevant times',
+  out_due_date between statement_timestamp()-interval '1 day 1 minute' and statement_timestamp()-interval '23 hours 59 minutes'
+  and exists(
+    select 1
+    from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
+    where out_label='Running confidential secret'
+      and out_due_date between statement_timestamp()-interval '1 hour 1 minute' and statement_timestamp()-interval '59 minutes'
+  )
+from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
+where out_label='Overdue relevant end';
 insert into public.l1_behaviour_results
 select 32,'deadline calendar groups Live Operation by START',out_open_task_count=1
 from public.list_executive_dashboard_deadlines('1b100000-0000-4000-8000-000000000001')
