@@ -5,6 +5,10 @@ Dev only. In the Supabase SQL Editor select **Run without RLS**, paste this enti
 ```sql
 begin;
 
+update ceit_connect_private.push_delivery_queue
+set next_attempt_at = pg_catalog.clock_timestamp() + interval '2 hours'
+where state = 'pending';
+
 create table public.g1_behavior_results (
   label text primary key,
   passed boolean not null
@@ -135,16 +139,20 @@ select pg_temp.g1_record('08 run claimed counter counts device-window deliveries
   2=(select claimed_count from ceit_connect_private.push_delivery_runs where id=(select out_run_id from public.g1_launch_claim limit 1)));
 select pg_temp.g1_record('09 wrong lease token returns false',not public.acknowledge_push_delivery(
   (select out_delivery_id from public.g1_launch_claim limit 1),gen_random_uuid(),'success',201));
+select set_config('g1.ack_10',public.acknowledge_push_delivery(
+  (select out_delivery_id from public.g1_launch_claim where out_endpoint like '%a-one'),
+  (select out_lease_token from public.g1_launch_claim where out_endpoint like '%a-one'),'success',201
+)::text,true);
 select pg_temp.g1_record('10 acknowledging device one touches only its six rows',
-  public.acknowledge_push_delivery(
-    (select out_delivery_id from public.g1_launch_claim where out_endpoint like '%a-one'),
-    (select out_lease_token from public.g1_launch_claim where out_endpoint like '%a-one'),'success',201)
+  current_setting('g1.ack_10')::boolean
   and 6=(select count(*) from ceit_connect_private.push_delivery_queue where subscription_id='82105000-0000-4000-8000-000000000001' and notification_type='assignment' and state='delivered')
   and 6=(select count(*) from ceit_connect_private.push_delivery_queue where subscription_id='82105000-0000-4000-8000-000000000002' and notification_type='assignment' and state='leased'));
+select set_config('g1.ack_11',public.acknowledge_push_delivery(
+  (select out_delivery_id from public.g1_launch_claim where out_endpoint like '%a-two'),
+  (select out_lease_token from public.g1_launch_claim where out_endpoint like '%a-two'),'transient',503
+)::text,true);
 select pg_temp.g1_record('11 failing device two touches only its own six rows',
-  public.acknowledge_push_delivery(
-    (select out_delivery_id from public.g1_launch_claim where out_endpoint like '%a-two'),
-    (select out_lease_token from public.g1_launch_claim where out_endpoint like '%a-two'),'transient',503)
+  current_setting('g1.ack_11')::boolean
   and 6=(select count(*) from ceit_connect_private.push_delivery_queue where subscription_id='82105000-0000-4000-8000-000000000002' and notification_type='assignment' and state='pending')
   and 6=(select count(*) from ceit_connect_private.push_delivery_queue where subscription_id='82105000-0000-4000-8000-000000000001' and notification_type='assignment' and state='delivered'));
 update ceit_connect_private.push_delivery_queue set next_attempt_at=clock_timestamp()-interval '10 seconds'
@@ -158,8 +166,12 @@ select pg_temp.g1_record('12 retry stays one summary with the same tag and never
   1=(select count(*) from public.g1_launch_retry)
   and (select out_delivery_id from public.g1_launch_retry)=(select out_delivery_id from public.g1_launch_claim limit 1)
   and 6=(select count(*) from ceit_connect_private.push_delivery_queue where subscription_id='82105000-0000-4000-8000-000000000002' and notification_type='assignment' and state='leased'));
+select set_config('g1.ack_13',public.acknowledge_push_delivery(
+  (select out_delivery_id from public.g1_launch_retry),
+  (select out_lease_token from public.g1_launch_retry),'success',201
+)::text,true);
 select pg_temp.g1_record('13 retry success finalizes the complete second-device group',
-  public.acknowledge_push_delivery((select out_delivery_id from public.g1_launch_retry),(select out_lease_token from public.g1_launch_retry),'success',201)
+  current_setting('g1.ack_13')::boolean
   and 12=(select count(*) from ceit_connect_private.push_delivery_queue where notification_type='assignment' and user_id='82100000-0000-4000-8000-000000000002' and state='delivered'));
 
 insert into public.notifications(id,user_id,type,task_id)
@@ -175,8 +187,12 @@ reset role;
 select pg_temp.g1_record('14 one grouped alert keeps its row id exact copy and task target',
   (select out_delivery_id from public.g1_single_claim)=(select id from ceit_connect_private.push_delivery_queue where notification_id='82106000-0000-4000-8000-000000000001')
   and (select out_body='A task you’re assigned to is now unlocked.' and out_target_path='/tasks/82103000-0000-4000-8000-000000000001' from public.g1_single_claim));
+select set_config('g1.ack_15',public.acknowledge_push_delivery(
+  (select out_delivery_id from public.g1_single_claim),
+  (select out_lease_token from public.g1_single_claim),'success',201
+)::text,true);
 select pg_temp.g1_record('15 acknowledgement accepts the single-row id',
-  public.acknowledge_push_delivery((select out_delivery_id from public.g1_single_claim),(select out_lease_token from public.g1_single_claim),'success',201)
+  current_setting('g1.ack_15')::boolean
   and exists(select 1 from ceit_connect_private.push_delivery_queue where notification_id='82106000-0000-4000-8000-000000000001' and state='delivered'));
 
 insert into public.notifications(id,user_id,type,task_id) values

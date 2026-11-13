@@ -156,6 +156,8 @@ begin
         )
       );
 
+      v_now := pg_catalog.clock_timestamp();
+
       select
         queue.group_window_id,
         queue.group_window_started_at
