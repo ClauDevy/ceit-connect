@@ -556,10 +556,10 @@ begin
       else
         case leader.notification_type
           when 'mention' then 'You were mentioned in a task.'
-          when 'heads_up' then 'A task youâ€™re assigned to has a new heads-up.'
+          when 'heads_up' then 'A task you’re assigned to has a new heads-up.'
           when 'assignment' then 'You were assigned to a task.'
-          when 'status_change' then 'A task youâ€™re assigned to changed status.'
-          when 'unlock' then 'A task youâ€™re assigned to is now unlocked.'
+          when 'status_change' then 'A task you’re assigned to changed status.'
+          when 'unlock' then 'A task you’re assigned to is now unlocked.'
           when 'backup_request' then 'A task needs backup help.'
           when 'volunteer_offer' then 'A task has a new volunteer offer.'
           when 'leave_requested' then 'A task has a new leave request.'
