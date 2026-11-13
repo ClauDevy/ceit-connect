@@ -46,7 +46,7 @@ describe("Batch C shared card and mascot contracts", () => {
   });
 
   it("collapses board columns with the shared height Collapse", () => {
-    const board = read("src/components/events/event-board.tsx");
+    const board = read("src/components/events/event-board-lanes.tsx");
     expect(board).toContain("<Collapse open={!collapsed}>");
   });
 
@@ -69,7 +69,10 @@ describe("Batch C shared card and mascot contracts", () => {
   });
 
   it("hides board filters on completed phases and keeps cards while switching committee", () => {
-    const board = read("src/components/events/event-board.tsx");
+    const board = [
+      read("src/components/events/event-board.tsx"),
+      read("src/components/events/event-board-phase-controls.tsx"),
+    ].join("\n");
     expect(board).toMatch(/\{!selectedPhaseComplete \|\| !isUnfilteredSelectedPhase \? \(\s*<div\s+className=\{cn\(\s*"col-span-2 grid/);
     expect(board).toContain("placeholderData: keepPreviousData");
   });
