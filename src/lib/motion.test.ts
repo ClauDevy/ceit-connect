@@ -262,7 +262,7 @@ describe("motion entrance policy", () => {
       "utf8",
     );
     const board = readFileSync(
-      resolve(process.cwd(), "src/components/events/event-board.tsx"),
+      resolve(process.cwd(), "src/components/events/event-board-lanes.tsx"),
       "utf8",
     );
 
