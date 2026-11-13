@@ -108,11 +108,13 @@ insert into public.committees(id,name) values('1b100000-0000-4000-8000-000000000
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at) values
 ('00000000-0000-0000-0000-000000000000','1b110000-0000-4000-8000-000000000001','authenticated','authenticated','l1-admin@example.invalid','',pg_catalog.now(),pg_catalog.now(),pg_catalog.now()),
 ('00000000-0000-0000-0000-000000000000','1b110000-0000-4000-8000-000000000002','authenticated','authenticated','l1-member@example.invalid','',pg_catalog.now(),pg_catalog.now(),pg_catalog.now()),
-('00000000-0000-0000-0000-000000000000','1b110000-0000-4000-8000-000000000003','authenticated','authenticated','l1-inside@example.invalid','',pg_catalog.now(),pg_catalog.now(),pg_catalog.now());
+('00000000-0000-0000-0000-000000000000','1b110000-0000-4000-8000-000000000003','authenticated','authenticated','l1-inside@example.invalid','',pg_catalog.now(),pg_catalog.now(),pg_catalog.now()),
+('00000000-0000-0000-0000-000000000000','1b110000-0000-4000-8000-000000000004','authenticated','authenticated','l1-coadmin@example.invalid','',pg_catalog.now(),pg_catalog.now(),pg_catalog.now());
 insert into public.users(id,email,full_name,role,committee_id,is_active) values
 ('1b110000-0000-4000-8000-000000000001','l1-admin@example.invalid','L1 Admin','Admin',null,true),
 ('1b110000-0000-4000-8000-000000000002','l1-member@example.invalid','L1 Member','Member','1b100000-0000-4000-8000-000000000001',true),
-('1b110000-0000-4000-8000-000000000003','l1-inside@example.invalid','L1 Inside','Member','1b100000-0000-4000-8000-000000000001',true);
+('1b110000-0000-4000-8000-000000000003','l1-inside@example.invalid','L1 Inside','Member','1b100000-0000-4000-8000-000000000001',true),
+('1b110000-0000-4000-8000-000000000004','l1-coadmin@example.invalid','L1 Co-Admin','Co-Admin','1b100000-0000-4000-8000-000000000001',true);
 insert into public.events(id,name,start_date,end_date,status,created_by)
 values('1b120000-0000-4000-8000-000000000001','L1 Active','2026-01-01','2035-12-31','Active','1b110000-0000-4000-8000-000000000001');
 
@@ -179,7 +181,7 @@ insert into public.l1_behaviour_results
 select 28,'running task excluded from dashboard at risk count',out_at_risk_task_count=0
 from public.list_executive_dashboard_member_slipping_signals('1b100000-0000-4000-8000-000000000001')
 where out_member_id='1b110000-0000-4000-8000-000000000002';
-select pg_catalog.set_config('request.jwt.claims','{"sub":"1b110000-0000-4000-8000-000000000003","role":"authenticated"}',true);
+select pg_catalog.set_config('request.jwt.claims','{"sub":"1b110000-0000-4000-8000-000000000004","role":"authenticated"}',true);
 insert into public.l1_behaviour_results
 select 29,'confidential dashboard task stays masked',out_task_id is null and out_label='Confidential task'
 from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
@@ -187,7 +189,7 @@ where out_category='help_wanted' and out_label='Confidential task';
 insert into public.l1_behaviour_results
 select 31,'masked running attention row returns START as relevant time',out_due_date between statement_timestamp()-interval '1 hour 1 minute' and statement_timestamp()-interval '59 minutes'
 from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
-where out_label='Confidential task';
+where out_category='help_wanted' and out_label='Confidential task';
 select pg_catalog.set_config('request.jwt.claims','{"sub":"1b110000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 insert into public.l1_behaviour_results
 select 30,'Admin dashboard rows return END and START as relevant times',
@@ -195,7 +197,8 @@ select 30,'Admin dashboard rows return END and START as relevant times',
   and exists(
     select 1
     from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
-    where out_label='Running confidential secret'
+    where out_category='help_wanted'
+      and out_label='Confidential task'
       and out_due_date between statement_timestamp()-interval '1 hour 1 minute' and statement_timestamp()-interval '59 minutes'
   )
 from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')

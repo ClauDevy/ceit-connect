@@ -96,7 +96,7 @@ where p.oid=any(array[
 with negative_fixture(body) as (
   values ($l1$begin
   perform public.calculate_effective_task_priority(
-    p_priority, p_due_date, p_as_of, p_status
+    p_priority, coalesce(p_due_date, p_call_time), p_as_of, p_status
   );
   perform p_task_type || task_type || call_time::text || end_time::text;
 end;$l1$)
@@ -108,32 +108,26 @@ select 13,'no old priority invocation; timing-token fixture is detected',not exi
   cross join lateral (select pg_catalog.pg_get_functiondef(p.oid) as body) d
   cross join lateral pg_catalog.regexp_matches(
     d.body,
-    'calculate_effective_task_priority[[:space:]]*\\(([^()]*)\\)',
+    'calculate_effective_task_priority[[:space:]]*\(([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*\)',
     'g'
   ) as invocation(arguments)
   where n.nspname in ('public','ceit_connect_private')
     and p.prokind='f'
-    and pg_catalog.cardinality(
-      pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
-    )=4
 )
 and exists(
   select 1
   from negative_fixture
   cross join lateral pg_catalog.regexp_matches(
     negative_fixture.body,
-    'calculate_effective_task_priority[[:space:]]*\\(([^()]*)\\)',
+    'calculate_effective_task_priority[[:space:]]*\(([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*\)',
     'g'
   ) as invocation(arguments)
-  where pg_catalog.cardinality(
-    pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
-  )=4
 );
 
 with negative_fixture(body) as (
   values ($l1$begin
   perform ceit_connect_private.classify_executive_dashboard_task(
-    p_due_date, p_status, p_as_of
+    coalesce(p_due_date, p_call_time), p_status, p_as_of
   );
   perform p_task_type || task_type || call_time::text || end_time::text;
 end;$l1$)
@@ -145,26 +139,20 @@ select 14,'no old classifier invocation; timing-token fixture is detected',not e
   cross join lateral (select pg_catalog.pg_get_functiondef(p.oid) as body) d
   cross join lateral pg_catalog.regexp_matches(
     d.body,
-    'classify_executive_dashboard_task[[:space:]]*\\(([^()]*)\\)',
+    'classify_executive_dashboard_task[[:space:]]*\(([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*\)',
     'g'
   ) as invocation(arguments)
   where n.nspname in ('public','ceit_connect_private')
     and p.prokind='f'
-    and pg_catalog.cardinality(
-      pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
-    )=3
 )
 and exists(
   select 1
   from negative_fixture
   cross join lateral pg_catalog.regexp_matches(
     negative_fixture.body,
-    'classify_executive_dashboard_task[[:space:]]*\\(([^()]*)\\)',
+    'classify_executive_dashboard_task[[:space:]]*\(([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*[,]([^(),]|\([^()]*\))*\)',
     'g'
   ) as invocation(arguments)
-  where pg_catalog.cardinality(
-    pg_catalog.regexp_split_to_array(invocation.arguments[1], ',')
-  )=3
 );
 
 -- This paste owns independent rollback fixtures even though its assertions are
