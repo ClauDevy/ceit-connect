@@ -307,6 +307,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
   underlying queue row.
 - G1 rollout ordering is fixed: migration `20261120120000_alert_grouping.sql`
   must be pushed after L1 migration `20261119120000_live_operation_timing_rules.sql`.
+- G1: if a notification is deleted while a grouped push is retrying, the retry's tag and count can differ from the first attempt (needs a persisted first-claim delivery id).
 
 ## Open items
 
