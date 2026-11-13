@@ -46,13 +46,14 @@ values (
 );
 insert into public.tasks(
   id, event_id, committee_id, title, phase, status, task_type,
-  primary_assignees, assist_assignees, is_confidential, request_backup
+  primary_assignees, assist_assignees, is_confidential, request_backup, created_by, sort_order
 ) values (
   '82003000-0000-4000-8000-000000000001',
   '82002000-0000-4000-8000-000000000001',
   '8200c000-0000-4000-8000-000000000001',
   'G1 Catalog Task', 'G1', 'To Do', 'Deliverable',
-  array['82000000-0000-4000-8000-000000000001'::uuid], '{}', false, false
+  array['82000000-0000-4000-8000-000000000001'::uuid], '{}', false, false,
+  '82000000-0000-4000-8000-000000000001', 1024
 );
 insert into public.push_subscriptions(
   id, user_id, endpoint, endpoint_hash, p256dh, auth_secret, device_label, platform

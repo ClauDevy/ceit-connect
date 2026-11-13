@@ -57,15 +57,15 @@ insert into public.events(id, name, start_date, end_date, status, created_by) va
 
 insert into public.tasks(
   id, event_id, committee_id, title, phase, status, task_type,
-  primary_assignees, assist_assignees, is_confidential, allowed_viewers, request_backup
+  primary_assignees, assist_assignees, is_confidential, allowed_viewers, request_backup, created_by, sort_order
 ) values
-('82103000-0000-4000-8000-000000000001','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 1','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false),
-('82103000-0000-4000-8000-000000000002','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 2','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false),
-('82103000-0000-4000-8000-000000000003','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 3','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false),
-('82103000-0000-4000-8000-000000000004','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 4','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false),
-('82103000-0000-4000-8000-000000000005','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 5','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false),
-('82103000-0000-4000-8000-000000000006','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 6','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false),
-('82103000-0000-4000-8000-000000000007','82102000-0000-4000-8000-000000000002','8210c000-0000-4000-8000-000000000001','G1 Failed task','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',false,'{}',false);
+('82103000-0000-4000-8000-000000000001','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 1','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false,'82100000-0000-4000-8000-000000000001',1024),
+('82103000-0000-4000-8000-000000000002','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 2','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false,'82100000-0000-4000-8000-000000000001',2048),
+('82103000-0000-4000-8000-000000000003','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 3','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false,'82100000-0000-4000-8000-000000000001',3072),
+('82103000-0000-4000-8000-000000000004','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 4','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false,'82100000-0000-4000-8000-000000000001',4096),
+('82103000-0000-4000-8000-000000000005','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 5','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false,'82100000-0000-4000-8000-000000000001',5120),
+('82103000-0000-4000-8000-000000000006','82102000-0000-4000-8000-000000000001','8210c000-0000-4000-8000-000000000001','G1 Launch secret 6','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',true,array['82100000-0000-4000-8000-000000000002'::uuid,'82100000-0000-4000-8000-000000000003'::uuid],false,'82100000-0000-4000-8000-000000000001',6144),
+('82103000-0000-4000-8000-000000000007','82102000-0000-4000-8000-000000000002','8210c000-0000-4000-8000-000000000001','G1 Failed task','G1','To Do','Deliverable',array['82100000-0000-4000-8000-000000000002'::uuid],'{}',false,'{}',false,'82100000-0000-4000-8000-000000000001',1024);
 
 insert into public.push_subscriptions(
   id, user_id, endpoint, endpoint_hash, p256dh, auth_secret, device_label, platform, expires_at
@@ -96,6 +96,13 @@ end;
 $$;
 update public.events set status='Active' where id='82102000-0000-4000-8000-000000000001';
 reset role;
+select set_config('g1.launch_notification_ids',(
+  select array_agg(id order by id)::text
+  from public.notifications
+  where type='assignment'
+    and task_id between '82103000-0000-4000-8000-000000000001'
+      and '82103000-0000-4000-8000-000000000006'
+),true);
 
 select pg_temp.g1_record('01 launch keeps six bell rows and twelve device queue rows',
   6=(select count(*) from public.notifications where type='assignment' and task_id::text like '82103%')
@@ -106,6 +113,7 @@ select pg_temp.g1_record('02 two devices share one window and one window deadlin
   and 1=(select count(distinct retry_deadline_at) from ceit_connect_private.push_delivery_queue where notification_type='assignment' and user_id='82100000-0000-4000-8000-000000000002'));
 select pg_temp.g1_record('03 grouped retry deadline is one hour from window start',not exists(
   select 1 from ceit_connect_private.push_delivery_queue where notification_type='assignment'
+  and user_id='82100000-0000-4000-8000-000000000002'
   and retry_deadline_at is distinct from group_window_started_at+interval '1 hour'));
 select pg_temp.g1_record('04 successful launch leaves no context row',
   not exists(select 1 from ceit_connect_private.push_launch_group_context));
@@ -425,7 +433,8 @@ select pg_temp.g1_record('35 delivery outcomes leave every exercised grouped row
     and state='leased'
     and lease_expires_at<=clock_timestamp()));
 select pg_temp.g1_record('36 grouping never changes notification storage count',
-  6=(select count(*) from public.notifications where type='assignment' and task_id between '82103000-0000-4000-8000-000000000001' and '82103000-0000-4000-8000-000000000006'));
+  6=(select count(*) from public.notifications
+     where id=any(current_setting('g1.launch_notification_ids')::uuid[])));
 
 do $$
 declare
@@ -436,7 +445,12 @@ begin
   into v_pass, v_total
   from public.g1_behavior_results;
   if v_pass <> 36 or v_total <> 36 then
-    raise exception 'TEST RESULTS %/% FAIL — transaction intentionally rolled back', v_pass, v_total;
+    raise exception 'TEST RESULTS %/% FAIL (%): transaction intentionally rolled back',
+      v_pass,
+      v_total,
+      (select string_agg(label, ', ' order by label)
+       from public.g1_behavior_results
+       where not passed);
   end if;
   raise exception 'TEST RESULTS 36/36 PASS — transaction intentionally rolled back';
 end;
