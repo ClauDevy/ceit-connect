@@ -52,6 +52,7 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 - `unexpected login role status 403 ... necessary privileges`: re-run `npx supabase login` with the account that owns the organization, check `npx supabase projects list` shows the right project linked, and if it persists, check `npx supabase db push --help` for a database-password option (e.g. `--password`) to bypass the temporary login role — verify the exact flag on your CLI version.
 - Schema changes typed into the SQL Editor are not tracked. Convert them to a migration file, and if the change already exists on a remote, mark it applied: `npx supabase migration repair --status applied <timestamp>`.
 - `db push` and `git push` are independent. Order: Dev DB → test → commit/PR → merge → Prod DB.
+- The Supabase CLI splits migrations with its own parser, so never use `E'...'` strings with backslash-escaped quotes in a migration; use dollar quoting.
 - Insert policies use `with check`; select/update/delete use `using`. Cast UUID literals with `::uuid`.
 - A policy on `users` that queries `users` recurses forever — use `my_role()` / `my_committee_id()`.
 - Order of operations matters: validate (e.g. email domain) **before** creating an account; update the database **before** deleting a Storage file; check the result of every follow-up write.
