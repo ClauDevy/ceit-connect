@@ -4,6 +4,7 @@ import {
   normalizeTemplateExclusionIds,
   parseArchivedTemplateTasks,
   removeTemplateDerivedTasks,
+  resetImportedTemplateTaskSchedule,
   shouldUseCoAdminTemplateCreate,
 } from "./template-import";
 
@@ -84,6 +85,62 @@ describe("Archived template task parsing", () => {
     expect(
       parseArchivedTemplateTasks([task({ end_time: "not-a-date" })]),
     ).toBeNull();
+  });
+});
+
+describe("Archived template schedule reset", () => {
+  it("blanks every Deliverable and Live Operation schedule field", () => {
+    const parsed = parseArchivedTemplateTasks([
+      task({ due_date: "2026-11-02" }),
+      task({
+        source_task_id: "33333333-3333-4333-8333-333333333333",
+      }),
+    ]);
+
+    expect(parsed?.map(resetImportedTemplateTaskSchedule)).toEqual(
+      parsed?.map((item) => ({
+        ...item,
+        dueDate: "",
+        callDate: "",
+        callTime: "",
+        endDate: "",
+        endTime: "",
+      })),
+    );
+  });
+
+  it("keeps every non-schedule field and the source order unchanged", () => {
+    const parsed = parseArchivedTemplateTasks([
+      task({ description: "First", due_date: "2026-11-02" }),
+      task({
+        source_task_id: "33333333-3333-4333-8333-333333333333",
+        title: "Second",
+        description: "Second description",
+        phase: "Wrap",
+        committee_id: "44444444-4444-4444-8444-444444444444",
+        task_type: "Deliverable",
+        priority: "Low",
+        call_time: null,
+        end_time: null,
+      }),
+    ]);
+    const reset = parsed?.map(resetImportedTemplateTaskSchedule);
+
+    const nonScheduleFields = (item: NonNullable<typeof parsed>[number]) => ({
+      sourceTaskId: item.sourceTaskId,
+      title: item.title,
+      description: item.description,
+      phaseName: item.phaseName,
+      committeeId: item.committeeId,
+      taskType: item.taskType,
+      priority: item.priority,
+    });
+
+    expect(reset?.map(nonScheduleFields)).toEqual(parsed?.map(nonScheduleFields));
+    expect(reset?.map((item) => item.sourceTaskId)).toEqual([
+      SOURCE_ID,
+      "33333333-3333-4333-8333-333333333333",
+    ]);
   });
 });
 

@@ -114,17 +114,17 @@ describe("phase-completion reader parsing", () => {
       phases,
       new Set(["Complete"]),
     );
-    expect(initialized.activePhase).toBe("Complete");
+    expect(initialized.activePhase).toBe("Open");
     expect([...initialized.collapsedPhases]).toEqual(["Complete"]);
 
-    const switched = selectPhaseDisclosure(initialized, "Open");
-    expect(switched.activePhase).toBe("Open");
+    const switched = selectPhaseDisclosure(initialized, "Complete");
+    expect(switched.activePhase).toBe("Complete");
     expect([...switched.collapsedPhases]).toEqual(["Complete"]);
 
     const expanded = setPhaseDisclosureExpanded(switched, "Complete", true);
     expect([...expanded.collapsedPhases]).toEqual([]);
-    const switchedBack = selectPhaseDisclosure(expanded, "Complete");
-    expect(switchedBack.activePhase).toBe("Complete");
+    const switchedBack = selectPhaseDisclosure(expanded, "Open");
+    expect(switchedBack.activePhase).toBe("Open");
     expect([...switchedBack.collapsedPhases]).toEqual([]);
     const stillComplete = reconcilePhaseDisclosureAfterRefresh(
       switchedBack,
@@ -161,6 +161,40 @@ describe("phase-completion reader parsing", () => {
     ]);
   });
 
+  it("starts on the first phase when it is incomplete", () => {
+    const initialized = initializePhaseDisclosure(
+      ["Setup", "Live"],
+      new Set(["Live"]),
+    );
+
+    expect(initialized.activePhase).toBe("Setup");
+    expect([...initialized.collapsedPhases]).toEqual(["Live"]);
+  });
+
+  it("starts on the first incomplete middle phase", () => {
+    const initialized = initializePhaseDisclosure(
+      ["Setup", "Live", "Wrap"],
+      new Set(["Setup"]),
+    );
+
+    expect(initialized.activePhase).toBe("Live");
+    expect([...initialized.collapsedPhases]).toEqual(["Setup"]);
+  });
+
+  it("falls back to the first phase when every phase is complete", () => {
+    const initialized = initializePhaseDisclosure(
+      ["Setup", "Live"],
+      new Set(["Setup", "Live"]),
+    );
+
+    expect(initialized.activePhase).toBe("Setup");
+    expect([...initialized.collapsedPhases]).toEqual(["Setup", "Live"]);
+  });
+
+  it("has no active phase when the board has no phases", () => {
+    expect(initializePhaseDisclosure([], new Set()).activePhase).toBeNull();
+  });
+
   it("initializes to the same closed state twice under React Strict Mode", () => {
     const first = initializePhaseDisclosure(
       ["Complete", "Open"],
@@ -174,6 +208,21 @@ describe("phase-completion reader parsing", () => {
     expect([...second.collapsedPhases]).toEqual([...first.collapsedPhases]);
     expect([...second.completedPhases]).toEqual([...first.completedPhases]);
     expect(second.focusPhase).toBe(first.focusPhase);
+  });
+
+  it("keeps a valid manual phase selection when refreshed data changes", () => {
+    const selected = selectPhaseDisclosure(
+      initializePhaseDisclosure(["Setup", "Live"], new Set()),
+      "Live",
+    );
+    const refreshed = reconcilePhaseDisclosureAfterRefresh(
+      selected,
+      ["Setup", "Live", "Wrap"],
+      new Set(["Setup"]),
+    );
+
+    expect(refreshed.activePhase).toBe("Live");
+    expect([...refreshed.collapsedPhases]).toEqual(["Setup"]);
   });
 });
 

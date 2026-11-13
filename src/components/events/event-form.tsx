@@ -80,6 +80,7 @@ import {
   normalizeTemplateExclusionIds,
   parseArchivedTemplateTasks,
   removeTemplateDerivedTasks,
+  resetImportedTemplateTaskSchedule,
   shouldUseCoAdminTemplateCreate,
 } from "@/lib/events/template-import";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
@@ -659,31 +660,37 @@ export function EventForm({
         setTemplateError("The archive template returned invalid task data.");
         return;
       }
-      const importedTasks = parsedImport.map((task) => ({
-        phaseName: task.phaseName,
-        task: {
-          id: makeId(),
-          persisted: false,
-          status: "To Do" as const,
-          title: task.title,
-          description: task.description,
-          committeeId: task.committeeId,
-          taskType: task.taskType,
-          dueDate: task.dueDate,
-          callDate: task.callDate,
-          callTime: task.callTime,
-          endDate: task.endDate,
-          endTime: task.endTime,
-          priority: task.priority,
-          assigneeIds: [],
-          sourceTemplateTaskId: task.sourceTaskId,
-          templateEditable: isTemplateTaskEditable({
-            role,
-            callerCommitteeId,
-            taskCommitteeId: task.committeeId,
-          }),
-        } satisfies TaskDraft,
-      }));
+      const importedTasks = parsedImport.map((task) => {
+        const templateEditable = isTemplateTaskEditable({
+          role,
+          callerCommitteeId,
+          taskCommitteeId: task.committeeId,
+        });
+        const importedTask = templateEditable
+          ? resetImportedTemplateTaskSchedule(task)
+          : task;
+        return {
+          phaseName: importedTask.phaseName,
+          task: {
+            id: makeId(),
+            persisted: false,
+            status: "To Do" as const,
+            title: importedTask.title,
+            description: importedTask.description,
+            committeeId: importedTask.committeeId,
+            taskType: importedTask.taskType,
+            dueDate: importedTask.dueDate,
+            callDate: importedTask.callDate,
+            callTime: importedTask.callTime,
+            endDate: importedTask.endDate,
+            endTime: importedTask.endTime,
+            priority: importedTask.priority,
+            assigneeIds: [],
+            sourceTemplateTaskId: importedTask.sourceTaskId,
+            templateEditable,
+          } satisfies TaskDraft,
+        };
+      });
 
       const summary: TemplateImportSummary = {
         template: {
