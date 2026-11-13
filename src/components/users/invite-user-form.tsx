@@ -7,6 +7,7 @@ import { FormField } from "@/components/ui/form-field"
 import { IconInput } from "@/components/ui/icon-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Committee, Role } from "@/lib/types"
+import { getMemberCommitteeChoices } from "@/lib/users/committee-options"
 
 type InviteUserFormProps = {
   committees: Committee[]
@@ -28,7 +29,10 @@ export function InviteUserForm({
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
 
-  const committeeItems = committees.map((c) => ({ value: c.id, label: c.name }))
+  const committeeItems = getMemberCommitteeChoices(committees).map((c) => ({
+    value: c.id,
+    label: c.name,
+  }))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

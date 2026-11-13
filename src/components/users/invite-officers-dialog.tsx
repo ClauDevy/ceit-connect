@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import type { OfficerInviteState } from "@/lib/officers/contracts";
 import type { Committee } from "@/lib/types";
+import { getMemberCommitteeChoices } from "@/lib/users/committee-options";
 
 type Row = {
   clientId: string;
@@ -78,7 +79,10 @@ export function InviteOfficersDialog({
   );
   const hasResults = rows.some((row) => row.state !== undefined);
   const committeeItems = useMemo(
-    () => committees.map((item) => ({ value: item.id, label: item.name })),
+    () => getMemberCommitteeChoices(committees).map((item) => ({
+      value: item.id,
+      label: item.name,
+    })),
     [committees],
   );
 

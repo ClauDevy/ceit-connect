@@ -6,6 +6,10 @@ const inviteDialog = readFileSync(
   "utf8",
 );
 const usersTable = readFileSync("src/components/users/users-table.tsx", "utf8");
+const transitionDialog = readFileSync(
+  "src/components/users/officer-transition-dialog.tsx",
+  "utf8",
+);
 const pending = readFileSync(
   "src/components/users/pending-officer-invites.tsx",
   "utf8",
@@ -58,5 +62,33 @@ describe("officer UI contract", () => {
     expect(pending).toContain("focus-visible:ring-3");
     expect(pending).toContain("active:bg-accent/80");
     expect(inviteDialog).not.toMatch(/#[0-9a-f]{3,8}/i);
+  });
+
+  it("uses the President-free member inventory in every officer committee picker", () => {
+    expect(inviteDialog).toContain("getMemberCommitteeChoices(committees)");
+    expect(transitionDialog).toContain("getMemberCommitteeChoices(committees)");
+    expect(transitionDialog).toContain("committeeChoices.map");
+  });
+
+  it("keeps the Admin path automatic with no committee selection", () => {
+    expect(inviteDialog).toContain(
+      'committeeId: value === "Admin" ? null : row.committeeId',
+    );
+    expect(transitionDialog).toContain(
+      'if (next === "Admin") setCommitteeId(null)',
+    );
+    expect(transitionDialog).toContain(
+      "committeeId: needsCommittee ? committeeId : null",
+    );
+  });
+
+  it("renders a legacy President assignment safely and requires a normal replacement", () => {
+    expect(transitionDialog).toContain("hasLegacyPresidentCommittee");
+    expect(transitionDialog).toContain('aria-label="Current member committee"');
+    expect(transitionDialog).toContain('value={stillHasLegacyPresidentCommittee ? null : committeeId}');
+    expect(transitionDialog).toContain(
+      "(!committeeId || stillHasLegacyPresidentCommittee)",
+    );
+    expect(transitionDialog).toContain('"New member committee"');
   });
 });

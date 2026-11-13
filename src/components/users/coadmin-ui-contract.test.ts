@@ -16,6 +16,7 @@ describe("Co-Admin Users UI contract", () => {
     expect(inviteForm).toContain(': { email, fullName }');
     expect(inviteForm).toContain('value={committeeName ?? "No committee assigned"}');
     expect(inviteForm).toContain("readOnly");
+    expect(inviteForm).toContain("getMemberCommitteeChoices(committees)");
   });
 
   it("keeps officer and pending-invite UI behind the Admin role", () => {
