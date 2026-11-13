@@ -155,7 +155,8 @@ export function initializePhaseDisclosure(
     phases.filter((phase) => completedPhases.has(phase) && phase !== "Unphased"),
   );
   return {
-    activePhase: phases[0] ?? null,
+    activePhase:
+      phases.find((phase) => !completed.has(phase)) ?? phases[0] ?? null,
     collapsedPhases: new Set(completed),
     completedPhases: completed,
     focusPhase: null,

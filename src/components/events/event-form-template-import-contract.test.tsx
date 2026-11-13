@@ -38,6 +38,14 @@ describe("Event form Archived-template authority contract", () => {
     expect(source).toContain("removeTask(phase.id, task.id)");
   });
 
+  it("resets schedules only for Admin or same-committee editable imports", () => {
+    expect(source).toContain("const templateEditable = isTemplateTaskEditable");
+    expect(source).toContain(
+      "templateEditable\n          ? resetImportedTemplateTaskSchedule(task)\n          : task",
+    );
+    expect(source).toContain("templateEditable,");
+  });
+
   it("blocks a stale date shift until the template is re-imported", () => {
     expect(source).toContain("if (importedStartDateChanged)");
     expect(source).toContain(
