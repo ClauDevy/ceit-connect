@@ -158,26 +158,26 @@ from public.tasks where id='1b130000-0000-4000-8000-000000000005';
 insert into public.l1_behaviour_results
 select 27,'running task excluded from dashboard overdue and due soon counts',
   out_overdue_task_count=3 and out_due_in_24_hours_task_count=0
-from public.get_executive_dashboard_extras_overview(null);
+from public.get_executive_dashboard_extras_overview('1b100000-0000-4000-8000-000000000001');
 insert into public.l1_behaviour_results
 select 28,'running task excluded from dashboard at risk count',out_at_risk_task_count=0
 from public.list_executive_dashboard_member_slipping_signals('1b100000-0000-4000-8000-000000000001')
 where out_member_id='1b110000-0000-4000-8000-000000000002';
 insert into public.l1_behaviour_results
 select 29,'confidential dashboard task stays masked',out_task_id is null and out_label='Confidential task'
-from public.list_executive_dashboard_needs_attention(null)
+from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
 where out_category='help_wanted' and out_label='Confidential task';
 insert into public.l1_behaviour_results
 select 30,'overdue dashboard row returns END as relevant time',out_due_date between statement_timestamp()-interval '1 day 1 minute' and statement_timestamp()-interval '23 hours 59 minutes'
-from public.list_executive_dashboard_needs_attention(null)
+from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
 where out_label='Overdue relevant end';
 insert into public.l1_behaviour_results
 select 31,'running attention row returns START as relevant time',out_due_date between statement_timestamp()-interval '1 hour 1 minute' and statement_timestamp()-interval '59 minutes'
-from public.list_executive_dashboard_needs_attention(null)
+from public.list_executive_dashboard_needs_attention('1b100000-0000-4000-8000-000000000001')
 where out_label='Confidential task';
 insert into public.l1_behaviour_results
 select 32,'deadline calendar groups Live Operation by START',out_open_task_count=1
-from public.list_executive_dashboard_deadlines(null)
+from public.list_executive_dashboard_deadlines('1b100000-0000-4000-8000-000000000001')
 where out_calendar_date=(statement_timestamp() at time zone 'Asia/Manila')::date+5;
 insert into public.l1_behaviour_results
 select 33,'task detail keeps stored due date while priority uses timing',
