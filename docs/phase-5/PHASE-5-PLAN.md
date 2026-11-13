@@ -18,16 +18,25 @@ current batch completes its full stage order.
 | D1b | Executive Dashboard extra database readers | `feature/executive-dashboard-extras-data` | High | Live on Dev and Prod (owner-confirmed 2026-11-11) |
 | D2 | Executive Dashboard UI, empty state, discrepancy note, and shared motion | `feature/executive-dashboard` | Medium | Live on Dev and Prod (owner-confirmed 2026-11-12) |
 | O1 | Simple backup runbook and proof of one real export | `feature/backup-runbook` | Medium | Done; real Prod export and matching 31-table proof recorded (owner-confirmed 2026-11-12) |
-| R1 | Volunteer-offer and leave-request notifications across storage, bell, push, cleanup compatibility, tests, and docs | current feature branch | High | Implemented and locally documented; validation and rollout pending |
-| R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Implemented locally; validation and owner rollout pending |
-| J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Implemented locally; review, app-first rollout, migration, and Dev paste pending |
-| L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Implemented locally; validation and owner-run Dev pastes pending |
-| G1 | Counts-only phone-push grouping for launch assignment, due-soon, Live Operation prep, and unlock bursts | `feature/alert-grouping` | High | Implemented locally; validation and owner-run Dev pastes pending |
+| R1 | Volunteer-offer and leave-request notifications across storage, bell, push, cleanup compatibility, tests, and docs | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
+| R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
+| J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
+| B2 | Local-only backup restore drill, count proof, cleanup, and disaster limitations | `docs/backup-restore-drill` | Medium | Implemented locally; owner-run drill pending |
+| U1 | Event-board initial phase, President picker exclusions, and archived-template deadline reset | planned UI branch | Medium | Planned; no migration |
+| V1 | Manila-date Active-task deadline guard and Admin-only President committee invariant | planned database/UI branch | High | Planned; read-only Prod preflight required |
+| H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Planned; UI-only, no migration |
+| L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Migration `20261119120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
+| G1 | Counts-only phone-push grouping for launch assignment, due-soon, Live Operation prep, and unlock bursts | `feature/alert-grouping` | High | Migration `20261120120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
 
 Owner-approved sequence: N1, N2, I1, N3a, N3b, P1, D1, D1b, D2, then O1. I1
 started after the N2 notification UI gate and is now live. Every later batch
 still completes its own plan, implementation, review, and rollout before the
 next batch starts.
+
+The approved post-J1 order is B2, U1, V1, H1, then the remaining approved
+post-J1 order: manifest screenshots, the final release checklist, optional
+`discord_id` removal, and E1 only if needed. H1 describes the app only after
+U1, V1, L1, and G1 rules are in their final state.
 
 ## Approved notification decisions
 
@@ -119,6 +128,54 @@ date, environment, method, filename, size, operator, a successful local
 open/integrity check, and a comparison of exported row counts with live row
 counts. The dump stays outside the repository in a private location.
 
+B2 documents a local-only restore into a throwaway version-matched PostgreSQL
+container, the minimum Supabase stand-ins, schema/data error handling, restored
+row and catalog-count comparisons, cleanup, and the honest Auth/Storage
+disaster limitations. Its documentation is implemented locally; the owner-run
+drill and real result are pending. See `docs/phase-5/step-b2-restore-drill.md`.
+
+## Owner-reported follow-up batches
+
+### U1 — UI corrections
+
+U1 is UI-only, needs Medium reasoning, and adds no migration.
+
+- The event board opens on the first incomplete phase. The current cause is
+  `initializePhaseDisclosure` in
+  `src/lib/tasks/phase-completion.ts`: it selects the first phase as active
+  while merely collapsing completed phases. Choose the first phase that is not
+  complete; when all phases are complete, retain the first phase.
+- Members and Co-Admins must not be selectable into the President committee;
+  President remains automatic for Admins. Audit
+  `src/components/users/invite-user-form.tsx`,
+  `invite-officers-dialog.tsx`, and `officer-transition-dialog.tsx`.
+- Archived-template imports leave due dates, call times, and end times blank
+  instead of copying stored deadlines. The current cause is
+  `src/lib/events/template-import.ts`. Before implementing, determine what a
+  Live Operation without dates must supply before launch.
+
+### V1 — deadline and President-committee enforcement
+
+V1 combines database and UI work and needs High reasoning.
+
+- Add/Edit Task cannot set a due date before today's `Asia/Manila` date. The
+  active-event task writers enforce the rule and the date picker exposes the
+  same minimum. Creating an event with tasks may still use past dates. An
+  existing task whose date is already old remains unchanged unless edited to a
+  different past date. A Live Operation call date of today remains allowed
+  even after its time has passed.
+- Add a database invariant that only an Admin may hold the President
+  committee. First run a read-only Prod check proving no existing non-Admin
+  holds it; a nonzero result requires an owner decision before implementation.
+
+### H1 — in-app user manual
+
+H1 is UI-only, needs Medium reasoning, and adds no migration. It creates a
+role-aware `/help` manual inside the authenticated app shell after U1 and V1,
+using the already-live L1 and G1 rules. Its decisions, required accuracy audit,
+starting content outline, FAQ, proposed outline changes, and owner-confirmation
+list are in `docs/phase-5/step-h1-user-manual.md`.
+
 ## Postponed work
 
 These are not part of the currently implemented N1/N2 behavior:
@@ -127,7 +184,6 @@ These are not part of the currently implemented N1/N2 behavior:
 - R2 quiet hours (not part of the deadline-reminder batch);
 - `pushsubscriptionchange` recovery; a rotated browser subscription currently
   requires the person to explicitly enable notifications again in Settings;
-- backup restore drill;
 - signed-out return to a mentioned comment. Auth, Login, and the auth callback
   remain unchanged; signed-out recipients go to Login and then Home until a
   separately reviewed validated same-origin return-path flow exists.
@@ -182,8 +238,8 @@ with an optional exact `#comment-{UUID}` fragment.
   appears in bars, counts, labels, or names.
 - The bell and dashboard use the shared motion kit and have documented,
   tested reduced-motion states.
-- `docs/BACKUP.md` contains the approved proof from one real export, while the
-  restore drill remains postponed.
+- `docs/BACKUP.md` contains the approved proof from one real export and the B2
+  local restore runbook; the owner-run drill result remains pending.
 
 ## Final release checklist
 
