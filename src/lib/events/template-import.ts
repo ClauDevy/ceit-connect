@@ -19,6 +19,22 @@ export type ImportedTemplateTask = {
   endTime: string;
 };
 
+export function resetImportedTemplateTaskSchedule<
+  TTask extends Pick<
+    ImportedTemplateTask,
+    "dueDate" | "callDate" | "callTime" | "endDate" | "endTime"
+  >,
+>(task: TTask): TTask {
+  return {
+    ...task,
+    dueDate: "",
+    callDate: "",
+    callTime: "",
+    endDate: "",
+    endTime: "",
+  };
+}
+
 const priorities: TemplateTaskPriority[] = [
   "Low",
   "Medium",

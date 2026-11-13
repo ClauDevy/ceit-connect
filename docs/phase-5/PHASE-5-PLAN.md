@@ -21,10 +21,12 @@ current batch completes its full stage order.
 | R1 | Volunteer-offer and leave-request notifications across storage, bell, push, cleanup compatibility, tests, and docs | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
 | R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
 | J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
-| B2 | Local-only backup restore drill, count proof, cleanup, and disaster limitations | `docs/backup-restore-drill` | Medium | Implemented locally; owner-run drill pending |
-| U1 | Event-board initial phase, President picker exclusions, and archived-template deadline reset | planned UI branch | Medium | Planned; no migration |
+| B2 | Local-only backup restore drill, count proof, cleanup, and disaster limitations | `docs/backup-restore-drill` | Medium | Merged; owner-run drill pending |
+| U1 | Event-board initial phase, President picker exclusions, and archived-template deadline reset | `fix/event-board-template-and-picker-ux` | Medium | Implemented locally; no migration |
+| U2 | Event board component split (refactor only, no behavior change) | planned UI branch | Medium | Planned; UI-only, no migration |
 | V1 | Manila-date Active-task deadline guard and Admin-only President committee invariant | planned database/UI branch | High | Planned; read-only Prod preflight required |
 | H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Planned; UI-only, no migration |
+| U3 | Optional event form component split (refactor only, no behavior change) | optional later UI branch | Medium | Optional later; UI-only, no migration |
 | L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Migration `20261119120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
 | G1 | Counts-only phone-push grouping for launch assignment, due-soon, Live Operation prep, and unlock bursts | `feature/alert-grouping` | High | Migration `20261120120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
 
@@ -33,10 +35,11 @@ started after the N2 notification UI gate and is now live. Every later batch
 still completes its own plan, implementation, review, and rollout before the
 next batch starts.
 
-The approved post-J1 order is B2, U1, V1, H1, then the remaining approved
-post-J1 order: manifest screenshots, the final release checklist, optional
-`discord_id` removal, and E1 only if needed. H1 describes the app only after
-U1, V1, L1, and G1 rules are in their final state.
+The approved post-J1 order is B2 (merged), U1, U2, V1, H1, then manifest
+screenshots, the final release checklist, optional `discord_id` removal, and E1
+only if needed. Optional U3 is a later refactor and is not part of that required
+order. H1 describes the app only after U1, V1, L1, and G1 rules are in their
+final state.
 
 ## Approved notification decisions
 
@@ -150,9 +153,19 @@ U1 is UI-only, needs Medium reasoning, and adds no migration.
   `src/components/users/invite-user-form.tsx`,
   `invite-officers-dialog.tsx`, and `officer-transition-dialog.tsx`.
 - Archived-template imports leave due dates, call times, and end times blank
-  instead of copying stored deadlines. The current cause is
-  `src/lib/events/template-import.ts`. Before implementing, determine what a
-  Live Operation without dates must supply before launch.
+  for every Admin-imported task and every Co-Admin-owned task. Blank schedules
+  remain valid for Deliverables and Live Operations; no U1 warning is added.
+  Foreign-committee tasks imported by a Co-Admin still get shifted dates from
+  the database function `copy_archived_template_tasks`; the reset moves to V1
+  (database batch). See `docs/phase-5/step-u1-ui-corrections.md`.
+
+### U2 — Event board component split
+
+U2 is UI-only, needs Medium reasoning, adds no migration, and changes no
+behavior. `src/components/events/event-board.tsx` is about 1,744 lines and has
+no board-level test (only the progress ring has one). U2 first adds tests that
+pin today's board behavior, then moves code into smaller files while preserving
+the same public props, behavior, mobile layout, and shared motion exactly.
 
 ### V1 — deadline and President-committee enforcement
 
@@ -167,6 +180,10 @@ V1 combines database and UI work and needs High reasoning.
 - Add a database invariant that only an Admin may hold the President
   committee. First run a read-only Prod check proving no existing non-Admin
   holds it; a nonzero result requires an owner decision before implementation.
+- Replace the unchanged `copy_archived_template_tasks` shifted-date behavior so
+  foreign-committee tasks imported by a Co-Admin also receive blank due, call,
+  and end values. This closes U1's documented UI-only limitation and the
+  read-only foreign-row event-end conflict without excluding imported tasks.
 
 ### H1 — in-app user manual
 
@@ -175,6 +192,14 @@ role-aware `/help` manual inside the authenticated app shell after U1 and V1,
 using the already-live L1 and G1 rules. Its decisions, required accuracy audit,
 starting content outline, FAQ, proposed outline changes, and owner-confirmation
 list are in `docs/phase-5/step-h1-user-manual.md`.
+
+### U3 — optional Event form component split
+
+U3 is an optional later UI-only refactor with Medium reasoning and no
+migration. `src/components/events/event-form.tsx` is about 2,914 lines. If U3
+is scheduled, it must first pin current behavior with tests and then split the
+component without changing props, behavior, mobile layout, motion, validation,
+or authorization boundaries. U3 is not a Phase 5 completion requirement.
 
 ## Postponed work
 
@@ -223,8 +248,8 @@ with an optional exact `#comment-{UUID}` fragment.
 
 - Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
   the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, R2, and J1 — has completed review and
-  rollout. Completion also requires B2, U1, V1, and H1; B2 includes a completed
-  owner-run restore drill.
+  rollout. Completion also requires B2, U1, U2, V1, and H1; B2 includes a
+  completed owner-run restore drill. Optional U3 is not part of this gate.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.
 - After an offline notification, refresh restores the correct unread count and

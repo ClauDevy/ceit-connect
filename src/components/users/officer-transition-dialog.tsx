@@ -19,6 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Committee, Member } from "@/lib/types";
+import {
+  getMemberCommitteeChoices,
+  isPresidentCommittee,
+} from "@/lib/users/committee-options";
 
 type TransitionAction = Exclude<
   MemberActionName,
@@ -61,8 +65,19 @@ export function OfficerTransitionDialog({
     member?.committee_id ?? null,
   );
 
+  const committeeChoices = getMemberCommitteeChoices(committees);
+  const currentCommittee = committees.find(
+    (committee) => committee.id === member?.committee_id,
+  );
+  const hasLegacyPresidentCommittee = Boolean(
+    currentCommittee && isPresidentCommittee(currentCommittee),
+  );
+  const stillHasLegacyPresidentCommittee = Boolean(
+    hasLegacyPresidentCommittee && committeeId === currentCommittee?.id,
+  );
   const needsCommittee = action !== "appoint" || role === "Co-Admin";
-  const invalid = needsCommittee && !committeeId;
+  const invalid = needsCommittee &&
+    (!committeeId || stillHasLegacyPresidentCommittee);
 
   return (
     <Dialog
@@ -111,22 +126,35 @@ export function OfficerTransitionDialog({
 
         {needsCommittee ? (
           <div className="grid gap-1.5">
+            {hasLegacyPresidentCommittee ? (
+              <div className="grid gap-1.5">
+                <span className="text-sm font-medium">Current committee</span>
+                <div
+                  aria-label="Current member committee"
+                  className="flex h-11 items-center rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground"
+                >
+                  {currentCommittee?.name}
+                </div>
+              </div>
+            ) : null}
             <label htmlFor="transition-committee" className="text-sm font-medium">
-              Member committee
+              {hasLegacyPresidentCommittee
+                ? "New member committee"
+                : "Member committee"}
             </label>
             <Select
-              items={committees.map((item) => ({
+              items={committeeChoices.map((item) => ({
                 value: item.id,
                 label: item.name,
               }))}
-              value={committeeId}
+              value={stillHasLegacyPresidentCommittee ? null : committeeId}
               onValueChange={setCommitteeId}
             >
               <SelectTrigger id="transition-committee">
                 <SelectValue placeholder="Select a committee" />
               </SelectTrigger>
               <SelectContent>
-                {committees.map((item) => (
+                {committeeChoices.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
                     {item.name}
                   </SelectItem>
