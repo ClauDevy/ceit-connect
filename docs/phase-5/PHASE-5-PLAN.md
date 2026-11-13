@@ -223,7 +223,8 @@ with an optional exact `#comment-{UUID}` fragment.
 
 - Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
   the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, R2, and J1 — has completed review and
-  rollout.
+  rollout. Completion also requires B2, U1, V1, and H1; B2 includes a completed
+  owner-run restore drill.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.
 - After an offline notification, refresh restores the correct unread count and
@@ -239,7 +240,7 @@ with an optional exact `#comment-{UUID}` fragment.
 - The bell and dashboard use the shared motion kit and have documented,
   tested reduced-motion states.
 - `docs/BACKUP.md` contains the approved proof from one real export and the B2
-  local restore runbook; the owner-run drill result remains pending.
+  local restore runbook, including the completed owner-run drill result.
 
 ## Final release checklist
 
