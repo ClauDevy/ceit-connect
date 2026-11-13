@@ -258,12 +258,498 @@ Fill this in only after you run the real Prod export. Do not place the connectio
 - Who can restore: `____________________`
 - Who holds Supabase and Vercel access: `____________________`
 
-## Recovery outline — untested
+## Restore drill
 
-Recovery means re-importing the latest verified export into an appropriate Supabase recovery target in this order:
+Run this drill once now, then repeat it after every big database change. Restore
+only into a throwaway PostgreSQL container on the owner's PC. Never restore
+into Dev, Prod, or another cloud project. The existing export procedure is the
+only place where the Prod connection string is used.
 
-1. Restore `schema.sql` first so schemas, tables, functions, policies, and related objects exist.
-2. Restore `data.sql` second so the exported rows load into those objects.
-3. Recheck the complete table inventory and row counts before treating the recovery as usable.
+Use a plain PostgreSQL Docker container. A local Supabase stack would provide
+more services, but it is heavier and unnecessary for proving these two dump
+files. The plain container is the one recommended path.
 
-The real data-only dump warned about circular foreign-key constraints on the `tasks` table. The restore drill must handle that safely, for example by disabling triggers during the data load or restoring into an empty recovery target. This outline has not been tested and deliberately contains no exact restore commands; selecting a safe target, handling ownership/extensions and the circular constraint, and proving an actual import belong to the later restore-drill batch. Supabase Auth sign-ins, Auth configuration, Storage metadata, and stored files cannot be recovered from these two exports.
+The restored rows contain real member information, confidential task content,
+private run history, and push credentials. Keep every dump, log, and result in
+the private backup folder outside this repository. Never commit, share, paste,
+or attach them. The container publishes no port and uses Docker's `none`
+network, so it cannot accept connections from this PC or another machine. Its
+password is generated for this drill, never typed, and discarded with the
+container.
+
+Use a backup taken on the same Philippine calendar day as this drill. Run the
+Prod object-count `SELECT` during the same proof window, with no migration or
+Prod push between the export and that `SELECT`. If the backup is older or the
+database changed between those steps, catalog-count differences are expected
+and harmless; take a fresh backup instead of treating that comparison as a
+restore failure.
+
+### Prepare the private files and matching PostgreSQL image
+
+Open Docker Desktop, wait until it is running, and open Git Bash. Paste one
+short command at a time and wait for it to finish. A silent or interactive read
+can otherwise consume later pasted lines.
+
+```bash
+export MSYS_NO_PATHCONV=1
+```
+
+Git Bash otherwise rewrites a bare container path such as `/restore` into a
+Windows path for `docker exec`, which breaks `docker exec ... mkdir -p /restore`.
+
+List the available private backup folders first:
+
+```bash
+ls -1 "$HOME/CEIT-Connect-Private-Backups"
+```
+
+If you are still in the Git Bash window used for the export, `CEIT_BACKUP_DIR` is already set; skip to the file check. Otherwise paste this with your real folder name:
+
+```bash
+CEIT_BACKUP_DIR="$HOME/CEIT-Connect-Private-Backups/ceit-connect-prod-YYYY-MM-DD-HHMMSS"
+```
+
+The `read` command does not expand `$HOME`, so do not type `$HOME` at a `read` prompt.
+
+```bash
+test -s "$CEIT_BACKUP_DIR/schema.sql" && test -s "$CEIT_BACKUP_DIR/data.sql" && printf 'Both dump files are present.\n' || { printf 'STOP: a dump file is missing or empty.\n' >&2; false; }
+```
+
+The PostgreSQL major version must match the dump header:
+
+```bash
+grep -m1 '^-- Dumped from database version ' "$CEIT_BACKUP_DIR/schema.sql"
+```
+
+```bash
+CEIT_PG_MAJOR="$(grep -m1 '^-- Dumped from database version ' "$CEIT_BACKUP_DIR/schema.sql" | awk '{split($6,v,"."); print v[1]}')"
+```
+
+```bash
+test -n "$CEIT_PG_MAJOR" || { printf 'STOP: the dump major version was not found.\n' >&2; false; }
+```
+
+Pin the major tag; never use `latest` or a different major:
+
+```bash
+CEIT_PG_IMAGE="postgres:${CEIT_PG_MAJOR}"
+```
+
+```bash
+printf 'Using %s to match the dump major version.\n' "$CEIT_PG_IMAGE"
+```
+
+```bash
+docker pull "$CEIT_PG_IMAGE"
+```
+
+Generate a throwaway password without printing it:
+
+```bash
+CEIT_RESTORE_PASSWORD="$(openssl rand -hex 24)"
+```
+
+Start the isolated container with no published port:
+
+```bash
+docker run --name ceit-connect-restore-drill --network none -e POSTGRES_PASSWORD="$CEIT_RESTORE_PASSWORD" -d "$CEIT_PG_IMAGE"
+```
+
+```bash
+unset CEIT_RESTORE_PASSWORD
+```
+
+```bash
+until docker logs ceit-connect-restore-drill 2>&1 | grep -q 'PostgreSQL init process complete; ready for start up'; do sleep 1; done
+```
+
+That log line proves the image's first-start initialization finished. Now wait
+for the restarted server to accept connections. If this log wait runs longer
+than two minutes, press **Ctrl+C** and check `docker logs ceit-connect-restore-drill`.
+
+```bash
+until docker exec ceit-connect-restore-drill pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+```
+
+The drill deliberately uses the container's anonymous data volume instead of a
+named mount because the image's data-directory layout differs between
+PostgreSQL major versions.
+
+```bash
+docker exec ceit-connect-restore-drill mkdir -p /restore
+```
+
+Git Bash may rewrite container paths into Windows paths. Convert each local
+source explicitly and disable conversion only for `docker cp`. Do not bind
+mount the Windows backup folder.
+
+```bash
+CEIT_SCHEMA_FILE="$(cygpath -w "$CEIT_BACKUP_DIR/schema.sql")"
+```
+
+```bash
+CEIT_DATA_FILE="$(cygpath -w "$CEIT_BACKUP_DIR/data.sql")"
+```
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp "$CEIT_SCHEMA_FILE" ceit-connect-restore-drill:/restore/schema.sql
+```
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp "$CEIT_DATA_FILE" ceit-connect-restore-drill:/restore/data.sql
+```
+
+### Create the minimum Supabase stand-ins
+
+The selected dump omits Supabase-managed Auth objects and extensions that its
+foreign keys and function bodies reference. Create these stand-ins before
+loading `schema.sql`: roles `anon`, `authenticated`, and `service_role`;
+schemas `auth` and `extensions`; minimal `auth.users`; `auth.uid()` and
+`auth.role()` with the correct return types; and `pgcrypto` installed in
+`extensions` for the three functions that call `extensions.digest`.
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN;"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN;"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE ROLE service_role NOLOGIN;"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE SCHEMA auth; CREATE SCHEMA extensions;"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE EXTENSION pgcrypto WITH SCHEMA extensions;"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE TABLE auth.users (id uuid PRIMARY KEY);"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS 'SELECT NULL::uuid';"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS 'SELECT NULL::text';"
+```
+
+These objects only let the schema load. They are not Supabase Auth.
+
+### Load the schema and classify every error
+
+Load `schema.sql` first without stopping at its first error so the owner gets a
+complete error inventory:
+
+```bash
+docker exec ceit-connect-restore-drill sh -c 'psql -U postgres -d postgres -f /restore/schema.sql > /restore/schema-load.log 2>&1; exit 0'
+```
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp ceit-connect-restore-drill:/restore/schema-load.log "$(cygpath -w "$CEIT_BACKUP_DIR/schema-load.log")"
+```
+
+```bash
+grep -Ec '(^|: )ERROR:' "$CEIT_BACKUP_DIR/schema-load.log"
+```
+
+```bash
+grep -nE '(^|: )ERROR:' "$CEIT_BACKUP_DIR/schema-load.log"
+```
+
+Expected harmless candidates are unavailable `pg_net`, `supabase_vault`, or
+`cron` objects; a missing `supabase_realtime` publication when the schema dump
+contains publication membership; plus ownership or grants for Supabase-owned
+roles that this isolated recovery database does not use. An error is harmless
+only if the live object-count comparison below proves it caused no loss in
+either backed-up schema. Missing required tables, functions, policies, triggers,
+indexes, or constraints; malformed SQL; and unexplained errors fail the drill.
+
+The first real drill must confirm this list. Update this section with the exact
+harmless errors the owner actually sees; never silently accept a new error.
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -At -c "SELECT to_regclass('public.users'), to_regclass('public.tasks');"
+```
+
+Both names must print before continuing.
+
+### Load the data safely
+
+Load `data.sql` second with stop-on-error. The circular warning comes from the
+real self-reference `public.tasks.depends_on_task_id` to `public.tasks.id`.
+Trigger-backed foreign-key checks are relaxed only in this one scratch session;
+the setting disappears when the session ends.
+
+```bash
+docker exec ceit-connect-restore-drill sh -c 'psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SET session_replication_role = replica;" -f /restore/data.sql > /restore/data-load.log 2>&1'
+```
+
+If that command fails, stop. Do not edit the dump.
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp ceit-connect-restore-drill:/restore/data-load.log "$(cygpath -w "$CEIT_BACKUP_DIR/data-load.log")"
+```
+
+```bash
+grep -Ec '(^|: )ERROR:' "$CEIT_BACKUP_DIR/data-load.log"
+```
+
+The data error count must be `0`.
+
+Copy only the restored profile UUIDs into the stand-in Auth table so its
+foreign key has targets:
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "INSERT INTO auth.users (id) SELECT id FROM public.users ON CONFLICT (id) DO NOTHING;"
+```
+
+No real Auth row, email, password hash, identity, session, refresh token, or
+provider record is restored.
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -At -c "SELECT (SELECT count(*) FROM auth.users), (SELECT count(*) FROM public.users);"
+```
+
+The two counts must match.
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -At -c "SHOW session_replication_role;"
+```
+
+The result must be `origin`. Both foreign keys were created as valid constraints
+on empty tables during the schema load, so `VALIDATE CONSTRAINT` after the
+relaxed data load would do nothing. The real restored-row checks are the two
+orphan-count queries and the invalid-dependency query below.
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -At -c "SELECT count(*) FROM public.users u LEFT JOIN auth.users a ON a.id=u.id WHERE a.id IS NULL;"
+```
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -At -c "SELECT count(*) FROM public.tasks t LEFT JOIN public.tasks d ON d.id=t.depends_on_task_id WHERE t.depends_on_task_id IS NOT NULL AND d.id IS NULL;"
+```
+
+Both orphan counts must be `0`.
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -At -c "SELECT count(*) FROM public.tasks t JOIN public.tasks d ON d.id=t.depends_on_task_id WHERE t.id=d.id OR t.event_id IS DISTINCT FROM d.event_id;"
+```
+
+The invalid dependency count must be `0`.
+
+```bash
+docker exec ceit-connect-restore-drill psql -U postgres -d postgres -At -c "SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname IN ('public','ceit_connect_private') AND NOT c.convalidated;"
+```
+
+The unvalidated constraint count must be `0` as a catalog sanity check only. It
+does not re-check any restored rows or prove that other foreign keys are
+healthy. The two orphan counts and invalid-dependency count above are the real
+data checks. That limited proof is accepted because `schema.sql` and `data.sql`
+come from one consistent database snapshot; the drill is not evidence that
+arbitrary edited dump data would satisfy every foreign key.
+
+### Compare row counts
+
+Save the exact catalog-driven query from **Count live Prod rows** in the private
+backup folder. Paste this command, paste the SQL shown below, then press
+**Ctrl+D** on a new line:
+
+```bash
+cat > "$CEIT_BACKUP_DIR/restored-row-counts.sql"
+```
+
+```sql
+select format(
+         '%s.%s|%s',
+         namespace.nspname,
+         relation.relname,
+         ((pg_catalog.xpath(
+           '//count/text()',
+           pg_catalog.query_to_xml(
+             format(
+               'select count(*) as count from %I.%I',
+               namespace.nspname,
+               relation.relname
+             ),
+             false,
+             true,
+             ''
+           )
+         ))[1])::text
+       ) as table_and_row_count
+from pg_catalog.pg_class as relation
+join pg_catalog.pg_namespace as namespace
+  on namespace.oid = relation.relnamespace
+where namespace.nspname in ('public', 'ceit_connect_private')
+  and relation.relkind in ('r', 'p')
+order by namespace.nspname, relation.relname;
+```
+
+Convert the local query path for Docker Desktop:
+
+```bash
+CEIT_ROW_COUNTS_SQL="$(cygpath -w "$CEIT_BACKUP_DIR/restored-row-counts.sql")"
+```
+
+Copy the query into the container:
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp "$CEIT_ROW_COUNTS_SQL" ceit-connect-restore-drill:/restore/restored-row-counts.sql
+```
+
+Run it with stop-on-error and write the result inside the container:
+
+```bash
+docker exec ceit-connect-restore-drill sh -c 'psql -U postgres -d postgres -v ON_ERROR_STOP=1 -At -f /restore/restored-row-counts.sql > /restore/restored-row-counts.txt'
+```
+
+Copy the result back into the private backup folder:
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp ceit-connect-restore-drill:/restore/restored-row-counts.txt "$(cygpath -w "$CEIT_BACKUP_DIR/restored-row-counts.txt")"
+```
+
+```bash
+tr -d '\r' < "$CEIT_BACKUP_DIR/restored-row-counts.txt" | LC_ALL=C sort > "$CEIT_BACKUP_DIR/restored-row-counts.sorted.txt"
+```
+
+Compare it with the live counts captured when the backup was taken, using the
+same byte-stable diff method as the export proof:
+
+```bash
+LC_ALL=C diff -u "$CEIT_BACKUP_DIR/live-row-counts.sorted.txt" "$CEIT_BACKUP_DIR/restored-row-counts.sorted.txt"
+```
+
+An empty diff is required for every `public` and `ceit_connect_private` table,
+including zero-row tables.
+
+### Compare live and restored object counts
+
+In the **Prod SQL Editor**, run this one read-only `SELECT`. It returns only six
+catalog counts and the twelve non-sensitive committee names—no member or task
+data. Run it on the same day as the export, before any migration or Prod push.
+Do not use a connection string or run any write:
+
+```sql
+select (pg_catalog.jsonb_build_object(
+  'tables', (select count(*) from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'ceit_connect_private') and c.relkind in ('r', 'p')),
+  'functions', (select count(*) from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'ceit_connect_private') and p.prokind = 'f'),
+  'policies', (select count(*) from pg_catalog.pg_policy p join pg_catalog.pg_class c on c.oid = p.polrelid join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'ceit_connect_private')),
+  'triggers', (select count(*) from pg_catalog.pg_trigger t join pg_catalog.pg_class c on c.oid = t.tgrelid join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'ceit_connect_private') and not t.tgisinternal),
+  'indexes', (select count(*) from pg_catalog.pg_index i join pg_catalog.pg_class c on c.oid = i.indrelid join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'ceit_connect_private')),
+  'constraints', (select count(*) from pg_catalog.pg_constraint c join pg_catalog.pg_namespace n on n.oid = c.connamespace where n.nspname in ('public', 'ceit_connect_private')),
+  'committees', (select pg_catalog.jsonb_agg(name order by name) from public.committees)
+))::text as restore_catalog_proof;
+```
+
+Copy only the JSON value, without its column heading, into a private file. In
+Git Bash, paste this command, paste the one JSON line, then press **Ctrl+D** on a
+new line:
+
+```bash
+cat > "$CEIT_BACKUP_DIR/live-object-counts.txt"
+```
+
+Save the same counts-only query in the private backup folder. Paste this
+command, paste the exact `SELECT` above, then press **Ctrl+D** on a new line:
+
+```bash
+cat > "$CEIT_BACKUP_DIR/restored-object-counts.sql"
+```
+
+Convert its path:
+
+```bash
+CEIT_OBJECT_COUNTS_SQL="$(cygpath -w "$CEIT_BACKUP_DIR/restored-object-counts.sql")"
+```
+
+Copy it into the container:
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp "$CEIT_OBJECT_COUNTS_SQL" ceit-connect-restore-drill:/restore/restored-object-counts.sql
+```
+
+Run it with stop-on-error and write the result inside the container:
+
+```bash
+docker exec ceit-connect-restore-drill sh -c 'psql -U postgres -d postgres -v ON_ERROR_STOP=1 -At -f /restore/restored-object-counts.sql > /restore/restored-object-counts.txt'
+```
+
+Copy the result back into the private backup folder:
+
+```bash
+MSYS_NO_PATHCONV=1 docker cp ceit-connect-restore-drill:/restore/restored-object-counts.txt "$(cygpath -w "$CEIT_BACKUP_DIR/restored-object-counts.txt")"
+```
+
+```bash
+tr -d '\r' < "$CEIT_BACKUP_DIR/live-object-counts.txt" > "$CEIT_BACKUP_DIR/live-object-counts.normalized.txt"
+```
+
+```bash
+tr -d '\r' < "$CEIT_BACKUP_DIR/restored-object-counts.txt" > "$CEIT_BACKUP_DIR/restored-object-counts.normalized.txt"
+```
+
+```bash
+LC_ALL=C diff -u "$CEIT_BACKUP_DIR/live-object-counts.normalized.txt" "$CEIT_BACKUP_DIR/restored-object-counts.normalized.txt"
+```
+
+The diff must be empty. This comparison catches silent table, function,
+policy, trigger, index, or constraint loss caused by a tolerated schema error,
+and proves that all twelve committee names exist.
+
+If the SQL Editor displays the JSON text with different spacing, compare the
+six count values and committee-name list by eye instead of treating whitespace
+as a database difference.
+
+If any count differs:
+
+1. Do not edit the dump or restored rows.
+2. Check whether the backup and Prod object-count proof were taken on the same
+   day and whether a migration or Prod push happened between them. If not,
+   differences are expected and harmless; take a fresh backup and proof.
+3. Otherwise, re-take the complete backup during a quiet period.
+4. Stop and ask for review before attempting any fix.
+
+The drill passes only when the data error count is zero, every schema error is
+classified, the row-count and object-count diffs are empty, constraint checks
+pass, and all twelve committees appear. Record the real result in
+`docs/phase-5/step-b2-restore-drill.md`; do not invent it.
+
+### Cleanup
+
+```bash
+docker rm -fv ceit-connect-restore-drill
+```
+
+```bash
+docker ps -a --filter name=ceit-connect-restore-drill
+```
+
+No matching container should remain. The `-v` removal also deletes the
+container's anonymous data volume. Keep or securely delete the dumps, logs, and
+count files together under **How often and how long to keep**. When a dated
+backup ages out, delete its private folder and empty the Recycle Bin. Never
+move drill files into the repository before deleting them.
+
+## What a real disaster means
+
+This backup can recover the included `public` and `ceit_connect_private`
+objects and rows, but not the complete Supabase project. Members would have to
+be re-invited to rebuild sign-ins. Avatars and other Storage files would have
+to be uploaded again. Prod cron jobs, Auth and SMTP settings, providers, email
+templates, and other dashboard settings would have to be recreated from
+separate private operational records.
+
+There is also an unresolved identity problem: restored `public.users` rows
+refer to old Supabase Auth UUIDs. Re-inviting someone can create a new Auth
+UUID, so the restored profile would not automatically belong to the new Auth
+account. The UUID-only drill rows are placeholders, not real accounts, and do
+not solve disaster recovery. Identity reconciliation is a later decision. Do
+not invent an Auth export or rewrite user IDs during this drill.
