@@ -71,4 +71,23 @@ describe("POST /api/officer-transitions", () => {
       error: "The last active Admin cannot step down.",
     });
   });
+
+  it.each([
+    { action: "appoint", userId, role: "Co-Admin", committeeId },
+    { action: "return-to-member", userId, committeeId },
+    { action: "move-committee", userId, committeeId },
+    { action: "step-down", committeeId },
+  ])("maps CCG01 safely for $action", async (body) => {
+    mocks.createClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "CCG01", message: "private database text" },
+      }),
+    });
+    const response = await POST(request(body));
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Only Admins can be assigned to the President committee.",
+    });
+  });
 });

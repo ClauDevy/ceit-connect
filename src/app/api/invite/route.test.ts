@@ -292,6 +292,17 @@ describe("POST /api/invite finalization and cleanup", () => {
     expect(service.deleteUser).not.toHaveBeenCalled();
   });
 
+  it("maps CCG01 and safely removes the unfinalized Auth user", async () => {
+    callerClient({ code: "CCG01", message: "private database text" });
+    const service = adminClient();
+    const response = await POST(request());
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Only Admins can be assigned to the President committee.",
+    });
+    expect(service.deleteUser).toHaveBeenCalledWith(authUserId);
+  });
+
   it.each([
     ["confirmed", { confirmed: true }],
     ["signed in", { signedIn: true }],
