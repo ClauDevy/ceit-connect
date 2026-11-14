@@ -30,7 +30,7 @@ const task = {
   committeeId,
   priority: "Medium",
   taskType: "Deliverable",
-  dueDate: "2026-10-30",
+  dueDate: "2099-10-30",
   dutyDate: "",
   callTime: "",
   endDate: "",
@@ -105,16 +105,63 @@ describe("/api/active-task", () => {
       eventId,
       ...task,
       taskType: "LiveOperation",
-      dutyDate: "2026-12-31",
+      dutyDate: "2099-12-31",
       callTime: "23:00",
-      endDate: "2027-01-01",
+      endDate: "2100-01-01",
       endTime: "02:00",
     }));
     expect(response.status).toBe(200);
     expect(rpc).toHaveBeenCalledWith(
       "create_active_event_task",
-      expect.objectContaining({ p_end_time: "2026-12-31T18:00:00.000Z" }),
+      expect.objectContaining({ p_end_time: "2099-12-31T18:00:00.000Z" }),
     );
+  });
+
+  it.each([
+    ["due date", { dueDate: "2000-01-01" }, "Choose today or a later due date."],
+    [
+      "duty date",
+      { taskType: "LiveOperation", dutyDate: "2000-01-01", callTime: "09:00" },
+      "Choose today or a later duty date.",
+    ],
+    [
+      "end date",
+      {
+        taskType: "LiveOperation",
+        dutyDate: "2099-01-01",
+        callTime: "09:00",
+        endDate: "2000-01-01",
+        endTime: "10:00",
+      },
+      "End date cannot be before the duty date.",
+    ],
+  ])("rejects a past create %s before opening a data client", async (_, change, message) => {
+    const response = await POST(request("POST", { eventId, ...task, ...change }));
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: message });
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["CCD07", "Choose today or a later due date."],
+    ["CCD08", "Choose today or a later duty date."],
+    ["CCD09", "Choose today or a later end date."],
+  ])("maps database date-floor code %s without exposing its text", async (code, message) => {
+    mocks.createClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code, message: "private database text" },
+      }),
+    });
+    const response = await PATCH(
+      request("PATCH", {
+        taskId,
+        expectedUpdatedAt: "2026-10-28T12:34:56.123456+00:00",
+        ...task,
+      }),
+    );
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: message });
   });
 
   it.each([

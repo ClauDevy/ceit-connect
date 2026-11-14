@@ -65,6 +65,12 @@ export type ActiveTaskValidationResult<T> =
 export const ACTIVE_TASK_STALE_MESSAGE =
   "This task changed after you loaded it. Reload and try again.";
 
+export const ACTIVE_TASK_DATE_FLOOR_MESSAGES = {
+  dueDate: "Choose today or a later due date.",
+  dutyDate: "Choose today or a later duty date.",
+  endDate: "Choose today or a later end date.",
+} as const;
+
 export const ACTIVE_TASK_EXISTING_ERROR_MESSAGES = [
   ACTIVE_TASK_STALE_MESSAGE,
   "This event already has the maximum of 200 tasks.",
@@ -73,6 +79,9 @@ export const ACTIVE_TASK_EXISTING_ERROR_MESSAGES = [
   "Check the task details and try again.",
   "The task changed while saving. Refresh and try again.",
   "The task could not be saved. Please try again.",
+  ACTIVE_TASK_DATE_FLOOR_MESSAGES.dueDate,
+  ACTIVE_TASK_DATE_FLOOR_MESSAGES.dutyDate,
+  ACTIVE_TASK_DATE_FLOOR_MESSAGES.endDate,
   ACTIVE_TASK_RETRY_MESSAGE,
 ] as const;
 
@@ -396,6 +405,57 @@ export function parseEditActiveTaskRequest(
   return result.ok ? result.data : null;
 }
 
+export function getActiveTaskDateFloorProblem({
+  mode,
+  draft,
+  initialDraft,
+  today,
+}: {
+  mode: "add" | "edit";
+  draft: ActiveTaskDraft;
+  initialDraft: ActiveTaskDraft | null;
+  today: string;
+}) {
+  const effectiveEndDate = (value: ActiveTaskDraft) =>
+    value.taskType === "LiveOperation" && value.endTime
+      ? value.endDate || value.dutyDate
+      : "";
+  const candidates = [
+    {
+      field: "dueDate" as const,
+      value: draft.dueDate,
+      initialValue: initialDraft?.dueDate ?? "",
+    },
+    {
+      field: "dutyDate" as const,
+      value: draft.taskType === "LiveOperation" && draft.callTime
+        ? draft.dutyDate
+        : "",
+      initialValue:
+        initialDraft?.taskType === "LiveOperation" && initialDraft.callTime
+          ? initialDraft.dutyDate
+          : "",
+    },
+    {
+      field: "endDate" as const,
+      value: effectiveEndDate(draft),
+      initialValue: initialDraft ? effectiveEndDate(initialDraft) : "",
+    },
+  ];
+
+  for (const candidate of candidates) {
+    const changed =
+      mode === "add" || !initialDraft || candidate.value !== candidate.initialValue;
+    if (candidate.value && candidate.value < today && changed) {
+      return {
+        field: candidate.field,
+        message: ACTIVE_TASK_DATE_FLOOR_MESSAGES[candidate.field],
+      };
+    }
+  }
+  return null;
+}
+
 function commonRpcArgs(draft: ActiveTaskDraft) {
   return {
     p_title: draft.title,
@@ -434,6 +494,15 @@ export function editActiveTaskRpcArgs(request: EditActiveTaskRequest) {
 }
 
 function mapRpcError(error: RpcError): ActiveTaskRpcFailure {
+  if (error.code === "CCD07") {
+    return { ok: false, status: 400, message: ACTIVE_TASK_DATE_FLOOR_MESSAGES.dueDate };
+  }
+  if (error.code === "CCD08") {
+    return { ok: false, status: 400, message: ACTIVE_TASK_DATE_FLOOR_MESSAGES.dutyDate };
+  }
+  if (error.code === "CCD09") {
+    return { ok: false, status: 400, message: ACTIVE_TASK_DATE_FLOOR_MESSAGES.endDate };
+  }
   if (error.code === "CCD05") {
     return { ok: false, status: 409, message: "The due date cannot be after the event end date." };
   }

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import type { BoardCommittee } from "@/lib/events/board";
 import { preventSearchFormSubmission } from "@/lib/search";
+import { getAppCalendarDate } from "@/lib/timezone";
 import {
   ACTIVE_TASK_PRIORITIES,
   ACTIVE_TASK_STALE_MESSAGE,
@@ -40,6 +41,7 @@ import {
   type ActiveTaskPriority,
   type ActiveTaskType,
   type ActiveTaskValidationField,
+  getActiveTaskDateFloorProblem,
   validateCreateActiveTaskRequest,
   validateEditActiveTaskRequest,
 } from "@/lib/tasks/active-task";
@@ -49,6 +51,7 @@ import {
   buildActiveTaskEditDraft,
   buildBulkPersonSelection,
   buildSinglePersonSelection,
+  getActiveTaskDateInputMin,
   getActiveTaskDateInputMax,
   getActiveTaskBulkPresentation,
   getActiveTaskEventEndProblem,
@@ -618,6 +621,17 @@ export function ActiveTaskDialog({
       focusActiveTaskValidationField(validation.field);
       return;
     }
+    const dateFloorProblem = getActiveTaskDateFloorProblem({
+      mode,
+      draft: normalizedDraft,
+      initialDraft: initialEditDraft,
+      today: getAppCalendarDate(),
+    });
+    if (dateFloorProblem) {
+      setError(dateFloorProblem.message);
+      focusActiveTaskValidationField(dateFloorProblem.field);
+      return;
+    }
     const eventEndProblem = getActiveTaskEventEndProblem({
       mode,
       draft: normalizedDraft,
@@ -775,14 +789,14 @@ export function ActiveTaskDialog({
                       )}
                     </FormField>
                     <FormField label="Due date" hint="Optional">
-                      {(control) => <Input {...control} data-active-task-field="dueDate" type="date" max={getActiveTaskDateInputMax({ mode, value: draft.dueDate, initialValue: initialEditDraft?.dueDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dueDate} onChange={(event) => updateDraft({ dueDate: event.target.value })} />}
+                      {(control) => <Input {...control} data-active-task-field="dueDate" type="date" min={getActiveTaskDateInputMin({ mode, value: draft.dueDate, initialValue: initialEditDraft?.dueDate ?? null, today: getAppCalendarDate() })} max={getActiveTaskDateInputMax({ mode, value: draft.dueDate, initialValue: initialEditDraft?.dueDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dueDate} onChange={(event) => updateDraft({ dueDate: event.target.value })} />}
                     </FormField>
                     <MotionPresence open={draft.taskType === "LiveOperation"}>
                       {draft.taskType === "LiveOperation" ? (
                         <div className="grid gap-3 border-l-2 border-primary/40 pl-3 sm:grid-cols-2 lg:grid-cols-4">
-                          <FormField label="Philippine duty date">{(control) => <Input {...control} data-active-task-field="dutyDate" type="date" max={getActiveTaskDateInputMax({ mode, value: draft.dutyDate, initialValue: initialEditDraft?.dutyDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dutyDate} onChange={(event) => updateDraft({ dutyDate: event.target.value })} />}</FormField>
+                          <FormField label="Philippine duty date">{(control) => <Input {...control} data-active-task-field="dutyDate" type="date" min={getActiveTaskDateInputMin({ mode, value: draft.dutyDate, initialValue: initialEditDraft?.dutyDate ?? null, today: getAppCalendarDate() })} max={getActiveTaskDateInputMax({ mode, value: draft.dutyDate, initialValue: initialEditDraft?.dutyDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dutyDate} onChange={(event) => updateDraft({ dutyDate: event.target.value })} />}</FormField>
                           <FormField label="Call time">{(control) => <Input {...control} data-active-task-field="callTime" type="time" value={draft.callTime} onChange={(event) => updateDraft({ callTime: event.target.value })} />}</FormField>
-                          <FormField label="End date" hint="Optional">{(control) => <Input {...control} data-active-task-field="endDate" type="date" min={draft.dutyDate || undefined} max={getActiveTaskDateInputMax({ mode, value: draft.endDate, initialValue: initialEditDraft?.endDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.endDate} onChange={(event) => updateDraft({ endDate: event.target.value })} />}</FormField>
+                          <FormField label="End date" hint="Optional">{(control) => <Input {...control} data-active-task-field="endDate" type="date" min={getActiveTaskDateInputMin({ mode, value: draft.endTime ? draft.endDate || draft.dutyDate : draft.endDate, initialValue: initialEditDraft?.endTime ? initialEditDraft.endDate || initialEditDraft.dutyDate : null, today: getAppCalendarDate(), relatedMin: draft.dutyDate || undefined })} max={getActiveTaskDateInputMax({ mode, value: draft.endDate, initialValue: initialEditDraft?.endDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.endDate} onChange={(event) => updateDraft({ endDate: event.target.value })} />}</FormField>
                           <FormField label="End time" hint="Optional">{(control) => <Input {...control} data-active-task-field="endTime" type="time" min={!draft.endDate || draft.endDate === draft.dutyDate ? draft.callTime || undefined : undefined} value={draft.endTime} onChange={(event) => updateDraft({ endTime: event.target.value })} />}</FormField>
                         </div>
                       ) : null}
