@@ -13,6 +13,22 @@ const appDateTimeParts = new Intl.DateTimeFormat("en-CA", {
   hourCycle: "h23",
 });
 
+const appCalendarDateParts = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE.iana,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function getAppCalendarDate(value: Date = new Date()) {
+  const parts = new Map(
+    appCalendarDateParts
+      .formatToParts(value)
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.get("year")}-${parts.get("month")}-${parts.get("day")}`;
+}
+
 export function toAppTimestamp(date: string, time: string) {
   if (!date || !time) return null;
   const parsed = new Date(`${date}T${time}:00${APP_TIME_ZONE.utcOffset}`);

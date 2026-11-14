@@ -15,6 +15,7 @@ import {
   canShowBoardTaskEdit,
   canShowTaskPageEdit,
   formatTaskMetadataTimestamp,
+  getActiveTaskDateInputMin,
   getActiveTaskDateInputMax,
   getActiveTaskBulkPresentation,
   getActiveTaskEventEndProblem,
@@ -117,6 +118,54 @@ describe("completed task detail inventory", () => {
 });
 
 describe("active task Edit prefill", () => {
+  it("uses today's date as the input floor while preserving an unchanged old date", () => {
+    expect(
+      getActiveTaskDateInputMin({
+        mode: "add",
+        value: "",
+        initialValue: null,
+        today: "2026-11-14",
+      }),
+    ).toBe("2026-11-14");
+    expect(
+      getActiveTaskDateInputMin({
+        mode: "edit",
+        value: "2026-11-10",
+        initialValue: "2026-11-10",
+        today: "2026-11-14",
+      }),
+    ).toBe("2026-11-10");
+    expect(
+      getActiveTaskDateInputMin({
+        mode: "edit",
+        value: "2026-11-11",
+        initialValue: "2026-11-10",
+        today: "2026-11-14",
+      }),
+    ).toBe("2026-11-14");
+  });
+
+  it("keeps the duty-date relationship as the stricter End-date floor", () => {
+    expect(
+      getActiveTaskDateInputMin({
+        mode: "edit",
+        value: "2026-11-12",
+        initialValue: "2026-11-12",
+        today: "2026-11-14",
+        relatedMin: "2026-11-11",
+      }),
+    ).toBe("2026-11-12");
+    expect(
+      getActiveTaskDateInputMin({
+        mode: "add",
+        value: "",
+        initialValue: null,
+        today: "2026-11-14",
+        relatedMin: "2026-11-15",
+      }),
+    ).toBe("2026-11-15");
+  });
+
   it("uses stored Low when calculated priority is Critical and preserves Low on a no-op save", () => {
     const draft = buildActiveTaskEditDraft(task, controls, "Low");
     expect(task.effective_priority).toBe("Critical");

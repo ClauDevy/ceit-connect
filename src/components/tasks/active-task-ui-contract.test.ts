@@ -80,7 +80,7 @@ describe("Batch 11 active task UI contract", () => {
     expect(dialog).toContain('data-active-task-field="endTime"');
     expect(dialog).toContain('fieldName="primaryAssignees"');
     expect(dialog).toContain('fieldName="allowedViewers"');
-    expect(dialog.match(/focusActiveTaskValidationField\(/g)).toHaveLength(3);
+    expect(dialog.match(/focusActiveTaskValidationField\(/g)).toHaveLength(4);
     expect(dialog).toMatch(
       /if \(!validation\.ok\) \{\s*setError\(validation\.message\);\s*focusActiveTaskValidationField\(validation\.field\);/,
     );
