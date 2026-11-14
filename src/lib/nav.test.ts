@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest"
-import { isNavActive, navForRole } from "./nav"
+import { HELP_NAV_ITEM, isNavActive, navForRole } from "./nav"
 
 const hrefs = (items: ReturnType<typeof navForRole>["all"]) =>
   items.map((item) => item.href)
 
 describe("role navigation", () => {
+  it("keeps Help available to every role without changing the primary inventories", () => {
+    expect(HELP_NAV_ITEM.href).toBe("/help")
+    expect(HELP_NAV_ITEM.roles).toEqual(["Admin", "Co-Admin", "Member"])
+  })
+
   it("keeps the complete Admin navigation inventory", () => {
     const nav = navForRole("Admin")
 
