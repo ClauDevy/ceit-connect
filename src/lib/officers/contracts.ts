@@ -84,6 +84,10 @@ const ERROR_MESSAGES: Record<string, { message: string; state: OfficerInviteStat
     message: "The last active Admin cannot step down.",
     state: "failed",
   },
+  CCG01: {
+    message: "Only Admins can be assigned to the President committee.",
+    state: "failed",
+  },
 };
 
 export function safeOfficerError(error: unknown) {

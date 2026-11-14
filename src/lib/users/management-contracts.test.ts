@@ -17,6 +17,7 @@ describe("member management contracts", () => {
     ["CCM07", 409],
     ["CCM08", 400],
     ["CCM09", 409],
+    ["CCG01", 409],
   ])("maps %s without exposing database text", (code, status) => {
     const safe = safeMemberManagementError({ code, message: "private" });
     expect(safe.status).toBe(status);
