@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getAuthUser: vi.fn(),
@@ -140,8 +140,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getAuthUser.mockResolvedValue({ id: "caller" });
   mocks.getActiveProfileForRoles.mockResolvedValue(activeAdmin);
-  process.env.ALLOWED_EMAIL_DOMAINS = "example.edu";
+  vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "example.edu");
   callerClient();
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("POST /api/invite authorization and authority", () => {
@@ -181,7 +185,39 @@ describe("POST /api/invite authorization and authority", () => {
 });
 
 describe("POST /api/invite finalization and cleanup", () => {
-  it("finalizes an Admin invite with the selected committee", async () => {
+  it.each([
+    ["unset", undefined],
+    ["empty", ""],
+    ["whitespace-only", "   "],
+    ["comma-only", ",,,"],
+  ])("fails closed when the allowed-domain value is %s", async (_label, value) => {
+    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", value);
+    const caller = callerClient();
+    const service = adminClient();
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invitations are temporarily unavailable",
+    });
+    expect(mocks.getAuthUser).toHaveBeenCalledTimes(1);
+    expect(mocks.getActiveProfileForRoles).toHaveBeenCalledWith([
+      "Admin",
+      "Co-Admin",
+    ]);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+    expect(caller.from).not.toHaveBeenCalled();
+    expect(caller.rpc).not.toHaveBeenCalled();
+    expect(service.from).not.toHaveBeenCalled();
+    expect(service.inviteUserByEmail).not.toHaveBeenCalled();
+    expect(service.getUserById).not.toHaveBeenCalled();
+    expect(service.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("allows a configured domain through the real success path", async () => {
+    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "example.edu");
     const caller = callerClient();
     const service = adminClient();
     const response = await POST(request());
@@ -196,6 +232,27 @@ describe("POST /api/invite finalization and cleanup", () => {
       p_full_name: "New Member",
       p_committee_id: committeeId,
     });
+  });
+
+  it("keeps the existing rejection response for a non-allowed domain", async () => {
+    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "cvsu.edu.ph");
+    const caller = callerClient();
+    const service = adminClient();
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Only these email domains can be invited: cvsu.edu.ph",
+    });
+    expect(mocks.createClient).not.toHaveBeenCalled();
+    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+    expect(caller.from).not.toHaveBeenCalled();
+    expect(caller.rpc).not.toHaveBeenCalled();
+    expect(service.from).not.toHaveBeenCalled();
+    expect(service.inviteUserByEmail).not.toHaveBeenCalled();
+    expect(service.getUserById).not.toHaveBeenCalled();
+    expect(service.deleteUser).not.toHaveBeenCalled();
   });
 
   it("finalizes a Co-Admin invite with no client committee authority", async () => {
