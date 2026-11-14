@@ -1,10 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(
-  new URL("./event-form.tsx", import.meta.url),
-  "utf8",
-).replaceAll("\r\n", "\n");
+const source = [
+  "event-form.tsx",
+  "event-form-template-picker.tsx",
+  "event-form-task-phases.tsx",
+  "event-form-task-dialog.tsx",
+]
+  .map((file) => readFileSync(new URL(`./${file}`, import.meta.url), "utf8"))
+  .join("\n")
+  .replaceAll("\r\n", "\n");
 
 describe("Event form Archived-template authority contract", () => {
   it("keeps Admin and scratch creation on the existing RPC", () => {

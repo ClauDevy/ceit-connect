@@ -1,10 +1,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const eventForm = readFileSync(
-  "src/components/events/event-form.tsx",
-  "utf8",
-);
+const eventForm = [
+  "event-form.tsx",
+  "event-form-task-phases.tsx",
+  "event-form-task-dialog.tsx",
+  "event-form-summary.tsx",
+  "event-form-confirmations.tsx",
+]
+  .map((file) =>
+    readFileSync(`src/components/events/${file}`, "utf8"),
+  )
+  .join("\n");
 
 describe("Batch 13c Edit Event Draft visibility contract", () => {
   it("queries the fixed-shape Draft editor reader", () => {
