@@ -46,6 +46,7 @@ describe("Help manual interactions", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /^Notifications\b/i }).getAttribute("aria-expanded")).toBe("true");
       expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+      expect(document.activeElement).toBe(document.getElementById("notifications"));
     });
     expect(document.getElementById("notifications")?.className).toContain("scroll-mt-24");
   });

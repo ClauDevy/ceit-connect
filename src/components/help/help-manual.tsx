@@ -163,7 +163,7 @@ function SectionCard({
 }) {
   const mobilePanelId = `${section.id}-mobile-panel`;
   return (
-    <SectionEnter as="section" id={section.id} className="scroll-mt-24" aria-labelledby={`${section.id}-title`}>
+    <SectionEnter as="section" id={section.id} tabIndex={-1} className="scroll-mt-24" aria-labelledby={`${section.id}-title`}>
       <Card className="overflow-hidden">
         <CardHeader className="border-b bg-muted/30">
           <button
@@ -210,6 +210,7 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
   const [expandedFaqs, setExpandedFaqs] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const pendingScroll = useRef<string | null>(null);
+  const pendingFocus = useRef<string | null>(null);
   const [scrollRequest, setScrollRequest] = useState(0);
 
   const filteredFaqs = useMemo(() => {
@@ -228,6 +229,10 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     pendingScroll.current = null;
+    if (pendingFocus.current === targetId) {
+      target.focus({ preventScroll: true });
+      pendingFocus.current = null;
+    }
   }, [openSections, scrollRequest]);
 
   function requestScroll(id: string) {
@@ -237,6 +242,7 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
 
   function openThenScroll(id: string) {
     setOpenSections((current) => new Set(current).add(id));
+    pendingFocus.current = id;
     requestScroll(id);
   }
 
@@ -336,7 +342,7 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
           />
         ))}
 
-        <SectionEnter as="section" id="faq" className="scroll-mt-24" aria-labelledby="faq-title">
+        <SectionEnter as="section" id="faq" tabIndex={-1} className="scroll-mt-24" aria-labelledby="faq-title">
           <Card className="overflow-hidden">
             <CardHeader className="border-b bg-muted/30">
               <button
@@ -370,7 +376,7 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
           </Card>
         </SectionEnter>
 
-        <SectionEnter as="section" id="to-confirm" className="scroll-mt-24" aria-labelledby="to-confirm-title">
+        <SectionEnter as="section" id="to-confirm" tabIndex={-1} className="scroll-mt-24" aria-labelledby="to-confirm-title">
           <Card className="overflow-hidden border-dashed">
             <CardHeader className="border-b bg-muted/30">
               <button
