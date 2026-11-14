@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync("src/components/events/event-form.tsx", "utf8").replaceAll("\r\n", "\n");
+const source = [
+  "event-form.tsx",
+  "event-form-task-dialog.tsx",
+  "event-form-assignee-picker.tsx",
+]
+  .map((file) => readFileSync(`src/components/events/${file}`, "utf8"))
+  .join("\n")
+  .replaceAll("\r\n", "\n");
 
 describe("Event form task-editor parity contract", () => {
   it("keeps type changes non-destructive and hides Due date for Live Operations", () => {

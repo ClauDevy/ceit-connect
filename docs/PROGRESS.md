@@ -43,7 +43,8 @@ The approved Phase 5 batch map, decisions, gate checks, and release checklist ar
 
 - **Phase 5 U4b task-editor wording and parity follow-up is live on Dev and Prod (owner-confirmed).** It remains separate from U4a.
 
-- **The approved follow-up order reached H1 after B2, U1, U2, U4a, V1, and U4b.** U1, U4a, V1, and U4b are live on Dev and Prod (owner-confirmed). H1 is the role-aware `/help` manual and covers the final V1(b) President rule and U4b task-editor behavior. Optional U3 may later test-pin and split the roughly 2,914-line `event-form.tsx` without behavior changes; it is not a Phase 5 gate. After H1 come manifest screenshots, the final release checklist, optional `discord_id` removal, and E1 only if needed.
+- **The approved follow-up order reached H1 after B2, U1, U2, U4a, V1, and U4b.** U1, U4a, V1, and U4b are live on Dev and Prod (owner-confirmed). H1 is live on Prod (owner-confirmed); its role-aware `/help` manual covers the final V1(b) President rule and U4b task-editor behavior. After H1 come manifest screenshots, the final release checklist, optional `discord_id` removal, and E1 only if needed.
+- **Phase 5 U3 event-form split is locally implemented, UI-only, and not live.** The 2,979-line form now keeps its original state, hook order, handlers, validation, RPC/API calls, motion, permissions, and public exports in the same orchestrator while focused sibling components render the unchanged tree. The pre-split characterization passed 4/4; direct TypeScript checking passed; 1,483/1,487 tests pass with only the four known CRLF-sensitive migration-contract failures; lint exits zero with only the known unused `INK` warning; and `git diff --check` passes. No build or Supabase command was run.
 
 - **Discord (X1) was cancelled by the owner on 2026-11-11 and will not be built.**
 
