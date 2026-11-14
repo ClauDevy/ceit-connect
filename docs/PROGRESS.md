@@ -4,6 +4,8 @@
 
 The approved Phase 5 batch map, decisions, gate checks, and release checklist are in `docs/phase-5/PHASE-5-PLAN.md`.
 
+- **Phase 5 U4b task-editor parity is implemented locally.** Board and Event task editors now share concise wording, blank Admin committee selection, non-destructive type switching, Deliverable-only Due-date UI, same-day blank End date, submission-aware V1/event-end checks, and exact preservation of existing Live Operation due dates. New Live Operations store no due date; validators, RPCs, database objects, U4a behavior, and the President guard are unchanged. See `docs/phase-5/step-u4b-task-editor-parity.md`.
+
 - **Shared AppShell double-scroll fix is implemented locally.** The viewport shell is now fixed out of document flow, clips at the dynamic viewport, and gives its bounded `min-h-0` content column sole vertical scrolling with overscroll containment. Desktop and phone headers, bottom navigation, safe-area clearance, and ordinary document scrolling on non-AppShell routes remain unchanged. Source-contract coverage pins the single-scroller structure; no database, dependency, or route behavior changed.
 
 - **Phase 5 N1 notification foundation is live on Dev and Prod and its smoke tests passed (owner-confirmed).** Migration `20261110120000_notification_foundation.sql` generates all six persistent notification types set-wise, excludes inactive recipients and self-actions, stays silent for Draft/Archived/no-op/leave paths, masks titles through current task access, replaces the latest two notification policies, retains authenticated SELECT for personal Realtime, revokes authenticated INSERT/UPDATE/DELETE, and adds authenticated-only count/page/read-state RPCs. The migration adds no task/event FK. The owner will remove the Prod smoke-test events through normal app screens before N2 ships; no cleanup code or migration is part of N2.
@@ -39,9 +41,9 @@ The approved Phase 5 batch map, decisions, gate checks, and release checklist ar
 
 - **Phase 5 V1 parts (a) and (c) are implemented locally for owner review; no Dev action was run.** Migration `20261121120000_active_task_date_guard.sql` adds UI/API/database Manila-calendar floors for board Add/Edit due, duty, and end dates with database-owned changed-only edits, fixed CCD07–09 mappings, unchanged RPC shapes, and explicit stale-token/new-floor/event-end precedence. Migration `20261121130000_template_import_foreign_date_reset.sql` keeps the internal copier signature/count/return while blanking all three foreign schedules. The single rollback-only Dev paste expects 32 result lines. Direct TypeScript passes; all V1 tests pass within a 1,439/1,442 full run whose only failures are the three known CRLF-sensitive J1 contracts; lint exits zero with only the existing mascot `INK` warning. Timestamp `20261121140000` remains reserved and unwritten for the President invariant until the owner reports the Prod SELECT-only preflight. See `docs/phase-5/step-v1-date-and-president-guards.md`.
 
-- **Phase 5 U4b remaining task-editor wording and parity follow-up is planned.** It remains separate from U4a and is not live.
+- **Phase 5 U4b task-editor wording and parity follow-up is implemented locally.** It remains separate from U4a and is not live.
 
-- **The approved follow-up order is B2 (merged), U1, U2 (merged), U4a, V1, U4b, then H1 before manifest screenshots.** U4a is implemented locally and never live; V1 adds the Manila-date task deadline guard, Admin-only President database invariant, and the remaining Co-Admin foreign-template schedule reset; U4b remains planned. H1 remains the role-aware `/help` manual. Optional U3 may later test-pin and split the roughly 2,914-line `event-form.tsx` without behavior changes; it is not a Phase 5 gate. After H1 come manifest screenshots, the final release checklist, optional `discord_id` removal, and E1 only if needed.
+- **The approved follow-up order is B2 (merged), U1, U2 (merged), U4a, V1, U4b, then H1 before manifest screenshots.** U4a, V1, and U4b are implemented locally and never live; the President invariant remains reserved and unwritten. H1 remains the role-aware `/help` manual. Optional U3 may later test-pin and split the roughly 2,914-line `event-form.tsx` without behavior changes; it is not a Phase 5 gate. After H1 come manifest screenshots, the final release checklist, optional `discord_id` removal, and E1 only if needed.
 
 - **Discord (X1) was cancelled by the owner on 2026-11-11 and will not be built.**
 
@@ -270,6 +272,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 ## Deferred list (carried into next batch planning; none fixed in Batch 4)
 
+- Event-editor confidentiality requires a separate database-backed batch to add safe `is_confidential` / `allowed_viewers` reader and writer support; U4b does not add UI-only controls that cannot persist.
 - Consider requiring a call time before launch for Live Operations. Unscheduled
   Live Operations currently launch without L1 escalation or R2 prep reminders
   until a call time is set.

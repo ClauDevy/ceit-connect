@@ -68,7 +68,7 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
       "initialEvent ? makeInitialPhases(initialEvent.tasks) : []",
     );
     expect(eventForm).toMatch(
-      /const tasks = phases\.flatMap\(\(phase\) =>[\s\S]*?payload: toTaskPayload\(getSavableEventPhaseName\(phase\), task\)/,
+      /const tasks = phases\.flatMap\(\(phase\) =>[\s\S]*?payload: toTaskPayload\([\s\S]*?getSavableEventPhaseName\(phase\),[\s\S]*?task,[\s\S]*?initialTasksById\.get\(task\.id\)\?\.dueDate \?\? null,[\s\S]*?\)/,
     );
     expect(eventForm).not.toMatch(
       /readOnlyTasks[\s\S]{0,120}(setPhases|p_tasks_to_add|p_tasks_to_update|p_task_ids_to_delete)/,
