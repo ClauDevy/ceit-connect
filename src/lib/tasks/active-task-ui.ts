@@ -164,7 +164,8 @@ export function getActiveTaskEventEndProblem({
   }
   if (
     draft.taskType === "LiveOperation" &&
-    draft.endDate > eventEndDate &&
+    draft.endTime !== "" &&
+    (draft.endDate || draft.dutyDate) > eventEndDate &&
     (endDateChanged || endTimeChanged)
   ) {
     return {
