@@ -41,7 +41,7 @@ const draft = {
 
 describe("active task request contracts", () => {
   it.each([
-    ["due date", { dueDate: "2026-11-13" }, "dueDate", "Choose today or a later due date."],
+    ["due date", { taskType: "Deliverable" as const, dueDate: "2026-11-13" }, "dueDate", "Choose today or a later due date."],
     ["duty date", { dutyDate: "2026-11-13" }, "dutyDate", "Choose today or a later duty date."],
     ["end date", { endDate: "2026-11-13" }, "endDate", "Choose today or a later end date."],
   ])("rejects a past %s on create", (_, change, field, message) => {
@@ -74,6 +74,48 @@ describe("active task request contracts", () => {
           endTime: "02:00",
         },
         initialDraft: null,
+        today: "2026-11-14",
+      }),
+    ).toBeNull();
+  });
+
+  it("ignores a hidden kept Due date for a new Live Operation", () => {
+    expect(
+      getActiveTaskDateFloorProblem({
+        mode: "add",
+        draft: {
+          ...draft,
+          dueDate: "2000-01-01",
+          dutyDate: "2026-11-14",
+          callTime: "09:00",
+        },
+        initialDraft: null,
+        today: "2026-11-14",
+      }),
+    ).toBeNull();
+  });
+
+  it("allows an existing task switched to Live Operation to resubmit its unchanged old Due date", () => {
+    const initial = {
+      ...draft,
+      taskType: "Deliverable" as const,
+      dueDate: "2000-01-01",
+      dutyDate: "",
+      callTime: "",
+      endDate: "",
+      endTime: "",
+    };
+    expect(
+      getActiveTaskDateFloorProblem({
+        mode: "edit",
+        draft: {
+          ...initial,
+          taskType: "LiveOperation",
+          dueDate: "2099-01-01",
+          dutyDate: "2026-11-14",
+          callTime: "09:00",
+        },
+        initialDraft: initial,
         today: "2026-11-14",
       }),
     ).toBeNull();
@@ -166,8 +208,8 @@ describe("active task request contracts", () => {
   });
 
   it.each([
-    [{ dutyDate: "", callTime: "23:00" }, "dutyDate", "Choose a duty date when adding a live-duty schedule."],
-    [{ dutyDate: "2026-11-01", callTime: "", endTime: "02:00" }, "callTime", "Choose a call time when adding a live-duty schedule."],
+    [{ dutyDate: "", callTime: "23:00" }, "dutyDate", "Choose a Duty date when adding a Live Operation schedule."],
+    [{ dutyDate: "2026-11-01", callTime: "", endTime: "02:00" }, "callTime", "Choose a Call time when adding a Live Operation schedule."],
     [{ dutyDate: "2026-11-01", callTime: "23:00", endDate: "2026-11-02", endTime: "" }, "endTime", "Choose an end time when setting an end date."],
     [{ dutyDate: "2026-11-02", callTime: "23:00", endDate: "2026-11-01", endTime: "23:30" }, "endDate", "End date cannot be before the duty date."],
     [{ dutyDate: "2026-11-02", callTime: "23:00", endDate: "2026-11-02", endTime: "22:59" }, "endTime", "End time cannot be before call time."],

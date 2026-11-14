@@ -71,6 +71,8 @@ import {
   getEventPhaseCardKey,
   getEventPhaseControls,
   getCommitteeScopedEventAssignees,
+  getEventTaskDueDateForSubmission,
+  getEventTaskEndDateInputValue,
   getInitialEventTaskCommitteeId,
   getLiveOperationScheduleProblem,
   getSavableEventPhaseName,
@@ -286,7 +288,11 @@ function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
       dueDate: task.dueDate,
       callDate: task.callDate,
       callTime: task.callTime,
-      endDate: task.endDate,
+      endDate: getEventTaskEndDateInputValue({
+        callDate: task.callDate,
+        endDate: task.endDate,
+        endTime: task.endTime,
+      }),
       endTime: task.endTime,
       priority: task.priority,
       assigneeIds: task.assigneeIds,
@@ -343,6 +349,7 @@ export function EventForm({
   const [taskEditor, setTaskEditor] = useState<TaskEditor | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [taskEditorError, setTaskEditorError] = useState("");
+  const [taskEditorErrorField, setTaskEditorErrorField] = useState<string | null>(null);
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [phaseToRemove, setPhaseToRemove] = useState<PhaseDraft | null>(null);
   const [phaseRemovalWarnings, setPhaseRemovalWarnings] = useState<Record<string, string>>({});
@@ -446,12 +453,16 @@ export function EventForm({
     eventFormSummary.hasTasks &&
     phasesValid;
 
+  const initialTasksById = useMemo(
+    () => new Map((initialEvent?.tasks ?? []).map((task) => [task.id, task])),
+    [initialEvent],
+  );
   const initialTaskPayloads = useMemo(
     () =>
       new Map(
         (initialEvent?.tasks ?? []).map((task) => [
           task.id,
-          JSON.stringify(toTaskPayload(task.phase, task)),
+          JSON.stringify(toTaskPayload(task.phase, task, task.dueDate)),
         ]),
       ),
     [initialEvent],
@@ -464,7 +475,11 @@ export function EventForm({
       newlyComplete.includes(normalizeEventPhaseName(phase.originalName)) &&
       phase.tasks.some((task) =>
         !task.persisted ||
-        initialTaskPayloads.get(task.id) !== JSON.stringify(toTaskPayload(phase.name, task)),
+        initialTaskPayloads.get(task.id) !== JSON.stringify(toTaskPayload(
+          phase.name,
+          task,
+          initialTasksById.get(task.id)?.dueDate ?? null,
+        )),
       ),
     );
     if (discarded) {
@@ -484,16 +499,20 @@ export function EventForm({
       });
     }
     previousCompletedDraftPhases.current = new Set(completedDraftPhases);
-  }, [completedDraftPhases, initialTaskPayloads, phases]);
+  }, [completedDraftPhases, initialTaskPayloads, initialTasksById, phases]);
 
   const endDateTightened = Boolean(endDate && (!initialEvent?.endDate || endDate < initialEvent.endDate));
   const tasksAfterEventEnd = endDateTightened
     ? phases.flatMap((phase) =>
         phase.tasks.flatMap((task) => {
+          const submittedDueDate = getEventTaskDueDateForSubmission(
+            task,
+            initialTasksById.get(task.id)?.dueDate ?? null,
+          );
           const fields = [
-            task.dueDate > endDate ? `Due ${friendlyDate(task.dueDate)}` : null,
-            task.callDate > endDate ? `Call ${friendlyDate(task.callDate)}` : null,
-            task.endDate > endDate ? `Ends ${friendlyDate(task.endDate)}` : null,
+            submittedDueDate > endDate ? `Due ${friendlyDate(submittedDueDate)}` : null,
+            task.taskType === "LiveOperation" && task.callDate > endDate ? `Call ${friendlyDate(task.callDate)}` : null,
+            task.taskType === "LiveOperation" && task.endDate > endDate ? `Ends ${friendlyDate(task.endDate)}` : null,
           ].filter((value): value is string => Boolean(value));
           return fields.length > 0 ? [{ ...task, fields }] : [];
         }),
@@ -604,6 +623,11 @@ export function EventForm({
     : 0;
   const selectAllVisibleExceedsLimit =
     !allVisibleAssigneesSelected && selectedWithAllVisibleCount > 100;
+  const editedTaskStatus = taskEditor?.taskId
+    ? phases
+        .find((phase) => phase.id === taskEditor.phaseId)
+        ?.tasks.find((task) => task.id === taskEditor.taskId)?.status ?? null
+    : null;
 
   function selectFormTab(nextTab: "fundamentals" | "tasks") {
     if (nextTab === tab) return;
@@ -884,6 +908,7 @@ export function EventForm({
     }
 
     setTaskEditorError("");
+    setTaskEditorErrorField(null);
     setAssigneeSearch("");
     setTaskEditor({
       phaseId: targetPhaseId,
@@ -909,6 +934,7 @@ export function EventForm({
 
   function openEditTask(phaseId: string, task: TaskDraft) {
     setTaskEditorError("");
+    setTaskEditorErrorField(null);
     setAssigneeSearch("");
     setTaskEditor({
       phaseId,
@@ -921,7 +947,11 @@ export function EventForm({
         dueDate: task.dueDate,
         callDate: task.callDate,
         callTime: task.callTime,
-        endDate: task.endDate,
+        endDate: getEventTaskEndDateInputValue({
+          callDate: task.callDate,
+          endDate: task.endDate,
+          endTime: task.endTime,
+        }),
         endTime: task.endTime,
         priority: task.priority,
         assigneeIds: task.assigneeIds,
@@ -940,6 +970,7 @@ export function EventForm({
   }
 
   function updateTaskDraft(updates: Partial<TaskEditor["draft"]>) {
+    setTaskEditorErrorField(null);
     setTaskEditor((current) =>
       current
         ? { ...current, draft: { ...current.draft, ...updates } }
@@ -1003,6 +1034,7 @@ export function EventForm({
 
     const revealTaskProblem = (field: string, message: string) => {
       setTaskEditorError(message);
+      setTaskEditorErrorField(field);
       requestAnimationFrame(() => {
         const control = taskDialogScrollRef.current?.querySelector<HTMLElement>(
           `[data-task-field="${field}"]`,
@@ -1014,11 +1046,11 @@ export function EventForm({
 
     const title = taskEditor.draft.title.trim();
     if (!title) {
-      revealTaskProblem("title", "Give the task a title.");
+      revealTaskProblem("title", "Enter a task title up to 200 characters.");
       return;
     }
     if (!taskEditor.draft.committeeId) {
-      revealTaskProblem("committee", "Choose a committee.");
+      revealTaskProblem("committee", "Choose an available committee.");
       return;
     }
     const scheduleProblem = getLiveOperationScheduleProblem(taskEditor.draft);
@@ -1031,16 +1063,22 @@ export function EventForm({
           .find((phase) => phase.id === taskEditor.phaseId)
           ?.tasks.find((task) => task.id === taskEditor.taskId)
       : null;
+    const submittedDueDate = getEventTaskDueDateForSubmission(
+      taskEditor.draft,
+      originalTask?.dueDate ?? null,
+    );
     const scheduleAfterEnd = endDate
       ? [
-          taskEditor.draft.dueDate > endDate &&
-          (!originalTask || taskEditor.draft.dueDate !== originalTask.dueDate)
+          submittedDueDate > endDate &&
+          (!originalTask || submittedDueDate !== originalTask.dueDate)
             ? "due date"
             : null,
+          taskEditor.draft.taskType === "LiveOperation" &&
           taskEditor.draft.callDate > endDate &&
           (!originalTask || taskEditor.draft.callDate !== originalTask.callDate || taskEditor.draft.callTime !== originalTask.callTime)
             ? "call date"
             : null,
+          taskEditor.draft.taskType === "LiveOperation" &&
           taskEditor.draft.endDate > endDate &&
           (!originalTask || taskEditor.draft.endDate !== originalTask.endDate || taskEditor.draft.endTime !== originalTask.endTime)
             ? "end date"
@@ -1081,6 +1119,7 @@ export function EventForm({
     setSavedTaskId(savedTask.id);
     closeTaskDialog();
     setTaskEditorError("");
+    setTaskEditorErrorField(null);
     setError("");
   }
 
@@ -1211,7 +1250,11 @@ export function EventForm({
         ? []
         : phase.tasks.map((task) => ({
             task,
-            payload: toTaskPayload(getSavableEventPhaseName(phase), task),
+            payload: toTaskPayload(
+              getSavableEventPhaseName(phase),
+              task,
+              initialTasksById.get(task.id)?.dueDate ?? null,
+            ),
           })),
     );
 
@@ -2238,7 +2281,7 @@ export function EventForm({
               {taskEditor?.taskId ? "Edit task" : "Add task"}
             </DialogTitle>
             <DialogDescription>
-              Leave assignees empty to send this task to the Backlog.
+              Set the task details, schedule, and assignees.
             </DialogDescription>
           </DialogHeader>
 
@@ -2287,7 +2330,7 @@ export function EventForm({
               </FormField>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Type" labelTarget="group">
+                <FormField label="Task type" labelTarget="group">
                   {(control) => (
                     <TaskTypeToggle
                       {...control}
@@ -2331,31 +2374,33 @@ export function EventForm({
               <SectionEnter as="section" index={1} className="grid gap-4 border-b pb-5">
                 <SectionHeading
                   icon={<CalendarDays aria-hidden />}
-                  title="When"
+                  title="Schedule"
                 />
-                <FormField label="Due date" hint="Optional">
-                  {(control) => (
-                    <Input
-                      {...control}
-                      data-task-field="due-date"
-                      type="date"
-                      max={endDate || undefined}
-                      value={taskEditor.draft.dueDate}
-                      onChange={(event) =>
-                        updateTaskDraft({ dueDate: event.target.value })
-                      }
-                    />
-                  )}
-                </FormField>
+                {taskEditor.draft.taskType === "Deliverable" ? (
+                  <FormField label="Due date" hint="Optional">
+                    {(control) => (
+                      <Input
+                        {...control}
+                        data-task-field="due-date"
+                        type="date"
+                        max={endDate || undefined}
+                        value={taskEditor.draft.dueDate}
+                        onChange={(event) =>
+                          updateTaskDraft({ dueDate: event.target.value })
+                        }
+                      />
+                    )}
+                  </FormField>
+                ) : null}
 
               <MotionPresence open={taskEditor.draft.taskType === "LiveOperation"}>
                 {taskEditor.draft.taskType === "LiveOperation" ? <div className="grid gap-4 rounded-xl border border-primary/30 bg-primary/5 p-3.5">
                   <InlineAlert variant="info">
-                    This is a live duty — don&apos;t start before Call Time, and
-                    be physically ready at that moment.
+                    A Live Operation schedule is optional. If you add one,
+                    choose both a Duty date and Call time.
                   </InlineAlert>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <FormField label="Duty date" hint="Optional">
+                    <FormField label="Duty date">
                       {(control) => (
                         <Input
                           {...control}
@@ -2369,7 +2414,7 @@ export function EventForm({
                         />
                       )}
                     </FormField>
-                    <FormField label="Call time" hint="Optional">
+                    <FormField label="Call time">
                       {(control) => (
                         <Input
                           {...control}
@@ -2382,7 +2427,7 @@ export function EventForm({
                         />
                       )}
                     </FormField>
-                    <FormField label="End date" hint="Optional">
+                    <FormField label="End date" hint="Optional · leave blank for the Duty date">
                       {(control) => (
                         <Input
                           {...control}
@@ -2424,9 +2469,12 @@ export function EventForm({
               <SectionEnter as="section" index={2} className="grid gap-4">
                 <SectionHeading
                   icon={<Users aria-hidden />}
-                  title="Who"
+                  title="People"
                 />
-                <FormField label="Committee">
+                <FormField
+                  label="Committee"
+                  error={taskEditorErrorField === "committee" ? taskEditorError : null}
+                >
                   {(control) =>
                     role === "Co-Admin" ? (
                       <Input
@@ -2467,8 +2515,15 @@ export function EventForm({
 
               <fieldset className="grid min-w-0 gap-3">
                 <legend className="mb-1 text-sm font-semibold">
-                  Assignees
+                  Primary assignees
                 </legend>
+                <p className="text-xs text-muted-foreground">
+                  {taskEditor.taskId
+                    ? editedTaskStatus === "In Progress"
+                      ? "Removing all Primary assignees returns this task to To Do in the Backlog."
+                      : "Primary assignees can be changed without changing this task’s current status."
+                    : "Leave Primary assignees empty to add this task to the Backlog."}
+                </p>
                 {inactiveAssigneeIds.length > 0 && (
                   <div className="grid gap-2 rounded-xl border bg-muted/40 p-3">
                     <p className="text-xs text-muted-foreground">
@@ -2570,9 +2625,7 @@ export function EventForm({
                     )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {taskEditor.draft.assigneeIds.length} selected. Tasks are
-                  unassigned by default and stay in the Backlog until someone
-                  claims or is assigned to them.
+                  {taskEditor.draft.assigneeIds.length} selected.
                 </p>
               </fieldset>
               </SectionEnter>
