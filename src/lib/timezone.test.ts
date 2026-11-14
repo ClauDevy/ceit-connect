@@ -1,28 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { APP_TIME_ZONE, splitAppTimestamp, toAppTimestamp } from "./timezone";
+import { getAppCalendarDate } from "./timezone";
 
-describe("Philippine-time helpers", () => {
-  it("uses the single Asia/Manila application contract", () => {
-    expect(APP_TIME_ZONE).toEqual({
-      iana: "Asia/Manila",
-      utcOffset: "+08:00",
-    });
-  });
-
-  it("serializes local Philippine date and time without browser-timezone input", () => {
-    expect(toAppTimestamp("2026-10-24", "00:30")).toBe(
-      "2026-10-23T16:30:00.000Z",
+describe("application calendar date", () => {
+  it("changes dates at the Asia/Manila midnight boundary", () => {
+    expect(getAppCalendarDate(new Date("2026-11-13T15:59:59.999Z"))).toBe(
+      "2026-11-13",
+    );
+    expect(getAppCalendarDate(new Date("2026-11-13T16:00:00.000Z"))).toBe(
+      "2026-11-14",
     );
   });
 
-  it("splits a stored timestamp back into Philippine date and time", () => {
-    expect(splitAppTimestamp("2026-10-23T16:30:00.000Z")).toEqual({
-      date: "2026-10-24",
-      time: "00:30",
-    });
-  });
-
-  it("fails safely for an invalid timestamp", () => {
-    expect(splitAppTimestamp("not-a-timestamp")).toBeNull();
+  it("keeps a due date stored at 00:00 UTC on its intended calendar date", () => {
+    expect(getAppCalendarDate(new Date("2026-11-14T00:00:00.000Z"))).toBe(
+      "2026-11-14",
+    );
   });
 });

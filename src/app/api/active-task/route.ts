@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getActiveProfileForRoles, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getAppCalendarDate } from "@/lib/timezone";
 import {
   createActiveTaskRpcArgs,
   editActiveTaskRpcArgs,
+  getActiveTaskDateFloorProblem,
   runActiveTaskRpc,
   type CreateActiveTaskRequest,
   type EditActiveTaskRequest,
@@ -81,6 +83,15 @@ export async function POST(request: Request) {
   const payload = validation.data;
   if (committeeDenied(authorized.profile, payload)) {
     return json({ error: "The task is unavailable." }, 403);
+  }
+  const dateFloorProblem = getActiveTaskDateFloorProblem({
+    mode: "add",
+    draft: payload,
+    initialDraft: null,
+    today: getAppCalendarDate(),
+  });
+  if (dateFloorProblem) {
+    return json({ error: dateFloorProblem.message }, 400);
   }
 
   const supabase = await createClient();

@@ -116,6 +116,31 @@ export function getActiveTaskDateInputMax({
   return eventEndDate;
 }
 
+export function getActiveTaskDateInputMin({
+  mode,
+  value,
+  initialValue,
+  today,
+  relatedMin,
+}: {
+  mode: "add" | "edit";
+  value: string;
+  initialValue: string | null;
+  today: string;
+  relatedMin?: string;
+}) {
+  const grandfatheredValue =
+    mode === "edit" &&
+    value !== "" &&
+    value === initialValue &&
+    value < today
+      ? value
+      : today;
+  return relatedMin && relatedMin > grandfatheredValue
+    ? relatedMin
+    : grandfatheredValue;
+}
+
 export function getActiveTaskEventEndProblem({
   mode,
   draft,
