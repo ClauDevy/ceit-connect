@@ -8,6 +8,7 @@ import {
 } from "./active-task";
 import {
   activeTaskPickerLimitMessage,
+  buildActiveTaskSubmissionDraft,
   buildActiveTaskPickerCandidates,
   buildActiveTaskEditDraft,
   buildBulkPersonSelection,
@@ -377,12 +378,106 @@ describe("active task Edit prefill", () => {
     ).toBeNull();
     if (prepared) submit(prepared);
     expect(submit).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Changed title", endDate: "2026-11-14" }),
+      expect.objectContaining({
+        title: "Changed title",
+        dueDate: "2026-11-12",
+        dutyDate: "",
+        endDate: "",
+      }),
     );
   });
 
+  it("keeps an edited Deliverable due date in form state but submits the stored date after switching to Live Operation", () => {
+    const initial = buildActiveTaskEditDraft(task, controls, "Low")!;
+    const edited = {
+      ...initial,
+      dueDate: "2026-11-20",
+      taskType: "LiveOperation" as const,
+      dutyDate: "2026-11-21",
+      callTime: "09:00",
+    };
+
+    const submitted = buildActiveTaskSubmissionDraft({
+      mode: "edit",
+      draft: edited,
+      initialDraft: initial,
+      assistAssigneeIds: [],
+    });
+
+    expect(edited.dueDate).toBe("2026-11-20");
+    expect(submitted.dueDate).toBe("2026-10-30");
+    expect(validateEditActiveTaskRequest({
+      taskId: task.id,
+      expectedUpdatedAt: task.updated_at,
+      ...submitted,
+    }).ok).toBe(true);
+  });
+
+  it("keeps both schedule sets while switching and sends only the final type's values", () => {
+    const typed = {
+      ...buildActiveTaskEditDraft(task, controls, "Low")!,
+      dueDate: "2026-11-20",
+      dutyDate: "2026-11-21",
+      callTime: "09:00",
+      endDate: "2026-11-22",
+      endTime: "10:00",
+    };
+    const liveState = { ...typed, taskType: "LiveOperation" as const };
+    const deliverableState = { ...liveState, taskType: "Deliverable" as const };
+
+    expect(deliverableState).toMatchObject({
+      dueDate: "2026-11-20",
+      dutyDate: "2026-11-21",
+      callTime: "09:00",
+      endDate: "2026-11-22",
+      endTime: "10:00",
+    });
+    expect(buildActiveTaskSubmissionDraft({
+      mode: "edit",
+      draft: liveState,
+      initialDraft: typed,
+      assistAssigneeIds: [],
+    })).toMatchObject({ dueDate: "2026-11-20", dutyDate: "2026-11-21" });
+    expect(buildActiveTaskSubmissionDraft({
+      mode: "edit",
+      draft: deliverableState,
+      initialDraft: typed,
+      assistAssigneeIds: [],
+    })).toMatchObject({
+      dueDate: "2026-11-20",
+      dutyDate: "",
+      callTime: "",
+      endDate: "",
+      endTime: "",
+    });
+  });
+
+  it("submits no due date for a new Live Operation and keeps the strict request shape valid", () => {
+    const liveDraft = buildActiveTaskSubmissionDraft({
+      mode: "add",
+      draft: {
+        ...buildActiveTaskEditDraft(task, controls, "Low")!,
+        taskType: "LiveOperation",
+        dueDate: "2000-01-01",
+        dutyDate: "2026-11-21",
+        callTime: "09:00",
+      },
+      initialDraft: null,
+      assistAssigneeIds: [],
+    });
+
+    expect(liveDraft.dueDate).toBe("");
+    expect(validateCreateActiveTaskRequest({ eventId: task.event_id, ...liveDraft }).ok).toBe(true);
+  });
+
+  it("wires type toggles without destructive field clearing and uses shared wording", () => {
+    expect(activeTaskDialogSource).toContain("onClick={() => updateDraft({ taskType: type })}");
+    expect(activeTaskDialogSource).not.toContain("Philippine duty date");
+    expect(activeTaskDialogSource).toContain("Set the task details, schedule, and assignees.");
+    expect(activeTaskDialogSource).toContain("A Live Operation schedule is optional.");
+  });
+
   it.each([
-    ["due date", { dueDate: "2026-11-15" }, "dueDate", "The due date cannot be after the event end date (2026-11-06)."],
     ["duty date", { dutyDate: "2026-11-15" }, "dutyDate", "The duty date cannot be after the event end date (2026-11-06)."],
     ["end date", { endDate: "2026-11-15" }, "endDate", "The end date cannot be after the event end date (2026-11-06)."],
   ])("rejects a changed grandfathered %s on its exact field", (_, change, field, message) => {

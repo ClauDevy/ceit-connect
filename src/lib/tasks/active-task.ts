@@ -423,8 +423,16 @@ export function getActiveTaskDateFloorProblem({
   const candidates = [
     {
       field: "dueDate" as const,
-      value: draft.dueDate,
-      initialValue: initialDraft?.dueDate ?? "",
+      value:
+        draft.taskType === "Deliverable"
+          ? draft.dueDate
+          : mode === "edit"
+            ? initialDraft?.dueDate ?? ""
+            : "",
+      initialValue:
+        initialDraft?.taskType === "Deliverable" || mode === "edit"
+          ? initialDraft?.dueDate ?? ""
+          : "",
     },
     {
       field: "dutyDate" as const,
