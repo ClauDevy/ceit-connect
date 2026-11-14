@@ -54,6 +54,10 @@ const MEMBER_ERROR_MESSAGES: Record<
     status: 409,
     message: "The Member record changed unexpectedly. Refresh and try again.",
   },
+  CCG01: {
+    status: 409,
+    message: "Only Admins can be assigned to the President committee.",
+  },
 };
 
 export function safeMemberManagementError(

@@ -112,6 +112,23 @@ describe("POST /api/invite-officers", () => {
     expect(mock.inviteUserByEmail).toHaveBeenCalledTimes(count);
   });
 
+  it("shows CCG01 at preparation without creating an Auth invitation", async () => {
+    const mock = clients({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "CCG01", message: "private database text" },
+      }),
+    });
+    const response = await POST(request({ action: "send", invites: [row()] }));
+    const body = await response.json();
+    expect(mock.inviteUserByEmail).not.toHaveBeenCalled();
+    expect(body.results[0]).toMatchObject({
+      state: "failed",
+      message: "Only Admins can be assigned to the President committee.",
+    });
+    expect(JSON.stringify(body)).not.toContain("private");
+  });
+
   it("fails closed when ALLOWED_EMAIL_DOMAINS is missing or empty", async () => {
     clients();
     for (const value of [undefined, " , "]) {
@@ -342,7 +359,7 @@ describe("POST /api/invite-officers", () => {
     expect(mock.inviteUserByEmail).not.toHaveBeenCalled();
   });
 
-  it("deletes a never-finalized Auth attempt after finalization fails", async () => {
+  it("keeps the old wording and cleans up Auth for a non-CCG01 finalization failure", async () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({ data: { outcome: "prepared", invite_id: inviteId }, error: null })
@@ -358,8 +375,41 @@ describe("POST /api/invite-officers", () => {
     const mock = clients({ rpc });
     const response = await POST(request({ action: "send", invites: [row()] }));
     const body = await response.json();
+    expect(rpc.mock.calls[2][0]).toBe("cancel_officer_invite");
     expect(mock.deleteUser).toHaveBeenCalledWith(authUserId);
-    expect(body.results[0].state).toBe("failed");
+    expect(body.results[0]).toMatchObject({
+      state: "failed",
+      message: "The invitation could not be completed. Retry when ready.",
+    });
+    expect(JSON.stringify(body)).not.toContain("private");
+  });
+
+  it("keeps CCG01 wording while cancellation and Auth cleanup still run", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { outcome: "prepared", invite_id: inviteId }, error: null })
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "CCG01", message: "private database text" },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          outcome: "cancelled",
+          cleanup_action: "delete_new_attempt",
+          auth_user_id: authUserId,
+        },
+        error: null,
+      });
+    const mock = clients({ rpc });
+    const response = await POST(request({ action: "send", invites: [row()] }));
+    const body = await response.json();
+    expect(rpc.mock.calls[2][0]).toBe("cancel_officer_invite");
+    expect(mock.deleteUser).toHaveBeenCalledWith(authUserId);
+    expect(body.results[0]).toMatchObject({
+      state: "failed",
+      message: "Only Admins can be assigned to the President committee.",
+    });
+    expect(JSON.stringify(body)).not.toContain("private");
   });
 
   it("runs the idempotent cancel RPC before banning and reports failed ban cleanup", async () => {
