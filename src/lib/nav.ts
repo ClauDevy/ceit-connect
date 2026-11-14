@@ -3,6 +3,7 @@ import {
   ChartColumn,
   History,
   House,
+  CircleHelp,
   ListTodo,
   Settings,
   Trash2,
@@ -38,6 +39,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/users", label: "User Management", icon: Users, roles: LEADERSHIP },
   { href: "/settings", label: "Settings", icon: Settings, roles: EVERYONE, pinnedOnMobile: true, passwordWarning: true },
 ];
+
+export const HELP_NAV_ITEM: NavItem = {
+  href: "/help",
+  label: "Help",
+  icon: CircleHelp,
+  roles: EVERYONE,
+};
 
 export function navForRole(role: Role) {
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
