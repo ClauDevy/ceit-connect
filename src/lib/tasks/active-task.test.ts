@@ -3,6 +3,7 @@ import {
   ACTIVE_TASK_RETRY_MESSAGE,
   createActiveTaskRpcArgs,
   editActiveTaskRpcArgs,
+  getActiveTaskDateFloorProblem,
   parseCreateActiveTaskRequest,
   parseEditActiveTaskRequest,
   runActiveTaskRpc,
@@ -39,6 +40,83 @@ const draft = {
 };
 
 describe("active task request contracts", () => {
+  it.each([
+    ["due date", { dueDate: "2026-11-13" }, "dueDate", "Choose today or a later due date."],
+    ["duty date", { dutyDate: "2026-11-13" }, "dutyDate", "Choose today or a later duty date."],
+    ["end date", { endDate: "2026-11-13" }, "endDate", "Choose today or a later end date."],
+  ])("rejects a past %s on create", (_, change, field, message) => {
+    expect(
+      getActiveTaskDateFloorProblem({
+        mode: "add",
+        draft: {
+          ...draft,
+          dueDate: "2026-11-14",
+          dutyDate: "2026-11-14",
+          endDate: "2026-11-15",
+          ...change,
+        },
+        initialDraft: null,
+        today: "2026-11-14",
+      }),
+    ).toEqual({ field, message });
+  });
+
+  it("allows today even when the selected times have passed and allows an overnight end", () => {
+    expect(
+      getActiveTaskDateFloorProblem({
+        mode: "add",
+        draft: {
+          ...draft,
+          dueDate: "2026-11-14",
+          dutyDate: "2026-11-14",
+          callTime: "00:01",
+          endDate: "2026-11-15",
+          endTime: "02:00",
+        },
+        initialDraft: null,
+        today: "2026-11-14",
+      }),
+    ).toBeNull();
+  });
+
+  it("uses changed calendar dates, not changed times, for grandfathered edits", () => {
+    const initial = {
+      ...draft,
+      dueDate: "2026-11-10",
+      dutyDate: "2026-11-11",
+      callTime: "09:00",
+      endDate: "2026-11-12",
+      endTime: "02:00",
+    };
+    expect(
+      getActiveTaskDateFloorProblem({
+        mode: "edit",
+        draft: { ...initial, title: "Changed", callTime: "10:00", endTime: "03:00" },
+        initialDraft: initial,
+        today: "2026-11-14",
+      }),
+    ).toBeNull();
+    expect(
+      getActiveTaskDateFloorProblem({
+        mode: "edit",
+        draft: { ...initial, dutyDate: "2026-11-13" },
+        initialDraft: initial,
+        today: "2026-11-14",
+      }),
+    ).toEqual({
+      field: "dutyDate",
+      message: "Choose today or a later duty date.",
+    });
+    expect(
+      getActiveTaskDateFloorProblem({
+        mode: "edit",
+        draft: { ...initial, dueDate: "", endDate: "", endTime: "" },
+        initialDraft: initial,
+        today: "2026-11-14",
+      }),
+    ).toBeNull();
+  });
+
   it("strictly validates POST and PATCH fields", () => {
     expect(parseCreateActiveTaskRequest({ eventId, ...draft })).toEqual({
       eventId,
@@ -307,6 +385,9 @@ describe("active task CCL01 retry helper", () => {
 
   it("maps the approved stable messages", async () => {
     const expected = new Map([
+      ["CCD07", "Choose today or a later due date."],
+      ["CCD08", "Choose today or a later duty date."],
+      ["CCD09", "Choose today or a later end date."],
       ["CCD05", "The due date cannot be after the event end date."],
       ["CCD02", "The call time cannot be after the event end date."],
       ["CCD03", "The end time cannot be after the event end date."],
