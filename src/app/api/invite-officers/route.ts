@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseAllowedEmailDomains } from "../../../lib/allowed-email-domains";
 import { getActiveProfileForRoles, getAuthUser } from "@/lib/auth";
 import {
+  getErrorCode,
   isAuthEmailRateLimit,
   isUuid,
   parseInviteInput,
@@ -310,6 +311,10 @@ async function processInvite(
     };
   }
 
+  const finalizationMessage =
+    finalizeError && getErrorCode(finalizeError) === "CCG01"
+      ? safeOfficerError(finalizeError).message
+      : "The invitation could not be completed. Retry when ready.";
   const cleanup = await cancelAndCleanUp(
     callerClient,
     authoritativeInviteId,
@@ -319,9 +324,7 @@ async function processInvite(
     result: result(
       invite,
       cleanup.complete ? "failed" : "cleanup-pending",
-      cleanup.complete
-        ? "The invitation could not be completed. Retry when ready."
-        : cleanup.message,
+      cleanup.complete ? finalizationMessage : cleanup.message,
       {
         inviteId: authoritativeInviteId,
         authUserId: cleanup.authUserId ?? invited.user.id,

@@ -12,6 +12,7 @@ describe("officer route contracts", () => {
     ["CCO07", "failed"],
     ["CCO08", "failed"],
     ["CCO09", "failed"],
+    ["CCG01", "failed"],
   ])("maps %s to a safe %s result", (code, state) => {
     const mapped = safeOfficerError({ code, message: "private database text" });
     expect(mapped.state).toBe(state);
