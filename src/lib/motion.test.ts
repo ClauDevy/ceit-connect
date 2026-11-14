@@ -257,10 +257,18 @@ describe("motion entrance policy", () => {
       resolve(process.cwd(), "src/components/tasks/workspace-tasks.tsx"),
       "utf8",
     );
-    const eventForm = readFileSync(
-      resolve(process.cwd(), "src/components/events/event-form.tsx"),
-      "utf8",
-    );
+    const eventForm = [
+      "event-form.tsx",
+      "event-form-fundamentals.tsx",
+      "event-form-task-phases.tsx",
+    ]
+      .map((file) =>
+        readFileSync(
+          resolve(process.cwd(), `src/components/events/${file}`),
+          "utf8",
+        ),
+      )
+      .join("\n");
     const board = readFileSync(
       resolve(process.cwd(), "src/components/events/event-board-lanes.tsx"),
       "utf8",
