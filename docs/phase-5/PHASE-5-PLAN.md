@@ -292,7 +292,7 @@ with an optional exact `#comment-{UUID}` fragment.
 
 ## Final release checklist
 
-- Set Production `ALLOWED_EMAIL_DOMAINS=cvsu.edu.ph`, redeploy, and verify one
+- [ ] Set Production `ALLOWED_EMAIL_DOMAINS=cvsu.edu.ph`, redeploy, and verify one
   allowed and one rejected domain.
-- Make `/api/invite` fail closed when `ALLOWED_EMAIL_DOMAINS` is absent or empty,
-  and verify that behavior before final release.
+- [x] Make `/api/invite` fail closed when `ALLOWED_EMAIL_DOMAINS` is absent or
+  empty. Implemented locally in code; not live.

@@ -375,7 +375,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - List-only item: `src/components/layout/sidebar.tsx` is an unused legacy sidebar with no importer and is not mounted by `AppShell`; Batch 14 does not delete it.
 - Batch 14 catalog-test allowlist follow-up: include `purge_activity_log`, `activity_log_retention_days`, `guard_activity_log_deletes`, and trigger `activity_log_guard_deletes`. Do not change the authoritative count or allowlist files before that deferred catalog pass.
 - Batch 14 security follow-up: `/api/set-password` and `/api/complete-reset` use `createServiceRoleClient()` without independently re-checking `is_active`, contrary to golden rule 3.
-- Final release checklist after Phase 5: set Production `ALLOWED_EMAIL_DOMAINS=cvsu.edu.ph`, redeploy and test allowed/rejected domains; beside it, make `/api/invite` fail closed when the variable is absent or empty. Dev test domains remain unchanged until then. This open item is not required by the Phase 4B gate.
+- Final-release invite fail-closed behavior is implemented locally, not live; the Production domain setting, redeploy, and allowed/rejected-domain verification remain owner steps.
 - Future Member-invite correction flow: a mistyped Member email cannot be re-invited because its profile already exists; the current recovery is to deactivate the incorrect profile, never delete it.
 - Batch 14 shell/settings follow-up: the dashboard layout ignores its profile-query error and inactive-user sign-out result, while Settings ignores its profile-query error.
 - Batch 14 task-lock follow-up: Edit Event's affected-user discovery still omits deletion-only task assignees; audit and close that user-lock gap with the global order preserved.
