@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  EVENT_ASSIGNEE_LIMIT_MESSAGE,
   buildEventPhaseViews,
   buildCompleteEventPhaseOrder,
   eventFormPhasesAreValid,
@@ -7,11 +8,14 @@ import {
   getEventFormSummary,
   getEventPhaseCardKey,
   getEventPhaseControls,
+  getCommitteeScopedEventAssignees,
+  getInitialEventTaskCommitteeId,
   getLiveOperationScheduleProblem,
   getSavableEventPhaseName,
   normalizeEventPhaseName,
   parseImportedDueDate,
   toTaskPayload,
+  updateEventAssigneeSelection,
 } from "./form";
 
 const taskDraft = {
@@ -59,6 +63,48 @@ describe("event task due dates", () => {
     });
   });
 
+  it.each([
+    [
+      "an end date before the duty date",
+      { callDate: "2026-11-02", callTime: "23:00", endDate: "2026-11-01", endTime: "23:30" },
+      { field: "end-date", message: "End date cannot be before the duty date." },
+    ],
+    [
+      "a same-date end time before the call time",
+      { callDate: "2026-11-02", callTime: "23:00", endDate: "2026-11-02", endTime: "22:59" },
+      { field: "end-time", message: "End time cannot be before call time." },
+    ],
+  ])("focuses the exact field for %s", (_, schedule, expected) => {
+    expect(
+      getLiveOperationScheduleProblem({
+        ...taskDraft,
+        taskType: "LiveOperation",
+        ...schedule,
+      }),
+    ).toEqual(expected);
+  });
+
+  it.each([
+    [
+      "missing duty date",
+      { callDate: "", callTime: "23:00", endDate: "", endTime: "" },
+      { field: "call-date", message: "Choose a duty date when adding a live-duty schedule." },
+    ],
+    [
+      "missing call time",
+      { callDate: "2026-11-01", callTime: "", endDate: "", endTime: "02:00" },
+      { field: "call-time", message: "Choose a call time when adding a live-duty schedule." },
+    ],
+  ])("reports the exact field for a partial schedule with %s", (_, schedule, expected) => {
+    expect(
+      getLiveOperationScheduleProblem({
+        ...taskDraft,
+        taskType: "LiveOperation",
+        ...schedule,
+      }),
+    ).toEqual(expected);
+  });
+
   it("requires an end time only when a new or edited task sets an end date", () => {
     expect(
       getLiveOperationScheduleProblem({
@@ -99,6 +145,31 @@ describe("event task due dates", () => {
         dueDate: parsed!.date,
       }).due_date,
     ).toBe("2026-10-24");
+  });
+});
+
+describe("event task picker safety", () => {
+  it("fails a committee-less Co-Admin closed without reading index zero", () => {
+    expect(getInitialEventTaskCommitteeId("Co-Admin", [])).toBe("");
+  });
+
+  it("rejects a single 101st assignee with the board message", () => {
+    const selected = Array.from({ length: 100 }, (_, index) => `person-${index}`);
+    expect(updateEventAssigneeSelection(selected, "person-101", true)).toEqual({
+      ids: selected,
+      error: EVENT_ASSIGNEE_LIMIT_MESSAGE,
+    });
+  });
+
+  it("keeps bulk candidates scoped to the selected committee", () => {
+    const people = [
+      { id: "a", committee_id: "committee-a" },
+      { id: "b", committee_id: "committee-b" },
+      { id: "c", committee_id: "committee-a" },
+    ];
+    expect(
+      getCommitteeScopedEventAssignees(people, "committee-a").map(({ id }) => id),
+    ).toEqual(["a", "c"]);
   });
 });
 

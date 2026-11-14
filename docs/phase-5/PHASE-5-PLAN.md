@@ -23,8 +23,10 @@ current batch completes its full stage order.
 | J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
 | B2 | Local-only backup restore drill, count proof, cleanup, and disaster limitations | `docs/backup-restore-drill` | Medium | Merged; owner-run drill pending |
 | U1 | Event-board initial phase, President picker exclusions, and archived-template deadline reset | `fix/event-board-template-and-picker-ux` | Medium | Implemented locally; no migration |
-| U2 | Event board component split (refactor only, no behavior change) | planned UI branch | Medium | Implemented locally; UI-only, no migration |
+| U2 | Event board component split (refactor only, no behavior change) | planned UI branch | Medium | Merged; UI-only, no migration |
+| U4a | Task editor schedule and picker fixes | `fix/task-editor-schedule-parity` | High | Implemented locally; never live |
 | V1 | Manila-date Active-task deadline guard and Admin-only President committee invariant | planned database/UI branch | High | Planned; read-only Prod preflight required |
+| U4b | Remaining task-editor wording and parity follow-up | planned UI branch | Medium | Planned |
 | H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Planned; UI-only, no migration |
 | U3 | Optional event form component split (refactor only, no behavior change) | optional later UI branch | Medium | Optional later; UI-only, no migration |
 | L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Migration `20261119120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
@@ -35,7 +37,7 @@ started after the N2 notification UI gate and is now live. Every later batch
 still completes its own plan, implementation, review, and rollout before the
 next batch starts.
 
-The approved post-J1 order is B2 (merged), U1, U2, V1, H1, then manifest
+The approved post-J1 order is B2 (merged), U1, U2 (merged), U4a, V1, U4b, H1, then manifest
 screenshots, the final release checklist, optional `discord_id` removal, and E1
 only if needed. Optional U3 is a later refactor and is not part of that required
 order. H1 describes the app only after U1, V1, L1, and G1 rules are in their
@@ -167,6 +169,16 @@ no board-level test (only the progress ring has one). U2 first adds tests that
 pin today's board behavior, then moves code into smaller files while preserving
 the same public props, behavior, mobile layout, and shared motion exactly.
 
+### U4a — task editor schedule and picker fixes
+
+U4a is application, test, and documentation work only. It adds overnight End
+date support and exact schedule validation/focus to the Active-event task
+editor, preserves old-tab request compatibility and grandfathered event-end
+rules, and fixes the Event editor's missing-committee and assignee-picker edge
+cases. It changes no migration, RPC signature, database rule, L1 timing rule,
+priority rule, or stored timestamp contract. See
+`docs/phase-5/step-u4a-task-editor-fixes.md`.
+
 ### V1 — deadline and President-committee enforcement
 
 V1 combines database and UI work and needs High reasoning.
@@ -184,6 +196,16 @@ V1 combines database and UI work and needs High reasoning.
   foreign-committee tasks imported by a Co-Admin also receive blank due, call,
   and end values. This closes U1's documented UI-only limitation and the
   read-only foreign-row event-end conflict without excluding imported tasks.
+
+### U4b — remaining task-editor follow-up
+
+U4b remains a separately planned UI follow-up after V1. U4a does not absorb
+its wording, default-selection, type-toggle, confidential-field, or redesign
+decisions.
+
+- Fix the Event form's same-day-prefill trap so a Duty-date-only edit moves
+  the whole same-day live schedule instead of retaining an explicit old End
+  date.
 
 ### H1 — in-app user manual
 
@@ -248,7 +270,7 @@ with an optional exact `#comment-{UUID}` fragment.
 
 - Phase 5 cannot be marked complete until every approved item — N1, N2, I1,
   the bell correction, N3a, N3b, P1, D1, D1b, D2, O1, R1, R2, and J1 — has completed review and
-  rollout. Completion also requires B2, U1, U2, V1, and H1; B2 includes a
+  rollout. Completion also requires B2, U1, U2, U4a, V1, U4b, and H1; B2 includes a
   completed owner-run restore drill. Optional U3 is not part of this gate.
 - A burst of at least 40 mentions across at least three comments creates every
   persistent in-app row without loss or delay.

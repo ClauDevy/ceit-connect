@@ -1,4 +1,5 @@
 import { toAppTimestamp } from "../timezone";
+import { getLiveOperationScheduleProblem } from "../events/form";
 import { isCanonicalUuid } from "../uuid";
 import { getPhaseCompletionErrorMessage } from "./phase-completion";
 
@@ -26,6 +27,7 @@ export type ActiveTaskDraft = {
   dueDate: string;
   dutyDate: string;
   callTime: string;
+  endDate: string;
   endTime: string;
   primaryAssigneeIds: string[];
   isConfidential: boolean;
@@ -47,6 +49,10 @@ export type ActiveTaskValidationField =
   | "priority"
   | "taskType"
   | "dueDate"
+  | "dutyDate"
+  | "callTime"
+  | "endDate"
+  | "endTime"
   | "schedule"
   | "primaryAssignees"
   | "confidentiality"
@@ -85,6 +91,10 @@ const VALIDATION_MESSAGES = {
   priority: "Choose a valid priority.",
   taskType: "Choose a valid task type.",
   dueDate: "Choose a valid due date.",
+  dutyDate: "Choose a valid duty date.",
+  callTime: "Choose a valid call time.",
+  endDate: "Choose a valid end date.",
+  endTime: "Choose a valid end time.",
   schedule: "Check the Live Operation date and times.",
   primaryAssignees: "Select up to 100 people.",
   primaryAssigneesInvalid:
@@ -127,6 +137,7 @@ const COMMON_KEYS = [
   "dueDate",
   "dutyDate",
   "callTime",
+  "endDate",
   "endTime",
   "primaryAssigneeIds",
   "isConfidential",
@@ -142,12 +153,11 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 function hasExactKeys(
   value: Record<string, unknown>,
   expected: readonly string[],
+  optional: readonly string[] = [],
 ) {
   const keys = Object.keys(value);
-  return (
-    keys.length === expected.length &&
-    keys.every((key) => expected.includes(key))
-  );
+  return expected.every((key) => keys.includes(key)) &&
+    keys.every((key) => expected.includes(key) || optional.includes(key));
 }
 
 function isValidDate(value: string) {
@@ -197,6 +207,9 @@ function validateCommonTaskDraft(
   const dueDate = body.dueDate;
   const dutyDate = body.dutyDate;
   const callTime = body.callTime;
+  const endDate = Object.prototype.hasOwnProperty.call(body, "endDate")
+    ? body.endDate
+    : "";
   const endTime = body.endTime;
   const primaryAssigneeIds = body.primaryAssigneeIds;
   const isConfidential = body.isConfidential;
@@ -233,8 +246,24 @@ function validateCommonTaskDraft(
   if (
     typeof dutyDate !== "string" ||
     typeof callTime !== "string" ||
+    typeof endDate !== "string" ||
     typeof endTime !== "string"
-  ) return invalid("schedule", VALIDATION_MESSAGES.schedule);
+  ) {
+    if (typeof endDate !== "string") return invalid("endDate", VALIDATION_MESSAGES.endDate);
+    return invalid("schedule", VALIDATION_MESSAGES.schedule);
+  }
+  if (dutyDate !== "" && !isValidDate(dutyDate)) {
+    return invalid("dutyDate", VALIDATION_MESSAGES.dutyDate);
+  }
+  if (callTime !== "" && !TIME_PATTERN.test(callTime)) {
+    return invalid("callTime", VALIDATION_MESSAGES.callTime);
+  }
+  if (endDate !== "" && !isValidDate(endDate)) {
+    return invalid("endDate", VALIDATION_MESSAGES.endDate);
+  }
+  if (endTime !== "" && !TIME_PATTERN.test(endTime)) {
+    return invalid("endTime", VALIDATION_MESSAGES.endTime);
+  }
   const primaryAssigneeValidation = validateUuidArray(primaryAssigneeIds, 100);
   if (primaryAssigneeValidation.status === "cap") {
     return invalid("primaryAssignees", VALIDATION_MESSAGES.primaryAssignees);
@@ -263,17 +292,25 @@ function validateCommonTaskDraft(
   }
 
   if (taskType === "Deliverable") {
-    if (dutyDate || callTime || endTime) {
+    if (dutyDate || callTime || endDate || endTime) {
       return invalid("schedule", VALIDATION_MESSAGES.schedule);
     }
   } else {
-    const hasSchedule = Boolean(dutyDate || callTime || endTime);
-    if (
-      (hasSchedule && (!isValidDate(dutyDate) || !TIME_PATTERN.test(callTime))) ||
-      (endTime !== "" && !TIME_PATTERN.test(endTime)) ||
-      (callTime && endTime && endTime < callTime)
-    ) {
-      return invalid("schedule", VALIDATION_MESSAGES.schedule);
+    const scheduleProblem = getLiveOperationScheduleProblem({
+      taskType: taskType as ActiveTaskType,
+      callDate: dutyDate,
+      callTime,
+      endDate,
+      endTime,
+    });
+    if (scheduleProblem) {
+      const field = {
+        "call-date": "dutyDate",
+        "call-time": "callTime",
+        "end-date": "endDate",
+        "end-time": "endTime",
+      }[scheduleProblem.field] as "dutyDate" | "callTime" | "endDate" | "endTime";
+      return invalid(field, scheduleProblem.message);
     }
   }
 
@@ -287,6 +324,7 @@ function validateCommonTaskDraft(
     dueDate,
     dutyDate,
     callTime,
+    endDate,
     endTime,
     primaryAssigneeIds: primaryAssigneeValidation.ids,
     isConfidential,
@@ -297,7 +335,8 @@ function validateCommonTaskDraft(
 export function validateCreateActiveTaskRequest(
   value: unknown,
 ): ActiveTaskValidationResult<CreateActiveTaskRequest> {
-  if (!isPlainRecord(value) || !hasExactKeys(value, ["eventId", ...COMMON_KEYS])) {
+  const requiredKeys = COMMON_KEYS.filter((key) => key !== "endDate");
+  if (!isPlainRecord(value) || !hasExactKeys(value, ["eventId", ...requiredKeys], ["endDate"])) {
     return invalid("form", VALIDATION_MESSAGES.generic);
   }
   if (!isCanonicalUuid(value.eventId)) {
@@ -314,7 +353,11 @@ export function validateEditActiveTaskRequest(
 ): ActiveTaskValidationResult<EditActiveTaskRequest> {
   if (
     !isPlainRecord(value) ||
-    !hasExactKeys(value, ["taskId", "expectedUpdatedAt", ...COMMON_KEYS])
+    !hasExactKeys(
+      value,
+      ["taskId", "expectedUpdatedAt", ...COMMON_KEYS.filter((key) => key !== "endDate")],
+      ["endDate"],
+    )
   ) {
     return invalid("form", VALIDATION_MESSAGES.generic);
   }
@@ -369,7 +412,7 @@ function commonRpcArgs(draft: ActiveTaskDraft) {
         : null,
     p_end_time:
       draft.taskType === "LiveOperation"
-        ? toAppTimestamp(draft.dutyDate, draft.endTime)
+        ? toAppTimestamp(draft.endDate || draft.dutyDate, draft.endTime)
         : null,
     p_primary_assignees: draft.primaryAssigneeIds,
     p_is_confidential: draft.isConfidential,

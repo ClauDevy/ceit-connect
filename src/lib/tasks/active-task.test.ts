@@ -31,6 +31,7 @@ const draft = {
   dueDate: "2026-10-30",
   dutyDate: "2026-10-31",
   callTime: "00:30",
+  endDate: "",
   endTime: "02:00",
   primaryAssigneeIds: [personId],
   isConfidential: true,
@@ -56,6 +57,62 @@ describe("active task request contracts", () => {
     expect(parseCreateActiveTaskRequest({ eventId, ...draft, dueDate: "2026-02-30" })).toBeNull();
     expect(parseCreateActiveTaskRequest({ eventId, ...draft, primaryAssigneeIds: [personId, personId] })).toBeNull();
     expect(parseEditActiveTaskRequest({ taskId, expectedUpdatedAt: "not-a-token", ...draft })).toBeNull();
+  });
+
+  it.each([
+    ["POST", (body: Record<string, unknown>) => validateCreateActiveTaskRequest({ eventId, ...body })],
+    ["PATCH", (body: Record<string, unknown>) => validateEditActiveTaskRequest({ taskId, expectedUpdatedAt: "2026-10-28T12:34:56.123456+00:00", ...body })],
+  ])("keeps endDate optional for old %s clients but validates it when present", (_, validate) => {
+    const legacyDraft: Record<string, unknown> = { ...draft };
+    delete legacyDraft.endDate;
+    expect(validate(legacyDraft)).toMatchObject({ ok: true, data: { endDate: "" } });
+    expect(validate({ ...draft, endDate: "" })).toMatchObject({ ok: true });
+    expect(validate({ ...draft, endDate: 123 })).toMatchObject({ ok: false, field: "endDate" });
+    expect(validate({ ...draft, endDate: null })).toMatchObject({ ok: false, field: "endDate" });
+    expect(validate({ ...draft, endDate: "2026-02-30" })).toMatchObject({ ok: false, field: "endDate" });
+  });
+
+  it("accepts and serializes an overnight Live Operation", () => {
+    const payload = parseCreateActiveTaskRequest({
+      eventId,
+      ...draft,
+      dutyDate: "2026-12-31",
+      callTime: "23:00",
+      endDate: "2027-01-01",
+      endTime: "02:00",
+    })!;
+    expect(createActiveTaskRpcArgs(payload)).toMatchObject({
+      p_call_time: "2026-12-31T15:00:00.000Z",
+      p_end_time: "2026-12-31T18:00:00.000Z",
+    });
+  });
+
+  it.each([
+    [{ dutyDate: "", callTime: "23:00" }, "dutyDate", "Choose a duty date when adding a live-duty schedule."],
+    [{ dutyDate: "2026-11-01", callTime: "", endTime: "02:00" }, "callTime", "Choose a call time when adding a live-duty schedule."],
+    [{ dutyDate: "2026-11-01", callTime: "23:00", endDate: "2026-11-02", endTime: "" }, "endTime", "Choose an end time when setting an end date."],
+    [{ dutyDate: "2026-11-02", callTime: "23:00", endDate: "2026-11-01", endTime: "23:30" }, "endDate", "End date cannot be before the duty date."],
+    [{ dutyDate: "2026-11-02", callTime: "23:00", endDate: "2026-11-02", endTime: "22:59" }, "endTime", "End time cannot be before call time."],
+  ])("returns a precise board schedule error for %#", (change, field, message) => {
+    expect(validateCreateActiveTaskRequest({ eventId, ...draft, ...change })).toMatchObject({
+      ok: false,
+      field,
+      message,
+    });
+  });
+
+  it("rejects every schedule value on Deliverables, including endDate", () => {
+    expect(
+      validateCreateActiveTaskRequest({
+        eventId,
+        ...draft,
+        taskType: "Deliverable",
+        dutyDate: "",
+        callTime: "",
+        endTime: "",
+        endDate: "2026-11-01",
+      }),
+    ).toMatchObject({ ok: false, field: "schedule" });
   });
 
   it.each([
