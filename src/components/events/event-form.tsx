@@ -70,10 +70,13 @@ import {
   getEventFormSummary,
   getEventPhaseCardKey,
   getEventPhaseControls,
+  getCommitteeScopedEventAssignees,
+  getInitialEventTaskCommitteeId,
   getLiveOperationScheduleProblem,
   getSavableEventPhaseName,
   normalizeEventPhaseName,
   toTaskPayload,
+  updateEventAssigneeSelection,
 } from "@/lib/events/form";
 import {
   isTemplateTaskEditable,
@@ -546,11 +549,10 @@ export function EventForm({
     );
 
     return {
-      selected: filtered
-        .filter(
-          (assignee) => assignee.committee_id === taskEditor.draft.committeeId,
-        )
-        .sort(byName),
+      selected: getCommitteeScopedEventAssignees(
+        filtered,
+        taskEditor.draft.committeeId,
+      ).sort(byName),
       other: filtered
         .filter(
           (assignee) => assignee.committee_id !== taskEditor.draft.committeeId,
@@ -889,10 +891,7 @@ export function EventForm({
       draft: {
         title: "",
         description: "",
-        committeeId:
-          role === "Co-Admin"
-            ? taskCommittees[0].id
-            : (taskCommittees[0]?.id ?? ""),
+        committeeId: getInitialEventTaskCommitteeId(role, taskCommittees),
         taskType: "Deliverable",
         dueDate: "",
         callDate: "",
@@ -982,6 +981,21 @@ export function EventForm({
         },
       };
     });
+  }
+
+  function updateSingleAssignee(assigneeId: string, checked: boolean) {
+    if (!taskEditor) return;
+    const selection = updateEventAssigneeSelection(
+      taskEditor.draft.assigneeIds,
+      assigneeId,
+      checked,
+    );
+    if (selection.error) {
+      setTaskEditorError(selection.error);
+      return;
+    }
+    setTaskEditorError("");
+    updateTaskDraft({ assigneeIds: selection.ids });
   }
 
   function saveTask() {
@@ -2505,6 +2519,7 @@ export function EventForm({
                 <div className="grid max-h-64 gap-3 overflow-y-auto rounded-xl border bg-card p-2">
                   {visibleAssignees.length >= 2 && (
                     <AssigneeBulkControls
+                      committeeName={committeeNames.get(taskEditor.draft.committeeId) ?? "selected committee"}
                       visibleCount={visibleAssignees.length}
                       selectedVisibleCount={selectedVisibleAssigneeCount}
                       selectAllDisabled={selectAllVisibleExceedsLimit}
@@ -2529,13 +2544,7 @@ export function EventForm({
                       selectedIds={taskEditor.draft.assigneeIds}
                       committeeNames={committeeNames}
                       onToggle={(assigneeId, checked) =>
-                        updateTaskDraft({
-                          assigneeIds: checked
-                            ? [...taskEditor.draft.assigneeIds, assigneeId]
-                            : taskEditor.draft.assigneeIds.filter(
-                                (id) => id !== assigneeId,
-                              ),
-                        })
+                        updateSingleAssignee(assigneeId, checked)
                       }
                     />
                   )}
@@ -2547,13 +2556,7 @@ export function EventForm({
                       selectedIds={taskEditor.draft.assigneeIds}
                       committeeNames={committeeNames}
                       onToggle={(assigneeId, checked) =>
-                        updateTaskDraft({
-                          assigneeIds: checked
-                            ? [...taskEditor.draft.assigneeIds, assigneeId]
-                            : taskEditor.draft.assigneeIds.filter(
-                                (id) => id !== assigneeId,
-                              ),
-                        })
+                        updateSingleAssignee(assigneeId, checked)
                       }
                     />
                   )}
@@ -2856,12 +2859,14 @@ function AssigneeGroup({
 }
 
 function AssigneeBulkControls({
+  committeeName,
   visibleCount,
   selectedVisibleCount,
   selectAllDisabled,
   onSelectAll,
   onClear,
 }: {
+  committeeName: string;
   visibleCount: number;
   selectedVisibleCount: number;
   selectAllDisabled: boolean;
@@ -2894,7 +2899,7 @@ function AssigneeBulkControls({
             onChange={(event) => onSelectAll(event.target.checked)}
             className="motion-control-pop size-5 shrink-0 accent-primary"
           />
-          <span className="truncate">Select all shown ({visibleCount})</span>
+          <span className="truncate">Select all shown in {committeeName} ({visibleCount})</span>
         </label>
         <Button
           type="button"

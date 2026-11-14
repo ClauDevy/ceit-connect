@@ -33,6 +33,7 @@ const task = {
   dueDate: "2026-10-30",
   dutyDate: "",
   callTime: "",
+  endDate: "",
   endTime: "",
   primaryAssigneeIds: [],
   isConfidential: false,
@@ -76,6 +77,44 @@ describe("/api/active-task", () => {
     const response = await handler(request(body === null ? "POST" : _ as "POST" | "PATCH", body));
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it.each([
+    ["POST", POST, { eventId, ...task }],
+    ["PATCH", PATCH, { taskId, expectedUpdatedAt: "2026-10-28T12:34:56.123456+00:00", ...task }],
+  ] as const)("accepts missing or empty endDate from %s clients", async (method, handler, body) => {
+    const legacyBody: Record<string, unknown> = { ...body };
+    delete legacyBody.endDate;
+    expect((await handler(request(method, legacyBody))).status).toBe(200);
+    expect((await handler(request(method, { ...body, endDate: "" }))).status).toBe(200);
+  });
+
+  it.each([
+    ["POST", POST, { eventId, ...task }],
+    ["PATCH", PATCH, { taskId, expectedUpdatedAt: "2026-10-28T12:34:56.123456+00:00", ...task }],
+  ] as const)("rejects a present invalid endDate in %s", async (method, handler, body) => {
+    expect((await handler(request(method, { ...body, endDate: 123 }))).status).toBe(400);
+    expect((await handler(request(method, { ...body, endDate: null }))).status).toBe(400);
+    expect((await handler(request(method, { ...body, endDate: "2026-02-30" }))).status).toBe(400);
+  });
+
+  it("passes an overnight end date to the unchanged active-task RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [{ out_task_id: taskId }], error: null });
+    mocks.createClient.mockResolvedValue({ rpc });
+    const response = await POST(request("POST", {
+      eventId,
+      ...task,
+      taskType: "LiveOperation",
+      dutyDate: "2026-12-31",
+      callTime: "23:00",
+      endDate: "2027-01-01",
+      endTime: "02:00",
+    }));
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith(
+      "create_active_event_task",
+      expect.objectContaining({ p_end_time: "2026-12-31T18:00:00.000Z" }),
+    );
   });
 
   it.each([

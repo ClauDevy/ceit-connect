@@ -2,6 +2,42 @@ import { splitAppTimestamp, toAppTimestamp } from "../timezone";
 
 export type EventFormPhaseOrigin = "persisted" | "local" | "reader-shell";
 
+export const EVENT_ASSIGNEE_LIMIT_MESSAGE = "Select up to 100 people.";
+
+export function getInitialEventTaskCommitteeId(
+  role: "Admin" | "Co-Admin",
+  committees: readonly { id: string }[],
+) {
+  return role === "Co-Admin"
+    ? (committees.length === 1 ? committees[0].id : "")
+    : (committees[0]?.id ?? "");
+}
+
+export function updateEventAssigneeSelection(
+  selectedIds: readonly string[],
+  assigneeId: string,
+  checked: boolean,
+) {
+  if (!checked) {
+    return {
+      ids: selectedIds.filter((id) => id !== assigneeId),
+      error: null,
+    };
+  }
+  if (selectedIds.includes(assigneeId)) return { ids: [...selectedIds], error: null };
+  if (selectedIds.length >= 100) {
+    return { ids: [...selectedIds], error: EVENT_ASSIGNEE_LIMIT_MESSAGE };
+  }
+  return { ids: [...selectedIds, assigneeId], error: null };
+}
+
+export function getCommitteeScopedEventAssignees<T extends { committee_id: string | null }>(
+  assignees: readonly T[],
+  committeeId: string,
+) {
+  return assignees.filter((assignee) => assignee.committee_id === committeeId);
+}
+
 export type EventFormTaskRef = {
   id: string;
   persisted: boolean;
@@ -294,14 +330,17 @@ export function getLiveOperationScheduleProblem(
 ) {
   if (task.taskType !== "LiveOperation") return null;
 
-  if (
-    (task.callDate || task.callTime || task.endDate || task.endTime) &&
-    (!task.callDate || !task.callTime)
-  ) {
+  if ((task.callDate || task.callTime || task.endDate || task.endTime) && !task.callDate) {
     return {
-      field: !task.callDate ? "call-date" : "call-time",
-      message:
-        "Choose both a duty date and call time when adding a live-duty schedule.",
+      field: "call-date",
+      message: "Choose a duty date when adding a live-duty schedule.",
+    } as const;
+  }
+
+  if ((task.callDate || task.callTime || task.endDate || task.endTime) && !task.callTime) {
+    return {
+      field: "call-time",
+      message: "Choose a call time when adding a live-duty schedule.",
     } as const;
   }
 
@@ -312,12 +351,19 @@ export function getLiveOperationScheduleProblem(
     } as const;
   }
 
+  if (task.endDate && task.callDate && task.endDate < task.callDate) {
+    return {
+      field: "end-date",
+      message: "End date cannot be before the duty date.",
+    } as const;
+  }
+
   if (
     task.callDate &&
     task.callTime &&
     task.endTime &&
-    `${task.endDate || task.callDate}T${task.endTime}` <
-      `${task.callDate}T${task.callTime}`
+    (task.endDate || task.callDate) === task.callDate &&
+    task.endTime < task.callTime
   ) {
     return {
       field: "end-time",
