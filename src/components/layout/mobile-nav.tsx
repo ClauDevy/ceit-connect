@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Ellipsis } from "lucide-react"
 import { useNavClick, useNavigation } from "@/components/navigation/navigation-provider"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { isNavActive, navForRole, type NavItem } from "@/lib/nav"
+import { HELP_NAV_ITEM, isNavActive, navForRole, type NavItem } from "@/lib/nav"
 import type { CurrentUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { SettingsWarningDot } from "@/components/layout/settings-warning-dot"
@@ -55,7 +55,7 @@ export function MobileNav({ user }: { user: CurrentUser }) {
   const { pathname } = useNavigation()
   const [moreOpen, setMoreOpen] = useState(false)
   const { pinned, more } = navForRole(user.role)
-  const moreActive = more.some((item) => isNavActive(pathname, item.href))
+  const moreActive = more.some((item) => isNavActive(pathname, item.href)) || isNavActive(pathname, HELP_NAV_ITEM.href)
 
   return (
     <>
@@ -66,17 +66,15 @@ export function MobileNav({ user }: { user: CurrentUser }) {
         {pinned.map((item) => (
           <BottomTab key={item.href} item={item} active={isNavActive(pathname, item.href)} showWarning={Boolean(item.passwordWarning && !user.passwordSet)} />
         ))}
-        {more.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            aria-haspopup="dialog"
-            className={cn(tabClass, moreActive ? "font-semibold text-primary" : "font-medium text-muted-foreground")}
-          >
-            <Ellipsis className="motion-nav-icon size-5" aria-hidden />
-            More
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          aria-haspopup="dialog"
+          className={cn(tabClass, moreActive ? "font-semibold text-primary" : "font-medium text-muted-foreground")}
+        >
+          <Ellipsis className="motion-nav-icon size-5" aria-hidden />
+          More
+        </button>
       </nav>
 
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
@@ -92,6 +90,14 @@ export function MobileNav({ user }: { user: CurrentUser }) {
                 showWarning={Boolean(item.passwordWarning && !user.passwordSet)}
               />
             ))}
+            <div className="mt-2 border-t pt-2">
+              <MoreLink
+                item={HELP_NAV_ITEM}
+                active={isNavActive(pathname, HELP_NAV_ITEM.href)}
+                onNavigate={() => setMoreOpen(false)}
+                showWarning={false}
+              />
+            </div>
           </nav>
         </SheetContent>
       </Sheet>

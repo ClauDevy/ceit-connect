@@ -22,12 +22,12 @@ current batch completes its full stage order.
 | R2 | Scheduled 24-hour task due-soon and two-hour Live Operation prep reminders, private dedupe ledger, bounded runner, Prod cron runbook, Dev manual runner, tests, and docs | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
 | J1 | Bell and push jump-to-comment, bounded target-page loading, safe fallbacks, and stale push-target replacement | current feature branch | High | Live on Dev and Prod (owner-confirmed) |
 | B2 | Local-only backup restore drill, count proof, cleanup, and disaster limitations | `docs/backup-restore-drill` | Medium | Merged; owner-run drill pending |
-| U1 | Event-board initial phase, President picker exclusions, and archived-template deadline reset | `fix/event-board-template-and-picker-ux` | Medium | Implemented locally; no migration |
+| U1 | Event-board initial phase, President picker exclusions, and archived-template deadline reset | `fix/event-board-template-and-picker-ux` | Medium | Live on Dev and Prod (owner-confirmed); no migration |
 | U2 | Event board component split (refactor only, no behavior change) | planned UI branch | Medium | Merged; UI-only, no migration |
-| U4a | Task editor schedule and picker fixes | `fix/task-editor-schedule-parity` | High | Implemented locally; never live |
-| V1 | Manila-date Active-task deadline guard and Admin-only President committee invariant | planned database/UI branch | High | Planned; read-only Prod preflight required |
-| U4b | Remaining task-editor wording and parity follow-up | planned UI branch | Medium | Planned |
-| H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Planned; UI-only, no migration |
+| U4a | Task editor schedule and picker fixes | `fix/task-editor-schedule-parity` | High | Live on Dev and Prod (owner-confirmed) |
+| V1 | Manila-date Active-task deadline guard and Admin-only President committee invariant | planned database/UI branch | High | Live on Dev and Prod (owner-confirmed); Prod preflight owner-reported |
+| U4b | Remaining task-editor wording and parity follow-up | planned UI branch | Medium | Live on Dev and Prod (owner-confirmed) |
+| H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Implemented locally; covers V1(b) and U4b; UI-only, no migration |
 | U3 | Optional event form component split (refactor only, no behavior change) | optional later UI branch | Medium | Optional later; UI-only, no migration |
 | L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Migration `20261119120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
 | G1 | Counts-only phone-push grouping for launch assignment, due-soon, Live Operation prep, and unlock bursts | `feature/alert-grouping` | High | Migration `20261120120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
@@ -40,8 +40,8 @@ next batch starts.
 The approved post-J1 order is B2 (merged), U1, U2 (merged), U4a, V1, U4b, H1, then manifest
 screenshots, the final release checklist, optional `discord_id` removal, and E1
 only if needed. Optional U3 is a later refactor and is not part of that required
-order. H1 describes the app only after U1, V1, L1, and G1 rules are in their
-final state.
+order. H1 describes the app only after U1, V1, U4b, L1, and G1 rules are in
+their final state, including V1(b)'s President rule and U4b's editor behavior.
 
 ## Approved notification decisions
 
@@ -190,8 +190,8 @@ V1 combines database and UI work and needs High reasoning.
   different past date. A Live Operation call date of today remains allowed
   even after its time has passed.
 - Add a database invariant that only an Admin may hold the President
-  committee. First run a read-only Prod check proving no existing non-Admin
-  holds it; a nonzero result requires an owner decision before implementation.
+  committee. The owner-reported Prod preflight found one active Member in
+  President; moving that person is an owner decision.
 - Replace the unchanged `copy_archived_template_tasks` shifted-date behavior so
   foreign-committee tasks imported by a Co-Admin also receive blank due, call,
   and end values. This closes U1's documented UI-only limitation and the
@@ -199,9 +199,9 @@ V1 combines database and UI work and needs High reasoning.
 
 ### U4b — remaining task-editor follow-up
 
-U4b remains a separately planned UI follow-up after V1. U4a does not absorb
-its wording, default-selection, type-toggle, confidential-field, or redesign
-decisions.
+U4b remains separate from U4a and is live on Dev and Prod (owner-confirmed).
+U4a does not absorb its wording, default-selection, type-toggle,
+confidential-field, or redesign decisions.
 
 - Fix the Event form's same-day-prefill trap so a Duty-date-only edit moves
   the whole same-day live schedule instead of retaining an explicit old End
@@ -209,9 +209,10 @@ decisions.
 
 ### H1 — in-app user manual
 
-H1 is UI-only, needs Medium reasoning, and adds no migration. It creates a
+H1 is implemented locally, is UI-only, and adds no migration. It creates a
 role-aware `/help` manual inside the authenticated app shell after U1 and V1,
-using the already-live L1 and G1 rules. Its decisions, required accuracy audit,
+using the already-live L1 and G1 rules and covering the final V1(b) President
+rule and U4b task-editor behavior. Its decisions, required accuracy audit,
 starting content outline, FAQ, proposed outline changes, and owner-confirmation
 list are in `docs/phase-5/step-h1-user-manual.md`.
 
