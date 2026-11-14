@@ -6,7 +6,7 @@ import { NavLink } from "@/components/layout/nav-link"
 import { useNavigation } from "@/components/navigation/navigation-provider"
 import { SignOutButton } from "@/components/layout/sign-out-button"
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed"
-import { isNavActive, navForRole } from "@/lib/nav"
+import { HELP_NAV_ITEM, isNavActive, navForRole } from "@/lib/nav"
 import type { CurrentUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -50,7 +50,12 @@ export function DesktopSidebar({ user }: { user: CurrentUser }) {
           </nav>
         </div>
 
-        <div className="border-t pt-4">
+        <div className="space-y-2 border-t pt-4">
+          <NavLink
+            item={HELP_NAV_ITEM}
+            active={isNavActive(pathname, HELP_NAV_ITEM.href)}
+            collapsed={collapsed}
+          />
           <SignOutButton
             userId={user.id}
             variant={collapsed ? "icon" : "inline"}

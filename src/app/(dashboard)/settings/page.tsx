@@ -1,4 +1,5 @@
-import { BellRing, Download, Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
+import Link from "next/link";
+import { BellRing, BookOpen, Download, Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
@@ -9,6 +10,7 @@ import { FullNameForm } from "@/components/settings/full-name-form";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { InstallAppHelp } from "@/components/settings/install-app-help";
 import { PushNotificationsControl } from "@/components/settings/push-notifications-control";
+import { buttonVariants } from "@/components/ui/button";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -40,6 +42,17 @@ export default async function SettingsPage() {
       <div className="grid gap-5 lg:grid-cols-2">
         <SettingsSection
           motionIndex={0}
+          title="Help & user manual"
+          description="Learn the current task, event, notification, and role rules."
+          icon={<BookOpen aria-hidden />}
+        >
+          <Link href="/help" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+            Open user manual
+          </Link>
+        </SettingsSection>
+
+        <SettingsSection
+          motionIndex={1}
           title="Profile"
           description="Update the name shown across the council workspace."
           icon={<UserRound aria-hidden />}
@@ -48,7 +61,7 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          motionIndex={1}
+          motionIndex={2}
           title="Profile photo"
           description="Shown next to your name across the council workspace."
           icon={<ImageIcon aria-hidden />}
@@ -61,7 +74,7 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          motionIndex={2}
+          motionIndex={3}
           title="Password"
           icon={<KeyRound aria-hidden />}
           attention={!profile?.password_set}
@@ -75,7 +88,7 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          motionIndex={3}
+          motionIndex={4}
           title="Notifications on this device"
           description="Choose whether this browser receives generic task alerts."
           icon={<BellRing aria-hidden />}
@@ -84,7 +97,7 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          motionIndex={4}
+          motionIndex={5}
           title="Install the app"
           description="Keep CEIT Connect within easy reach on your phone."
           icon={<Download aria-hidden />}
