@@ -149,7 +149,10 @@ export async function POST(request: Request) {
   const allowedDomains = parseAllowedEmailDomains(
     process.env.ALLOWED_EMAIL_DOMAINS,
   );
-  if (allowedDomains.length > 0 && !allowedDomains.includes(emailDomain)) {
+  if (allowedDomains.length === 0) {
+    return json({ error: "Invitations are temporarily unavailable" }, 503);
+  }
+  if (!allowedDomains.includes(emailDomain)) {
     return json(
       {
         error: `Only these email domains can be invited: ${allowedDomains.join(", ")}`,
