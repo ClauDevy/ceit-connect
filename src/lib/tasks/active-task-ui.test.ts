@@ -4,6 +4,7 @@ import type { BoardTask } from "../events/board";
 import {
   editActiveTaskRpcArgs,
   validateCreateActiveTaskRequest,
+  validateEditActiveTaskRequest,
 } from "./active-task";
 import {
   activeTaskPickerLimitMessage,
@@ -32,6 +33,10 @@ const eventBoardSource = [
 ].join("\n");
 const eventBoardPageSource = readFileSync(
   "src/app/(dashboard)/events/[eventId]/page.tsx",
+  "utf8",
+);
+const activeTaskDialogSource = readFileSync(
+  "src/components/tasks/active-task-dialog.tsx",
   "utf8",
 );
 
@@ -172,6 +177,108 @@ describe("active task Edit prefill", () => {
     );
   });
 
+  it.each([
+    [
+      "an early-morning Manila end",
+      "2026-11-01T15:00:00.000Z",
+      "2026-11-01T18:30:00.000Z",
+      "2026-11-01",
+      "2026-11-02",
+      "02:30",
+    ],
+    [
+      "a Dec 31 to Jan 1 overnight",
+      "2026-12-31T15:00:00.000Z",
+      "2026-12-31T18:00:00.000Z",
+      "2026-12-31",
+      "2027-01-01",
+      "02:00",
+    ],
+  ])("restores %s from stored timestamps in Asia/Manila", (_, callTime, endTime, dutyDate, endDate, clock) => {
+    const initial = buildActiveTaskEditDraft(
+      { ...task, task_type: "LiveOperation", call_time: callTime, end_time: endTime },
+      controls,
+      "Low",
+    )!;
+    expect(initial).toMatchObject({ dutyDate, callTime: "23:00", endDate, endTime: clock });
+    expect(prepareActiveTaskEditSubmission(initial, initial, [])).toBeNull();
+    expect(
+      editActiveTaskRpcArgs({ ...initial, taskId: task.id, expectedUpdatedAt: task.updated_at! }),
+    ).toMatchObject({ p_call_time: callTime, p_end_time: endTime });
+
+    const unrelatedEdit = prepareActiveTaskEditSubmission(
+      { ...initial, title: "Changed title" },
+      initial,
+      [],
+    )!;
+    const request = validateEditActiveTaskRequest({
+      ...unrelatedEdit,
+      taskId: task.id,
+      expectedUpdatedAt: task.updated_at!,
+    });
+    expect(request.ok).toBe(true);
+    if (request.ok) {
+      expect(editActiveTaskRpcArgs(request.data)).toMatchObject({
+        p_call_time: callTime,
+        p_end_time: endTime,
+      });
+    }
+  });
+
+  it("keeps same-day End date blank so moving Duty date moves the whole schedule", () => {
+    const initial = buildActiveTaskEditDraft(
+      {
+        ...task,
+        task_type: "LiveOperation",
+        call_time: "2026-11-01T01:00:00.000Z",
+        end_time: "2026-11-01T03:00:00.000Z",
+      },
+      controls,
+      "Low",
+    )!;
+    expect(initial).toMatchObject({
+      dutyDate: "2026-11-01",
+      callTime: "09:00",
+      endDate: "",
+      endTime: "11:00",
+    });
+    const edited = prepareActiveTaskEditSubmission(
+      { ...initial, dutyDate: "2026-11-02" },
+      initial,
+      [],
+    )!;
+    const request = validateEditActiveTaskRequest({
+      ...edited,
+      taskId: task.id,
+      expectedUpdatedAt: task.updated_at!,
+    });
+    expect(request.ok).toBe(true);
+    if (request.ok) {
+      expect(editActiveTaskRpcArgs(request.data)).toMatchObject({
+        p_call_time: "2026-11-02T01:00:00.000Z",
+        p_end_time: "2026-11-02T03:00:00.000Z",
+      });
+    }
+  });
+
+  it('keeps a same-day no-op edit on the "No changes to save." path', () => {
+    const initial = buildActiveTaskEditDraft(
+      {
+        ...task,
+        task_type: "LiveOperation",
+        call_time: "2026-11-01T01:00:00.000Z",
+        end_time: "2026-11-01T03:00:00.000Z",
+      },
+      controls,
+      "Low",
+    )!;
+    expect(initial.endDate).toBe("");
+    expect(prepareActiveTaskEditSubmission(initial, initial, [])).toBeNull();
+    expect(activeTaskDialogSource).toMatch(
+      /if \(!preparedDraft\) \{\s+setError\("No changes to save\."\);/,
+    );
+  });
+
   it("never applies an Edit background load over typed values or its token", () => {
     expect(shouldApplyActiveTaskLoadResult("edit", true)).toBe(false);
     expect(shouldApplyActiveTaskLoadResult("edit", false)).toBe(true);
@@ -182,6 +289,7 @@ describe("active task Edit prefill", () => {
     const initial = buildActiveTaskEditDraft(task, controls, "Low")!;
     initial.dueDate = "2026-11-12";
     initial.dutyDate = "2026-11-13";
+    initial.endDate = "2026-11-14";
     const edited = { ...initial, title: "Changed title" };
     const prepared = prepareActiveTaskEditSubmission(edited, initial, []);
     const submit = vi.fn();
@@ -191,6 +299,14 @@ describe("active task Edit prefill", () => {
         mode: "edit",
         value: initial.dueDate,
         initialValue: initial.dueDate,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toBeUndefined();
+    expect(
+      getActiveTaskDateInputMax({
+        mode: "edit",
+        value: initial.endDate,
+        initialValue: initial.endDate,
         eventEndDate: "2026-11-06",
       }),
     ).toBeUndefined();
@@ -212,8 +328,127 @@ describe("active task Edit prefill", () => {
     ).toBeNull();
     if (prepared) submit(prepared);
     expect(submit).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Changed title" }),
+      expect.objectContaining({ title: "Changed title", endDate: "2026-11-14" }),
     );
+  });
+
+  it.each([
+    ["due date", { dueDate: "2026-11-15" }, "dueDate", "The due date cannot be after the event end date (2026-11-06)."],
+    ["duty date", { dutyDate: "2026-11-15" }, "dutyDate", "The duty date cannot be after the event end date (2026-11-06)."],
+    ["end date", { endDate: "2026-11-15" }, "endDate", "The end date cannot be after the event end date (2026-11-06)."],
+  ])("rejects a changed grandfathered %s on its exact field", (_, change, field, message) => {
+    const initial = buildActiveTaskEditDraft(
+      {
+        ...task,
+        task_type: "LiveOperation",
+        call_time: "2026-11-12T15:00:00.000Z",
+        end_time: "2026-11-12T18:00:00.000Z",
+      },
+      controls,
+      "Low",
+    )!;
+    initial.dueDate = "2026-11-12";
+    expect(
+      getActiveTaskEventEndProblem({
+        mode: "edit",
+        draft: { ...initial, ...change },
+        initialDraft: initial,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toEqual({ field, message });
+  });
+
+  it("rejects an End-time-only edit when a blank same-day End date is after the event", () => {
+    const initial = buildActiveTaskEditDraft(
+      {
+        ...task,
+        task_type: "LiveOperation",
+        call_time: "2026-11-12T01:00:00.000Z",
+        end_time: "2026-11-12T03:00:00.000Z",
+      },
+      controls,
+      "Low",
+    )!;
+    expect(initial).toMatchObject({ dutyDate: "2026-11-12", endDate: "", endTime: "11:00" });
+    expect(
+      getActiveTaskEventEndProblem({
+        mode: "edit",
+        draft: { ...initial, endTime: "11:30" },
+        initialDraft: initial,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toEqual({
+      field: "endDate",
+      message: "The end date cannot be after the event end date (2026-11-06).",
+    });
+  });
+
+  it("allows an unrelated edit of the same grandfathered blank-End-date task", () => {
+    const initial = buildActiveTaskEditDraft(
+      {
+        ...task,
+        task_type: "LiveOperation",
+        call_time: "2026-11-12T01:00:00.000Z",
+        end_time: "2026-11-12T03:00:00.000Z",
+      },
+      controls,
+      "Low",
+    )!;
+    expect(
+      getActiveTaskEventEndProblem({
+        mode: "edit",
+        draft: { ...initial, title: "Changed title" },
+        initialDraft: initial,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toBeNull();
+  });
+
+  it("allows an End-time edit when the effective same-day End date is inside the event", () => {
+    const initial = buildActiveTaskEditDraft(
+      {
+        ...task,
+        task_type: "LiveOperation",
+        call_time: "2026-11-05T01:00:00.000Z",
+        end_time: "2026-11-05T03:00:00.000Z",
+      },
+      controls,
+      "Low",
+    )!;
+    expect(initial.endDate).toBe("");
+    expect(
+      getActiveTaskEventEndProblem({
+        mode: "edit",
+        draft: { ...initial, endTime: "11:30" },
+        initialDraft: initial,
+        eventEndDate: "2026-11-06",
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps explicit overnight End-date event-bound behavior", () => {
+    const initial = buildActiveTaskEditDraft(
+      {
+        ...task,
+        task_type: "LiveOperation",
+        call_time: "2026-11-05T15:00:00.000Z",
+        end_time: "2026-11-05T18:00:00.000Z",
+      },
+      controls,
+      "Low",
+    )!;
+    expect(initial).toMatchObject({ dutyDate: "2026-11-05", endDate: "2026-11-06" });
+    expect(
+      getActiveTaskEventEndProblem({
+        mode: "edit",
+        draft: { ...initial, endTime: "02:30" },
+        initialDraft: initial,
+        eventEndDate: "2026-11-05",
+      }),
+    ).toEqual({
+      field: "endDate",
+      message: "The end date cannot be after the event end date (2026-11-05).",
+    });
   });
 
   it("accepts only a valid stored priority and treats null as unavailable", () => {

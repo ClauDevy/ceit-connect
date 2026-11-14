@@ -106,6 +106,7 @@ const EMPTY_DRAFT: ActiveTaskDraft = {
   dueDate: "",
   dutyDate: "",
   callTime: "",
+  endDate: "",
   endTime: "",
   primaryAssigneeIds: [],
   isConfidential: false,
@@ -584,6 +585,7 @@ export function ActiveTaskDialog({
         phase: draft.phase.trim(),
         dutyDate: draft.taskType === "LiveOperation" ? draft.dutyDate : "",
         callTime: draft.taskType === "LiveOperation" ? draft.callTime : "",
+        endDate: draft.taskType === "LiveOperation" ? draft.endDate : "",
         endTime: draft.taskType === "LiveOperation" ? draft.endTime : "",
         allowedViewerIds: draft.isConfidential ? draft.allowedViewerIds : [],
       },
@@ -624,11 +626,7 @@ export function ActiveTaskDialog({
     });
     if (eventEndProblem) {
       setError(eventEndProblem.message);
-      if (eventEndProblem.field === "dueDate") {
-        focusActiveTaskValidationField("dueDate");
-      } else {
-        focusActiveTaskValidationField("schedule");
-      }
+      focusActiveTaskValidationField(eventEndProblem.field);
       return;
     }
     setBusy(true);
@@ -771,7 +769,7 @@ export function ActiveTaskDialog({
                       {(control) => (
                         <div {...control} data-active-task-field="taskType" className="grid grid-cols-2 gap-2">
                           {(["Deliverable", "LiveOperation"] as ActiveTaskType[]).map((type) => (
-                            <Button key={type} type="button" variant="outline" className={cn("h-11", draft.taskType === type && "border-primary bg-primary/10 text-primary")} aria-pressed={draft.taskType === type} onClick={() => updateDraft({ taskType: type, ...(type === "Deliverable" ? { dutyDate: "", callTime: "", endTime: "" } : {}) })}>{type === "LiveOperation" ? "Live Operation" : type}</Button>
+                            <Button key={type} type="button" variant="outline" className={cn("h-11", draft.taskType === type && "border-primary bg-primary/10 text-primary")} aria-pressed={draft.taskType === type} onClick={() => updateDraft({ taskType: type, ...(type === "Deliverable" ? { dutyDate: "", callTime: "", endDate: "", endTime: "" } : {}) })}>{type === "LiveOperation" ? "Live Operation" : type}</Button>
                           ))}
                         </div>
                       )}
@@ -781,10 +779,11 @@ export function ActiveTaskDialog({
                     </FormField>
                     <MotionPresence open={draft.taskType === "LiveOperation"}>
                       {draft.taskType === "LiveOperation" ? (
-                        <div data-active-task-field="schedule" className="grid gap-3 border-l-2 border-primary/40 pl-3 sm:grid-cols-3">
-                          <FormField label="Philippine duty date">{(control) => <Input {...control} type="date" max={getActiveTaskDateInputMax({ mode, value: draft.dutyDate, initialValue: initialEditDraft?.dutyDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dutyDate} onChange={(event) => updateDraft({ dutyDate: event.target.value })} />}</FormField>
-                          <FormField label="Call time">{(control) => <Input {...control} type="time" value={draft.callTime} onChange={(event) => updateDraft({ callTime: event.target.value })} />}</FormField>
-                          <FormField label="End time" hint="Optional">{(control) => <Input {...control} type="time" min={draft.callTime || undefined} value={draft.endTime} onChange={(event) => updateDraft({ endTime: event.target.value })} />}</FormField>
+                        <div className="grid gap-3 border-l-2 border-primary/40 pl-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <FormField label="Philippine duty date">{(control) => <Input {...control} data-active-task-field="dutyDate" type="date" max={getActiveTaskDateInputMax({ mode, value: draft.dutyDate, initialValue: initialEditDraft?.dutyDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.dutyDate} onChange={(event) => updateDraft({ dutyDate: event.target.value })} />}</FormField>
+                          <FormField label="Call time">{(control) => <Input {...control} data-active-task-field="callTime" type="time" value={draft.callTime} onChange={(event) => updateDraft({ callTime: event.target.value })} />}</FormField>
+                          <FormField label="End date" hint="Optional">{(control) => <Input {...control} data-active-task-field="endDate" type="date" min={draft.dutyDate || undefined} max={getActiveTaskDateInputMax({ mode, value: draft.endDate, initialValue: initialEditDraft?.endDate ?? null, eventEndDate: resolvedEventEndDate })} value={draft.endDate} onChange={(event) => updateDraft({ endDate: event.target.value })} />}</FormField>
+                          <FormField label="End time" hint="Optional">{(control) => <Input {...control} data-active-task-field="endTime" type="time" min={!draft.endDate || draft.endDate === draft.dutyDate ? draft.callTime || undefined : undefined} value={draft.endTime} onChange={(event) => updateDraft({ endTime: event.target.value })} />}</FormField>
                         </div>
                       ) : null}
                     </MotionPresence>

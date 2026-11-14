@@ -144,6 +144,10 @@ export function getActiveTaskEventEndProblem({
     mode === "add" ||
     !initialDraft ||
     draft.callTime !== initialDraft.callTime;
+  const endDateChanged =
+    mode === "add" ||
+    !initialDraft ||
+    draft.endDate !== initialDraft.endDate;
   const endTimeChanged =
     mode === "add" ||
     !initialDraft ||
@@ -151,11 +155,22 @@ export function getActiveTaskEventEndProblem({
   if (
     draft.taskType === "LiveOperation" &&
     draft.dutyDate > eventEndDate &&
-    (dutyDateChanged || callTimeChanged || endTimeChanged)
+    (dutyDateChanged || callTimeChanged)
   ) {
     return {
-      field: "schedule" as const,
-      message: `The Live Operation date cannot be after the event end date (${eventEndDate}).`,
+      field: "dutyDate" as const,
+      message: `The duty date cannot be after the event end date (${eventEndDate}).`,
+    };
+  }
+  if (
+    draft.taskType === "LiveOperation" &&
+    draft.endTime !== "" &&
+    (draft.endDate || draft.dutyDate) > eventEndDate &&
+    (endDateChanged || endTimeChanged)
+  ) {
+    return {
+      field: "endDate" as const,
+      message: `The end date cannot be after the event end date (${eventEndDate}).`,
     };
   }
   return null;
@@ -300,6 +315,7 @@ export function buildActiveTaskEditDraft(
     dueDate: task.due_date?.slice(0, 10) ?? "",
     dutyDate: call.date,
     callTime: call.time,
+    endDate: end.time && end.date !== call.date ? end.date : "",
     endTime: end.time,
     primaryAssigneeIds: controls.primary_assignees.map((person) => person.id),
     isConfidential: controls.is_confidential === true,
