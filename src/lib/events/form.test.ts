@@ -9,6 +9,8 @@ import {
   getEventPhaseCardKey,
   getEventPhaseControls,
   getCommitteeScopedEventAssignees,
+  getEventTaskDueDateForSubmission,
+  getEventTaskEndDateInputValue,
   getInitialEventTaskCommitteeId,
   getLiveOperationScheduleProblem,
   getSavableEventPhaseName,
@@ -45,6 +47,60 @@ describe("completed Draft phases", () => {
 describe("event task due dates", () => {
   it("keeps the yyyy-mm-dd value produced by the date input", () => {
     expect(toTaskPayload("Preparation", taskDraft).due_date).toBe("2026-10-24");
+  });
+
+  it("submits no Due date for a new Live Operation but preserves an existing stored date", () => {
+    const liveTask = { ...taskDraft, taskType: "LiveOperation" as const };
+    expect(toTaskPayload("Operations", liveTask).due_date).toBeNull();
+    expect(toTaskPayload("Operations", liveTask, "2026-10-24").due_date).toBe("2026-10-24");
+    expect(getEventTaskDueDateForSubmission(liveTask, "2026-10-24")).toBe("2026-10-24");
+  });
+
+  it("keeps an edited Deliverable Due date in state while an existing task switched to Live Operation submits the stored date", () => {
+    const edited = {
+      ...taskDraft,
+      dueDate: "2026-11-20",
+      taskType: "LiveOperation" as const,
+    };
+    expect(edited.dueDate).toBe("2026-11-20");
+    expect(toTaskPayload("Operations", edited, "2026-10-24").due_date).toBe("2026-10-24");
+  });
+
+  it("keeps untouched existing schedule payloads byte-for-byte equivalent", () => {
+    const existing = {
+      ...taskDraft,
+      taskType: "LiveOperation" as const,
+      dueDate: "2026-10-24",
+      callDate: "2026-11-01",
+      callTime: "23:00",
+      endDate: "2026-11-02",
+      endTime: "02:00",
+    };
+    expect(toTaskPayload("Operations", existing, existing.dueDate)).toEqual({
+      title: "Prepare materials",
+      description: null,
+      phase: "Operations",
+      committee_id: "committee-1",
+      task_type: "LiveOperation",
+      due_date: "2026-10-24",
+      call_time: "2026-11-01T15:00:00.000Z",
+      end_time: "2026-11-01T18:00:00.000Z",
+      priority: "Medium",
+      assignee_ids: [],
+    });
+  });
+
+  it("leaves same-day End date blank and preserves an overnight date", () => {
+    expect(getEventTaskEndDateInputValue({
+      callDate: "2026-11-01",
+      endDate: "2026-11-01",
+      endTime: "18:00",
+    })).toBe("");
+    expect(getEventTaskEndDateInputValue({
+      callDate: "2026-11-01",
+      endDate: "2026-11-02",
+      endTime: "02:00",
+    })).toBe("2026-11-02");
   });
 
   it("serializes a Live Operation end time on a later Manila date", () => {
@@ -88,12 +144,12 @@ describe("event task due dates", () => {
     [
       "missing duty date",
       { callDate: "", callTime: "23:00", endDate: "", endTime: "" },
-      { field: "call-date", message: "Choose a duty date when adding a live-duty schedule." },
+      { field: "call-date", message: "Choose a Duty date when adding a Live Operation schedule." },
     ],
     [
       "missing call time",
       { callDate: "2026-11-01", callTime: "", endDate: "", endTime: "02:00" },
-      { field: "call-time", message: "Choose a call time when adding a live-duty schedule." },
+      { field: "call-time", message: "Choose a Call time when adding a Live Operation schedule." },
     ],
   ])("reports the exact field for a partial schedule with %s", (_, schedule, expected) => {
     expect(
@@ -149,6 +205,16 @@ describe("event task due dates", () => {
 });
 
 describe("event task picker safety", () => {
+  it("starts an Admin task with no committee selected", () => {
+    expect(getInitialEventTaskCommitteeId("Admin", [
+      { id: "committee-a" },
+      { id: "committee-b" },
+    ])).toBe("");
+  });
+
+  it("keeps a Co-Admin's verified committee fixed", () => {
+    expect(getInitialEventTaskCommitteeId("Co-Admin", [{ id: "committee-a" }])).toBe("committee-a");
+  });
   it("fails a committee-less Co-Admin closed without reading index zero", () => {
     expect(getInitialEventTaskCommitteeId("Co-Admin", [])).toBe("");
   });

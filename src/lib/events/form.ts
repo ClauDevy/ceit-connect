@@ -10,7 +10,7 @@ export function getInitialEventTaskCommitteeId(
 ) {
   return role === "Co-Admin"
     ? (committees.length === 1 ? committees[0].id : "")
-    : (committees[0]?.id ?? "");
+    : "";
 }
 
 export function updateEventAssigneeSelection(
@@ -57,6 +57,18 @@ export type EventFormReaderTaskRef = {
   out_phase: string | null;
   phaseComplete?: boolean;
 };
+
+export function getEventTaskEndDateInputValue({
+  callDate,
+  endDate,
+  endTime,
+}: {
+  callDate: string;
+  endDate: string;
+  endTime: string;
+}) {
+  return endTime && endDate !== callDate ? endDate : "";
+}
 
 export function excludeCompletedPhaseTaskMutations<
   TTask extends EventFormTaskRef,
@@ -333,14 +345,14 @@ export function getLiveOperationScheduleProblem(
   if ((task.callDate || task.callTime || task.endDate || task.endTime) && !task.callDate) {
     return {
       field: "call-date",
-      message: "Choose a duty date when adding a live-duty schedule.",
+      message: "Choose a Duty date when adding a Live Operation schedule.",
     } as const;
   }
 
   if ((task.callDate || task.callTime || task.endDate || task.endTime) && !task.callTime) {
     return {
       field: "call-time",
-      message: "Choose a call time when adding a live-duty schedule.",
+      message: "Choose a Call time when adding a Live Operation schedule.",
     } as const;
   }
 
@@ -378,14 +390,26 @@ export function parseImportedDueDate(value: string | null) {
   return splitAppTimestamp(value);
 }
 
-export function toTaskPayload(phaseName: string, task: TaskPayloadDraft) {
+export function getEventTaskDueDateForSubmission(
+  task: Pick<TaskPayloadDraft, "taskType" | "dueDate">,
+  storedDueDate: string | null = null,
+) {
+  return task.taskType === "LiveOperation" ? storedDueDate ?? "" : task.dueDate;
+}
+
+export function toTaskPayload(
+  phaseName: string,
+  task: TaskPayloadDraft,
+  storedDueDate: string | null = null,
+) {
+  const submittedDueDate = getEventTaskDueDateForSubmission(task, storedDueDate);
   return {
     title: task.title,
     description: task.description || null,
     phase: phaseName.trim(),
     committee_id: task.committeeId,
     task_type: task.taskType,
-    due_date: task.dueDate || null,
+    due_date: submittedDueDate || null,
     call_time:
       task.taskType === "LiveOperation"
         ? toAppTimestamp(task.callDate, task.callTime)

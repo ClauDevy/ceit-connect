@@ -67,6 +67,39 @@ export function normalizeActiveTaskDraft(
   };
 }
 
+export function buildActiveTaskSubmissionDraft({
+  mode,
+  draft,
+  initialDraft,
+  assistAssigneeIds,
+}: {
+  mode: "add" | "edit";
+  draft: ActiveTaskDraft;
+  initialDraft: ActiveTaskDraft | null;
+  assistAssigneeIds: readonly string[];
+}): ActiveTaskDraft {
+  const liveOperation = draft.taskType === "LiveOperation";
+  return normalizeActiveTaskDraft(
+    {
+      ...draft,
+      // Live Operations do not expose Due date. Existing rows deliberately
+      // keep the stored date so editing or changing type never erases legacy
+      // reminder and timing behavior; new rows submit no due date.
+      dueDate: liveOperation
+        ? mode === "edit"
+          ? initialDraft?.dueDate ?? ""
+          : ""
+        : draft.dueDate,
+      dutyDate: liveOperation ? draft.dutyDate : "",
+      callTime: liveOperation ? draft.callTime : "",
+      endDate: liveOperation ? draft.endDate : "",
+      endTime: liveOperation ? draft.endTime : "",
+      allowedViewerIds: draft.isConfidential ? draft.allowedViewerIds : [],
+    },
+    assistAssigneeIds,
+  );
+}
+
 export function activeTaskDraftsEqual(
   left: ActiveTaskDraft,
   right: ActiveTaskDraft,
@@ -88,8 +121,19 @@ export function prepareActiveTaskEditSubmission(
   initialDraft: ActiveTaskDraft,
   assistAssigneeIds: readonly string[],
 ) {
-  const normalized = normalizeActiveTaskDraft(draft, assistAssigneeIds);
-  return activeTaskDraftsEqual(normalized, initialDraft, assistAssigneeIds)
+  const normalized = buildActiveTaskSubmissionDraft({
+    mode: "edit",
+    draft,
+    initialDraft,
+    assistAssigneeIds,
+  });
+  const initialSubmission = buildActiveTaskSubmissionDraft({
+    mode: "edit",
+    draft: initialDraft,
+    initialDraft,
+    assistAssigneeIds,
+  });
+  return activeTaskDraftsEqual(normalized, initialSubmission, assistAssigneeIds)
     ? null
     : normalized;
 }
@@ -154,8 +198,9 @@ export function getActiveTaskEventEndProblem({
 }) {
   if (!eventEndDate) return null;
   const dueDateChanged =
-    mode === "add" || !initialDraft || draft.dueDate !== initialDraft.dueDate;
-  if (dueDateChanged && draft.dueDate > eventEndDate) {
+    draft.taskType === "Deliverable" &&
+    (mode === "add" || !initialDraft || draft.dueDate !== initialDraft.dueDate);
+  if (draft.taskType === "Deliverable" && dueDateChanged && draft.dueDate > eventEndDate) {
     return {
       field: "dueDate" as const,
       message: `The due date cannot be after the event end date (${eventEndDate}).`,
