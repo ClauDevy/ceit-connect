@@ -41,7 +41,7 @@ describe("Help manual interactions", () => {
   it("opens a jump target before scrolling to its sticky-header offset anchor", async () => {
     render(<HelpManual manual={getHelpManualForRole("Member")} />);
 
-    fireEvent.click(screen.getAllByRole("link", { name: "Notifications" })[0]);
+    fireEvent.click(screen.getAllByRole("link", { name: /^Notifications/ })[0]);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /^Notifications\b/i }).getAttribute("aria-expanded")).toBe("true");
@@ -54,28 +54,52 @@ describe("Help manual interactions", () => {
   it("searches only allowed FAQs without case sensitivity and opens the result", async () => {
     render(<HelpManual manual={getHelpManualForRole("Admin")} />);
 
-    fireEvent.change(screen.getAllByLabelText("Search questions")[0], {
+    fireEvent.change(screen.getByLabelText("Search the help center"), {
       target: { value: "ACTIVITY LOG" },
     });
 
     await waitFor(() => {
       const matches = screen.getAllByRole("button", { name: "How long does the Activity Log keep entries?" });
       expect(matches.every((button) => button.getAttribute("aria-expanded") === "true")).toBe(true);
-      expect(screen.getByRole("button", { name: /FAQ & troubleshooting/i }).getAttribute("aria-expanded")).toBe("true");
-      expect(scrollIntoView).toHaveBeenCalled();
     });
+    expect(screen.getByText("In the guides")).toBeTruthy();
+  });
+
+  it("matches guide text too and jumps to the guide when a result is tapped", async () => {
+    render(<HelpManual manual={getHelpManualForRole("Member")} />);
+
+    fireEvent.change(screen.getByLabelText("Search the help center"), {
+      target: { value: "add to home screen" },
+    });
+    fireEvent.click(screen.getAllByRole("link", { name: /On an iPhone/ })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /^Quick start\b/i }).getAttribute("aria-expanded")).toBe("true");
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+    });
+    expect((screen.getByLabelText("Search the help center") as HTMLInputElement).value).toBe("");
   });
 
   it("shows a clear empty state and never exposes leadership FAQs to a Member search", () => {
     render(<HelpManual manual={getHelpManualForRole("Member")} />);
 
     expect(screen.queryByText("Who can be newly assigned to the President committee?")).toBeNull();
-    fireEvent.change(screen.getAllByLabelText("Search questions")[0], {
+    fireEvent.change(screen.getByLabelText("Search the help center"), {
       target: { value: "PRESIDENT COMMITTEE" },
     });
 
-    expect(screen.getAllByText("No FAQ results").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/No results for/).length).toBeGreaterThan(0);
     expect(screen.queryByText("Who can be newly assigned to the President committee?")).toBeNull();
+  });
+
+  it("clears the search from the clear button", () => {
+    render(<HelpManual manual={getHelpManualForRole("Member")} />);
+
+    const input = screen.getByLabelText("Search the help center") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "password" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Clear search" })[0]);
+
+    expect(input.value).toBe("");
   });
 });
 
