@@ -475,6 +475,7 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
   );
   const pendingScroll = useRef<string | null>(null);
   const pendingFocus = useRef<string | null>(null);
+  const delayedJump = useRef<number | null>(null);
   const [scrollRequest, setScrollRequest] = useState(0);
 
   const words = useMemo(() => searchWords(query), [query]);
@@ -577,7 +578,22 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
     return () => observer.disconnect();
   }, []);
 
+  function cancelDelayedJump() {
+    if (delayedJump.current !== null) {
+      window.clearTimeout(delayedJump.current);
+      delayedJump.current = null;
+    }
+  }
+
+  // A pending delayed jump must not fire after the page is closed.
+  useEffect(() => {
+    return () => {
+      if (delayedJump.current !== null) window.clearTimeout(delayedJump.current);
+    };
+  }, []);
+
   function requestScroll(id: string) {
+    cancelDelayedJump(); // any newer navigation replaces a jump that is still waiting
     pendingScroll.current = id;
     setScrollRequest((current) => current + 1);
   }
@@ -619,9 +635,15 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
     const wasOpen = openSections.has(sectionId);
     setOpenSections((current) => new Set(current).add(sectionId));
     pendingFocus.current = anchor;
+    cancelDelayedJump();
     if (wasOpen) requestScroll(anchor);
     // A closed phone section needs a moment to unfold before its position is known.
-    else window.setTimeout(() => requestScroll(anchor), 350);
+    else {
+      delayedJump.current = window.setTimeout(() => {
+        delayedJump.current = null;
+        requestScroll(anchor);
+      }, 350);
+    }
   }
 
   const searching = words.length > 0;
