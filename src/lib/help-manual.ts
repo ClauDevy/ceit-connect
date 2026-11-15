@@ -1,15 +1,34 @@
 import type { Role } from "@/lib/types";
 
+/**
+ * Which little drawing a block shows (see `components/help/help-illustrations.tsx`).
+ * These replace the old grey "Screenshot coming later" boxes.
+ */
+export type HelpIllustrationId = "phone" | "board" | "events" | "bell" | "leadership";
+
+/**
+ * Text fields may wrap a key word in **double asterisks** to show it in bold.
+ * The Help screen turns those into bold text; search ignores the asterisks.
+ */
 export type HelpManualBlock = {
   heading: string;
   paragraphs?: readonly string[];
+  /** A plain checklist-style list. */
   bullets?: readonly string[];
-  screenshotLabel?: string;
+  /** A numbered "do this, then this" list. */
+  steps?: readonly string[];
+  /** A "word → meaning" list. */
+  glossary?: readonly { term: string; meaning: string }[];
+  /** A highlighted "Good to know" note. */
+  tip?: string;
+  illustration?: HelpIllustrationId;
 };
 
 export type HelpManualSection = {
   id: string;
   title: string;
+  /** Two or three words shown on the topic tile. */
+  blurb: string;
   summary: string;
   roles: readonly Role[];
   blocks: readonly HelpManualBlock[];
@@ -22,11 +41,24 @@ export type HelpManualFaq = {
   roles: readonly Role[];
 };
 
+export type HelpContactChannel = {
+  id: "email" | "messenger" | "hours" | "office";
+  label: string;
+  value: string;
+  note: string;
+};
+
+export type HelpContact = {
+  summary: string;
+  channels: readonly HelpContactChannel[];
+  tip: string;
+};
+
 export type HelpManualPayload = {
   viewerRole: Role;
   sections: HelpManualSection[];
   faqs: HelpManualFaq[];
-  confirmations: string[];
+  contact: HelpContact;
 };
 
 const EVERYONE: readonly Role[] = ["Admin", "Co-Admin", "Member"];
@@ -36,38 +68,82 @@ const SECTIONS: readonly HelpManualSection[] = [
   {
     id: "quick-start",
     title: "Quick start",
-    summary: "Sign in, set up your account, and find the main parts of CEIT Connect.",
+    blurb: "Sign in and get set up",
+    summary: "Sign in, set up your account, and find your way around CEIT Connect.",
     roles: EVERYONE,
     blocks: [
       {
         heading: "Join and sign in",
         paragraphs: [
-          "CEIT Connect is invite-only. Open the invitation sent to your council email, finish the account setup, and then sign in from the login page.",
-          "You can use an email link, Google, or your email and password when a password has been set for your account.",
+          "CEIT Connect is **invite-only**. Open the invitation sent to your council email, finish setting up your account, then sign in from the login page.",
+          "You can sign in with an **email link**, with **Google**, or with your **email and password** (if you have set a password).",
         ],
         bullets: [
-          "Forgot your password? Use Forgot password on the login page, enter the code from the reset email, and choose a new password.",
-          "Open Settings to set or change your password, update your displayed name, upload or remove your photo, and switch theme.",
+          "Forgot your password? Tap **Forgot password** on the login page, type the code from the reset email, then choose a new password.",
+          "Open **Settings** to set or change your password, change your name, add or remove your photo, and switch between light and dark.",
         ],
       },
       {
-        heading: "Install on a phone",
-        bullets: [
-          "On iPhone, open CEIT Connect in Safari, use Share, then choose Add to Home Screen.",
-          "On Android, open CEIT Connect in Chrome, open the browser menu, then choose Install app or Add to Home screen when offered.",
-          "On iPhone, phone notifications are available only from the installed Home Screen app. Open that app before enabling notifications in Settings.",
-          "On Android, open Settings in CEIT Connect and choose Enable notifications. The browser permission prompt appears after you choose it.",
+        heading: "Put CEIT Connect on your phone",
+        paragraphs: [
+          "Installing the app puts an icon on your home screen, so it opens like any other app. On iPhone, you must do this to get phone notifications.",
         ],
-        screenshotLabel: "Phone installation and notification setup",
+        illustration: "phone",
       },
       {
-        heading: "Where things are",
+        heading: "On an iPhone (Safari)",
+        steps: [
+          "Open CEIT Connect in **Safari**.",
+          "Tap the **Share** button.",
+          "Choose **Add to Home Screen**.",
+          "Open CEIT Connect from its new icon on your Home Screen.",
+        ],
+        tip: "iPhones only allow notifications from the installed Home Screen app. Open that app first, then turn on notifications in Settings.",
+      },
+      {
+        heading: "On an Android phone (Chrome)",
+        steps: [
+          "Open CEIT Connect in **Chrome**.",
+          "Tap the browser menu (the three dots).",
+          "Choose **Install app** or **Add to Home screen** when it is offered.",
+          "To get alerts, open **Settings** in CEIT Connect and tap **Enable notifications**. Your phone will then ask for permission.",
+        ],
+      },
+      {
+        heading: "Where to find things",
         bullets: [
-          "Home lists events you can open.",
-          "Tasks contains My Tasks and Help Wanted.",
-          "Event Archives contains finished event records.",
-          "Settings contains your account, installation, and notification controls.",
-          "Help opens this manual. Leadership roles also receive Dashboard, Activity Log, and User Management links.",
+          "**Home** — the events you can open.",
+          "**Tasks** — two tabs: My Tasks and Help Wanted.",
+          "**Event Archives** — finished events you can still read.",
+          "**Settings** — your account, app installation, and notification controls.",
+          "**Help** — this guide.",
+          "Admins and Co-Admins also see **Dashboard**, **Activity Log** and **User Management**.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "words",
+    title: "Words you'll see",
+    blurb: "Plain-English meanings",
+    summary: "Short, simple meanings for the words used around the app.",
+    roles: EVERYONE,
+    blocks: [
+      {
+        heading: "Quick dictionary",
+        glossary: [
+          { term: "Event", meaning: "A project or activity the council is organizing. Each event has its own board." },
+          { term: "Board", meaning: "The page that shows all the tasks of one event, laid out in columns." },
+          { term: "Phase", meaning: "A stage of an event. Tasks on a board are grouped by phase." },
+          { term: "Lanes", meaning: "The three columns on a board: To Do, In Progress and Completed." },
+          { term: "Deliverable", meaning: "A task with something to finish. It can have a due date." },
+          { term: "Live Operation", meaning: "A task for the day itself. It can have a Duty date, a Call time and an End time." },
+          { term: "Call time", meaning: "The time a Live Operation starts." },
+          { term: "Claim", meaning: "Take an open task for yourself, so you become its owner." },
+          { term: "Help Wanted", meaning: "A list of tasks whose owner asked for backup." },
+          { term: "Committee", meaning: "The council team that a task or a person belongs to." },
+          { term: "Effective priority", meaning: "The priority you see on a task. It can rise when a deadline gets close." },
+          { term: "Archived", meaning: "Finished and saved for good. You can read it, but not change it." },
         ],
       },
     ],
@@ -75,65 +151,70 @@ const SECTIONS: readonly HelpManualSection[] = [
   {
     id: "your-tasks",
     title: "Your tasks",
-    summary: "Read event boards, understand schedules and priority, and work with your team.",
+    blurb: "Boards, deadlines and teamwork",
+    summary: "Read event boards, understand deadlines and priority, and work with your team.",
     roles: EVERYONE,
     blocks: [
       {
-        heading: "Boards, phases, and task details",
+        heading: "Event boards",
         paragraphs: [
-          "An event board is divided into phases and To Do, In Progress, and Completed lanes. It opens on the first phase that is not complete. If every phase is complete, it opens on the first phase.",
-          "A completed named phase is locked until authorized leadership reopens it. Unphased work does not complete or lock as a phase.",
+          "Every event has a **board**. The board is split into **phases** (the stages of the event). Inside each phase, tasks sit in three lanes: **To Do**, **In Progress** and **Completed**.",
+          "The board opens on the first phase that is not finished yet. If every phase is finished, it opens on the first one.",
         ],
+        illustration: "board",
         bullets: [
-          "Open a card to see its description, committee, people, schedule, dependency, work links, comments, and available actions.",
-          "A Deliverable may have a due date. A Live Operation may have a Duty date, Call time, and optional End time.",
-          "A Live Operation is running only while it is between its Call and End times. Its End is used to decide when it is overdue.",
+          "Tap a card to see its description, committee, people, schedule, links, comments, and the actions you can take.",
+          "A **Deliverable** can have a due date.",
+          "A **Live Operation** can have a Duty date, a Call time and an optional End time.",
+          "A Live Operation is **running** only between its Call time and its End time. The End time is what decides when it becomes overdue.",
         ],
-        screenshotLabel: "Event board and task detail",
+        tip: "When every task in a named phase is finished, that phase is locked. Authorized leaders can reopen it. Tasks that are not in any phase never lock.",
       },
       {
         heading: "Priority and deadlines",
         paragraphs: [
-          "The priority shown on boards and task lists is the effective priority. It can rise as work approaches its start or becomes overdue without changing the priority originally saved by leadership.",
+          "The priority you see on boards and task lists is the **effective priority**. It can go up as a deadline gets close, even though the priority your leaders originally saved does not change.",
         ],
         bullets: [
-          "Overdue work is shown as Critical.",
-          "Low or Medium work can be shown as High when it is running or starts within 24 hours.",
-          "My Tasks can sort by closest deadline or effective priority.",
+          "Overdue work shows as **Critical**.",
+          "Low or Medium work shows as **High** when it is running or starts within 24 hours.",
+          "On **My Tasks**, you can sort by closest deadline or by priority.",
         ],
       },
       {
         heading: "Getting help on a task",
         paragraphs: [
-          "A To Do Backlog task can be claimed when the Claim action is available. A task that requests backup appears in Help Wanted for people with access.",
+          "If a task in the **To Do Backlog** has a **Claim** button, you can take it. If a task owner asks for backup, the task appears in **Help Wanted** for people who have access.",
         ],
         bullets: [
-          "Members can volunteer to help. Their offer stays pending until authorized leadership or a current primary owner accepts it.",
-          "An Admin or Co-Admin who volunteers is added as an assist assignee automatically when the action is allowed.",
-          "Current primary owners and authorized leadership can turn a backup request on or off. Turning it off removes pending volunteer offers.",
+          "Members can **volunteer** to help. Your offer stays pending until an authorized leader or the task's main owner accepts it.",
+          "If an Admin or Co-Admin volunteers, they are added as a helper automatically (when allowed).",
+          "The main owner and authorized leaders can turn **backup requests** on or off. Turning it off removes any pending offers.",
         ],
       },
       {
         heading: "Work links and comments",
         bullets: [
-          "Work links accept supported Google Drive, Docs, Sheets, and Slides links. The file stays in Google Drive; CEIT Connect stores only the link.",
-          "A supported link can be opened in Drive and may have an in-page preview.",
-          "You can edit your own comment while the task is editable. Delete appears only when the current rules allow it. Archived task comments are read-only.",
+          "You can add links to Google **Drive**, **Docs**, **Sheets** or **Slides**. The file stays in Google Drive. CEIT Connect only saves the link.",
+          "A supported link can be opened in Drive, and some show a preview right on the page.",
+          "You can edit your own comment while the task can still be edited. The **Delete** button only appears when the rules allow it.",
+          "Comments on archived tasks are read-only.",
         ],
       },
       {
         heading: "Leaving a task",
         paragraphs: [
-          "Admins and Co-Admins can leave an active, unfinished task immediately. A Member leaves immediately when there is no deadline or the task starts more than 72 hours away.",
-          "At or inside the 72-hour boundary, a Member sends a leave request. The assignment and access stay unchanged until an authorized Admin or the task committee's Co-Admin approves it. The requester may cancel a pending request.",
-          "For Live Operations, the 72-hour check uses the start of the operation: Call time first, then an older stored due date when no Call time exists.",
+          "**Admins and Co-Admins** can leave an active, unfinished task right away.",
+          "**Members** can leave right away when the task has no deadline, or starts more than 72 hours (3 days) away.",
+          "If the task starts in 72 hours or less, a Member sends a **leave request** instead. You stay assigned, and keep your access, until an authorized Admin (or the Co-Admin of the task's committee) approves it. You can cancel a pending request.",
         ],
+        tip: "For Live Operations, the 72 hours are counted from the start: the Call time first, or an older saved due date if there is no Call time.",
       },
       {
         heading: "Confidential tasks",
         paragraphs: [
-          "Admins and the task committee's Co-Admin have access to confidential task content. Current assignees and people named as additional viewers may also have access.",
-          "Other people may see a masked row or no task content, depending on the reader. A masked task never reveals its title or description.",
+          "Admins and the Co-Admin of the task's committee can see everything in a confidential task. The people assigned to it, and anyone added as an extra viewer, may see it too.",
+          "Everyone else may see a hidden row or nothing at all. A hidden task never shows its title or description.",
         ],
       },
     ],
@@ -141,104 +222,107 @@ const SECTIONS: readonly HelpManualSection[] = [
   {
     id: "events",
     title: "Events",
-    summary: "Find current events and read permanent archived records.",
+    blurb: "Draft, Active and Archived",
+    summary: "Find current events and read the permanent records of finished ones.",
     roles: EVERYONE,
     blocks: [
       {
-        heading: "Event states",
+        heading: "The three event states",
+        illustration: "events",
         bullets: [
-          "Draft events are being prepared and are available only through leadership rules.",
-          "Active events appear on Home and contain the working task board.",
-          "Archived events are permanent, read-only records. Their tasks, work links, and comments cannot be changed.",
+          "**Draft** — an event that is still being prepared. Only leaders can work with it.",
+          "**Active** — shows on Home and holds the working task board.",
+          "**Archived** — a permanent, read-only record. Its tasks, work links and comments cannot be changed.",
         ],
-        screenshotLabel: "Home events and Event Archives",
       },
     ],
   },
   {
     id: "notifications",
     title: "Notifications",
-    summary: "Use the bell for the complete record and phone notifications for short alerts.",
+    blurb: "The bell and phone alerts",
+    summary: "The bell keeps the full list. Phone alerts are short reminders.",
     roles: EVERYONE,
     blocks: [
       {
-        heading: "Notification bell",
+        heading: "The notification bell",
         paragraphs: [
-          "The bell can notify you about mentions, heads-ups, assignments, status changes, unlocked tasks, backup requests, volunteer offers, leave requests and decisions, due-soon tasks, and Live Operation preparation.",
+          "The bell tells you about mentions, heads-ups, new assignments, status changes, unlocked tasks, backup requests, volunteer offers, leave requests and their decisions, tasks due soon, and Live Operation preparation.",
         ],
+        illustration: "bell",
         bullets: [
-          "Open a row to mark it read and go to its available task or comment target.",
-          "You can delete one notification or use Clear read to remove read notifications. Unread notifications are not cleared by that action.",
-          "Due-soon reminders are created for assigned, unfinished tasks in Active events when a stored due date enters the next 24 hours.",
-          "Live Operation prep reminders are created when an assigned, unfinished Live Operation in an Active event has a Call time within the next two hours. An End time does not create a reminder.",
+          "Tap a row to mark it read and go to its task or comment.",
+          "You can delete one notification, or tap **Clear read** to remove all the ones you have read. Unread notifications are not cleared.",
+          "**Due-soon reminder:** you get one for an assigned, unfinished task in an Active event when its due date is within the next 24 hours.",
+          "**Live Operation prep reminder:** you get one when an assigned, unfinished Live Operation in an Active event has a Call time within the next 2 hours. An End time does not create a reminder.",
         ],
       },
       {
         heading: "Grouped phone alerts",
         paragraphs: [
-          "Every bell row remains separate. Only certain phone alerts are briefly held so several alerts of the same kind can become one counts-only phone message.",
+          "Every task still gets its own row in the bell. But some phone alerts wait a moment, so several of the same kind can arrive as **one message**.",
         ],
         bullets: [
-          "Launch assignments, due-soon reminders, Live Operation prep reminders, and unlock bursts may group.",
-          "New alerts can join the group for 25 seconds, and delivery becomes ready at 30 seconds.",
-          "A group says how many tasks are involved and does not include task titles. Open the bell to see the individual rows.",
+          "Alerts that may be grouped: new launch assignments, due-soon reminders, Live Operation prep reminders, and unlocked tasks.",
+          "New alerts can join a group for 25 seconds. The phone message is ready to send at 30 seconds.",
+          "A grouped message only tells you **how many** tasks are involved, not their titles. Open the bell to see each one.",
         ],
-        screenshotLabel: "Notification bell and phone alerts",
       },
     ],
   },
   {
     id: "leadership",
     title: "Co-Admin and Admin only",
-    summary: "Create and manage work within the authority attached to your role.",
+    blurb: "Tools for leaders",
+    summary: "Create and manage work within the limits of your role.",
     roles: LEADERSHIP,
     blocks: [
       {
-        heading: "Role and committee boundaries",
+        heading: "What each role can do",
         paragraphs: [
-          "Admins can manage work across committees. Co-Admins manage task and member changes for their own committee unless a specific reader gives broader read-only access.",
-          "Non-Admins cannot be newly assigned to the President committee. Existing assignments stay unchanged.",
+          "**Admins** can manage work across all committees. **Co-Admins** manage tasks and members for their **own committee**, unless a specific page gives them wider read-only access.",
+          "Only Admins can be newly assigned to the President committee. Existing assignments stay unchanged.",
         ],
+        illustration: "leadership",
         bullets: [
-          "Admins can invite officers, move Members between committees, manage another eligible account's active state, and anonymize eligible former members.",
-          "Co-Admins can view, invite, deactivate, and reactivate Members in their own committee. They cannot manage officers or move people between committees.",
-          "The Executive Dashboard and Activity Log are available to Admins and Co-Admins. Co-Admin dashboard data stays within their committee; Admins receive council-wide and Admin-only views.",
+          "Admins can invite officers, move Members between committees, turn another eligible account on or off, and anonymize eligible former members.",
+          "Co-Admins can view, invite, deactivate and reactivate Members in their own committee. They cannot manage officers or move people between committees.",
+          "The **Executive Dashboard** and **Activity Log** are for Admins and Co-Admins. A Co-Admin only sees data for their own committee. Admins see council-wide and Admin-only views.",
         ],
       },
       {
         heading: "Create and edit work",
         bullets: [
-          "Admins can create and edit tasks for any committee. Co-Admins can write tasks only for their current committee.",
-          "Choose today or a later date when adding or changing a date on an Active-event task. An older date already stored on a task may stay unchanged.",
-          "For a Live Operation, Due date is hidden. Leave End date blank when it finishes on the Duty date; use End date only for an overnight operation.",
-          "The Admin committee picker starts blank. A Co-Admin's committee is derived from their account.",
-          "Newer Live Operations have no due date. Older ones may still show one and may send a due-soon reminder.",
+          "Admins can create and edit tasks for any committee. Co-Admins can only write tasks for their own committee.",
+          "When you add or change a date on an Active-event task, choose today or a later date. An older date that is already saved can stay as it is.",
+          "For a **Live Operation**, the Due date is hidden. Leave **End date** blank if it finishes on the Duty date. Use End date only for an overnight operation.",
+          "The Admin committee picker starts blank. A Co-Admin's committee is filled in from their account.",
+          "Newer Live Operations have no due date. Older ones may still show one, and may still send a due-soon reminder.",
         ],
       },
       {
         heading: "Events and templates",
         bullets: [
-          "Draft tasks are edited through Edit Event. Active tasks are added or edited from the board or task page. Archived work is read-only.",
-          "Launching requires a named event with dates and at least one valid task. A completely unscheduled Live Operation is allowed, but it has no timing escalation or prep reminder until a Call time is added.",
-          "Tasks imported from an archived template start with blank due, call, and end schedules. Review and set any schedule needed for the new event.",
-          "Named completed phases lock their tasks. Authorized leadership can reopen a phase by returning one task to In Progress.",
+          "Edit tasks of a **Draft** event through **Edit Event**. Add or edit tasks of an **Active** event from the board or the task page. Archived work is read-only.",
+          "To **launch** an event, it needs a name, dates, and at least one valid task. A Live Operation with no schedule at all is allowed, but it gets no timing escalation or prep reminder until you add a Call time.",
+          "Tasks imported from an archived template start with **blank** due, call and end times. Check them and set any schedule the new event needs.",
+          "Finished named phases lock their tasks. Authorized leaders can reopen a phase by moving one of its tasks back to In Progress.",
         ],
-        screenshotLabel: "Leadership event and task setup",
       },
       {
-        heading: "Requests, dashboard, and history",
+        heading: "Requests, dashboard and history",
         bullets: [
-          "Authorized Admins and the task committee's Co-Admin can approve or deny Member leave requests. A requester cannot resolve their own request.",
-          "Volunteer offers can be accepted by authorized leadership or a current primary owner, but nobody can accept their own offer.",
-          "The Executive Dashboard separates overdue, due within 24 hours, at-risk, running, and other work using the task's effective timing.",
-          "Activity Log entries are kept for 30 days. Confidential task information remains masked when the viewer lacks access.",
+          "Authorized Admins and the task committee's Co-Admin can approve or deny a Member's leave request. Nobody can resolve their own request.",
+          "A volunteer offer can be accepted by an authorized leader or the task's main owner, but nobody can accept their own offer.",
+          "The Executive Dashboard separates overdue work, work due within 24 hours, at-risk work, running work, and everything else, using each task's effective timing.",
+          "Activity Log entries are kept for **30 days**. Confidential task information stays hidden from anyone without access.",
         ],
       },
       {
-        heading: "Deactivation and former-member removal",
+        heading: "Deactivating and removing former members",
         paragraphs: [
-          "Deactivation blocks normal access but does not delete the account or rewrite its historical references.",
-          "Admin-only former-member removal anonymizes an eligible deactivated account instead of deleting it. Accounts still assigned to open Draft or Active tasks are skipped. Archived assignments and historical comments remain attached to the same internal identity.",
+          "**Deactivating** an account blocks its access, but does not delete the account or change its history.",
+          "**Removing a former member** (Admins only) anonymizes an eligible deactivated account instead of deleting it. Accounts that are still assigned to open Draft or Active tasks are skipped. Archived assignments and old comments stay attached to the same account.",
         ],
       },
     ],
@@ -250,7 +334,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "login",
     question: "I can't log in. What do I do?",
     answer: [
-      "Check that you are using the invited email address. Try the email-link or Google option shown on Login, or use your password if you have set one. A deactivated account cannot enter the app.",
+      "Check that you are using the email address you were invited with. Try the email-link or Google option on the login page, or use your password if you have set one. A deactivated account cannot enter the app.",
     ],
     roles: EVERYONE,
   },
@@ -258,7 +342,31 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "forgot-password",
     question: "I forgot my password.",
     answer: [
-      "Choose Forgot password on the login page, enter your invited email, then use the code from the reset email to choose a new password.",
+      "Tap **Forgot password** on the login page and enter your invited email. Then type the code from the reset email and choose a new password.",
+    ],
+    roles: EVERYONE,
+  },
+  {
+    id: "install-app",
+    question: "How do I install CEIT Connect on my phone?",
+    answer: [
+      "On iPhone, open CEIT Connect in Safari, tap Share, then choose Add to Home Screen. On Android, open it in Chrome, tap the menu, then choose Install app or Add to Home screen.",
+    ],
+    roles: EVERYONE,
+  },
+  {
+    id: "change-name-photo",
+    question: "How do I change my name, photo or password?",
+    answer: [
+      "Open **Settings**. You can update your displayed name, upload or remove your photo, set or change your password, and switch between light and dark.",
+    ],
+    roles: EVERYONE,
+  },
+  {
+    id: "name-photo-not-updating",
+    question: "I changed my name or photo, but the old one still shows.",
+    answer: [
+      "Refresh the page, or sign out and sign back in. If the old name or photo is still showing after that, contact us using the details in the **Contact us** section.",
     ],
     roles: EVERYONE,
   },
@@ -266,7 +374,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "task-visibility",
     question: "Why can't I see a task my friend sees?",
     answer: [
-      "The task may be confidential, Draft-only, or outside the access attached to your role and committee. Confidential task details are limited to authorized leadership, assignees, and additional viewers.",
+      "The task may be confidential, still a Draft, or outside the access that comes with your role and committee. Confidential task details are only shown to authorized leaders, the people assigned to the task, and extra viewers.",
     ],
     roles: EVERYONE,
   },
@@ -274,7 +382,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "claim-and-assign",
     question: "Who can claim a task, and who can assign one?",
     answer: [
-      "An active person with access can claim an eligible To Do Backlog task when Claim is shown. Assignment controls appear only for authorized leadership and other capability-approved task owners.",
+      "Any active person with access can claim an open To Do Backlog task when the Claim button is shown. The controls for assigning people only appear for authorized leaders and other approved task owners.",
     ],
     roles: EVERYONE,
   },
@@ -282,7 +390,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "comments",
     question: "Can I edit or delete my comment?",
     answer: [
-      "You can edit your own comment while the task is editable. Delete appears only when the current task and comment rules allow it. Archived task comments are always read-only.",
+      "You can edit your own comment while the task can still be edited. The Delete button only appears when the rules allow it. Comments on archived tasks are always read-only.",
     ],
     roles: EVERYONE,
   },
@@ -290,7 +398,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "phone-notifications",
     question: "How do I turn on notifications on my phone?",
     answer: [
-      "On Android, open CEIT Connect in Chrome and use Enable notifications in Settings. On iPhone, add CEIT Connect to the Home Screen from Safari, open the installed app, then enable notifications in Settings.",
+      "On Android, open CEIT Connect in Chrome and tap Enable notifications in Settings. On iPhone, add CEIT Connect to your Home Screen from Safari, open the installed app, then turn on notifications in Settings.",
     ],
     roles: EVERYONE,
   },
@@ -298,7 +406,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "notifications-stopped",
     question: "Why did I stop getting notifications?",
     answer: [
-      "Open Settings on that device and check the notification status. Browser permission changes, removing the saved device, or a replaced browser subscription can require you to enable notifications again.",
+      "Open Settings on that device and check the notification status. If you changed the browser permission, removed the saved device, or the browser replaced its subscription, you may need to turn notifications on again.",
     ],
     roles: EVERYONE,
   },
@@ -306,7 +414,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "effective-priority",
     question: "Why did my task show a higher priority than I set?",
     answer: [
-      "CEIT Connect displays effective priority on task lists and boards. It can rise when work is running, starts within 24 hours, or is overdue without changing the saved priority.",
+      "CEIT Connect shows the effective priority on task lists and boards. It can rise when work is running, starts within 24 hours, or is overdue. The priority that was saved does not change.",
     ],
     roles: EVERYONE,
   },
@@ -314,7 +422,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "leave-task",
     question: "Why can't I leave a task right away?",
     answer: [
-      "Members need approval when the task starts at or inside the next 72 hours. Your assignment remains until leadership approves the request. Admins and Co-Admins leave immediately.",
+      "Members need approval when a task starts in 72 hours or less. You stay assigned until a leader approves your request. Admins and Co-Admins can leave right away.",
     ],
     roles: EVERYONE,
   },
@@ -322,7 +430,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "grouped-notification",
     question: "Why did I get one notification for several tasks?",
     answer: [
-      "Some same-kind phone alerts wait briefly and use one counts-only message. The bell still keeps a separate row for every task.",
+      "Some phone alerts of the same kind wait a moment and arrive as one message that only shows a count. The bell still keeps a separate row for every task.",
     ],
     roles: EVERYONE,
   },
@@ -330,7 +438,7 @@ const FAQS: readonly HelpManualFaq[] = [
     id: "removed-account",
     question: "What happens to my tasks if I'm removed from the organization?",
     answer: [
-      "Deactivation blocks access but preserves task and event history. An eligible former account may later be anonymized, but historical references remain and open task assignments must be resolved first.",
+      "Deactivating an account blocks access but keeps the task and event history. An eligible former account may later be anonymized, but its history stays, and any open task assignments must be sorted out first.",
     ],
     roles: EVERYONE,
   },
@@ -350,10 +458,40 @@ const FAQS: readonly HelpManualFaq[] = [
   },
 ];
 
-const CONFIRMATIONS = [
-  "Who should users contact when something is broken? The owner will add the approved contact destination later.",
-  "What single recovery step should be recommended when a saved name or photo does not appear everywhere?",
-] as const;
+/**
+ * PLACEHOLDER contact details. Replace each `value` with the real council contact.
+ * (These are the only lines you need to edit to finish the Contact section.)
+ */
+const CONTACT: HelpContact = {
+  summary: "Still stuck? Reach out and a real person will help you.",
+  channels: [
+    {
+      id: "email",
+      label: "Email",
+      value: "support@your-council-email.example",
+      note: "Best for questions that are not urgent.",
+    },
+    {
+      id: "messenger",
+      label: "Messenger or Facebook page",
+      value: "Add your council page link here",
+      note: "Good for quick questions.",
+    },
+    {
+      id: "hours",
+      label: "Support hours",
+      value: "Add days and times here",
+      note: "When someone is available to reply.",
+    },
+    {
+      id: "office",
+      label: "Council office",
+      value: "Add the room or building here",
+      note: "Where to find the team in person.",
+    },
+  ],
+  tip: "When you write to us, tell us your name, your committee, and what you were doing when it went wrong. A screenshot helps a lot.",
+};
 
 export function getHelpManualForRole(role: Role): HelpManualPayload {
   return {
@@ -363,7 +501,6 @@ export function getHelpManualForRole(role: Role): HelpManualPayload {
       blocks: section.blocks.map((block) => ({ ...block })),
     })),
     faqs: FAQS.filter((faq) => faq.roles.includes(role)).map((faq) => ({ ...faq })),
-    confirmations: [...CONFIRMATIONS],
+    contact: { ...CONTACT, channels: CONTACT.channels.map((channel) => ({ ...channel })) },
   };
 }
-
