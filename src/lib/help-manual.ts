@@ -287,7 +287,8 @@ const SECTIONS: readonly HelpManualSection[] = [
         bullets: [
           "Admins can invite officers, move Members between committees, turn another eligible account on or off, and anonymize eligible former members.",
           "Co-Admins can view, invite, deactivate and reactivate Members in their own committee. They cannot manage officers or move people between committees.",
-          "The **Executive Dashboard** and **Activity Log** are for Admins and Co-Admins. A Co-Admin only sees data for their own committee. Admins see council-wide and Admin-only views.",
+          "The **Executive Dashboard** is for Admins and Co-Admins. A Co-Admin's dashboard only shows data for their own committee. Admins see council-wide and Admin-only views.",
+          "The **Activity Log** is for active Admins and Co-Admins. They see the whole log, and any task details they are not allowed to see are hidden (masked).",
         ],
       },
       {

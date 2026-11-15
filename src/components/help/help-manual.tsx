@@ -78,6 +78,10 @@ function RichText({ text }: { text: string }) {
   );
 }
 
+/** A stable id for one block of a guide, so a search result can jump straight to it. */
+const blockAnchor = (sectionId: string, heading: string) =>
+  `${sectionId}--${heading.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+
 const plain = (text: string) => text.replace(/\*\*/g, "");
 
 /** The red "Clear" pill, so it is easy to spot while you are searching. */
@@ -142,12 +146,24 @@ function Callout({ children }: { children: string }) {
   );
 }
 
-function ManualBlocks({ blocks }: { blocks: readonly HelpManualBlock[] }) {
+function ManualBlocks({
+  sectionId,
+  variant,
+  blocks,
+}: {
+  sectionId: string;
+  variant: "mobile" | "desktop";
+  blocks: readonly HelpManualBlock[];
+}) {
   return (
     <div className="space-y-10">
       {blocks.map((block) => (
         <div key={block.heading} className="space-y-4">
-          <h3 className="flex items-center gap-3 font-display text-xl font-semibold text-foreground md:text-[22px]">
+          <h3
+            id={`${blockAnchor(sectionId, block.heading)}-${variant === "mobile" ? "m" : "d"}`}
+            tabIndex={-1}
+            className="flex scroll-mt-24 items-center gap-3 font-display text-xl font-semibold text-foreground outline-none md:text-[22px]"
+          >
             <span aria-hidden className="h-7 w-1.5 shrink-0 rounded-full bg-primary" />
             {block.heading}
           </h3>
@@ -479,6 +495,7 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
       .map(({ section, block, text }) => ({
         key: `${section.id}-${block.heading}`,
         sectionId: section.id,
+        anchor: blockAnchor(section.id, block.heading),
         sectionTitle: section.title,
         heading: block.heading,
         snippet: snippetFor(text, words),
@@ -503,7 +520,11 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
   useEffect(() => {
     const targetId = pendingScroll.current;
     if (!targetId) return;
-    const target = document.getElementById(targetId);
+    // Block headings exist twice (phone copy and desktop copy); use the one on screen.
+    const candidates = [targetId, `${targetId}-m`, `${targetId}-d`]
+      .map((candidateId) => document.getElementById(candidateId))
+      .filter((element): element is HTMLElement => element !== null);
+    const target = candidates.find((element) => element.getClientRects().length > 0) ?? candidates[0];
     if (!target) return;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
@@ -593,9 +614,14 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
     if (firstMatch) setExpandedFaqs((current) => new Set(current).add(firstMatch.id));
   }
 
-  function goToGuide(id: string) {
-    setQuery("");
-    openThenScroll(id);
+  /** Opens the section, then scrolls to and focuses the exact block. The search stays as it was. */
+  function goToBlock(sectionId: string, anchor: string) {
+    const wasOpen = openSections.has(sectionId);
+    setOpenSections((current) => new Set(current).add(sectionId));
+    pendingFocus.current = anchor;
+    if (wasOpen) requestScroll(anchor);
+    // A closed phone section needs a moment to unfold before its position is known.
+    else window.setTimeout(() => requestScroll(anchor), 350);
   }
 
   const searching = words.length > 0;
@@ -735,10 +761,10 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
                       <li key={hit.key}>
                         <Card interactive tone="primary" className="h-full">
                           <a
-                            href={`#${hit.sectionId}`}
+                            href={`#${hit.anchor}`}
                             onClick={(event) => {
                               event.preventDefault();
-                              goToGuide(hit.sectionId);
+                              goToBlock(hit.sectionId, hit.anchor);
                             }}
                             className="group flex h-full flex-col gap-1.5 rounded-2xl p-4 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                           >
@@ -905,7 +931,7 @@ export function HelpManual({ manual }: { manual: HelpManualPayload }) {
               onNext={openThenScroll}
               onTop={() => requestScroll("help-top")}
             >
-              {() => <ManualBlocks blocks={section.blocks} />}
+              {(variant) => <ManualBlocks sectionId={section.id} variant={variant} blocks={section.blocks} />}
             </SectionShell>
           ))}
 

@@ -65,7 +65,7 @@ describe("Help manual interactions", () => {
     expect(screen.getByText("In the guides")).toBeTruthy();
   });
 
-  it("matches guide text too and jumps to the guide when a result is tapped", async () => {
+  it("matches guide text too and jumps to the exact block and keeps the search", async () => {
     render(<HelpManual manual={getHelpManualForRole("Member")} />);
 
     fireEvent.change(screen.getByLabelText("Search the help center"), {
@@ -77,7 +77,8 @@ describe("Help manual interactions", () => {
       expect(screen.getByRole("button", { name: /^Quick start\b/i }).getAttribute("aria-expanded")).toBe("true");
       expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
     });
-    expect((screen.getByLabelText("Search the help center") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Search the help center") as HTMLInputElement).value).toBe("add to home screen");
+    expect(document.activeElement?.id).toMatch(/^quick-start--on-an-iphone-safari-[md]$/);
   });
 
   it("shows a clear empty state and never exposes leadership FAQs to a Member search", () => {
