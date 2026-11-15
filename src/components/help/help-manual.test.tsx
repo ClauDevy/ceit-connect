@@ -65,20 +65,37 @@ describe("Help manual interactions", () => {
     expect(screen.getByText("In the guides")).toBeTruthy();
   });
 
-  it("matches guide text too and jumps to the exact block and keeps the search", async () => {
-    render(<HelpManual manual={getHelpManualForRole("Member")} />);
+  // The page renders every guide twice: a phone copy (ids end in "-m", shown below the md
+  // breakpoint) and a desktop copy ("-d", shown from md up). happy-dom does not run Tailwind, so
+  // we stand in for those responsive styles by reporting layout boxes for the visible copy only.
+  it.each([
+    ["phone", "m"],
+    ["desktop", "d"],
+  ] as const)("jumps to and focuses the %s copy of the block and keeps the search", async (_label, suffix) => {
+    const layout = vi
+      .spyOn(HTMLElement.prototype, "getClientRects")
+      .mockImplementation(function (this: HTMLElement) {
+        return (this.id.endsWith(`-${suffix}`) ? [{}] : []) as unknown as DOMRectList;
+      });
+    try {
+      render(<HelpManual manual={getHelpManualForRole("Member")} />);
 
-    fireEvent.change(screen.getByLabelText("Search the help center"), {
-      target: { value: "add to home screen" },
-    });
-    fireEvent.click(screen.getAllByRole("link", { name: /On an iPhone/ })[0]);
+      fireEvent.change(screen.getByLabelText("Search the help center"), {
+        target: { value: "add to home screen" },
+      });
+      fireEvent.click(screen.getAllByRole("link", { name: /On an iPhone/ })[0]);
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /^Quick start\b/i }).getAttribute("aria-expanded")).toBe("true");
-      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
-    });
-    expect((screen.getByLabelText("Search the help center") as HTMLInputElement).value).toBe("add to home screen");
-    expect(document.activeElement?.id).toMatch(/^quick-start--on-an-iphone-safari-[md]$/);
+      const expectedId = `quick-start--on-an-iphone-safari-${suffix}`;
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /^Quick start\b/i }).getAttribute("aria-expanded")).toBe("true");
+        expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+      });
+      expect(document.activeElement?.id).toBe(expectedId);
+      expect((scrollIntoView.mock.contexts.at(-1) as HTMLElement).id).toBe(expectedId);
+      expect((screen.getByLabelText("Search the help center") as HTMLInputElement).value).toBe("add to home screen");
+    } finally {
+      layout.mockRestore();
+    }
   });
 
   it("shows a clear empty state and never exposes leadership FAQs to a Member search", () => {
