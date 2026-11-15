@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 vi.mock("@/components/shared/motion", () => ({
   Collapse: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
@@ -95,6 +95,30 @@ describe("Help manual interactions", () => {
       expect((screen.getByLabelText("Search the help center") as HTMLInputElement).value).toBe("add to home screen");
     } finally {
       layout.mockRestore();
+    }
+  });
+
+  it("drops a waiting jump when a newer navigation happens", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      render(<HelpManual manual={getHelpManualForRole("Member")} />);
+
+      fireEvent.change(screen.getByLabelText("Search the help center"), {
+        target: { value: "leave request" },
+      });
+      // "Your tasks" starts closed, so this jump is scheduled to run a moment later.
+      fireEvent.click(screen.getAllByRole("link", { name: /Leaving a task/ })[0]);
+      // Before it fires, the person taps a topic tile instead.
+      fireEvent.click(screen.getAllByRole("link", { name: /^Events/ })[0]);
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+
+      const scrolledTo = scrollIntoView.mock.contexts.map((element) => (element as HTMLElement).id);
+      expect(scrolledTo).toContain("events");
+      expect(scrolledTo.some((id) => id.startsWith("your-tasks--"))).toBe(false);
+    } finally {
+      vi.useRealTimers();
     }
   });
 
