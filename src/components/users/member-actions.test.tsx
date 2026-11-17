@@ -144,6 +144,119 @@ describe("MemberAction", () => {
     expect(html).not.toContain("Reactivate");
   });
 
+  it("hides Admin step-down and peer deactivation while the safeguard refresh is in flight", () => {
+    const selfHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason="Checking Admin safeguards…"
+        onAction={vi.fn()}
+      />,
+    );
+    const peerHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf={false}
+        pending={false}
+        peerAdminBlockedReason="Checking Admin safeguards…"
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(selfHtml + peerHtml).toContain("Checking Admin safeguards…");
+    expect(selfHtml).not.toContain("Step down to Member");
+    expect(selfHtml).not.toContain("More actions");
+    expect(peerHtml).not.toContain("Deactivate");
+  });
+
+  it("keeps Admin actions hidden when the safeguard read fails", () => {
+    const reason = "Could not check Admin safeguards. Refresh the page to try again.";
+    const selfHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason={reason}
+        onAction={vi.fn()}
+      />,
+    );
+    const peerHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf={false}
+        pending={false}
+        peerAdminBlockedReason={reason}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(selfHtml + peerHtml).toContain(reason);
+    expect(selfHtml).not.toContain("Step down to Member");
+    expect(peerHtml).not.toContain("Deactivate");
+  });
+
+  it("shows self step-down when a successful safeguard read finds two Admins", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason={null}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("Step down to Member");
+    expect(html).not.toContain("Could not check Admin safeguards.");
+  });
+
+  it("hides the sole active Admin's step-down action with the fixed reason", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason="At least one active Admin is required."
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("At least one active Admin is required.");
+    expect(html).not.toContain("Step down to Member");
+  });
+
+  it("does not delay Member or Co-Admin actions for Admin safeguards", () => {
+    const memberHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={activeMember}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+    const coAdminHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Co-Admin" }}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(memberHtml).toContain("Deactivate");
+    expect(coAdminHtml).toContain("Return to Member");
+    expect(memberHtml + coAdminHtml).not.toContain("Checking Admin safeguards");
+  });
+
   it("shows only Cancel invitation for an unaccepted officer", () => {
     const html = renderToStaticMarkup(
       <MemberAction

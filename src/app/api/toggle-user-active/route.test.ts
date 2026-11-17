@@ -234,6 +234,21 @@ describe("POST /api/toggle-user-active Admin regression", () => {
     expect(service.remove).toHaveBeenCalledWith([`${targetId}/avatar.webp`]);
   });
 
+  it("maps the last-Admin officer guard before Auth or Storage cleanup", async () => {
+    sessionClient({
+      targetRole: "Admin",
+      rpcError: { code: "CCG02", message: "private database text" },
+    });
+    const service = serviceClient();
+    const response = await POST(request(false));
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "At least one active Admin is required.",
+    });
+    expect(service.updateUserById).not.toHaveBeenCalled();
+    expect(service.remove).not.toHaveBeenCalled();
+  });
+
   it("unbans a reactivated officer", async () => {
     const session = sessionClient({ targetRole: "Admin" });
     const service = serviceClient();
@@ -302,6 +317,21 @@ describe("POST /api/toggle-user-active Admin regression", () => {
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: "The user status could not be changed.",
+    });
+    expect(service.updateUserById).not.toHaveBeenCalled();
+    expect(service.remove).not.toHaveBeenCalled();
+  });
+
+  it("maps a raced direct update to the fixed last-Admin response", async () => {
+    sessionClient({ targetRole: "Member" });
+    const service = serviceClient({
+      profileError: { code: "CCG02", message: "private database text" },
+      updatedProfile: null,
+    });
+    const response = await POST(request(false));
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "At least one active Admin is required.",
     });
     expect(service.updateUserById).not.toHaveBeenCalled();
     expect(service.remove).not.toHaveBeenCalled();

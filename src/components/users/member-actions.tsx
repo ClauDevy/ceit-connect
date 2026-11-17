@@ -131,13 +131,18 @@ export function MemberAction({
     }
     return (
       <div className="grid justify-items-end gap-1">
-        <ActionReason>You cannot deactivate or remove your own account.</ActionReason>
-        <ActionMenu member={member} pending={pending}>
-          <DestructiveItem onClick={() => onAction("step-down", member)}>
-            <UserRoundX className="size-4" aria-hidden />
-            Step down to Member
-          </DestructiveItem>
-        </ActionMenu>
+        <ActionReason>
+          {peerAdminBlockedReason ??
+            "You cannot deactivate or remove your own account."}
+        </ActionReason>
+        {!peerAdminBlockedReason ? (
+          <ActionMenu member={member} pending={pending}>
+            <DestructiveItem onClick={() => onAction("step-down", member)}>
+              <UserRoundX className="size-4" aria-hidden />
+              Step down to Member
+            </DestructiveItem>
+          </ActionMenu>
+        ) : null}
       </div>
     );
   }

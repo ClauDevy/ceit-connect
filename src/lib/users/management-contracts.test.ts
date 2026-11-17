@@ -18,10 +18,21 @@ describe("member management contracts", () => {
     ["CCM08", 400],
     ["CCM09", 409],
     ["CCG01", 409],
+    ["CCG02", 409],
   ])("maps %s without exposing database text", (code, status) => {
     const safe = safeMemberManagementError({ code, message: "private" });
     expect(safe.status).toBe(status);
     expect(safe.message).not.toContain("private");
+  });
+
+  it("keeps the last-Admin guard text fixed", () => {
+    expect(
+      safeMemberManagementError({ code: "CCG02", message: "private" }),
+    ).toEqual({
+      code: "CCG02",
+      status: 409,
+      message: "At least one active Admin is required.",
+    });
   });
 
   it("uses a safe fallback for unknown errors", () => {
