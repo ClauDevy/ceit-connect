@@ -68,6 +68,13 @@ const TABS = [
   { value: "deactivated", label: "Deactivated" },
 ] as const;
 
+export function isCurrentAdminLifecycleRequest(
+  requestId: number,
+  latestRequestId: number,
+) {
+  return requestId === latestRequestId;
+}
+
 export function getPeerAdminBlockedReason(
   member: Member,
   viewerRole: Extract<Role, "Admin" | "Co-Admin">,
@@ -154,14 +161,28 @@ export function UsersTable({
   const [adminLifecycleContext, setAdminLifecycleContext] = useState<AdminLifecycleContext | null>(null);
   const [adminLifecycleContextUnavailable, setAdminLifecycleContextUnavailable] =
     useState(false);
+  const adminLifecycleRequestId = useRef(0);
 
   const refreshAdminLifecycleContext = useCallback(async () => {
     if (!supabase) return;
+    const requestId = adminLifecycleRequestId.current + 1;
+    adminLifecycleRequestId.current = requestId;
+    setAdminLifecycleContext(null);
+    setAdminLifecycleContextUnavailable(false);
+
     try {
       const { data, error } = await supabase.rpc("get_admin_lifecycle_context");
       const row = Array.isArray(data)
         ? (data[0] as AdminLifecycleContext | undefined)
         : undefined;
+      if (
+        !isCurrentAdminLifecycleRequest(
+          requestId,
+          adminLifecycleRequestId.current,
+        )
+      ) {
+        return;
+      }
       if (error || !row) {
         setAdminLifecycleContext(null);
         setAdminLifecycleContextUnavailable(true);
@@ -170,6 +191,14 @@ export function UsersTable({
       setAdminLifecycleContext(row);
       setAdminLifecycleContextUnavailable(false);
     } catch {
+      if (
+        !isCurrentAdminLifecycleRequest(
+          requestId,
+          adminLifecycleRequestId.current,
+        )
+      ) {
+        return;
+      }
       setAdminLifecycleContext(null);
       setAdminLifecycleContextUnavailable(true);
     }
