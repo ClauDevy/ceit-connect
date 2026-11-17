@@ -161,6 +161,50 @@ describe("MemberAction", () => {
     expect(html).not.toContain("More actions");
   });
 
+  it("keeps Admin actions hidden when the safeguard read fails", () => {
+    const reason = "Could not check Admin safeguards. Refresh the page to try again.";
+    const selfHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason={reason}
+        onAction={vi.fn()}
+      />,
+    );
+    const peerHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf={false}
+        pending={false}
+        peerAdminBlockedReason={reason}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(selfHtml + peerHtml).toContain(reason);
+    expect(selfHtml).not.toContain("Step down to Member");
+    expect(peerHtml).not.toContain("Deactivate");
+  });
+
+  it("shows self step-down when a successful safeguard read finds two Admins", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason={null}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("Step down to Member");
+    expect(html).not.toContain("Could not check Admin safeguards.");
+  });
+
   it("hides the sole active Admin's step-down action with the fixed reason", () => {
     const html = renderToStaticMarkup(
       <MemberAction

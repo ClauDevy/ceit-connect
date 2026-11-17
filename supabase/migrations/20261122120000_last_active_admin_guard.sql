@@ -12,6 +12,12 @@ security definer
 set search_path = ''
 as $$
 begin
+  if pg_catalog.current_setting('transaction_isolation') is distinct from 'read committed' then
+    raise exception using
+      errcode = 'CCG03',
+      message = 'Admin changes require read committed isolation.';
+  end if;
+
   perform pg_catalog.pg_advisory_xact_lock(
     public.officer_advisory_lock_key()
   );
