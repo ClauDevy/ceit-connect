@@ -163,7 +163,7 @@ Frozen pastes are not edited:
   trigger exists. Do not rerun Paste D after N1. N1 Paste A pins coexistence
   with the completion/leave triggers and N1 Paste B owns completion/unlock
   behavior. The other Step 13b pastes remain valid.
-- `docs/PHASE-4-STEP-10-TESTS.md` retains historical counts and old current-state
+- `docs/phase-4/PHASE-4-STEP-10-TESTS.md` retains historical counts and old current-state
   expectations. Do not use its old aggregate paste as the post-N1 catalog gate;
   use N1 Paste A and `docs/phase-5/catalog.md`.
 - Step 9 TEST 5 remains valid: its ordinary comments contain neither Heads Up

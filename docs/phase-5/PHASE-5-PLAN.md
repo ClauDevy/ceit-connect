@@ -27,8 +27,8 @@ current batch completes its full stage order.
 | U4a | Task editor schedule and picker fixes | `fix/task-editor-schedule-parity` | High | Live on Dev and Prod (owner-confirmed) |
 | V1 | Manila-date Active-task deadline guard and Admin-only President committee invariant | planned database/UI branch | High | Live on Dev and Prod (owner-confirmed); Prod preflight owner-reported |
 | U4b | Remaining task-editor wording and parity follow-up | planned UI branch | Medium | Live on Dev and Prod (owner-confirmed) |
-| H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Implemented locally; covers V1(b) and U4b; UI-only, no migration |
-| U3 | Optional event form component split (refactor only, no behavior change) | optional later UI branch | Medium | Optional later; UI-only, no migration |
+| H1 | In-app user manual at `/help`, role-aware guidance, FAQ search, and future screenshot slots | planned UI branch | Medium | Live on Prod (owner-confirmed); covers V1(b) and U4b; UI-only, no migration |
+| U3 | Optional event form component split (refactor only, no behavior change) | optional later UI branch | Medium | Live on Dev and Prod (owner-confirmed); UI-only, no migration |
 | L1 | Live Operation START/END/running timing for priority, dashboard, and Member leave decisions | `feature/live-operation-call-time-rules` | High | Migration `20261119120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
 | G1 | Counts-only phone-push grouping for launch assignment, due-soon, Live Operation prep, and unlock bursts | `feature/alert-grouping` | High | Migration `20261120120000` live on Dev and Prod (owner-confirmed 2026-11-13) |
 

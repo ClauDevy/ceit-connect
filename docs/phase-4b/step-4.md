@@ -73,7 +73,7 @@ If implementation discovers a need to store or remotely manage branding assets, 
 
 ## Earlier test docs to re-run or update
 
-- Re-run the login and theme portions of `docs/PHASE-4-STEP-10E-GATE.md` so authentication behavior, responsive fit, focus, and both themes remain intact.
+- Re-run the login and theme portions of `docs/phase-4/PHASE-4-STEP-10E-GATE.md` so authentication behavior, responsive fit, focus, and both themes remain intact.
 - Re-run the relevant shell and changed-page visual checks created for Phase 4B Steps 2 and 3 after those batches land.
 - SQL and database catalog pastes remain unchanged because this batch has no database impact.
 

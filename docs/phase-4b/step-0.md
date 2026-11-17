@@ -62,7 +62,7 @@ The shared name contract rejects U+0000–U+001F, U+007F–U+009F, U+2028, and U
 
 ## Earlier test docs to re-run or update
 
-- Re-run the users-policy and inactive/profile-less portions of `docs/PHASE-4-STEP-1A-TESTS.md`, `docs/PHASE-4-STEP-2-TESTS.md`, and the Step 10 gate where their assertions remain applicable.
+- Re-run the users-policy and inactive/profile-less portions of `docs/phase-4/PHASE-4-STEP-1A-TESTS.md`, `docs/phase-4/PHASE-4-STEP-2-TESTS.md`, and the Step 10 gate where their assertions remain applicable.
 - Preserve existing Settings/avatar regression coverage and the invite rollback/error contract.
 - Add the final objects to the future Phase 4B catalog without rewriting historical Phase 4 result counts.
 - The former policy is hard-coded in Phase 4 Step 2 TEST 5 and the catalog tests in Steps 3 and 4. Each historical document now marks that assertion obsolete after Batch 0 and points here; its historical result count is unchanged.

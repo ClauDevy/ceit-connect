@@ -81,8 +81,8 @@ If implementation discovers that a database reader or email invariant is require
 
 ## Earlier test docs to re-run or update
 
-- Re-run the user-policy/catalog assertions in `docs/PHASE-4-STEP-2-TESTS.md`, `docs/PHASE-4-STEP-3-TESTS.md`, and `docs/PHASE-4-STEP-4-TESTS.md` after Batch 0 and this batch.
-- Re-run the inactive/profile-less gates referenced by `docs/PHASE-4-STEP-1A-TESTS.md` and `docs/PHASE-4-STEP-10-TESTS.md` if any shared active-profile helper or users policy changes.
+- Re-run the user-policy/catalog assertions in `docs/phase-4/PHASE-4-STEP-2-TESTS.md`, `docs/phase-4/PHASE-4-STEP-3-TESTS.md`, and `docs/phase-4/PHASE-4-STEP-4-TESTS.md` after Batch 0 and this batch.
+- Re-run the inactive/profile-less gates referenced by `docs/phase-4/PHASE-4-STEP-1A-TESTS.md` and `docs/phase-4/PHASE-4-STEP-10-TESTS.md` if any shared active-profile helper or users policy changes.
 - Update auth/manual coverage that still says Google requires `password_set` or magic-link-first.
 - If a migration is added, re-run the Step 10A catalog paste and update only legitimately changed Phase 4B expectations; historical Phase 4 counts remain historical.
 

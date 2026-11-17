@@ -19,7 +19,7 @@ and shared advisory lock precede task-row locks.
 > **Superseded by Step 7:** the sole-writer assertion below is correct only
 > immediately after Step 5b. Once Step 7 is applied, it correctly fails because
 > `set_task_dependency(uuid,uuid)` joins `move_task(...)` in the exact privileged
-> writer allowlist. Use `docs/PHASE-4-STEP-7-TESTS.md` for the new assertion.
+> writer allowlist. Use `docs/phase-4/PHASE-4-STEP-7-TESTS.md` for the new assertion.
 
 ```sql
 begin;
