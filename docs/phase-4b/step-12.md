@@ -105,13 +105,13 @@ After the function exists, drop the permissive `activity_log_select` policy and 
 
 ## Earlier test docs to re-run or update
 
-- Update `docs/PHASE-4-STEP-1A-TESTS.md` activity-log coverage: raw authenticated reads must now be denied for every role, including Admin, and the safe reader replaces policy-based visibility.
-- Update `docs/PHASE-4-STEP-10-TESTS.md` and `docs/phase-4/step-10-database-review.md` with the reader signature, raw-SELECT revocation, policy removal, grants, and current function/policy counts. Historical Phase 4 results remain historical.
-- Rerun `docs/PHASE-4-STEP-2-TESTS.md` and `docs/PHASE-4-STEP-3-TESTS.md` for board/detail/access-helper and Draft/real/masked parity.
-- Rerun `docs/PHASE-4-STEP-5B-TESTS.md` for rank-only activity silence and status activity.
-- Rerun `docs/PHASE-4-STEP-7-TESTS.md`, `docs/PHASE-4-STEP-7A-TESTS.md`, and `docs/PHASE-4-STEP-8-TESTS.md` for current confidentiality, assignment/unassignment, backup non-authorization, and activity attribution.
-- Rerun `docs/PHASE-4-STEP-7B-TESTS.md` to prove archive-only sharing does not give a Member task-history entitlement and deleted confidential snapshots remain masked.
-- Rerun `docs/PHASE-4-STEP-9-TESTS.md` to prove task comments remain separate, do not create task activity rows, and current access changes still revoke child readers consistently.
+- Update `docs/phase-4/PHASE-4-STEP-1A-TESTS.md` activity-log coverage: raw authenticated reads must now be denied for every role, including Admin, and the safe reader replaces policy-based visibility.
+- Update `docs/phase-4/PHASE-4-STEP-10-TESTS.md` and `docs/phase-4/step-10-database-review.md` with the reader signature, raw-SELECT revocation, policy removal, grants, and current function/policy counts. Historical Phase 4 results remain historical.
+- Rerun `docs/phase-4/PHASE-4-STEP-2-TESTS.md` and `docs/phase-4/PHASE-4-STEP-3-TESTS.md` for board/detail/access-helper and Draft/real/masked parity.
+- Rerun `docs/phase-4/PHASE-4-STEP-5B-TESTS.md` for rank-only activity silence and status activity.
+- Rerun `docs/phase-4/PHASE-4-STEP-7-TESTS.md`, `docs/phase-4/PHASE-4-STEP-7A-TESTS.md`, and `docs/phase-4/PHASE-4-STEP-8-TESTS.md` for current confidentiality, assignment/unassignment, backup non-authorization, and activity attribution.
+- Rerun `docs/phase-4/PHASE-4-STEP-7B-TESTS.md` to prove archive-only sharing does not give a Member task-history entitlement and deleted confidential snapshots remain masked.
+- Rerun `docs/phase-4/PHASE-4-STEP-9-TESTS.md` to prove task comments remain separate, do not create task activity rows, and current access changes still revoke child readers consistently.
 - Add Batch 12 objects and removed raw grants/policies to the authoritative Phase 4B catalog test scheduled after Batch 13b and Batch 14’s expanded Step 10 allowlists.
 
 ## Test deliverable

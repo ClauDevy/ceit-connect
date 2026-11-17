@@ -9,7 +9,7 @@
 
 Apply `20261016140000_read_only_event_board.sql` to Dev through the owner's
 normal process before running these tests. Also re-run the existing
-`get_task()` tests in `docs/PHASE-3-HARDENING-TESTS.md` on Dev after this
+`get_task()` tests in `docs/phase-3/PHASE-3-HARDENING-TESTS.md` on Dev after this
 migration; Test 1 now requires a deactivated caller to receive zero rows.
 
 Every test below is one self-contained SQL Editor paste. Tests 1–5 create

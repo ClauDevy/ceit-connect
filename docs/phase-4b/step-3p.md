@@ -28,7 +28,7 @@ Give Home, Archives, My Tasks, and Help Wanted one reliable paging pattern: fetc
 - `src/lib/tasks/my-tasks.ts` sets `MY_TASKS_PAGE_SIZE = 50`; `src/components/tasks/my-tasks-list.tsx` treats an exact 50-row result as proof of another page. The sole tracked definition, migration `20261022150000_list_my_tasks.sql`, defines `list_my_tasks(text,text,integer,integer)` with offset paging, a 100-row maximum, its existing filter-selected business sort, and final `task_id ASC` tie-breaker.
 - `src/lib/tasks/backup.ts` sets `HELP_WANTED_PAGE_SIZE = 50`; `src/components/tasks/help-wanted-list.tsx` has the same exact-page false-positive rule. The sole tracked definition, migration `20261022120000_task_claim_backup_volunteers.sql`, defines `list_help_wanted_tasks(integer,integer)` with offset paging, a 100-row maximum, and `due_date ASC NULLS LAST, task_id ASC` ordering.
 - Comments are separate: `src/lib/tasks/comments.ts` uses 25 rows, while migration `20261023130000_task_comments.sql` permits up to 50 and uses keyset paging plus an explicit `out_has_more` result.
-- `docs/phase-4/step-10-database-review.md` and `docs/PHASE-4-STEP-10-TESTS.md` record one live signature per Phase 4 function name and zero overloads.
+- `docs/phase-4/step-10-database-review.md` and `docs/phase-4/PHASE-4-STEP-10-TESTS.md` record one live signature per Phase 4 function name and zero overloads.
 
 ## Scope: in / out
 
@@ -62,11 +62,11 @@ If an owner-approved server-side search/filter or another discovered requirement
 
 ## Earlier test docs to re-run or update
 
-- `docs/PHASE-4-STEP-8-TESTS.md`: TEST 1 catalog/function contract (**19** pinned result lines) and TEST 5 Help Wanted reader behavior (**10**).
-- `docs/PHASE-4-STEP-9A-TESTS.md`: TEST 1 catalog (**12**), TEST 2 scope/lifecycle (**14**), TEST 3 sorts/pagination (**16**), and TEST 4 validation/RLS (**13**).
-- `docs/PHASE-4-STEP-10-TESTS.md`: 10D-2 pagination/caps (**14**). Its 50/100-row assertions may remain database-contract tests if the readers are unchanged; add 21/show-20 app coverage separately.
+- `docs/phase-4/PHASE-4-STEP-8-TESTS.md`: TEST 1 catalog/function contract (**19** pinned result lines) and TEST 5 Help Wanted reader behavior (**10**).
+- `docs/phase-4/PHASE-4-STEP-9A-TESTS.md`: TEST 1 catalog (**12**), TEST 2 scope/lifecycle (**14**), TEST 3 sorts/pagination (**16**), and TEST 4 validation/RLS (**13**).
+- `docs/phase-4/PHASE-4-STEP-10-TESTS.md`: 10D-2 pagination/caps (**14**). Its 50/100-row assertions may remain database-contract tests if the readers are unchanged; add 21/show-20 app coverage separately.
 - If a reader is replaced, re-run the Step 10A catalog paste and keep its historical inventory at `57 / 8 / 11 / 20 / 0`, especially **0 overload rows**; update the inventory only if later approved migrations legitimately change counts.
-- Re-run/update the Workspace manual checks in `docs/PHASE-4-STEP-10E-GATE.md` and the focused tests in `src/lib/tasks/my-tasks.test.ts` and `src/lib/tasks/backup.test.ts`.
+- Re-run/update the Workspace manual checks in `docs/phase-4/PHASE-4-STEP-10E-GATE.md` and the focused tests in `src/lib/tasks/my-tasks.test.ts` and `src/lib/tasks/backup.test.ts`.
 
 ## Test deliverable
 

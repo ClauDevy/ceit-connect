@@ -96,16 +96,16 @@ Every reader must derive the caller from `auth.uid()`, require an active profile
 
 ## Earlier test docs to re-run or update
 
-- `docs/PHASE-4-STEP-1A-TESTS.md` for raw Draft SELECT/UPDATE/DELETE and profile denial.
-- `docs/PHASE-4-STEP-2-TESTS.md` for Draft board role matrices, reader shape, and masking.
-- `docs/PHASE-4-STEP-3-TESTS.md` for Draft detail real/masked/hidden states and dependency-label masking.
-- `docs/PHASE-4-STEP-7-TESTS.md` for confidential access and capability hiding.
-- `docs/PHASE-4-STEP-7A-TESTS.md` and `docs/PHASE-4-STEP-8-TESTS.md` for assignment, volunteer, and writer-scope non-regression.
-- `docs/PHASE-4-STEP-9-TESTS.md` for comment denial on masked/hidden content.
+- `docs/phase-4/PHASE-4-STEP-1A-TESTS.md` for raw Draft SELECT/UPDATE/DELETE and profile denial.
+- `docs/phase-4/PHASE-4-STEP-2-TESTS.md` for Draft board role matrices, reader shape, and masking.
+- `docs/phase-4/PHASE-4-STEP-3-TESTS.md` for Draft detail real/masked/hidden states and dependency-label masking.
+- `docs/phase-4/PHASE-4-STEP-7-TESTS.md` for confidential access and capability hiding.
+- `docs/phase-4/PHASE-4-STEP-7A-TESTS.md` and `docs/phase-4/PHASE-4-STEP-8-TESTS.md` for assignment, volunteer, and writer-scope non-regression.
+- `docs/phase-4/PHASE-4-STEP-9-TESTS.md` for comment denial on masked/hidden content.
 - Batch 11 tests for Add/Edit task committee scope and safe form prefilling.
 - Batch 12 tests for Draft snapshot masking in the Activity Log.
 - Batch 13 tests for picker filtering without cross-committee write expansion.
-- `docs/PHASE-4-STEP-10-TESTS.md` and the post-13b Phase 4B catalog for current helper/reader definitions, grants, policies, and zero unexpected writers.
+- `docs/phase-4/PHASE-4-STEP-10-TESTS.md` and the post-13b Phase 4B catalog for current helper/reader definitions, grants, policies, and zero unexpected writers.
 
 ## Test deliverable
 

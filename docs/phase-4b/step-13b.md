@@ -173,13 +173,13 @@ The SQL tests must inspect function bodies and trigger order and include determi
 
 Do not invent future numeric catalog or result-line counts before Batches 11–13d have landed. At implementation time, recount from the final source and update the current assertions below while keeping historical migration results labeled historical:
 
-- `docs/PHASE-4-STEP-5B-TESTS.md` TEST 1: function/owner writer assumptions and move/lock catalog; retain movement behavior tests.
-- `docs/PHASE-4-STEP-7-TESTS.md` TEST 1 and TEST 4: exact writer allowlist, owner-column union, trigger order, raw forward gate, and `move_task()` regression.
-- `docs/PHASE-4-STEP-7A-TESTS.md` TEST 1: historical five-owner/nine-full-writer counts and reset-helper callers.
-- `docs/PHASE-4-STEP-8-TESTS.md` TEST 1: the authoritative pre-4B eight-owner/12-full-writer counts; replace its current-state inventory with the post-13b exact set while preserving the former result as historical.
-- `docs/PHASE-4-STEP-10-TESTS.md` 10A and relevant 10B–10D allowlists/result-line expectations: recognize the completed-phase helper, guard, Reopen writer, child/table changes, and final writer sets.
+- `docs/phase-4/PHASE-4-STEP-5B-TESTS.md` TEST 1: function/owner writer assumptions and move/lock catalog; retain movement behavior tests.
+- `docs/phase-4/PHASE-4-STEP-7-TESTS.md` TEST 1 and TEST 4: exact writer allowlist, owner-column union, trigger order, raw forward gate, and `move_task()` regression.
+- `docs/phase-4/PHASE-4-STEP-7A-TESTS.md` TEST 1: historical five-owner/nine-full-writer counts and reset-helper callers.
+- `docs/phase-4/PHASE-4-STEP-8-TESTS.md` TEST 1: the authoritative pre-4B eight-owner/12-full-writer counts; replace its current-state inventory with the post-13b exact set while preserving the former result as historical.
+- `docs/phase-4/PHASE-4-STEP-10-TESTS.md` 10A and relevant 10B–10D allowlists/result-line expectations: recognize the completed-phase helper, guard, Reopen writer, child/table changes, and final writer sets.
 - `docs/phase-4/step-10-database-review.md`: keep the Phase 4 `57 / 8 / 11 / 20 / 0` result as historical and add only reviewed post-13b objects/counts after live Dev output exists.
-- `docs/PHASE-4-STEP-10E-GATE.md`: recalculate any expected result-line counts only after the affected SQL documents are final; do not carry stale numbers forward.
+- `docs/phase-4/PHASE-4-STEP-10E-GATE.md`: recalculate any expected result-line counts only after the affected SQL documents are final; do not carry stale numbers forward.
 - Batch 11, 13, 13c, 13e, and 13d test documents: add completed-phase denial or approved cascade cases without rewriting their pre-13b historical results.
 
 The new authoritative Phase 4B catalog is created after Batch 13b and records the actual live Dev counts; this planning document does not predict them.

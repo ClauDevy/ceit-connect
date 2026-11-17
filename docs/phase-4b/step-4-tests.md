@@ -39,7 +39,7 @@ Run each item at phone width (about 390 px) and desktop width (about 1440 px), i
 9. **Unchanged tigers.** Empty states, the event banner, and the event form still show the old tiger head.
 10. **Favicon.** Check the browser tab after a hard refresh against light and dark browser chrome (and a bookmark at 16 px if possible): a gold shield on a dark rounded square. If the 16 px version is too weak, report it for tuning.
 11. **Over the new background.** Look at common empty, loading, error, dialog, and sheet states in both themes.
-12. **Auth behavior.** Re-run the login and theme portions of `docs/PHASE-4-STEP-10E-GATE.md`: all sign-in paths, errors, and the theme toggle behave exactly as before.
+12. **Auth behavior.** Re-run the login and theme portions of `docs/phase-4/PHASE-4-STEP-10E-GATE.md`: all sign-in paths, errors, and the theme toggle behave exactly as before.
 
 ## Tuning notes (first-pass numbers)
 

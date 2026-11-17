@@ -476,9 +476,9 @@ cross join trigger_inventory;
 - Re-run Batch 0 users-policy tests and Batch 9 activation/deactivation tests with `anonymized_at` added to every reactivation guard.
 - Re-run Batch 7 callback negatives to prove the replaced Auth/profile email, inactive state, and ban cannot regain a session.
 - Re-run Batch 8 Admin protections and last-active-Admin tests.
-- Re-run task assignment and archive tests in `docs/PHASE-4-STEP-7A-TESTS.md`, `docs/PHASE-4-STEP-8-TESTS.md`, `docs/PHASE-3-STEP-6-ARCHIVE-VISIBILITY-TESTS.md`, and `docs/PHASE-4-STEP-7B-TESTS.md` for preserved UUID/history behavior.
-- Re-run comment tests in `docs/PHASE-4-STEP-9-TESTS.md` to prove comments remain and render through the current profile identity.
-- Re-run Activity Log immutability/catalog coverage from `docs/PHASE-4-STEP-1A-TESTS.md` and the Step 10 gate; no snapshot may be rewritten.
+- Re-run task assignment and archive tests in `docs/phase-4/PHASE-4-STEP-7A-TESTS.md`, `docs/phase-4/PHASE-4-STEP-8-TESTS.md`, `docs/phase-3/PHASE-3-STEP-6-ARCHIVE-VISIBILITY-TESTS.md`, and `docs/phase-4/PHASE-4-STEP-7B-TESTS.md` for preserved UUID/history behavior.
+- Re-run comment tests in `docs/phase-4/PHASE-4-STEP-9-TESTS.md` to prove comments remain and render through the current profile identity.
+- Re-run Activity Log immutability/catalog coverage from `docs/phase-4/PHASE-4-STEP-1A-TESTS.md` and the Step 10 gate; no snapshot may be rewritten.
 - Extend the future authoritative Phase 4B catalog test and allowlists for the new column, constraints, functions, policies, and grants; keep historical Phase 4 counts historical.
 
 ## Test deliverable
