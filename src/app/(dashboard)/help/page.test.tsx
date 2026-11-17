@@ -59,6 +59,8 @@ describe("Help page role boundary", () => {
     const payload = mocks.manual;
 
     expect(html).toContain('data-help-role="Member"');
+    expect(html).toContain('href="/terms"');
+    expect(html).toContain("Terms of Service");
     expect(payload).toBeDefined();
     expect(payload?.sections.map((section) => section.id)).not.toContain("leadership");
     expect(payload?.faqs.map((faq) => faq.id)).not.toContain("activity-retention");

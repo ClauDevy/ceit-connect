@@ -4,6 +4,8 @@
 
 The approved Phase 5 batch map, decisions, gate checks, and release checklist are in `docs/phase-5/PHASE-5-PLAN.md`.
 
+- **Phase 5 Step A sign-out and draft Terms is implemented locally and is not live on Dev or Prod.** The phone More sheet and final Settings section now use the existing push-aware native sign-out flow; the public `/terms` page works with or without a session and changes only its back link; login, Settings, and Help link to it; and the default README is replaced with a project-specific guide. There is no migration, database, auth-route, dependency, motion, viewport, or login-sizing change. TypeScript passes; the suite is 1,500/1,504 with exactly the four known CRLF-sensitive failures; lint exits zero with only the existing unused `INK` warning; and whitespace passes. Manual checks are not yet run. See `docs/phase-5/step-a-signout-terms.md`.
+
 - **Phase 5 U4b task-editor parity is live on Dev and Prod (owner-confirmed).** Board and Event task editors now share concise wording, blank Admin committee selection, non-destructive type switching, Deliverable-only Due-date UI, same-day blank End date, submission-aware V1/event-end checks, and exact preservation of existing Live Operation due dates. New Live Operations store no due date; validators, RPCs, database objects, U4a behavior, and the President guard are unchanged. See `docs/phase-5/step-u4b-task-editor-parity.md`.
 
 - **Shared AppShell double-scroll fix is implemented locally.** The viewport shell is now fixed out of document flow, clips at the dynamic viewport, and gives its bounded `min-h-0` content column sole vertical scrolling with overscroll containment. Desktop and phone headers, bottom navigation, safe-area clearance, and ordinary document scrolling on non-AppShell routes remain unchanged. Source-contract coverage pins the single-scroller structure; no database, dependency, or route behavior changed.
@@ -275,6 +277,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 ## Deferred list (carried into next batch planning; none fixed in Batch 4)
 
+- `src/components/layout/sidebar.tsx` is unused and retains a legacy non-push-aware Sign out form; report-only until a separately approved cleanup removes or updates it.
 - President committee identity hardening: V1(b) follows the repository's exact-name lookup. Renaming the committee can bypass that lookup, so an immutable slug or equivalent schema protection belongs in a separate batch. A second committee named `President` would also be protected rather than bypassing the guard.
 - Event-editor confidentiality requires a separate database-backed batch to add safe `is_confidential` / `allowed_viewers` reader and writer support; U4b does not add UI-only controls that cannot persist.
 - Consider requiring a call time before launch for Live Operations. Unscheduled
