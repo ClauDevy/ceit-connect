@@ -68,6 +68,43 @@ const TABS = [
   { value: "deactivated", label: "Deactivated" },
 ] as const;
 
+export function isCurrentAdminLifecycleRequest(
+  requestId: number,
+  latestRequestId: number,
+) {
+  return requestId === latestRequestId;
+}
+
+export function getPeerAdminBlockedReason(
+  member: Member,
+  viewerRole: Extract<Role, "Admin" | "Co-Admin">,
+  adminLifecycleContext: AdminLifecycleContext | null,
+  adminLifecycleContextUnavailable: boolean,
+): string | null {
+  if (viewerRole !== "Admin" || member.role !== "Admin") return null;
+  if (!adminLifecycleContext) {
+    return adminLifecycleContextUnavailable
+      ? "Could not check Admin safeguards. Refresh the page to try again."
+      : "Checking Admin safeguards…";
+  }
+  if (
+    member.is_active &&
+    adminLifecycleContext.confirmed_active_admin_count <= 1
+  ) {
+    return "At least one active Admin is required.";
+  }
+  if (
+    !member.is_active &&
+    adminLifecycleContext.caps_enabled &&
+    adminLifecycleContext.active_admin_count +
+      adminLifecycleContext.preparing_admin_count >=
+      2
+  ) {
+    return "Admin role capacity is currently full.";
+  }
+  return null;
+}
+
 export function UsersTable({
   initialPage,
   committees,
@@ -122,12 +159,49 @@ export function UsersTable({
   );
   const [pendingInvitesLoading, setPendingInvitesLoading] = useState(false);
   const [adminLifecycleContext, setAdminLifecycleContext] = useState<AdminLifecycleContext | null>(null);
+  const [adminLifecycleContextUnavailable, setAdminLifecycleContextUnavailable] =
+    useState(false);
+  const adminLifecycleRequestId = useRef(0);
 
   const refreshAdminLifecycleContext = useCallback(async () => {
     if (!supabase) return;
-    const { data, error } = await supabase.rpc("get_admin_lifecycle_context");
-    const row = Array.isArray(data) ? data[0] as AdminLifecycleContext | undefined : undefined;
-    if (!error && row) setAdminLifecycleContext(row);
+    const requestId = adminLifecycleRequestId.current + 1;
+    adminLifecycleRequestId.current = requestId;
+    setAdminLifecycleContext(null);
+    setAdminLifecycleContextUnavailable(false);
+
+    try {
+      const { data, error } = await supabase.rpc("get_admin_lifecycle_context");
+      const row = Array.isArray(data)
+        ? (data[0] as AdminLifecycleContext | undefined)
+        : undefined;
+      if (
+        !isCurrentAdminLifecycleRequest(
+          requestId,
+          adminLifecycleRequestId.current,
+        )
+      ) {
+        return;
+      }
+      if (error || !row) {
+        setAdminLifecycleContext(null);
+        setAdminLifecycleContextUnavailable(true);
+        return;
+      }
+      setAdminLifecycleContext(row);
+      setAdminLifecycleContextUnavailable(false);
+    } catch {
+      if (
+        !isCurrentAdminLifecycleRequest(
+          requestId,
+          adminLifecycleRequestId.current,
+        )
+      ) {
+        return;
+      }
+      setAdminLifecycleContext(null);
+      setAdminLifecycleContextUnavailable(true);
+    }
   }, [supabase]);
 
   useEffect(() => {
@@ -469,18 +543,13 @@ export function UsersTable({
         .map((invite) => [invite.auth_user_id as string, invite]),
     ),
     viewerRole,
-    getPeerAdminBlockedReason: (member: Member) => {
-      if (viewerRole !== "Admin" || member.role !== "Admin" || member.id === currentUserId) return null;
-      if (!adminLifecycleContext) return "Checking Admin safeguards…";
-      if (member.is_active && adminLifecycleContext.confirmed_active_admin_count <= 1) {
-        return "At least one other active confirmed Admin is required.";
-      }
-      if (!member.is_active && adminLifecycleContext.caps_enabled &&
-          adminLifecycleContext.active_admin_count + adminLifecycleContext.preparing_admin_count >= 2) {
-        return "Admin role capacity is currently full.";
-      }
-      return null;
-    },
+    getPeerAdminBlockedReason: (member: Member) =>
+      getPeerAdminBlockedReason(
+        member,
+        viewerRole,
+        adminLifecycleContext,
+        adminLifecycleContextUnavailable,
+      ),
     selectionEnabled,
     selectedIds: effectiveSelectedIds,
     allVisibleSelected,

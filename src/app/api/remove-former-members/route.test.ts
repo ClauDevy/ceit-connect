@@ -456,6 +456,37 @@ describe("POST /api/remove-former-members execution", () => {
     );
   });
 
+  it("maps the last-Admin guard and skips every external cleanup", async () => {
+    callerClient((name, args) =>
+      name === "preview_former_member_removal"
+        ? { data: previewRows(args.p_user_ids as string[]), error: null }
+        : {
+            data: null,
+            error: { code: "CCG02", message: "private database text" },
+          },
+    );
+    const service = serviceClient();
+    const response = await POST(
+      request({
+        action: "remove",
+        userIds: [targetId],
+        confirmation: "REMOVE 1 MEMBERS",
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).results).toEqual([
+      {
+        userId: targetId,
+        state: "failed",
+        message: "At least one active Admin is required.",
+      },
+    ]);
+    expect(mocks.createServiceRoleClient).not.toHaveBeenCalled();
+    expect(service.updateUserById).not.toHaveBeenCalled();
+    expect(service.rpc).not.toHaveBeenCalled();
+    expect(service.remove).not.toHaveBeenCalled();
+  });
+
   it("finalizes a completed bulk once with completed ids only", async () => {
     const session = callerClient();
     const response = await POST(

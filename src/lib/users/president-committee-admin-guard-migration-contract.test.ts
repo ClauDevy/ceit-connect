@@ -62,13 +62,23 @@ const presidentPreparationBlock = `
     end if;`;
 
 describe("V1b President committee Admin guard migration contract", () => {
-  it("keeps the migration timestamp later than every other tracked migration", () => {
+  it("keeps the migration before the approved later guard migration", () => {
     const migrations = readdirSync("supabase/migrations")
       .filter((file) => file.endsWith(".sql"))
       .sort();
-    expect(migrations.at(-1)).toBe(
+
+    const presidentGuardIndex = migrations.indexOf(
       "20261121140000_president_committee_admin_guard.sql",
     );
+    const lastAdminGuardIndex = migrations.indexOf(
+      "20261122120000_last_active_admin_guard.sql",
+    );
+
+    expect(presidentGuardIndex).toBeGreaterThanOrEqual(0);
+    expect(lastAdminGuardIndex).toBeGreaterThanOrEqual(0);
+    expect(
+      presidentGuardIndex,
+    ).toBeLessThan(lastAdminGuardIndex);
   });
 
   it("uses LF, dollar quoting, and no session or service-role exception", () => {
