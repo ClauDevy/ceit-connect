@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CEIT Connect
 
-## Getting Started
+CEIT Connect is the task delegation and tracking system for the CEIT Student Council of Cavite State University. The production site is [ceitconnect.site](https://ceitconnect.site).
 
-First, run the development server:
+## Tech stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js 16.3.4 and React 19.2.8
+- TypeScript `^5` and Tailwind CSS `^4`
+- Supabase JS `^2.116.0` with Postgres, Auth, and Row Level Security
+- Vitest `^3.2.4`
+- Web Push 3.6.7
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Main features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Event planning and task boards
+- Admin, Co-Admin, and Member roles
+- Committee-based work coordination
+- Activity log
+- In-app notifications and optional device push notifications
+- In-app help at `/help`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Getting started
 
-## Learn More
+1. Install dependencies with `npm install`.
+2. Create `.env.local` and request the real values from the project owner.
+3. Start the development server with `npm run dev`.
 
-To learn more about Next.js, take a look at the following resources:
+The application uses exactly these environment variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` — server only
+- `ALLOWED_EMAIL_DOMAINS` — server only
+- `NEXT_PUBLIC_PUSH_VAPID_PUBLIC_KEY`
+- `PUSH_VAPID_PRIVATE_KEY` — server only
+- `PUSH_VAPID_SUBJECT` — server only
+- `PUSH_DB_CAPABILITY` — server only
+- `PUSH_WAKE_SECRET` — server only
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Do not commit `.env.local` or share its values.
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the local development server |
+| `npm run build` | Create a production build |
+| `npm run start` | Run the production build |
+| `npm run lint` | Run ESLint |
+| `npm run test` | Run the Vitest suite |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project layout
+
+- `src/app/` — App Router pages and API routes
+- `src/components/` — shared and feature UI
+- `src/lib/` — application logic and integrations
+- `supabase/migrations/` — tracked database migrations
+- `docs/` — architecture, plans, progress, and operating notes
+
+Start with [PROGRESS](docs/PROGRESS.md), then consult [ARCHITECTURE](docs/ARCHITECTURE.md), [DATABASE](docs/DATABASE.md), [GOTCHAS](docs/GOTCHAS.md), [BACKUP](docs/BACKUP.md), and [AGENTS](AGENTS.md).
+
+## Working rules
+
+- Every database change is a new tracked file in `supabase/migrations/`.
+- The owner applies migrations; an applied migration is never edited.
+- Users are deactivated or anonymized, never hard-deleted.
+- Service-role access stays in verified server-only boundaries; it is never a shortcut around authorization.
+
+## Credits
+
+Built by eduCache.on.
+
+© 2026 CEIT Student Council, Cavite State University. All rights reserved.
+
+Read the [Draft Terms](https://ceitconnect.site/terms).
+
+## License
+
+[license to be confirmed]
