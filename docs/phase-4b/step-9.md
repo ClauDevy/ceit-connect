@@ -89,8 +89,8 @@ Batch 7 used a raw RLS-backed query rather than a database reader. The new fixed
 ## Earlier test docs to re-run or update
 
 - Re-run Batch 0’s users-policy tests proving direct Co-Admin UPDATE is absent and own-profile editing still works.
-- Re-run user-policy/catalog assertions in `docs/PHASE-4-STEP-2-TESTS.md`, `docs/PHASE-4-STEP-3-TESTS.md`, and `docs/PHASE-4-STEP-4-TESTS.md`.
-- Re-run inactive/profile-less denial from `docs/PHASE-4-STEP-1A-TESTS.md` and the Step 10 gate if a shared helper changes.
+- Re-run user-policy/catalog assertions in `docs/phase-4/PHASE-4-STEP-2-TESTS.md`, `docs/phase-4/PHASE-4-STEP-3-TESTS.md`, and `docs/phase-4/PHASE-4-STEP-4-TESTS.md`.
+- Re-run inactive/profile-less denial from `docs/phase-4/PHASE-4-STEP-1A-TESTS.md` and the Step 10 gate if a shared helper changes.
 - Re-run Batch 7 Users paging/search tests for both Admin and newly scoped Co-Admin views.
 - Extend the future authoritative Phase 4B catalog test and allowlists for every new function/policy/grant; historical Phase 4 counts remain unchanged.
 

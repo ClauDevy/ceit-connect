@@ -55,7 +55,7 @@ None. No migration, table, function, policy, or grant changes are expected.
 
 ## Earlier test docs to re-run or update
 
-- Re-run the shell, Home, role-boundary, theme, and mobile portions of `docs/PHASE-4-STEP-10E-GATE.md`; no SQL paste needs updating for a presentation-only change.
+- Re-run the shell, Home, role-boundary, theme, and mobile portions of `docs/phase-4/PHASE-4-STEP-10E-GATE.md`; no SQL paste needs updating for a presentation-only change.
 - Re-run existing navigation, Home loading, and role-specific manual checks affected by component movement.
 
 ## Test deliverable

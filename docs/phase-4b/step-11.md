@@ -111,13 +111,13 @@ The historical migration assertions stay in their applied files because each was
 
 These files contain exact or superseded task-writer/owner-column assumptions and must be updated when Batch 11 lands:
 
-- `docs/PHASE-4-STEP-5B-TESTS.md` — its sole-definer-writer assertion is historical; keep its move-only columns, rank noise, and lock tests.
-- `docs/PHASE-4-STEP-7-TESTS.md` — update the supersession note and current writer/owner-column interpretation; rerun dependency/confidentiality and raw forward-gate coverage.
-- `docs/PHASE-4-STEP-7A-TESTS.md` — update the historical exact nine-writer note; rerun assignment, deletion, last-task, Backlog, and activity coverage.
-- `docs/PHASE-4-STEP-8-TESTS.md` — replace Step 8 TEST 1 as the authoritative current exact inventory with the new Batch 11 inventory, while retaining the exact six-column owner branch if the new writers are invoker-security.
-- `docs/PHASE-4-STEP-10-TESTS.md` and `docs/phase-4/step-10-database-review.md` — expand current function/direct-writer allowlists and counts; keep the original Phase 4 results historical.
+- `docs/phase-4/PHASE-4-STEP-5B-TESTS.md` — its sole-definer-writer assertion is historical; keep its move-only columns, rank noise, and lock tests.
+- `docs/phase-4/PHASE-4-STEP-7-TESTS.md` — update the supersession note and current writer/owner-column interpretation; rerun dependency/confidentiality and raw forward-gate coverage.
+- `docs/phase-4/PHASE-4-STEP-7A-TESTS.md` — update the historical exact nine-writer note; rerun assignment, deletion, last-task, Backlog, and activity coverage.
+- `docs/phase-4/PHASE-4-STEP-8-TESTS.md` — replace Step 8 TEST 1 as the authoritative current exact inventory with the new Batch 11 inventory, while retaining the exact six-column owner branch if the new writers are invoker-security.
+- `docs/phase-4/PHASE-4-STEP-10-TESTS.md` and `docs/phase-4/step-10-database-review.md` — expand current function/direct-writer allowlists and counts; keep the original Phase 4 results historical.
 
-Also rerun the relevant behavior in `docs/PHASE-4-STEP-1A-TESTS.md`, `docs/PHASE-4-STEP-1-TESTS.md`, `docs/PHASE-4-STEP-2-TESTS.md`, `docs/PHASE-4-STEP-3-TESTS.md`, `docs/PHASE-4-STEP-5A-TESTS.md`, `docs/PHASE-4-STEP-5B-TESTS.md`, `docs/PHASE-4-STEP-6-TESTS.md`, `docs/PHASE-4-STEP-7-TESTS.md`, `docs/PHASE-4-STEP-7A-TESTS.md`, `docs/PHASE-4-STEP-8-TESTS.md`, and `docs/PHASE-4-STEP-9-TESTS.md` for raw access, archive/invariant enforcement, masking, derived metadata, parent immutability, lane order, activity noise, confidentiality, assignments, backup state, and proof that comments do not change task timestamps.
+Also rerun the relevant behavior in `docs/phase-4/PHASE-4-STEP-1A-TESTS.md`, `docs/phase-4/PHASE-4-STEP-1-TESTS.md`, `docs/phase-4/PHASE-4-STEP-2-TESTS.md`, `docs/phase-4/PHASE-4-STEP-3-TESTS.md`, `docs/phase-4/PHASE-4-STEP-5A-TESTS.md`, `docs/phase-4/PHASE-4-STEP-5B-TESTS.md`, `docs/phase-4/PHASE-4-STEP-6-TESTS.md`, `docs/phase-4/PHASE-4-STEP-7-TESTS.md`, `docs/phase-4/PHASE-4-STEP-7A-TESTS.md`, `docs/phase-4/PHASE-4-STEP-8-TESTS.md`, and `docs/phase-4/PHASE-4-STEP-9-TESTS.md` for raw access, archive/invariant enforcement, masking, derived metadata, parent immutability, lane order, activity noise, confidentiality, assignments, backup state, and proof that comments do not change task timestamps.
 
 Batch 13b must later add Batch 11’s RPCs to its completed-phase writer matrix and rerun Batch 11’s Add/Edit cases against a completed phase.
 
