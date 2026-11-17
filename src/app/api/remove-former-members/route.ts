@@ -22,6 +22,7 @@ const IDENTITY_CLEANUP_FAILURE_MESSAGE =
   "The profile is anonymized and the original email is free for re-invite, but identity cleanup is pending. Google sign-in for the original address may still resolve to the old banned account until cleanup finishes. Cleanup may be retried.";
 const GENERAL_FAILURE_MESSAGE =
   "Removal could not be completed. Cleanup may be retried.";
+const LAST_ACTIVE_ADMIN_MESSAGE = "At least one active Admin is required.";
 
 function json(body: unknown, status = 200) {
   return NextResponse.json(body, {
@@ -153,6 +154,8 @@ export async function POST(request: Request) {
         message:
           code === "CMR03"
             ? "This account is unavailable for removal."
+            : code === "CCG02"
+              ? LAST_ACTIVE_ADMIN_MESSAGE
             : GENERAL_FAILURE_MESSAGE,
       });
       continue;

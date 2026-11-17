@@ -13,10 +13,18 @@ describe("officer route contracts", () => {
     ["CCO08", "failed"],
     ["CCO09", "failed"],
     ["CCG01", "failed"],
+    ["CCG02", "failed"],
   ])("maps %s to a safe %s result", (code, state) => {
     const mapped = safeOfficerError({ code, message: "private database text" });
     expect(mapped.state).toBe(state);
     expect(mapped.message).not.toContain("private");
+  });
+
+  it("keeps the last-Admin guard text fixed", () => {
+    expect(safeOfficerError({ code: "CCG02", message: "private" })).toEqual({
+      message: "At least one active Admin is required.",
+      state: "failed",
+    });
   });
 
   it("recognizes only installed 429 rate-limit status/code pairs", () => {

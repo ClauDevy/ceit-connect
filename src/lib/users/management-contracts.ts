@@ -58,6 +58,10 @@ const MEMBER_ERROR_MESSAGES: Record<
     status: 409,
     message: "Only Admins can be assigned to the President committee.",
   },
+  CCG02: {
+    status: 409,
+    message: "At least one active Admin is required.",
+  },
 };
 
 export function safeMemberManagementError(

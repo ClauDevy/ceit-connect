@@ -164,6 +164,8 @@ export async function POST(request: Request) {
             ? "That officer seat is currently full."
             : officerError.code === "CCO05"
               ? "At least one other active confirmed Admin is required."
+            : officerError.code === "CCG02"
+              ? "At least one active Admin is required."
             : "The officer status could not be changed.";
       return json({ error: message }, 409);
     }
@@ -224,6 +226,12 @@ export async function POST(request: Request) {
     .single();
 
   if (profileError || !updatedProfile) {
+    if (profileError) {
+      const safe = safeMemberManagementError(profileError);
+      if (safe.code === "CCG02") {
+        return json({ error: safe.message }, safe.status);
+      }
+    }
     return json({ error: "The user status could not be changed." }, 500);
   }
 

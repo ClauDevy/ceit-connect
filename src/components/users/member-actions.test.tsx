@@ -144,6 +144,64 @@ describe("MemberAction", () => {
     expect(html).not.toContain("Reactivate");
   });
 
+  it("hides self step-down while the Admin safeguard is loading", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason="Checking Admin safeguards…"
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("Checking Admin safeguards…");
+    expect(html).not.toContain("Step down to Member");
+    expect(html).not.toContain("More actions");
+  });
+
+  it("hides the sole active Admin's step-down action with the fixed reason", () => {
+    const html = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf
+        pending={false}
+        peerAdminBlockedReason="At least one active Admin is required."
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain("At least one active Admin is required.");
+    expect(html).not.toContain("Step down to Member");
+  });
+
+  it("does not delay Member or Co-Admin actions for Admin safeguards", () => {
+    const memberHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={activeMember}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+    const coAdminHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Co-Admin" }}
+        isSelf={false}
+        pending={false}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(memberHtml).toContain("Deactivate");
+    expect(coAdminHtml).toContain("Return to Member");
+    expect(memberHtml + coAdminHtml).not.toContain("Checking Admin safeguards");
+  });
+
   it("shows only Cancel invitation for an unaccepted officer", () => {
     const html = renderToStaticMarkup(
       <MemberAction

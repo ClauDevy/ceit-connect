@@ -374,6 +374,7 @@ Known Storage limitation: Postgres and Storage cannot share a transaction. Direc
 83. `20261121120000_active_task_date_guard.sql` - Phase 5 V1 replaces only the two ungranted Step 12 Active-board writer bodies. Create rejects non-null due/call/end Manila calendar dates before today; Edit rejects only a proposed old calendar date distinct from its locked stored calendar date, so unchanged old dates, time-only changes, clearing, today, and overnight ends remain valid. Checks follow authorization, locks, repeated authorization, and—on Edit—the CCS01 stale-token check; CCD07/08/09 therefore precede existing event-end errors for a fresh authorized request. Public signatures, policies, tables, columns, grants, and event/template writers are unchanged. Local only; owner review and Dev verification pending.
 84. `20261121130000_template_import_foreign_date_reset.sql` - Phase 5 V1 keeps the internal four-argument `copy_archived_template_tasks` signature, `p_new_start_date` validation, copied count, and integer return while replacing only foreign copied due/call/end shifts with typed nulls and removing the now-dead shift state. Foreign unscheduled Live Operations remain valid. Admin imports and Co-Admin-owned payload rows are unchanged. No FK, policy, public grant, or service-role exception is added. Local only; owner review and Dev verification pending.
 85. `20261121140000_president_committee_admin_guard.sql` - Phase 5 V1(b) requires every new President-committee assignment to have role `Admin`, grandfathers legacy invalid rows only while both `role` and `committee_id` remain unchanged, rejects non-Admin President officer-invite reservations, and preserves the existing officer-writer authorization guard ahead of the new trigger. Local only; owner review and Dev verification pending.
+86. `20261122120000_last_active_admin_guard.sql` - Phase 5 Step B serializes protected `public.users` updates on the officer advisory lock and checks the exact confirmed active Admin floor in an AFTER-row trigger, including multi-row and privileged writes. Fixed `CCG02` has no postgres/service-role bypass; zero-to-zero grandfathering and existing `CCO05`, `CCO09`, and hard-delete behavior remain. No existing function is replaced. Local only; Dev/Prod application pending.
 
 The authoritative A/B/D object-to-source mapping and exact Batch 14 assertions are in `docs/phase-4b/step-14-tests.md`. Old Phase 4 aggregate counts remain historical; no new count is recorded until the owner supplies live Dev catalog output. External Prod `pg_cron` jobs are not migration/catalog objects: owner verification on 2026-11-07 found exactly one active `ceit-connect-event-auto-archive` row (jobid 4, `5 16 * * *`, `select * from public.run_event_auto_archive();`, database/username `postgres`). N3a is live on Prod, and exactly one active `ceit-connect-notification-cleanup` job is scheduled at `15 16 * * *` with command `select * from public.run_notification_cleanup();` and username `postgres`; only verification of its first scheduled run is pending. Dev has neither cron job; its runners are manual.
 
@@ -452,3 +453,27 @@ protected; immutable identity protection is deferred. See
 and rollback-only 30-result Dev paste.
 
 Batch A is applied on Dev and Prod (owner-provided current state). `ceit_connect_private.event_phase_positions` persists canonical event-wide phase positions; a deferred constraint trigger uses a transaction-local `pg_temp` seen-set to reconcile once per surviving event after taking the compatible event `FOR SHARE` lock → event advisory lock, avoiding a task-writer share-to-update upgrade. Its empty-path helper schema-qualifies the deferred unique constraint. The latest Home, board, Draft editor, create/edit, and archive-template boundaries retain their shapes and add explicit order; Home computes content access once per task. Edit Event carries the full authorized phase sequence so committee-scoped omissions cannot be dropped, preserves rename/merge positions, and temporarily exposes its proposed end date through a postgres-only writer/event-bound marker that is cleared on both outcomes. `list_event_phase_order` keeps Draft officer-only and Active behavior, while every active user may read Archived order and receives a phase only when they have real content access to at least one task in it. `set_officer_active`, `former_member_eligibility`, and `anonymize_former_member` allow peer Admin lifecycle changes while preserving self/final-Admin/cap protections and officer → sorted-user lock order; anonymization retains the old inner `CMR05` update-failure contract. Deadline triggers enforce the Manila calendar end date per actually changed schedule field with `CCD05` for `due_date`, `CCD02` for `call_time`, and `CCD03` for `end_time`; event extensions return without scanning. No RLS policy is added or replaced. Batch 14 owns final catalog absorption.
+
+### Phase 5 Step B last-active-Admin guard
+
+Migration `20261122120000_last_active_admin_guard.sql` is implemented locally
+and is not yet applied to Dev or Prod. An active Admin is exactly a
+`public.users` Admin with `is_active = true`, `anonymized_at is null`, and a
+matching confirmed `auth.users` email—the same definition returned by
+`get_admin_lifecycle_context().confirmed_active_admin_count`.
+
+A protected-column `BEFORE UPDATE` statement trigger takes the existing officer
+advisory transaction lock before target user rows are processed. A separate
+`AFTER UPDATE` row trigger raises fixed `CCG02` (`At least one active Admin is
+required.`) only when the OLD row qualified, the NEW row does not, and the
+resulting count is zero. This covers multi-row and privileged public-table
+writes without a postgres/service-role bypass, while preserving zero-to-zero
+grandfathered changes. Existing `CCO05`, `CCO09`, and unconditional `CCO08`
+hard-delete behavior stay unchanged. No existing function is replaced. See
+`docs/phase-5/step-b-last-admin-guard.md` for the writer/lock audit, Prod
+preflight, and rollback-only 19-result Dev paste.
+
+Directly deconfirming an identity in the vendor-managed `auth.users` table is
+an unsupported writer outside this public-table guard. Supported application
+code must not set `email_confirm` false or clear `email_confirmed_at`; a source
+contract checks non-test `src/` files and Auth admin mutation calls.

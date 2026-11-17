@@ -90,4 +90,18 @@ describe("POST /api/officer-transitions", () => {
       error: "Only Admins can be assigned to the President committee.",
     });
   });
+
+  it("maps the last-Admin guard to its fixed safe message", async () => {
+    mocks.createClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "CCG02", message: "private database text" },
+      }),
+    });
+    const response = await POST(request({ action: "step-down", committeeId }));
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "At least one active Admin is required.",
+    });
+  });
 });

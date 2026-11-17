@@ -44,6 +44,16 @@ describe("officer UI contract", () => {
     expect(usersTable).toContain("router.refresh()");
   });
 
+  it("loads lifecycle safeguards only into Admin-target actions", () => {
+    expect(usersTable).toContain(
+      'if (viewerRole !== "Admin" || member.role !== "Admin") return null;',
+    );
+    expect(usersTable).toContain('return "Checking Admin safeguards…";');
+    expect(usersTable).toContain(
+      'return "At least one active Admin is required.";',
+    );
+  });
+
   it("refreshes Admin lifecycle capacity after every officer mutation source", () => {
     expect(usersTable).toMatch(
       /void refreshAdminLifecycleContext\(\);\s*};\s*window\.addEventListener\("officer-invites-changed"/,
