@@ -599,11 +599,11 @@ rollback;
 After the new paste passes, rerun without changing historical expected counts:
 
 1. `docs/phase-4b/step-0-tests.md`.
-2. `docs/PHASE-4-STEP-1A-TESTS.md`.
-3. `docs/PHASE-4-STEP-2-TESTS.md`.
-4. `docs/PHASE-4-STEP-3-TESTS.md`.
-5. `docs/PHASE-4-STEP-4-TESTS.md`.
-6. `docs/PHASE-4-STEP-10-TESTS.md` where shared caller gates are covered.
+2. `docs/phase-4/PHASE-4-STEP-1A-TESTS.md`.
+3. `docs/phase-4/PHASE-4-STEP-2-TESTS.md`.
+4. `docs/phase-4/PHASE-4-STEP-3-TESTS.md`.
+5. `docs/phase-4/PHASE-4-STEP-4-TESTS.md`.
+6. `docs/phase-4/PHASE-4-STEP-10-TESTS.md` where shared caller gates are covered.
 7. `docs/phase-4b/step-7-tests.md` Users paging/search coverage.
 8. All nine independent pastes in `docs/phase-4b/step-8-tests.md`, especially
    the officer writer, guard, grant, cap, and `set_officer_active` assertions.

@@ -836,13 +836,13 @@ Run each historical paste without changing its historical expected count:
 3. `docs/phase-4b/step-9-tests.md`: it must still report exactly **116 lines**,
    and its conditional line must now read `ANONYMIZED_CASE: PASS` (not
    `SKIPPED`).
-4. `docs/PHASE-4-STEP-7A-TESTS.md`.
-5. `docs/PHASE-4-STEP-8-TESTS.md`.
-6. `docs/PHASE-3-STEP-6-ARCHIVE-VISIBILITY-TESTS.md`.
-7. `docs/PHASE-4-STEP-7B-TESTS.md`.
-8. `docs/PHASE-4-STEP-9-TESTS.md` for retained comments and current-profile
+4. `docs/phase-4/PHASE-4-STEP-7A-TESTS.md`.
+5. `docs/phase-4/PHASE-4-STEP-8-TESTS.md`.
+6. `docs/phase-3/PHASE-3-STEP-6-ARCHIVE-VISIBILITY-TESTS.md`.
+7. `docs/phase-4/PHASE-4-STEP-7B-TESTS.md`.
+8. `docs/phase-4/PHASE-4-STEP-9-TESTS.md` for retained comments and current-profile
    rendering.
-9. `docs/PHASE-4-STEP-1A-TESTS.md` for immutable activity snapshots and its
+9. `docs/phase-4/PHASE-4-STEP-1A-TESTS.md` for immutable activity snapshots and its
    authoritative catalog coverage.
 
 Stage B must additionally remove a Google-linked Dev Member, perform the

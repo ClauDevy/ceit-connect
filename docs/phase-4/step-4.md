@@ -8,7 +8,7 @@
 - **Database impact:** adds `task_work_links`, foreign keys/indexes, deny-by-default RLS, narrow reader/add/remove functions, and parent-status/cap/update guards. New migration: **yes**. The reader follows current content access and returns server-computed write flags; insert derives creator/assignee rights; delete permits creator/Admin/Co-Admin only with real access; no update path.
 - **Guards that must remain true:** child guard freezes Archived writes independently; task archive triggers stay unchanged; links do not affect task count/status.
 - **Security risks:** never trust task, creator, URL, or assignment. Re-read task/event, derive caller, validate supported HTTPS Drive/Docs URLs and lengths, prevent duplicates, and check every result.
-- **Test deliverable:** `docs/PHASE-4-STEP-4-TESTS.md` follows the global contract and covers add/remove/read rights, access changes, Archived immutability, malformed URLs, duplicate submits, and every role.
+- **Test deliverable:** `docs/phase-4/PHASE-4-STEP-4-TESTS.md` follows the global contract and covers add/remove/read rights, access changes, Archived immutability, malformed URLs, duplicate submits, and every role.
 - **Acceptance:** assignees add valid links; creator/Admin/Co-Admin with real access remove; others cannot write; real viewers preview on the task detail page after refresh; masked viewers receive nothing; Archived links are readable but immutable.
 
 [Back to Phase 4 index](../PHASE-4-PLAN.md)

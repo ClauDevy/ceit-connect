@@ -730,7 +730,7 @@ rollback;
 ## Historical regression reruns
 
 Counts below were checked against the source-count ledger in
-`docs/PHASE-4-STEP-10E-GATE.md`, not copied from the earlier draft plan:
+`docs/phase-4/PHASE-4-STEP-10E-GATE.md`, not copied from the earlier draft plan:
 
 - Batch 0 current users suite: `32` lines.
 - Phase 4 Step 2 unaffected Tests 1–4 and 6: `8 / 6 / 6 / 5 / 10`.

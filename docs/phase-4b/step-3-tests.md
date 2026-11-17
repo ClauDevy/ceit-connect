@@ -180,7 +180,7 @@ These checks require real authenticated browser sessions and are not claimed com
 
 ## Earlier regression documents
 
-- Re-run the relevant manual portions of `docs/PHASE-4-STEP-6-TESTS.md`, `PHASE-4-STEP-7-TESTS.md`, `PHASE-4-STEP-7A-TESTS.md`, `PHASE-4-STEP-7B-TESTS.md`, `PHASE-4-STEP-8-TESTS.md`, `PHASE-4-STEP-9-TESTS.md`, `PHASE-4-STEP-9A-TESTS.md`, and `PHASE-4-STEP-10E-GATE.md` as their surfaces land in Parts B-D.
+- Re-run the relevant manual portions of `docs/phase-4/PHASE-4-STEP-6-TESTS.md`, `PHASE-4-STEP-7-TESTS.md`, `PHASE-4-STEP-7A-TESTS.md`, `PHASE-4-STEP-7B-TESTS.md`, `PHASE-4-STEP-8-TESTS.md`, `PHASE-4-STEP-9-TESTS.md`, `PHASE-4-STEP-9A-TESTS.md`, and `PHASE-4-STEP-10E-GATE.md` as their surfaces land in Parts B-D.
 - Their SQL pastes are unchanged and are not rerun for this presentation-only batch.
 
 ## Part A changed files

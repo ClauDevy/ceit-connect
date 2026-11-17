@@ -105,16 +105,16 @@ the prior body:
 
 ### Update current-state assertions after Dev passes
 
-- `docs/PHASE-4-STEP-2-TESTS.md`: board output-column/catalog shape.
-- `docs/PHASE-4-STEP-3-TESTS.md`: task-detail output shape.
-- `docs/PHASE-4-STEP-7-TESTS.md` and `docs/PHASE-4-STEP-7A-TESTS.md`:
+- `docs/phase-4/PHASE-4-STEP-2-TESTS.md`: board output-column/catalog shape.
+- `docs/phase-4/PHASE-4-STEP-3-TESTS.md`: task-detail output shape.
+- `docs/phase-4/PHASE-4-STEP-7-TESTS.md` and `docs/phase-4/PHASE-4-STEP-7A-TESTS.md`:
   current owner/reader inventories and renamed internal bodies.
-- `docs/PHASE-4-STEP-7B-TESTS.md` TEST 5: board/detail/work-link/comment
+- `docs/phase-4/PHASE-4-STEP-7B-TESTS.md` TEST 5: board/detail/work-link/comment
   positional shape assertions must recognize additive fields while retaining the old
   behavioral expectations.
-- `docs/PHASE-4-STEP-8-TESTS.md`: current backup-reader/catalog inventory.
-- `docs/PHASE-4-STEP-9-TESTS.md`: current comment-reader catalog and revoked prior body.
-- `docs/PHASE-4-STEP-10-TESTS.md` and `docs/PHASE-4-STEP-10E-GATE.md`:
+- `docs/phase-4/PHASE-4-STEP-8-TESTS.md`: current backup-reader/catalog inventory.
+- `docs/phase-4/PHASE-4-STEP-9-TESTS.md`: current comment-reader catalog and revoked prior body.
+- `docs/phase-4/PHASE-4-STEP-10-TESTS.md` and `docs/phase-4/PHASE-4-STEP-10E-GATE.md`:
   authoritative reader/internal-body allowlists and affected exact counts.
 - `docs/phase-4b/step-13c-tests.md`: additive board/Draft shapes, inactive/null-role
   errors, and the new revoked wrappers. Historical Batch 13c results remain labeled

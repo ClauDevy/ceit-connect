@@ -172,16 +172,16 @@ If the Storage delete succeeds but finalization loses its lease, logs must recor
 
 ## Earlier test docs to re-run or update
 
-- `docs/PHASE-4-STEP-1-TESTS.md` for archive serialization, lifecycle guards, raw-policy narrowing, and event/task freeze behavior.
-- `docs/PHASE-4-STEP-1A-TESTS.md` for raw task access after parent deletion.
-- `docs/PHASE-4-STEP-3-TESTS.md` and `docs/PHASE-4-STEP-7B-TESTS.md` for Archived content and archive-only access before deletion.
-- `docs/PHASE-4-STEP-4-TESTS.md`, `docs/PHASE-4-STEP-8-TESTS.md`, and `docs/PHASE-4-STEP-9-TESTS.md` for work-link, volunteer, and comment cascades/guards.
-- `docs/PHASE-4-STEP-5A-TESTS.md` and `docs/PHASE-4-STEP-7A-TESTS.md` for dependency deletion, whole-event cascade, and Active-event task invariants.
+- `docs/phase-4/PHASE-4-STEP-1-TESTS.md` for archive serialization, lifecycle guards, raw-policy narrowing, and event/task freeze behavior.
+- `docs/phase-4/PHASE-4-STEP-1A-TESTS.md` for raw task access after parent deletion.
+- `docs/phase-4/PHASE-4-STEP-3-TESTS.md` and `docs/phase-4/PHASE-4-STEP-7B-TESTS.md` for Archived content and archive-only access before deletion.
+- `docs/phase-4/PHASE-4-STEP-4-TESTS.md`, `docs/phase-4/PHASE-4-STEP-8-TESTS.md`, and `docs/phase-4/PHASE-4-STEP-9-TESTS.md` for work-link, volunteer, and comment cascades/guards.
+- `docs/phase-4/PHASE-4-STEP-5A-TESTS.md` and `docs/phase-4/PHASE-4-STEP-7A-TESTS.md` for dependency deletion, whole-event cascade, and Active-event task invariants.
 - Phase 3 banner tests for exact object paths, Archived write denial, and cleanup ordering.
 - Batch 12 tests for masked immutable activity after the referenced task/event is absent.
 - Batch 13c tests for unchanged Draft read masking before deletion.
 - Batch 13b tests must later include the approved whole-event deletion exception.
-- `docs/PHASE-4-STEP-10-TESTS.md` and the post-13b Phase 4B catalog for constraints, policies, trigger bodies/order, function ownership/grants, and current counts.
+- `docs/phase-4/PHASE-4-STEP-10-TESTS.md` and the post-13b Phase 4B catalog for constraints, policies, trigger bodies/order, function ownership/grants, and current counts.
 
 ## Test deliverable
 
