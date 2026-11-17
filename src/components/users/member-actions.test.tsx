@@ -144,8 +144,8 @@ describe("MemberAction", () => {
     expect(html).not.toContain("Reactivate");
   });
 
-  it("hides self step-down while the Admin safeguard is loading", () => {
-    const html = renderToStaticMarkup(
+  it("hides Admin step-down and peer deactivation while the safeguard refresh is in flight", () => {
+    const selfHtml = renderToStaticMarkup(
       <MemberAction
         viewerRole="Admin"
         member={{ ...activeMember, role: "Admin", committee_id: null }}
@@ -155,10 +155,21 @@ describe("MemberAction", () => {
         onAction={vi.fn()}
       />,
     );
+    const peerHtml = renderToStaticMarkup(
+      <MemberAction
+        viewerRole="Admin"
+        member={{ ...activeMember, role: "Admin", committee_id: null }}
+        isSelf={false}
+        pending={false}
+        peerAdminBlockedReason="Checking Admin safeguards…"
+        onAction={vi.fn()}
+      />,
+    );
 
-    expect(html).toContain("Checking Admin safeguards…");
-    expect(html).not.toContain("Step down to Member");
-    expect(html).not.toContain("More actions");
+    expect(selfHtml + peerHtml).toContain("Checking Admin safeguards…");
+    expect(selfHtml).not.toContain("Step down to Member");
+    expect(selfHtml).not.toContain("More actions");
+    expect(peerHtml).not.toContain("Deactivate");
   });
 
   it("keeps Admin actions hidden when the safeguard read fails", () => {

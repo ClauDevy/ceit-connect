@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Member } from "@/lib/types";
-import { getPeerAdminBlockedReason } from "./users-table";
+import {
+  getPeerAdminBlockedReason,
+  isCurrentAdminLifecycleRequest,
+} from "./users-table";
 
 const admin: Member = {
   id: "admin-1",
@@ -14,6 +17,12 @@ const admin: Member = {
 };
 
 describe("Admin lifecycle action safeguards", () => {
+  it("hides Admin actions while a refresh is in flight", () => {
+    expect(getPeerAdminBlockedReason(admin, "Admin", null, false)).toBe(
+      "Checking Admin safeguards…",
+    );
+  });
+
   it("fails closed after a lifecycle read failure", () => {
     expect(getPeerAdminBlockedReason(admin, "Admin", null, true)).toBe(
       "Could not check Admin safeguards. Refresh the page to try again.",
@@ -34,5 +43,15 @@ describe("Admin lifecycle action safeguards", () => {
         false,
       ),
     ).toBeNull();
+  });
+
+  it("ignores a response that is older than the latest refresh", () => {
+    expect(isCurrentAdminLifecycleRequest(1, 2)).toBe(false);
+    expect(isCurrentAdminLifecycleRequest(2, 2)).toBe(true);
+  });
+
+  it("never makes Member or Co-Admin actions wait for Admin safeguards", () => {
+    expect(getPeerAdminBlockedReason({ ...admin, role: "Member" }, "Admin", null, false)).toBeNull();
+    expect(getPeerAdminBlockedReason({ ...admin, role: "Co-Admin" }, "Admin", null, false)).toBeNull();
   });
 });

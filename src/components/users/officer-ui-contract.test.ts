@@ -53,6 +53,9 @@ describe("officer UI contract", () => {
       '"Could not check Admin safeguards. Refresh the page to try again."',
     );
     expect(usersTable).toContain("setAdminLifecycleContextUnavailable(true)");
+    expect(usersTable).toContain("setAdminLifecycleContext(null)");
+    expect(usersTable).toContain("setAdminLifecycleContextUnavailable(false)");
+    expect(usersTable).toContain("isCurrentAdminLifecycleRequest(");
     expect(usersTable).toContain(
       'return "At least one active Admin is required.";',
     );
