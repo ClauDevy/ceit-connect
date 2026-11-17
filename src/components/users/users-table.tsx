@@ -470,10 +470,10 @@ export function UsersTable({
     ),
     viewerRole,
     getPeerAdminBlockedReason: (member: Member) => {
-      if (viewerRole !== "Admin" || member.role !== "Admin" || member.id === currentUserId) return null;
+      if (viewerRole !== "Admin" || member.role !== "Admin") return null;
       if (!adminLifecycleContext) return "Checking Admin safeguards…";
       if (member.is_active && adminLifecycleContext.confirmed_active_admin_count <= 1) {
-        return "At least one other active confirmed Admin is required.";
+        return "At least one active Admin is required.";
       }
       if (!member.is_active && adminLifecycleContext.caps_enabled &&
           adminLifecycleContext.active_admin_count + adminLifecycleContext.preparing_admin_count >= 2) {

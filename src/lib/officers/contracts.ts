@@ -88,6 +88,10 @@ const ERROR_MESSAGES: Record<string, { message: string; state: OfficerInviteStat
     message: "Only Admins can be assigned to the President committee.",
     state: "failed",
   },
+  CCG02: {
+    message: "At least one active Admin is required.",
+    state: "failed",
+  },
 };
 
 export function safeOfficerError(error: unknown) {
