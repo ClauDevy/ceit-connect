@@ -462,11 +462,14 @@ and is not yet applied to Dev or Prod. An active Admin is exactly a
 matching confirmed `auth.users` email—the same definition returned by
 `get_admin_lifecycle_context().confirmed_active_admin_count`.
 
-A protected-column `BEFORE UPDATE` statement trigger takes the existing officer
-advisory transaction lock before target user rows are processed. A separate
-`AFTER UPDATE` row trigger raises fixed `CCG02` (`At least one active Admin is
-required.`) only when the OLD row qualified, the NEW row does not, and the
-resulting count is zero. This covers multi-row and privileged public-table
+A protected-column `BEFORE UPDATE` statement trigger first requires the
+supported `read committed` isolation level, raising fixed `CCG03` (`Admin
+changes require read committed isolation.`) before taking the existing officer
+advisory transaction lock or processing target user rows. App routes use read
+committed, so `CCG03` is unreachable from them and requires no route mapping.
+A separate `AFTER UPDATE` row trigger raises fixed `CCG02` (`At least one active
+Admin is required.`) only when the OLD row qualified, the NEW row does not, and
+the resulting count is zero. This covers multi-row and privileged public-table
 writes without a postgres/service-role bypass, while preserving zero-to-zero
 grandfathered changes. Existing `CCO05`, `CCO09`, and unconditional `CCO08`
 hard-delete behavior stay unchanged. No existing function is replaced. See

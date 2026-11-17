@@ -48,7 +48,11 @@ describe("officer UI contract", () => {
     expect(usersTable).toContain(
       'if (viewerRole !== "Admin" || member.role !== "Admin") return null;',
     );
-    expect(usersTable).toContain('return "Checking Admin safeguards…";');
+    expect(usersTable).toContain('"Checking Admin safeguards…"');
+    expect(usersTable).toContain(
+      '"Could not check Admin safeguards. Refresh the page to try again."',
+    );
+    expect(usersTable).toContain("setAdminLifecycleContextUnavailable(true)");
     expect(usersTable).toContain(
       'return "At least one active Admin is required.";',
     );

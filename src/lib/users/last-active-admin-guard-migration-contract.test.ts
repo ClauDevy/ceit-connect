@@ -35,7 +35,7 @@ describe("last active Admin guard migration contract", () => {
     expect(migration.match(/set search_path = ''/g)).toHaveLength(2);
   });
 
-  it("takes the officer advisory lock in a BEFORE statement trigger", () => {
+  it("requires read committed isolation before the officer lock in a BEFORE statement trigger", () => {
     expect(migration).toContain(`create trigger users_lock_last_active_admin_updates
 before update of role, is_active, anonymized_at, committee_id
 on public.users
@@ -43,6 +43,16 @@ for each statement execute function public.lock_last_active_admin_updates();`);
     expect(migration).toContain(
       "public.officer_advisory_lock_key()",
     );
+    expect(migration).toContain(
+      "if pg_catalog.current_setting('transaction_isolation') is distinct from 'read committed' then",
+    );
+    expect(migration).toContain("errcode = 'CCG03'");
+    expect(migration).toContain(
+      "message = 'Admin changes require read committed isolation.'",
+    );
+    expect(
+      migration.indexOf("errcode = 'CCG03'"),
+    ).toBeLessThan(migration.indexOf("pg_catalog.pg_advisory_xact_lock"));
     expect(migration).not.toContain("for each row execute function public.lock_last_active_admin_updates");
   });
 

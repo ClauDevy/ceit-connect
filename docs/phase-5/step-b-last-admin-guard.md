@@ -23,6 +23,11 @@ outside this public-table guard. No supported application path does that, and a
 source contract scans non-test `src/` files, including Auth admin mutation
 calls, to prevent such a writer from being introduced.
 
+The supported isolation level for protected Admin changes is `read committed`.
+The statement lock guard rejects every other transaction isolation level with
+`CCG03`. App routes use the normal read-committed connection behavior, so this
+code is unreachable from app routes and needs no route error mapping.
+
 ## Writer and lock audit
 
 No current writer takes a `public.users` row lock or a task-assignee user lock
@@ -62,6 +67,9 @@ user can retry. No raw database message is exposed.
 ## Error and UI behavior
 
 - Universal guard: `CCG02 — At least one active Admin is required.`
+- Isolation guard: `CCG03 — Admin changes require read committed isolation.` It
+  is unreachable from app routes, which use read committed, so it has no route
+  error mapping.
 - Existing peer deactivation: `CCO05` remains unchanged and wins before UPDATE.
 - Existing self-step-down: `CCO09` remains unchanged and wins before UPDATE.
 - Officer, member-management, toggle, transition, and removal boundaries map
@@ -70,6 +78,9 @@ user can retry. No raw database message is exposed.
   no step-down/deactivate action and sees the fixed explanation.
 - `Checking Admin safeguards…` appears only on Admin rows. Member and Co-Admin
   actions, including Co-Admin-viewer behavior, remain unchanged.
+- If that Admin-only lifecycle read fails or returns no row, the protected
+  Admin actions stay hidden and the row says `Could not check Admin safeguards.
+  Refresh the page to try again.` There is no retry control or retry loop.
 
 ## Migration
 
@@ -88,6 +99,12 @@ security definer
 set search_path = ''
 as $$
 begin
+  if pg_catalog.current_setting('transaction_isolation') is distinct from 'read committed' then
+    raise exception using
+      errcode = 'CCG03',
+      message = 'Admin changes require read committed isolation.';
+  end if;
+
   perform pg_catalog.pg_advisory_xact_lock(
     public.officer_advisory_lock_key()
   );
@@ -185,7 +202,7 @@ It returns only the confirmed active Admin count and names.
 ```sql
 select
   pg_catalog.count(*)::integer as confirmed_active_admin_count,
-  pg_catalog.coalesce(
+  coalesce(
     pg_catalog.array_agg(profile.full_name order by profile.full_name),
     array[]::text[]
   ) as active_admin_names
@@ -222,7 +239,7 @@ create function pg_temp.ok(p_label text, p_passed boolean)
 returns void language plpgsql as $$
 begin
   insert into public.step_b_last_admin_test_results(label, passed)
-  values (p_label, pg_catalog.coalesce(p_passed, false));
+  values (p_label, coalesce(p_passed, false));
 end;
 $$;
 
@@ -396,6 +413,9 @@ begin
 
   perform pg_temp.ok('06 function bodies pin lock definition and no bypass',
     lock_proc.prosrc like '%public.officer_advisory_lock_key()%'
+    and lock_proc.prosrc like '%pg_catalog.current_setting(''transaction_isolation'') is distinct from ''read committed''%'
+    and lock_proc.prosrc like '%CCG03%'
+    and lock_proc.prosrc like '%Admin changes require read committed isolation.%'
     and guard_proc.prosrc like '%auth_user.email_confirmed_at is not null%'
     and guard_proc.prosrc like '%CCG02%'
     and guard_proc.prosrc like '%At least one active Admin is required.%'
@@ -661,7 +681,7 @@ begin
 
   raise exception 'TEST RESULTS %/19 PASS; FAILED: % (intentional rollback)',
     passed_count,
-    pg_catalog.coalesce(
+    coalesce(
       failed_labels,
       pg_catalog.format('no failed labels recorded; result count was %s', total_count)
     );
