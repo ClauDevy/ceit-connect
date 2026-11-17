@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, BookOpen, Download, Image as ImageIcon, KeyRound, UserRound } from "lucide-react";
+import { BellRing, BookOpen, Download, Image as ImageIcon, KeyRound, LogOut, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
@@ -11,6 +11,8 @@ import { InlineAlert } from "@/components/ui/inline-alert";
 import { InstallAppHelp } from "@/components/settings/install-app-help";
 import { PushNotificationsControl } from "@/components/settings/push-notifications-control";
 import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { PushAwareSignOutForm } from "@/components/layout/push-aware-sign-out-form";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -46,9 +48,14 @@ export default async function SettingsPage() {
           description="Learn the current task, event, notification, and role rules."
           icon={<BookOpen aria-hidden />}
         >
-          <Link href="/help" className={buttonVariants({ variant: "outline", className: "w-full" })}>
-            Open user manual
-          </Link>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link href="/help" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+              Open user manual
+            </Link>
+            <Link href="/terms" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+              Terms of Service
+            </Link>
+          </div>
         </SettingsSection>
 
         <SettingsSection
@@ -103,6 +110,21 @@ export default async function SettingsPage() {
           icon={<Download aria-hidden />}
         >
           <InstallAppHelp />
+        </SettingsSection>
+
+        <SettingsSection
+          motionIndex={6}
+          className="lg:col-span-2"
+          title="Sign out"
+          description="End your CEIT Connect session on this device."
+          icon={<LogOut aria-hidden />}
+        >
+          <PushAwareSignOutForm userId={user.id}>
+            <Button type="submit" variant="outline" className="w-full sm:w-auto">
+              <LogOut aria-hidden />
+              Sign out
+            </Button>
+          </PushAwareSignOutForm>
         </SettingsSection>
       </div>
     </div>

@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Ellipsis } from "lucide-react"
+import { Ellipsis, LogOut } from "lucide-react"
 import { useNavClick, useNavigation } from "@/components/navigation/navigation-provider"
+import { PushAwareSignOutForm } from "@/components/layout/push-aware-sign-out-form"
+import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { HELP_NAV_ITEM, isNavActive, navForRole, type NavItem } from "@/lib/nav"
 import type { CurrentUser } from "@/lib/types"
@@ -97,6 +99,18 @@ export function MobileNav({ user }: { user: CurrentUser }) {
                 onNavigate={() => setMoreOpen(false)}
                 showWarning={false}
               />
+            </div>
+            <div className="mt-2 border-t pt-2">
+              <PushAwareSignOutForm userId={user.id}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  className="min-h-11 w-full justify-start gap-3 px-3 text-sm font-medium"
+                >
+                  <LogOut aria-hidden className="size-[18px]" />
+                  Sign out
+                </Button>
+              </PushAwareSignOutForm>
             </div>
           </nav>
         </SheetContent>

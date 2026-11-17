@@ -9,6 +9,7 @@ import { GoogleButton } from "@/components/auth/google-button"
 import { MagicLinkForm } from "@/components/auth/magic-link-form"
 import { PasswordSignInForm } from "@/components/auth/password-sign-in-form"
 import { ResetPasswordFlow } from "@/components/auth/reset-password-flow"
+import { LoginTermsLink } from "@/components/auth/login-terms-link"
 import { createClient } from "@/lib/supabase/client"
 
 type Mode = "magic" | "password"
@@ -100,6 +101,7 @@ export function SignInPanel({ initialError }: { initialError?: string }) {
       </div>
 
       <GoogleButton onAttempt={suppressInitialError} />
+      <LoginTermsLink />
     </div>
   )
 }
