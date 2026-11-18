@@ -17,7 +17,26 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Bell, CheckCheck, LoaderCircle, Trash2, X } from "lucide-react";
+import {
+  ArrowRightLeft,
+  AtSign,
+  Bell,
+  CalendarCheck,
+  CalendarClock,
+  CalendarX,
+  CheckCheck,
+  Clock,
+  HandHeart,
+  LifeBuoy,
+  LoaderCircle,
+  LockOpen,
+  Megaphone,
+  Radio,
+  Trash2,
+  UserPlus,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadMoreControl } from "@/components/shared/load-more-control";
 import { useListReveal } from "@/components/shared/motion";
@@ -60,7 +79,9 @@ import {
   type NotificationCursor,
   type NotificationListState,
   type NotificationRow,
+  type NotificationType,
 } from "@/lib/notifications/notification-bell";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 import { subscribeToNotificationRealtime } from "@/lib/notifications/notification-realtime";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -553,6 +574,52 @@ function NotificationBellIcon({ count }: { count: number | null }) {
   );
 }
 
+const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
+  mention: AtSign,
+  heads_up: Megaphone,
+  assignment: UserPlus,
+  status_change: ArrowRightLeft,
+  unlock: LockOpen,
+  backup_request: LifeBuoy,
+  volunteer_offer: HandHeart,
+  leave_requested: CalendarClock,
+  leave_cancelled: CalendarX,
+  leave_approved: CalendarCheck,
+  leave_denied: CalendarX,
+  task_due_soon: Clock,
+  live_operation_prep: Radio,
+};
+
+export type NotificationFilter = "all" | "unread";
+
+const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE.iana,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Groups newest-first rows under Today / Yesterday / Earlier (Manila calendar days). */
+export function groupNotificationsByDay(rows: readonly NotificationRow[], now = Date.now()) {
+  const today = dayKeyFormatter.format(now);
+  const yesterday = dayKeyFormatter.format(now - 86_400_000);
+  const buckets: Record<"Today" | "Yesterday" | "Earlier", NotificationRow[]> = {
+    Today: [],
+    Yesterday: [],
+    Earlier: [],
+  };
+  for (const row of rows) {
+    const time = Date.parse(row.createdAt);
+    const key = Number.isFinite(time) ? dayKeyFormatter.format(time) : "";
+    if (key === today) buckets.Today.push(row);
+    else if (key === yesterday) buckets.Yesterday.push(row);
+    else buckets.Earlier.push(row);
+  }
+  return (["Today", "Yesterday", "Earlier"] as const)
+    .filter((label) => buckets[label].length > 0)
+    .map((label) => ({ label, rows: buckets[label] }));
+}
+
 type NotificationRowsViewProps = {
   count: number | null;
   countError: string | null;
@@ -564,6 +631,7 @@ type NotificationRowsViewProps = {
   refreshList: () => void;
   navigate: (targetPath: string) => void;
   emptyFocusRef?: RefObject<HTMLElement | null>;
+  filter?: NotificationFilter;
 };
 
 export function NotificationRowsView({
@@ -577,6 +645,7 @@ export function NotificationRowsView({
   refreshList,
   navigate,
   emptyFocusRef,
+  filter = "all",
 }: NotificationRowsViewProps) {
   const deleteButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const focusSequenceRef = useRef(0);
@@ -678,116 +747,158 @@ export function NotificationRowsView({
     );
   }
 
+  const visibleRows =
+    filter === "unread" ? list.rows.filter((row) => row.readAt === null) : list.rows;
+  if (visibleRows.length === 0) {
+    return (
+      <EmptyState
+        compact
+        title="You're all caught up"
+        description="No unread notifications right now."
+      />
+    );
+  }
+  const groups = groupNotificationsByDay(visibleRows);
+
   return (
-    <div className="divide-y divide-border/70">
-      {list.rows.map((row) => {
-        const sentence = notificationSentence(row);
-        const relativeTime = formatNotificationRelativeTime(row.createdAt);
-        const unread = row.readAt === null;
-        const busy = busyIds.has(row.id);
-        const content = (
-          <>
-            <span
-              aria-hidden="true"
-              className={cn(
-                "mt-1.5 size-2 shrink-0 rounded-full",
-                unread ? "bg-primary" : "bg-transparent",
-              )}
-            />
-            <span className="min-w-0 flex-1">
-              <span className={cn("line-clamp-2 text-sm", unread && "font-semibold")}>
-                {sentence}
-              </span>
-              <time dateTime={row.createdAt} className="mt-1 block text-xs text-muted-foreground">
-                {relativeTime}
-              </time>
-            </span>
-            {busy ? (
-              <LoaderCircle aria-hidden className="mt-1 size-4 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
-            ) : null}
-          </>
-        );
-        const accessibleLabel = `${sentence} ${relativeTime}.${unread ? " Unread." : ""}`;
-        return (
-          <div
-            key={row.id}
-            {...reveal.getRevealProps(row.id)}
-            className={cn("relative flex items-stretch", unread && "bg-primary/5")}
+    <div>
+      {groups.map((group) => (
+        <section key={group.label} aria-label={group.label}>
+          <p
+            aria-hidden="true"
+            className="sticky top-0 z-[1] border-b border-border/60 bg-popover/95 px-4 py-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur-sm"
           >
-            {notificationTargetPath(row) ? (
-              <Link
-                href={notificationTargetPath(row)!}
-                aria-label={accessibleLabel}
-                aria-busy={busy || undefined}
-                onClick={(event) => void handleClick(event, row)}
-                onAuxClick={(event) => {
-                  if (event.button === 1) backgroundMark(row);
-                }}
-                className="flex min-h-16 min-w-0 flex-1 items-start gap-3 px-4 py-3 outline-none transition-colors duration-[var(--motion-interaction-duration)] hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 motion-reduce:transition-none"
-              >
-                {content}
-              </Link>
-            ) : (
-              <div
-                role="group"
-                aria-label={accessibleLabel}
-                className="flex min-h-16 min-w-0 flex-1 items-start gap-3 px-4 py-3"
-              >
-                {content}
-                {unread ? (
+            {group.label}
+          </p>
+          <div className="divide-y divide-border/60">
+            {group.rows.map((row) => {
+              const sentence = notificationSentence(row);
+              const relativeTime = formatNotificationRelativeTime(row.createdAt);
+              const unread = row.readAt === null;
+              const busy = busyIds.has(row.id);
+              const TypeIcon = NOTIFICATION_ICONS[row.type] ?? Bell;
+              const content = (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "grid size-9 shrink-0 place-items-center rounded-full",
+                      unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <TypeIcon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "line-clamp-2 text-sm leading-snug",
+                        unread ? "font-semibold" : "text-foreground/80",
+                      )}
+                    >
+                      {sentence}
+                    </span>
+                    <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <time dateTime={row.createdAt}>{relativeTime}</time>
+                      {unread ? (
+                        <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+                      ) : null}
+                    </span>
+                  </span>
+                  {busy ? (
+                    <LoaderCircle aria-hidden className="mt-1 size-4 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
+                  ) : null}
+                </>
+              );
+              const accessibleLabel = `${sentence} ${relativeTime}.${unread ? " Unread." : ""}`;
+              return (
+                <div
+                  key={row.id}
+                  {...reveal.getRevealProps(row.id)}
+                  className={cn(
+                    "relative flex items-stretch",
+                    unread &&
+                      "bg-primary/[0.06] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary",
+                  )}
+                >
+                  {notificationTargetPath(row) ? (
+                    <Link
+                      href={notificationTargetPath(row)!}
+                      aria-label={accessibleLabel}
+                      aria-busy={busy || undefined}
+                      onClick={(event) => void handleClick(event, row)}
+                      onAuxClick={(event) => {
+                        if (event.button === 1) backgroundMark(row);
+                      }}
+                      className="flex min-h-[4.5rem] min-w-0 flex-1 items-start gap-3 py-3 pr-1 pl-4 outline-none transition-colors duration-[var(--motion-interaction-duration)] hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 motion-reduce:transition-none"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div
+                      role="group"
+                      aria-label={accessibleLabel}
+                      className="flex min-h-[4.5rem] min-w-0 flex-1 items-start gap-3 py-3 pr-1 pl-4"
+                    >
+                      {content}
+                      {unread ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => void markOne(row.id)}
+                          aria-label={`Mark notification as read: ${sentence}`}
+                          className="self-center"
+                        >
+                          Mark as read
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
                   <Button
+                    ref={(node) => {
+                      if (node) deleteButtonRefs.current.set(row.id, node);
+                      else deleteButtonRefs.current.delete(row.id);
+                    }}
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     disabled={busy}
-                    onClick={() => void markOne(row.id)}
-                    aria-label={`Mark notification as read: ${sentence}`}
-                    className="self-center"
+                    aria-busy={busy || undefined}
+                    aria-label={`Delete notification permanently: ${sentence}`}
+                    title="Delete notification"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void handleDelete(row);
+                    }}
+                    className="mr-1 min-h-11 min-w-11 self-center text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive"
                   >
-                    Mark as read
+                    {busy ? (
+                      <LoaderCircle
+                        aria-hidden
+                        className="animate-spin motion-reduce:animate-none"
+                      />
+                    ) : (
+                      <Trash2 aria-hidden />
+                    )}
                   </Button>
-                ) : null}
-              </div>
-            )}
-            <Button
-              ref={(node) => {
-                if (node) deleteButtonRefs.current.set(row.id, node);
-                else deleteButtonRefs.current.delete(row.id);
-              }}
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={busy}
-              aria-busy={busy || undefined}
-              aria-label={`Delete notification permanently: ${sentence}`}
-              title="Delete notification"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                void handleDelete(row);
-              }}
-              className="m-2 min-h-11 min-w-11 self-center text-muted-foreground hover:text-destructive"
-            >
-              {busy ? (
-                <LoaderCircle
-                  aria-hidden
-                  className="animate-spin motion-reduce:animate-none"
-                />
-              ) : (
-                <Trash2 aria-hidden />
-              )}
-            </Button>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </section>
+      ))}
     </div>
   );
 }
 
 function NotificationRows({
   emptyFocusRef,
+  filter,
 }: {
   emptyFocusRef: RefObject<HTMLElement | null>;
+  filter: NotificationFilter;
 }) {
   const router = useRouter();
   const {
@@ -824,6 +935,7 @@ function NotificationRows({
         router.push(targetPath);
       }}
       emptyFocusRef={emptyFocusRef}
+      filter={filter}
     />
   );
 }
@@ -955,7 +1067,63 @@ export function ClearReadControl({
   );
 }
 
-function NotificationPanelContent({ titleRef }: { titleRef: RefObject<HTMLHeadingElement | null> }) {
+function NotificationFilterTabs({
+  filter,
+  onChange,
+  unreadCount,
+}: {
+  filter: NotificationFilter;
+  onChange: (next: NotificationFilter) => void;
+  unreadCount: number | null;
+}) {
+  const tabs: { value: NotificationFilter; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "unread", label: "Unread" },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label="Filter notifications"
+      className="flex w-full gap-1 rounded-lg bg-muted p-1"
+    >
+      {tabs.map((tab) => {
+        const active = filter === tab.value;
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(tab.value)}
+            className={cn(
+              "flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium outline-none transition-colors duration-[var(--motion-interaction-duration)] focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none",
+              active
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {tab.label}
+            {tab.value === "unread" && unreadCount !== null && unreadCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="rounded-full bg-primary px-1.5 text-[11px] leading-4 font-bold text-primary-foreground tabular-nums"
+              >
+                {notificationBadgeLabel(unreadCount)}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function NotificationPanelContent({
+  titleRef,
+  closeSlot,
+}: {
+  titleRef: RefObject<HTMLHeadingElement | null>;
+  closeSlot?: ReactNode;
+}) {
   const {
     count,
     countError,
@@ -967,17 +1135,64 @@ function NotificationPanelContent({ titleRef }: { titleRef: RefObject<HTMLHeadin
     loadMore,
     markAll,
   } = useNotifications();
+  const [filter, setFilter] = useState<NotificationFilter>("all");
   const markAllEnabled = count === null || count > 0;
   return (
     <div className="flex max-h-[min(36rem,80dvh)] min-h-0 flex-col">
-      <div className="border-b px-4 py-3 pr-14">
-        <h2 ref={titleRef} tabIndex={-1} className="font-display text-lg font-semibold outline-none">
-          Notifications
-        </h2>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 -mx-2">
+      <div className="shrink-0 space-y-3 border-b px-4 pt-4 pb-3">
+        <div className="flex min-h-10 items-center gap-2.5">
+          <h2
+            ref={titleRef}
+            tabIndex={-1}
+            className="font-display text-lg font-semibold outline-none"
+          >
+            Notifications
+          </h2>
+          {count !== null && count > 0 ? (
+            <span
+              aria-hidden="true"
+              className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums"
+            >
+              {notificationBadgeLabel(count)} new
+            </span>
+          ) : null}
+          {closeSlot ? <div className="ml-auto">{closeSlot}</div> : null}
+        </div>
+        <NotificationFilterTabs filter={filter} onChange={setFilter} unreadCount={count} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {countError || actionError || list.error ? (
+          <div className="space-y-2 p-2">
+            {countError ? <InlineAlert>{countError}</InlineAlert> : null}
+            {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
+            {list.error ? (
+              <InlineAlert className="flex flex-wrap items-center justify-between gap-2">
+                <span>{list.error}</span>
+                <Button type="button" variant="outline" size="sm" onClick={refreshList} disabled={list.loading}>
+                  Retry
+                </Button>
+              </InlineAlert>
+            ) : null}
+          </div>
+        ) : null}
+        <NotificationRows emptyFocusRef={titleRef} filter={filter} />
+        <div className="p-3">
+          <LoadMoreControl
+            announcement={list.announcement}
+            errorMessage={list.appendError ?? undefined}
+            hasLoadedMore={list.olderPagesLoaded}
+            hasMore={list.hasMore}
+            isLoading={list.loadingMore}
+            onLoadMore={loadMore}
+            onRetry={loadMore}
+          />
+        </div>
+      </div>
+      <div className="shrink-0 border-t bg-popover px-3 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             disabled={!markAllEnabled || markAllBusy}
             aria-busy={markAllBusy || undefined}
@@ -990,35 +1205,9 @@ function NotificationPanelContent({ titleRef }: { titleRef: RefObject<HTMLHeadin
             <ClearReadControl panelOpen={openSurface !== null} titleRef={titleRef} />
           ) : null}
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-2 px-0.5 text-[11px] leading-snug text-muted-foreground">
           Deletion is permanent. Unread notifications are never removed.
         </p>
-      </div>
-      <div className="min-h-0 overflow-y-auto overscroll-contain">
-        <div className="space-y-2 p-2">
-          {countError ? <InlineAlert>{countError}</InlineAlert> : null}
-          {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
-          {list.error ? (
-            <InlineAlert className="flex flex-wrap items-center justify-between gap-2">
-              <span>{list.error}</span>
-              <Button type="button" variant="outline" size="sm" onClick={refreshList} disabled={list.loading}>
-                Retry
-              </Button>
-            </InlineAlert>
-          ) : null}
-        </div>
-        <NotificationRows emptyFocusRef={titleRef} />
-        <div className="p-3">
-          <LoadMoreControl
-            announcement={list.announcement}
-            errorMessage={list.appendError ?? undefined}
-            hasLoadedMore={list.olderPagesLoaded}
-            hasMore={list.hasMore}
-            isLoading={list.loadingMore}
-            onLoadMore={loadMore}
-            onRetry={loadMore}
-          />
-        </div>
       </div>
     </div>
   );
@@ -1042,7 +1231,7 @@ export function DesktopNotificationBell() {
       <PopoverContent
         initialFocus={titleRef}
         finalFocus
-        className="w-[min(25rem,calc(100vw-2rem))] overflow-hidden p-0"
+        className="w-[min(26rem,calc(100vw-2rem))] overflow-hidden p-0"
       >
         <PopoverTitle className="sr-only">Notifications</PopoverTitle>
         <PopoverClose className="sr-only">Close notifications</PopoverClose>
@@ -1073,17 +1262,21 @@ export function MobileNotificationBell() {
         <SheetContent
           initialFocus={titleRef}
           finalFocus={triggerRef}
-          className="max-h-[85dvh] overflow-hidden p-0 pb-[env(safe-area-inset-bottom)]"
+          className="max-h-[85dvh] overflow-hidden p-0 pt-2 pb-[env(safe-area-inset-bottom)]"
         >
           <SheetTitle className="sr-only">Notifications</SheetTitle>
           <SheetDescription className="sr-only">Your task notifications.</SheetDescription>
-          <SheetClose
-            aria-label="Close notifications"
-            className="absolute top-3 right-3 z-10 inline-flex size-11 items-center justify-center rounded-md outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <X aria-hidden className="size-5" />
-          </SheetClose>
-          <NotificationPanelContent titleRef={titleRef} />
+          <NotificationPanelContent
+            titleRef={titleRef}
+            closeSlot={
+              <SheetClose
+                aria-label="Close notifications"
+                className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <X aria-hidden className="size-5" />
+              </SheetClose>
+            }
+          />
         </SheetContent>
       </Sheet>
     </>
