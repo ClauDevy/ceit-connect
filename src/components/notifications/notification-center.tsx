@@ -1,5 +1,7 @@
 "use client";
 
+import { closeModalAndWait } from "@/hooks/use-modal-history";
+
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
@@ -705,13 +707,13 @@ export function NotificationRowsView({
     }
     event.preventDefault();
     if (row.readAt !== null) {
-      close();
+      await closeModalAndWait(close);
       navigate(targetPath);
       return;
     }
     if (await markOne(row.id)) {
-      close();
-      navigate(targetPath);
+    await closeModalAndWait(close);
+    navigate(targetPath);
     }
   }
 

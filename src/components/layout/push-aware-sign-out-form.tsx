@@ -15,10 +15,12 @@ export function PushAwareSignOutForm({
   children,
   className,
   userId,
+  beforeSubmit,
 }: {
   children: ReactNode
   className?: string
   userId: string
+  beforeSubmit?: () => void | Promise<void>
 }) {
   const submitting = useRef(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -37,6 +39,11 @@ export function PushAwareSignOutForm({
     } catch {
       // Device cleanup is best effort and must never keep the session alive.
     } finally {
+      try {
+        await beforeSubmit?.()
+      } catch {
+        // Modal-history cleanup is best effort and must not block sign-out.
+      }
       setIsSubmitting(false)
       submitting.current = false
       submissionForm.submit()

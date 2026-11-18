@@ -51,11 +51,14 @@ export function useNavigation() {
  * Click handler for a <Link>. Leaves new-tab / modifier clicks to the browser
  * and ignores clicks on the page you're already on.
  */
-export function useNavClick(href: string, afterNavigate?: () => void) {
+export function useNavClick(
+  href: string,
+  afterNavigate?: () => void | Promise<void>,
+) {
   const { pathname, navigate } = useNavigation()
 
   return React.useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>) => {
+    async (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (
         event.defaultPrevented ||
         event.button !== 0 ||
@@ -67,7 +70,7 @@ export function useNavClick(href: string, afterNavigate?: () => void) {
         return
       }
       event.preventDefault()
-      afterNavigate?.()
+      await afterNavigate?.()
       if (pathname !== href) navigate(href)
     },
     [afterNavigate, href, navigate, pathname]

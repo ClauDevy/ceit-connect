@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { LogOut, Search, Trash2, UsersRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { closeModalAndWait } from "@/hooks/use-modal-history";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +39,7 @@ type TaskPeopleControlsProps = {
     primaryAssigneeIds: string[],
     assistAssigneeIds: string[],
   ) => Promise<void>;
-  onDeleteTask: () => Promise<void>;
+  onDeleteTask: (beforeNavigate: () => Promise<void>) => Promise<void>;
   onUnassignSelf: () => Promise<void>;
   workloadCounts: ReadonlyMap<string, number>;
 };
@@ -145,7 +146,9 @@ export function TaskPeopleControls({
     setDeleting(true);
     setActionError(null);
     try {
-      await onDeleteTask();
+      await onDeleteTask(() =>
+        closeModalAndWait(() => setDeleteOpen(false)),
+      );
       setDeleteOpen(false);
     } catch (error) {
       setActionError(

@@ -935,7 +935,9 @@ function TaskDetailContents({
     await refreshAccess();
   }
 
-  async function deleteTask() {
+  async function deleteTask(
+    beforeNavigate: () => Promise<void> = async () => {},
+  ) {
     const backHref = getTaskBackHref(query.data ?? null);
     try {
       const { data, error } = await supabase.rpc("delete_task", {
@@ -954,7 +956,10 @@ function TaskDetailContents({
       throw new Error(getTaskEditErrorMessage(error, "delete"));
     }
 
-    router.replace(backHref);
+      await beforeNavigate();
+      await beforeNavigate();
+      await beforeNavigate();
+      router.replace(backHref);
   }
 
   async function unassignSelf() {

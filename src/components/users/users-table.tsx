@@ -1,5 +1,7 @@
 "use client";
 
+import { closeModalAndWait } from "@/hooks/use-modal-history";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Trash2, X } from "lucide-react";
@@ -437,6 +439,10 @@ export function UsersTable({
       }
       if (transitionAction === "step-down") {
         await refreshAdminLifecycleContext();
+        await closeModalAndWait(() => {
+          setTransitionAction(null);
+          setTransitionTarget(null);
+        });
         router.replace("/home");
         router.refresh();
         return;
