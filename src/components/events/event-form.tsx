@@ -39,6 +39,7 @@ import {
   buildEventPhaseViews,
   buildCompleteEventPhaseOrder,
   eventFormPhasesAreValid,
+  filterEventAssigneesBySearch,
   getEventFormSummary,
   getCommitteeScopedEventAssignees,
   getEventTaskDueDateForSubmission,
@@ -310,19 +311,12 @@ export function EventForm({
   const assigneeGroups = useMemo(() => {
     if (!taskEditor) return { selected: [], other: [] };
 
-    const query = assigneeSearch.trim().toLocaleLowerCase();
-    const matchesSearch = (assignee: AssigneeOption) => {
-      const committeeName = assignee.committee_id
-        ? (committeeNames.get(assignee.committee_id) ?? "")
-        : "No committee";
-      return `${assignee.full_name} ${committeeName}`
-        .toLocaleLowerCase()
-        .includes(query);
-    };
     const byName = (left: AssigneeOption, right: AssigneeOption) =>
       left.full_name.localeCompare(right.full_name);
-    const filtered = assignees.filter(
-      (assignee) => matchesSearch(assignee),
+    const filtered = filterEventAssigneesBySearch(
+      assignees,
+      assigneeSearch,
+      committeeNames,
     );
 
     return {

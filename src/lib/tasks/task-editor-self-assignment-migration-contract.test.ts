@@ -116,13 +116,15 @@ describe("Batch C task-editor self-assignment migration contract", () => {
       batchDoc.indexOf("```sql\n") + "```sql\n".length,
       batchDoc.lastIndexOf("\n```"),
     );
-    expect(sql.split("\n")).toHaveLength(446);
-    expect(sql.match(/insert into batch_c_results\(label, passed\)/g)).toHaveLength(17);
+    expect(sql.split("\n")).toHaveLength(448);
+    expect(
+      sql.match(/insert into batch_c_results\(label, passed(?:, detail)?\)/g),
+    ).toHaveLength(17);
     expect(sql).toContain(
       "'Self-selection sends no assignment notification to actor'",
     );
     expect(sql).toContain(
-      "'Raw authenticated write keeps exact untrusted rejection'",
+      "'Raw authenticated write keeps its existing task_volunteers denial'",
     );
     expect(sql).toContain(
       "raise exception 'TEST RESULTS %/% PASS; FAILED: % (intentional rollback)'",

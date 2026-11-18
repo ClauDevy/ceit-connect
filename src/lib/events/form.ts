@@ -38,6 +38,24 @@ export function getCommitteeScopedEventAssignees<T extends { committee_id: strin
   return assignees.filter((assignee) => assignee.committee_id === committeeId);
 }
 
+export function filterEventAssigneesBySearch<
+  T extends { full_name: string; committee_id: string | null },
+>(
+  assignees: readonly T[],
+  search: string,
+  committeeNames: ReadonlyMap<string, string>,
+) {
+  const query = search.trim().toLocaleLowerCase();
+  return assignees.filter((assignee) => {
+    const committeeName = assignee.committee_id
+      ? (committeeNames.get(assignee.committee_id) ?? "")
+      : "No committee";
+    return `${assignee.full_name} ${committeeName}`
+      .toLocaleLowerCase()
+      .includes(query);
+  });
+}
+
 export type EventFormTaskRef = {
   id: string;
   persisted: boolean;
