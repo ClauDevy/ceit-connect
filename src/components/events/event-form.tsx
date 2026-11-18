@@ -75,7 +75,6 @@ export type {
 } from "@/components/events/event-form-types";
 
 export function EventForm({
-  currentUserId,
   role,
   committees,
   taskCommittees,
@@ -322,11 +321,8 @@ export function EventForm({
     };
     const byName = (left: AssigneeOption, right: AssigneeOption) =>
       left.full_name.localeCompare(right.full_name);
-    const actorIsStored = taskEditor.draft.assigneeIds.includes(currentUserId);
     const filtered = assignees.filter(
-      (assignee) =>
-        (assignee.id !== currentUserId || actorIsStored) &&
-        matchesSearch(assignee),
+      (assignee) => matchesSearch(assignee),
     );
 
     return {
@@ -351,7 +347,7 @@ export function EventForm({
           return committeeOrder || byName(left, right);
         }),
     };
-  }, [assigneeSearch, assignees, committeeNames, currentUserId, taskEditor]);
+  }, [assigneeSearch, assignees, committeeNames, taskEditor]);
 
   const selectedCommitteeHasActiveMembers = taskEditor
     ? assignees.some(

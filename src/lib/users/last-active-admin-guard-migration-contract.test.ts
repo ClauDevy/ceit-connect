@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migrationName = "20261122120000_last_active_admin_guard.sql";
+const latestMigrationName = "20261123120000_task_editor_self_assignment.sql";
 const migrationPath = `supabase/migrations/${migrationName}`;
 const rawMigration = readFileSync(migrationPath, "utf8");
 const migration = rawMigration.replaceAll("\r\n", "\n");
@@ -15,11 +16,11 @@ const officerBaseMigration = readFileSync(
 ).replaceAll("\r\n", "\n");
 
 describe("last active Admin guard migration contract", () => {
-  it("is the latest tracked migration and stays later than V1b", () => {
+  it("is tracked immediately before Batch C and stays later than V1b", () => {
     const migrations = readdirSync("supabase/migrations")
       .filter((file) => file.endsWith(".sql"))
       .sort();
-    expect(migrations.at(-1)).toBe(migrationName);
+    expect(migrations.slice(-2)).toEqual([migrationName, latestMigrationName]);
     expect(migrationName > "20261121140000_president_committee_admin_guard.sql").toBe(
       true,
     );

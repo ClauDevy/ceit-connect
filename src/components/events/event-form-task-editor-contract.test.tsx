@@ -11,6 +11,13 @@ const source = [
   .replaceAll("\r\n", "\n");
 
 describe("Event form task-editor parity contract", () => {
+  it("keeps every active candidate available to the Event assignee picker", () => {
+    expect(source).toContain(
+      "const filtered = assignees.filter(\n      (assignee) => matchesSearch(assignee),\n    )",
+    );
+    expect(source).not.toContain("assignee.id !== currentUserId");
+  });
+
   it("keeps type changes non-destructive and hides Due date for Live Operations", () => {
     expect(source).toContain("updateTaskDraft({ taskType: value })");
     expect(source).toContain('taskEditor.draft.taskType === "Deliverable" ? (');

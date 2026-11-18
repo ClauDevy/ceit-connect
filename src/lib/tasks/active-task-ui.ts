@@ -34,7 +34,7 @@ export function buildActiveTaskPickerCandidates<T extends { id: string }>(
     assignees: candidates.filter(
       (person) =>
         storedAssigneeIds.has(person.id) ||
-        (person.id !== actorId && !storedViewerIds.has(person.id)),
+        !storedViewerIds.has(person.id),
     ),
     viewers: candidates.filter(
       (person) =>
