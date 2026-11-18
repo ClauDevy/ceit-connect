@@ -24,6 +24,15 @@ function propertyName(property: ts.ObjectLiteralElementLike) {
   return null;
 }
 
+function declarationIn(
+  list: { declarations: readonly ts.VariableDeclaration[] },
+  name: string,
+) {
+  return list.declarations.find(
+    (declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === name,
+  );
+}
+
 /**
  * Resolves `name` to the initializer of the binding visible at `from`: the nearest enclosing
  * scope wins, so a shadowing `const` inside a function beats one at module level. A function
@@ -37,14 +46,24 @@ function resolveBinding(from: ts.Node, name: string): ts.Expression | undefined 
       );
       if (isParameter) return undefined;
     }
+    // Loop-owned bindings (`for (let x = ...)`, `for (const x of ...)`) shadow outer ones.
+    // for-in/for-of declarations have no initializer, so they resolve to undefined.
+    if (
+      (ts.isForStatement(scope) || ts.isForInStatement(scope) || ts.isForOfStatement(scope)) &&
+      scope.initializer &&
+      ts.isVariableDeclarationList(scope.initializer)
+    ) {
+      const own = declarationIn(scope.initializer, name);
+      if (own) return own.initializer;
+    }
+    if (ts.isCatchClause(scope) && scope.variableDeclaration) {
+      if (declarationIn({ declarations: [scope.variableDeclaration] }, name)) return undefined;
+    }
     if (ts.isBlock(scope) || ts.isSourceFile(scope) || ts.isModuleBlock(scope)) {
       for (const statement of scope.statements) {
         if (!ts.isVariableStatement(statement)) continue;
-        for (const declaration of statement.declarationList.declarations) {
-          if (ts.isIdentifier(declaration.name) && declaration.name.text === name) {
-            return declaration.initializer;
-          }
-        }
+        const own = declarationIn(statement.declarationList, name);
+        if (own) return own.initializer;
       }
     }
   }
@@ -174,5 +193,24 @@ describe("Auth confirmation scanner fixtures", () => {
     const send = `supabase.auth.admin.updateUserById("id", attributes);`;
     expect(scan(`const attributes = { email_confirm: false };\n${send}`)).toHaveLength(1);
     expect(scan(`const attributes = { email_confirm: true };\n${send}`)).toEqual([]);
+  });
+
+  it("resolves a for-loop binding before outer scopes", () => {
+    expect(
+      scan(
+        `const email_confirm = true;\nfor (let email_confirm = false; ; ) {\n ${call("email_confirm")}\n break;\n}`,
+      ),
+    ).toHaveLength(1);
+    expect(
+      scan(
+        `const email_confirm = false;\nfor (let email_confirm = true; ; ) {\n ${call("email_confirm")}\n break;\n}`,
+      ),
+    ).toEqual([]);
+  });
+
+  it("rejects a for-of binding it cannot resolve", () => {
+    expect(
+      scan(`const email_confirm = true;\nfor (const email_confirm of []) {\n ${call("email_confirm")}\n}`),
+    ).toHaveLength(1);
   });
 });
