@@ -10,20 +10,26 @@ function AlertDialog<Payload = unknown>({
   open: controlledOpen,
   defaultOpen = false,
   onOpenChange,
+  actionsRef: providedActionsRef,
   ...props
 }: AlertDialogPrimitive.Root.Props<Payload>) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen)
+  const internalActionsRef = React.useRef<AlertDialogPrimitive.Root.Actions>(null)
+  const actionsRef = providedActionsRef ?? internalActionsRef
   const open = controlledOpen ?? uncontrolledOpen
   const handleOpenChange = useModalHistory<
     Parameters<NonNullable<typeof onOpenChange>>[1]
   >(open, (nextOpen, details) => {
-    if (controlledOpen === undefined) setUncontrolledOpen(nextOpen)
     onOpenChange?.(nextOpen, details)
-  })
+    if (controlledOpen === undefined && !details.isCanceled) {
+      setUncontrolledOpen(nextOpen)
+    }
+  }, () => actionsRef.current?.close())
 
   return (
     <AlertDialogPrimitive.Root
       {...props}
+      actionsRef={actionsRef}
       open={open}
       onOpenChange={handleOpenChange}
     />

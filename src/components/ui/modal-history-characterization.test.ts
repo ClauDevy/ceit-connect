@@ -11,6 +11,8 @@ const sheet = source("src/components/ui/sheet.tsx");
 const alertDialog = source("src/components/ui/alert-dialog.tsx");
 const notificationCenter = source("src/components/notifications/notification-center.tsx");
 const boardControls = source("src/components/events/event-board-phase-controls.tsx");
+const modalHistory = source("src/hooks/use-modal-history.ts");
+const taskDetail = source("src/components/tasks/task-detail.tsx");
 
 describe("D1 modal history characterization", () => {
   it("keeps all three shared modal roots centralized", () => {
@@ -23,6 +25,33 @@ describe("D1 modal history characterization", () => {
     expect(alertDialog).toContain("function AlertDialog<Payload = unknown>");
     expect(alertDialog).toContain("useModalHistory<");
     expect(alertDialog).toContain("<AlertDialogPrimitive.Root");
+    for (const primitive of [dialog, sheet, alertDialog]) {
+      expect(primitive).toContain("actionsRef={actionsRef}");
+      expect(primitive).toContain("!details.isCanceled");
+    }
+  });
+
+  it("requests marker closure before direct-state navigation handoffs", () => {
+    const helperStart = modalHistory.indexOf("export async function closeModalAndWait");
+    const helperEnd = modalHistory.indexOf("export function useModalHistory", helperStart);
+    const helper = modalHistory.slice(helperStart, helperEnd);
+
+    expect(helper.indexOf("requestModalClose(id)")).toBeGreaterThan(-1);
+    expect(helper.indexOf("requestModalClose(id)")).toBeLessThan(
+      helper.indexOf("close()"),
+    );
+    expect(modalHistory).not.toContain("{} as TDetails");
+  });
+
+  it("awaits task deletion cleanup exactly once before navigation", () => {
+    const deleteStart = taskDetail.indexOf("async function deleteTask(");
+    const deleteEnd = taskDetail.indexOf("async function unassignSelf", deleteStart);
+    const deleteTask = taskDetail.slice(deleteStart, deleteEnd);
+
+    expect(deleteTask.match(/await beforeNavigate\(\);/g)).toHaveLength(1);
+    expect(deleteTask.indexOf("await beforeNavigate();")).toBeLessThan(
+      deleteTask.indexOf("router.replace(backHref);"),
+    );
   });
 
   it("keeps the app modal roots controlled by open and onOpenChange", () => {

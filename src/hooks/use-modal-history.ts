@@ -12,7 +12,7 @@ type ModalMarker = {
 }
 
 type ModalRegistration = {
-  isOpen: () => boolean
+  isActive: () => boolean
   requestClose: () => void
 }
 
@@ -29,6 +29,9 @@ const waiters = new Set<Waiter>()
 let listening = false
 let traversalPending = false
 let traversalTimer: ReturnType<typeof setTimeout> | null = null
+let traversalId: string | null = null
+let timedOutTraversalId: string | null = null
+let recoveringLateTraversal = false
 
 function getMarker(state: unknown): ModalMarker | null {
   if (!state || typeof state !== "object") return null
@@ -96,11 +99,10 @@ function finishTraversalWithoutPopstate(id: string) {
 
   traversalPending = false
   clearTraversalTimer()
-  discardTopMarkerInPlace(id)
-  stack.pop()
+  traversalId = null
+  timedOutTraversalId = id
   requestedClosures.delete(id)
-  if (registrations.get(id)?.isOpen()) pushMarker(id)
-  drainRequestedClosures()
+  settleWaiters()
 }
 
 function pushMarker(id: string) {
@@ -123,6 +125,7 @@ function drainRequestedClosures() {
   }
 
   traversalPending = true
+  traversalId = id
   try {
     window.history.back()
     traversalTimer = setTimeout(
@@ -136,10 +139,41 @@ function drainRequestedClosures() {
 
 function handlePopState() {
   const id = stack.pop()
-  if (!id) return
+  if (!id) {
+    if (recoveringLateTraversal) {
+      if (getMarker(window.history.state)) {
+        try {
+          window.history.replaceState(
+            stripModalMarkerState(window.history.state),
+            "",
+            window.location.href,
+          )
+          window.history.forward()
+        } catch {
+          recoveringLateTraversal = false
+        }
+      } else {
+        recoveringLateTraversal = false
+      }
+    }
+    return
+  }
 
   traversalPending = false
   clearTraversalTimer()
+  traversalId = null
+
+  if (timedOutTraversalId === id) {
+    timedOutTraversalId = null
+    requestedClosures.delete(id)
+    recoveringLateTraversal = true
+    try {
+      window.history.forward()
+    } catch {
+      recoveringLateTraversal = false
+    }
+    return
+  }
 
   const requested = requestedClosures.delete(id)
   const registration = registrations.get(id)
@@ -147,7 +181,12 @@ function handlePopState() {
   if (!requested) registration?.requestClose()
 
   setTimeout(() => {
-    if (registration?.isOpen()) pushMarker(id)
+    if (
+      registrations.get(id) === registration &&
+      registration?.isActive()
+    ) {
+      pushMarker(id)
+    }
     drainRequestedClosures()
   }, 0)
 }
@@ -163,6 +202,20 @@ function registerModal(id: string, registration: ModalRegistration) {
   ensureListening()
   return () => {
     if (registrations.get(id) === registration) registrations.delete(id)
+    queueMicrotask(() => {
+      if (registrations.has(id)) return
+
+      const traversalStillOwnsMarker =
+        traversalId === id || timedOutTraversalId === id
+      if (!traversalStillOwnsMarker) {
+        requestedClosures.delete(id)
+        for (let index = stack.length - 1; index >= 0; index -= 1) {
+          if (stack[index] === id) stack.splice(index, 1)
+        }
+        discardTopMarkerInPlace(id)
+      }
+      settleWaiters()
+    })
   }
 }
 
@@ -225,6 +278,8 @@ export async function closeModalAndWait(
   close: () => void,
   timeoutMs = DEFAULT_WAIT_MS,
 ) {
+  const id = stack.at(-1)
+  if (id) requestModalClose(id)
   try {
     close()
   } catch {
@@ -236,22 +291,27 @@ export async function closeModalAndWait(
 export function useModalHistory<TDetails>(
   open: boolean,
   onOpenChange: ((open: boolean, details: TDetails) => void) | undefined,
+  requestHistoryClose: () => void,
   enabled = true,
 ) {
   const reactId = React.useId()
   const id = `modal-${reactId}`
   const openRef = React.useRef(open)
+  const enabledRef = React.useRef(enabled)
   const onOpenChangeRef = React.useRef(onOpenChange)
+  const requestHistoryCloseRef = React.useRef(requestHistoryClose)
 
   React.useEffect(() => {
     openRef.current = open
+    enabledRef.current = enabled
     onOpenChangeRef.current = onOpenChange
-  }, [onOpenChange, open])
+    requestHistoryCloseRef.current = requestHistoryClose
+  }, [enabled, onOpenChange, open, requestHistoryClose])
 
   React.useEffect(() => {
     return registerModal(id, {
-      isOpen: () => openRef.current,
-      requestClose: () => onOpenChangeRef.current?.(false, {} as TDetails),
+      isActive: () => openRef.current && enabledRef.current,
+      requestClose: () => requestHistoryCloseRef.current(),
     })
   }, [id])
 

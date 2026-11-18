@@ -4,6 +4,8 @@ Batch D1 gives every shared `Dialog`, `Sheet`, and `AlertDialog` one temporary b
 
 The marker is merged into the existing Next.js history state. A stale marker found after refresh is stripped with `replaceState` without navigating. Navigation handoffs wait at most about 300 ms, so history support cannot trap sign-out or another intended navigation. Busy dialogs reject Back dismissal and immediately re-arm their marker.
 
+Review hardening keeps Base UI's real change details and cancellation behavior, registers direct-state closes before navigation waits, retires unmounted modal registrations, and recovers a browser traversal that completes only after the fail-open timeout.
+
 ## Real-phone checklist
 
 - Open each task dialog/sheet, confirmation dialog, picker, mobile notification sheet, More sheet, and phone Priority filter; swipe Back and confirm only the top surface closes.
