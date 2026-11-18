@@ -956,10 +956,8 @@ function TaskDetailContents({
       throw new Error(getTaskEditErrorMessage(error, "delete"));
     }
 
-      await beforeNavigate();
-      await beforeNavigate();
-      await beforeNavigate();
-      router.replace(backHref);
+    await beforeNavigate();
+    router.replace(backHref);
   }
 
   async function unassignSelf() {

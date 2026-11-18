@@ -560,7 +560,7 @@ function BoardContents({
   const priorityIsModal = useIsPhoneModalViewport();
   useModalHistory(priorityOpen, (nextOpen) => {
     if (!nextOpen) closePriorityFilter();
-  }, priorityIsModal);
+  }, closePriorityFilter, priorityIsModal);
 
   function openPriorityFilter() {
     if (committeeOpen) closeCommitteeFilter(false);
