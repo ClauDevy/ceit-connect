@@ -1,9 +1,11 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { ChevronDown } from "lucide-react";
 import { ChartBarGrow, useVisibilityAnimation } from "@/components/shared/motion";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PagedList } from "@/components/dashboard/paged-list";
 import {
   DASHBOARD_STATUS_PRESENTATION,
   barDisplayPercent,
@@ -84,10 +86,14 @@ export function CommitteeWorkload({
           description="There are no active tasks across the committees right now."
         />
       ) : null}
-      <div className="space-y-2">
-        {totals.data.map((row) => (
+      <PagedList
+        label="committees"
+        pageSize={6}
+        className="space-y-2"
+        items={totals.data}
+        getKey={(row) => row.committeeId}
+        renderItem={(row) => (
           <button
-            key={row.committeeId}
             type="button"
             className="motion-button-interaction grid min-h-11 w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-border/70 bg-background p-3 text-left outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
             onClick={() => onSelect(row.committeeId)}
@@ -112,8 +118,8 @@ export function CommitteeWorkload({
               />
             </span>
           </button>
-        ))}
-      </div>
+        )}
+      />
     </div>
   );
 }
@@ -159,12 +165,47 @@ export function MemberWorkload({
       ) : memberRows.length === 0 ? (
         <p className="py-3 text-center text-sm text-muted-foreground">No active committee members.</p>
       ) : (
-        <div className="space-y-2">
-          {pairMembersWithSignals(memberRows, signalRows).map(({ member, signal }) => (
-            <div
-              key={member.memberId}
-              className="grid min-h-11 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-border/70 bg-background p-3"
-            >
+        <MemberRows
+          rows={pairMembersWithSignals(memberRows, signalRows)}
+          allCounts={memberRows.map((row) => row.activeTaskCount)}
+          animate={animate}
+        />
+      )}
+    </div>
+  );
+}
+
+type PairedMember = ReturnType<typeof pairMembersWithSignals>[number];
+
+// Members with no open tasks only get their own collapsed group once there are enough of
+// them to push the busy people out of view.
+const IDLE_GROUP_THRESHOLD = 3;
+
+function MemberRows({
+  rows,
+  allCounts,
+  animate,
+}: {
+  rows: PairedMember[];
+  allCounts: number[];
+  animate: boolean;
+}) {
+  const [idleOpen, setIdleOpen] = useState(false);
+  const idle = rows.filter(({ member }) => member.activeTaskCount === 0);
+  const groupIdle = idle.length > IDLE_GROUP_THRESHOLD;
+  const busy = groupIdle ? rows.filter(({ member }) => member.activeTaskCount > 0) : rows;
+
+  return (
+    <div className="space-y-3">
+      {busy.length > 0 ? (
+        <PagedList
+          label="members"
+          pageSize={8}
+          className="space-y-2"
+          items={busy}
+          getKey={({ member }) => member.memberId}
+          renderItem={({ member, signal }) => (
+            <div className="grid min-h-11 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-border/70 bg-background p-3">
               <UserAvatar name={member.fullName} src={member.avatarUrl} />
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -185,15 +226,53 @@ export function MemberWorkload({
                 </div>
                 <WorkloadBar
                   value={member.activeTaskCount}
-                  values={memberRows.map((row) => row.activeTaskCount)}
+                  values={allCounts}
                   label={member.fullName}
                   animate={animate}
                 />
               </div>
             </div>
-          ))}
+          )}
+        />
+      ) : null}
+      {groupIdle ? (
+        <div className="rounded-xl border border-dashed border-border/70">
+          <button
+            type="button"
+            aria-expanded={idleOpen}
+            onClick={() => setIdleOpen((open) => !open)}
+            className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-left text-sm font-medium outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <span>
+              {idle.length} members have no open tasks
+            </span>
+            <ChevronDown
+              aria-hidden
+              className={cn("size-4 text-muted-foreground transition-transform motion-reduce:transition-none", idleOpen && "rotate-180")}
+            />
+          </button>
+          {idleOpen ? (
+            <div className="border-t border-border/70 p-2">
+              <PagedList
+                as="ul"
+                label="members"
+                pageSize={6}
+                className="divide-y divide-border/60"
+                items={idle}
+                getKey={({ member }) => member.memberId}
+                renderItem={({ member }) => (
+                  <div className="flex min-h-11 items-center gap-3 px-1 py-2">
+                    <UserAvatar name={member.fullName} src={member.avatarUrl} size="sm" />
+                    <p className="min-w-0 flex-1 break-words text-sm [overflow-wrap:anywhere]">
+                      {member.fullName}
+                    </p>
+                  </div>
+                )}
+              />
+            </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -284,9 +363,9 @@ export function TaskStatusDonut({ overview, animate }: { overview: DashboardOver
     : `${completedPercentage}% done`;
 
   return (
-    <div className="grid items-center gap-5 sm:grid-cols-[160px_minmax(0,1fr)]">
+    <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-6 lg:grid-cols-1 lg:justify-items-center">
       <div
-        className="relative mx-auto size-36"
+        className="relative mx-auto size-[7.5rem] sm:size-36"
         role="img"
         aria-label={`Task status. ${completionSummary}. ${summary}`}
       >
@@ -315,7 +394,7 @@ export function TaskStatusDonut({ overview, animate }: { overview: DashboardOver
           )}
         </div>
       </div>
-      <ul className="space-y-2 text-sm" aria-label="Task status counts">
+      <ul className="w-full space-y-1.5 text-sm" aria-label="Task status counts">
         {values.map((item) => {
           const presentation = DASHBOARD_STATUS_PRESENTATION[item.key];
           return (
