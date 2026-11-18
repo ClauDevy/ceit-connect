@@ -610,6 +610,12 @@ describe("active task stored-state picker candidates", () => {
   const newcomer = person("new-person");
   const all = [actor, storedViewer, storedAssignee, newcomer];
 
+  it("adds a new actor only to assignee candidates", () => {
+    const result = buildActiveTaskPickerCandidates(all, [], [], [], actor.id);
+    expect(result.assignees).toContain(actor);
+    expect(result.viewers).not.toContain(actor);
+  });
+
   it("keeps an actor stored only as a viewer available only to the viewer picker", () => {
     const result = buildActiveTaskPickerCandidates(all, [], [], [actor], actor.id);
     expect(result.assignees).not.toContain(actor);
