@@ -39,6 +39,7 @@ import {
   buildEventPhaseViews,
   buildCompleteEventPhaseOrder,
   eventFormPhasesAreValid,
+  filterEventAssigneesBySearch,
   getEventFormSummary,
   getCommitteeScopedEventAssignees,
   getEventTaskDueDateForSubmission,
@@ -75,7 +76,6 @@ export type {
 } from "@/components/events/event-form-types";
 
 export function EventForm({
-  currentUserId,
   role,
   committees,
   taskCommittees,
@@ -311,22 +311,12 @@ export function EventForm({
   const assigneeGroups = useMemo(() => {
     if (!taskEditor) return { selected: [], other: [] };
 
-    const query = assigneeSearch.trim().toLocaleLowerCase();
-    const matchesSearch = (assignee: AssigneeOption) => {
-      const committeeName = assignee.committee_id
-        ? (committeeNames.get(assignee.committee_id) ?? "")
-        : "No committee";
-      return `${assignee.full_name} ${committeeName}`
-        .toLocaleLowerCase()
-        .includes(query);
-    };
     const byName = (left: AssigneeOption, right: AssigneeOption) =>
       left.full_name.localeCompare(right.full_name);
-    const actorIsStored = taskEditor.draft.assigneeIds.includes(currentUserId);
-    const filtered = assignees.filter(
-      (assignee) =>
-        (assignee.id !== currentUserId || actorIsStored) &&
-        matchesSearch(assignee),
+    const filtered = filterEventAssigneesBySearch(
+      assignees,
+      assigneeSearch,
+      committeeNames,
     );
 
     return {
@@ -351,7 +341,7 @@ export function EventForm({
           return committeeOrder || byName(left, right);
         }),
     };
-  }, [assigneeSearch, assignees, committeeNames, currentUserId, taskEditor]);
+  }, [assigneeSearch, assignees, committeeNames, taskEditor]);
 
   const selectedCommitteeHasActiveMembers = taskEditor
     ? assignees.some(
