@@ -359,11 +359,19 @@ export function ExecutiveDashboard({
         </InlineAlert>
       ) : null}
 
-      <OverviewKpis section={data.overview} />
-      <DeadlinesCard section={data.deadlines} animate={animate} />
+      {/* Top: the donut sits with the numbers it summarises, so the first screen answers
+          "how are we doing?" without scrolling. On phones it stacks donut -> totals -> deadlines. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+        <StatusCard section={data.overview} animate={animate} />
+        <div className="space-y-4">
+          <OverviewKpis section={data.overview} />
+          <DeadlinesCard section={data.deadlines} animate={animate} />
+        </div>
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start">
         <DashboardCard
+          key={`workload:${activeKey}`}
           title={activeScope.kind === "council" ? "Workload by committee" : `Workload in ${committeeName}`}
           description={
             activeScope.kind === "council"
@@ -387,16 +395,12 @@ export function ExecutiveDashboard({
           )}
         </DashboardCard>
         <div className="space-y-4">
-          <AttentionCard section={data.attention} />
-          <StatusCard section={data.overview} animate={animate} />
+          <AttentionCard key={`attention:${activeKey}`} section={data.attention} />
+          <FreeMembersCard key={`free:${activeKey}`} section={data.freeMembers} />
+          {viewerRole === "Admin" && activeScope.kind === "council" && pushAdoption ? (
+            <PushAdoptionCard section={pushAdoption} />
+          ) : null}
         </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <FreeMembersCard section={data.freeMembers} />
-        {viewerRole === "Admin" && activeScope.kind === "council" && pushAdoption ? (
-          <PushAdoptionCard section={pushAdoption} />
-        ) : null}
       </div>
     </div>
   );
@@ -406,10 +410,15 @@ function DashboardLoadingState() {
   return (
     <div role="status" aria-label="Loading Executive Dashboard" className="space-y-5">
       <span className="sr-only">Loading Executive Dashboard</span>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        {Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-24" />)}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+        <Skeleton className="h-64" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-20" />)}
+          </div>
+          <Skeleton className="h-44" />
+        </div>
       </div>
-      <Skeleton className="h-48" />
       <div className="grid gap-4 lg:grid-cols-2">
         <Skeleton className="h-96" />
         <Skeleton className="h-96" />

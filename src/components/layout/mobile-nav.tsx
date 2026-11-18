@@ -92,20 +92,19 @@ export function MobileNav({ user }: { user: CurrentUser }) {
                 showWarning={Boolean(item.passwordWarning && !user.passwordSet)}
               />
             ))}
-            <div className="mt-2 border-t pt-2">
+            {/* One divider only: Help and Sign out share the footer group, Sign out stays last. */}
+            <div className="mt-2 space-y-0.5 border-t pt-2">
               <MoreLink
                 item={HELP_NAV_ITEM}
                 active={isNavActive(pathname, HELP_NAV_ITEM.href)}
                 onNavigate={() => setMoreOpen(false)}
                 showWarning={false}
               />
-            </div>
-            <div className="mt-2 border-t pt-2">
               <PushAwareSignOutForm userId={user.id}>
                 <Button
                   type="submit"
                   variant="ghost"
-                  className="min-h-11 w-full justify-start gap-3 px-3 text-sm font-medium"
+                  className="min-h-11 w-full justify-start gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:text-destructive"
                 >
                   <LogOut aria-hidden className="size-[18px]" />
                   Sign out
