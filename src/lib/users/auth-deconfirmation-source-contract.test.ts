@@ -24,22 +24,31 @@ function propertyName(property: ts.ObjectLiteralElementLike) {
   return null;
 }
 
-function findInitializer(sourceFile: ts.SourceFile, name: string) {
-  let found: ts.Expression | undefined;
-  function walk(node: ts.Node) {
-    if (
-      !found &&
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === name &&
-      node.initializer
-    ) {
-      found = node.initializer;
+/**
+ * Resolves `name` to the initializer of the binding visible at `from`: the nearest enclosing
+ * scope wins, so a shadowing `const` inside a function beats one at module level. A function
+ * parameter, or any binding without an initializer, is unresolvable (undefined).
+ */
+function resolveBinding(from: ts.Node, name: string): ts.Expression | undefined {
+  for (let scope: ts.Node | undefined = from.parent; scope; scope = scope.parent) {
+    if (ts.isFunctionLike(scope)) {
+      const isParameter = scope.parameters.some(
+        (parameter) => ts.isIdentifier(parameter.name) && parameter.name.text === name,
+      );
+      if (isParameter) return undefined;
     }
-    ts.forEachChild(node, walk);
+    if (ts.isBlock(scope) || ts.isSourceFile(scope) || ts.isModuleBlock(scope)) {
+      for (const statement of scope.statements) {
+        if (!ts.isVariableStatement(statement)) continue;
+        for (const declaration of statement.declarationList.declarations) {
+          if (ts.isIdentifier(declaration.name) && declaration.name.text === name) {
+            return declaration.initializer;
+          }
+        }
+      }
+    }
   }
-  walk(sourceFile);
-  return found;
+  return undefined;
 }
 
 export function findForbiddenAuthAssignments(path: string, source: string) {
@@ -60,7 +69,7 @@ export function findForbiddenAuthAssignments(path: string, source: string) {
       if (name !== "email_confirm" && name !== "email_confirmed_at") continue;
       // `{ email_confirm }` hides its value in a variable: resolve it, or reject it.
       const value = ts.isShorthandPropertyAssignment(property)
-        ? findInitializer(sourceFile, property.name.text)
+        ? resolveBinding(property, property.name.text)
         : (property as ts.PropertyAssignment).initializer;
       if (isShorthand && !value) {
         findings.push(`${path}: ${context} writes ${name} from an unresolvable shorthand value`);
@@ -88,8 +97,12 @@ export function findForbiddenAuthAssignments(path: string, source: string) {
       const isAuthUserUpdate = /\.auth\.updateUser$/.test(callee);
       if (isAuthAdminMutation || isAuthUserUpdate) {
         for (const argument of node.arguments) {
-          if (ts.isObjectLiteralExpression(argument)) {
-            inspectObject(argument, callee);
+          // A payload held in a variable (`updateUserById(id, attributes)`) is resolved first.
+          const payload = ts.isIdentifier(argument)
+            ? resolveBinding(argument, argument.text)
+            : argument;
+          if (payload && ts.isObjectLiteralExpression(payload)) {
+            inspectObject(payload, callee);
           }
         }
       }
@@ -142,5 +155,24 @@ describe("Auth confirmation scanner fixtures", () => {
 
   it("allows shorthand resolved to true", () => {
     expect(scan(`const email_confirm = true;\n${call("email_confirm")}`)).toEqual([]);
+  });
+
+  it("uses the binding visible at the call, not the first declaration in the file", () => {
+    expect(
+      scan(
+        `const email_confirm = true;\nfunction run() {\n const email_confirm = false;\n ${call("email_confirm")}\n}`,
+      ),
+    ).toHaveLength(1);
+    expect(
+      scan(
+        `const email_confirm = false;\nfunction run() {\n const email_confirm = true;\n ${call("email_confirm")}\n}`,
+      ),
+    ).toEqual([]);
+  });
+
+  it("resolves a payload passed through a variable", () => {
+    const send = `supabase.auth.admin.updateUserById("id", attributes);`;
+    expect(scan(`const attributes = { email_confirm: false };\n${send}`)).toHaveLength(1);
+    expect(scan(`const attributes = { email_confirm: true };\n${send}`)).toEqual([]);
   });
 });

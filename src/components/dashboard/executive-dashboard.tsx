@@ -371,6 +371,7 @@ export function ExecutiveDashboard({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start">
         <DashboardCard
+          key={`workload:${activeKey}`}
           title={activeScope.kind === "council" ? "Workload by committee" : `Workload in ${committeeName}`}
           description={
             activeScope.kind === "council"
@@ -394,8 +395,8 @@ export function ExecutiveDashboard({
           )}
         </DashboardCard>
         <div className="space-y-4">
-          <AttentionCard section={data.attention} />
-          <FreeMembersCard section={data.freeMembers} />
+          <AttentionCard key={`attention:${activeKey}`} section={data.attention} />
+          <FreeMembersCard key={`free:${activeKey}`} section={data.freeMembers} />
           {viewerRole === "Admin" && activeScope.kind === "council" && pushAdoption ? (
             <PushAdoptionCard section={pushAdoption} />
           ) : null}

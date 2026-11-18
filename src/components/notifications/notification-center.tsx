@@ -667,13 +667,19 @@ export function NotificationRowsView({
 
   useEffect(() => {
     if (!focusAfterDelete) return;
-    if (focusAfterDelete.id === null) emptyFocusRef?.current?.focus();
-    else deleteButtonRefs.current.get(focusAfterDelete.id)?.focus();
+    const next = focusAfterDelete.id === null
+      ? null
+      : deleteButtonRefs.current.get(focusAfterDelete.id) ?? null;
+    // No rendered delete button to land on (empty list or filtered out): keep focus in the panel.
+    (next ?? emptyFocusRef?.current)?.focus();
   }, [emptyFocusRef, focusAfterDelete]);
 
   async function handleDelete(row: NotificationRow) {
-    const index = list.rows.findIndex((candidate) => candidate.id === row.id);
-    const focusId = list.rows[index + 1]?.id ?? list.rows[index - 1]?.id ?? null;
+    // Pick the neighbour from what the active filter actually renders, not from every loaded row.
+    const rendered =
+      filter === "unread" ? list.rows.filter((candidate) => candidate.readAt === null) : list.rows;
+    const index = rendered.findIndex((candidate) => candidate.id === row.id);
+    const focusId = rendered[index + 1]?.id ?? rendered[index - 1]?.id ?? null;
     if (await deleteOne(row.id)) {
       setFocusAfterDelete({ id: focusId, sequence: ++focusSequenceRef.current });
     }
