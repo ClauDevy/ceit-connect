@@ -43,6 +43,17 @@ describe("D1 modal history characterization", () => {
     expect(modalHistory).not.toContain("{} as TDetails");
   });
 
+  it("consumes late-traversal recovery before touching the modal stack", () => {
+    const handlerStart = modalHistory.indexOf("function handlePopState()");
+    const handlerEnd = modalHistory.indexOf("function ensureListening()", handlerStart);
+    const handler = modalHistory.slice(handlerStart, handlerEnd);
+
+    expect(handler.indexOf("if (recoveringLateTraversal)")).toBeGreaterThan(-1);
+    expect(handler.indexOf("if (recoveringLateTraversal)")).toBeLessThan(
+      handler.indexOf("stack.pop()"),
+    );
+  });
+
   it("awaits task deletion cleanup exactly once before navigation", () => {
     const deleteStart = taskDetail.indexOf("async function deleteTask(");
     const deleteEnd = taskDetail.indexOf("async function unassignSelf", deleteStart);
