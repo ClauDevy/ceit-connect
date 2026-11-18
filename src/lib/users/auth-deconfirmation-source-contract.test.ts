@@ -24,7 +24,25 @@ function propertyName(property: ts.ObjectLiteralElementLike) {
   return null;
 }
 
-function findForbiddenAuthAssignments(path: string, source: string) {
+function findInitializer(sourceFile: ts.SourceFile, name: string) {
+  let found: ts.Expression | undefined;
+  function walk(node: ts.Node) {
+    if (
+      !found &&
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === name &&
+      node.initializer
+    ) {
+      found = node.initializer;
+    }
+    ts.forEachChild(node, walk);
+  }
+  walk(sourceFile);
+  return found;
+}
+
+export function findForbiddenAuthAssignments(path: string, source: string) {
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -36,18 +54,22 @@ function findForbiddenAuthAssignments(path: string, source: string) {
 
   function inspectObject(node: ts.ObjectLiteralExpression, context: string) {
     for (const property of node.properties) {
-      if (!ts.isPropertyAssignment(property)) continue;
+      const isShorthand = ts.isShorthandPropertyAssignment(property);
+      if (!isShorthand && !ts.isPropertyAssignment(property)) continue;
       const name = propertyName(property);
-      if (
-        name === "email_confirm" &&
-        property.initializer.kind === ts.SyntaxKind.FalseKeyword
-      ) {
+      if (name !== "email_confirm" && name !== "email_confirmed_at") continue;
+      // `{ email_confirm }` hides its value in a variable: resolve it, or reject it.
+      const value = ts.isShorthandPropertyAssignment(property)
+        ? findInitializer(sourceFile, property.name.text)
+        : (property as ts.PropertyAssignment).initializer;
+      if (isShorthand && !value) {
+        findings.push(`${path}: ${context} writes ${name} from an unresolvable shorthand value`);
+        continue;
+      }
+      if (name === "email_confirm" && value?.kind === ts.SyntaxKind.FalseKeyword) {
         findings.push(`${path}: ${context} sets email_confirm false`);
       }
-      if (
-        name === "email_confirmed_at" &&
-        property.initializer.kind === ts.SyntaxKind.NullKeyword
-      ) {
+      if (name === "email_confirmed_at" && value?.kind === ts.SyntaxKind.NullKeyword) {
         findings.push(`${path}: ${context} clears email_confirmed_at`);
       }
     }
@@ -95,5 +117,30 @@ describe("Auth confirmation source boundary", () => {
     });
 
     expect(findings).toEqual([]);
+  });
+});
+
+describe("Auth confirmation scanner fixtures", () => {
+  const scan = (body: string) => findForbiddenAuthAssignments("fixture.ts", body);
+  const call = (props: string) => `supabase.auth.admin.updateUserById("id", { ${props} });`;
+
+  it("keeps explicit email_confirm true valid", () => {
+    expect(scan(call("email_confirm: true"))).toEqual([]);
+  });
+
+  it("flags shorthand email_confirm resolved to false", () => {
+    expect(scan(`const email_confirm = false;\n${call("email_confirm")}`)).toHaveLength(1);
+  });
+
+  it("flags shorthand email_confirmed_at resolved to null", () => {
+    expect(scan(`const email_confirmed_at = null;\n${call("email_confirmed_at")}`)).toHaveLength(1);
+  });
+
+  it("rejects shorthand values it cannot resolve", () => {
+    expect(scan(`function run(email_confirm: boolean) {\n${call("email_confirm")}\n}`)).toHaveLength(1);
+  });
+
+  it("allows shorthand resolved to true", () => {
+    expect(scan(`const email_confirm = true;\n${call("email_confirm")}`)).toEqual([]);
   });
 });

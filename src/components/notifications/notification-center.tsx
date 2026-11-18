@@ -750,6 +750,16 @@ export function NotificationRowsView({
   const visibleRows =
     filter === "unread" ? list.rows.filter((row) => row.readAt === null) : list.rows;
   if (visibleRows.length === 0) {
+    // Only the loaded page is filtered, so older unread items may still be on the server.
+    if (filter === "unread" && list.hasMore) {
+      return (
+        <EmptyState
+          compact
+          title="No unread notifications loaded yet"
+          description="Use Load more below to check older notifications."
+        />
+      );
+    }
     return (
       <EmptyState
         compact
