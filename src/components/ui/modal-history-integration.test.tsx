@@ -84,4 +84,56 @@ describe("modal history integration", () => {
     window.dispatchEvent(new PopStateEvent("popstate"))
     await waitFor(() => expect(navigated).toHaveBeenCalledOnce())
   })
+
+  it("keeps a parent modal open while recovering a timed-out child traversal", async () => {
+    const parentChanges = vi.fn()
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined)
+    vi.spyOn(window.history, "forward").mockImplementation(() => undefined)
+
+    function Harness() {
+      const [parentOpen, setParentOpen] = React.useState(true)
+      const [childOpen, setChildOpen] = React.useState(true)
+
+      return (
+        <Dialog
+          open={parentOpen}
+          onOpenChange={(open) => {
+            parentChanges(open)
+            setParentOpen(open)
+          }}
+        >
+          <DialogContent>
+            <DialogTitle>Parent modal</DialogTitle>
+            {childOpen ? (
+              <Dialog open onOpenChange={setChildOpen}>
+                <DialogContent>
+                  <DialogTitle>Child modal</DialogTitle>
+                  <button
+                    type="button"
+                    onClick={() => void closeModalAndWait(() => setChildOpen(false))}
+                  >
+                    Close child
+                  </button>
+                </DialogContent>
+              </Dialog>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      )
+    }
+
+    render(<Harness />)
+    await screen.findByText("Child modal")
+    fireEvent.click(screen.getByText("Close child"))
+
+    expect(back).toHaveBeenCalledOnce()
+    await new Promise((resolve) => setTimeout(resolve, 320))
+
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    await Promise.resolve()
+
+    expect(parentChanges).not.toHaveBeenCalledWith(false)
+    expect(screen.getByText("Parent modal")).toBeTruthy()
+  })
 })

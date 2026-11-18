@@ -138,26 +138,26 @@ function drainRequestedClosures() {
 }
 
 function handlePopState() {
-  const id = stack.pop()
-  if (!id) {
-    if (recoveringLateTraversal) {
-      if (getMarker(window.history.state)) {
-        try {
-          window.history.replaceState(
-            stripModalMarkerState(window.history.state),
-            "",
-            window.location.href,
-          )
-          window.history.forward()
-        } catch {
-          recoveringLateTraversal = false
-        }
-      } else {
+  if (recoveringLateTraversal) {
+    if (getMarker(window.history.state)) {
+      try {
+        window.history.replaceState(
+          stripModalMarkerState(window.history.state),
+          "",
+          window.location.href,
+        )
+        window.history.forward()
+      } catch {
         recoveringLateTraversal = false
       }
+    } else {
+      recoveringLateTraversal = false
     }
     return
   }
+
+  const id = stack.pop()
+  if (!id) return
 
   traversalPending = false
   clearTraversalTimer()
