@@ -6,7 +6,7 @@ Manual UI check: as an Admin, add and edit a Board task and an Event task for tw
 
 ## Dev SQL paste
 
-Run once in the Dev SQL Editor with **Run without RLS** after applying the migration. The final `TEST RESULTS` exception is intentional and rolls back every fixture. The finished paste is 446 lines and contains 17 result rows.
+Run once in the Dev SQL Editor with **Run without RLS** after applying the migration. The final `TEST RESULTS` exception is intentional and rolls back every fixture. The finished paste is 448 lines and contains 17 result rows.
 
 ```sql
 begin;
@@ -168,7 +168,7 @@ begin
   );
   insert into batch_c_results(label, passed) values (
     'Admin Event create may self-select across committees',
-    admin_id = any((select primary_assignees from public.tasks where id = task_id))
+    (select admin_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = task_id)
   );
 
   task_id := pg_temp.batch_c_insert_self(
@@ -177,7 +177,7 @@ begin
   );
   insert into batch_c_results(label, passed) values (
     'Admin template Event create may self-select',
-    admin_id = any((select primary_assignees from public.tasks where id = task_id))
+    (select admin_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = task_id)
   );
 
   notification_task_id := pg_temp.batch_c_insert_self(
@@ -186,14 +186,14 @@ begin
   );
   insert into batch_c_results(label, passed) values (
     'Admin Board create may self-select across committees',
-    admin_id = any((select primary_assignees from public.tasks where id = notification_task_id))
+    (select admin_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = notification_task_id)
   );
 
   insert into batch_c_results(label, passed) values (
     'Self-selection sends no assignment notification to actor',
     not exists(
-      select 1 from public.notifications
-      where user_id = admin_id and task_id = notification_task_id
+      select 1 from public.notifications as notification_row
+      where notification_row.user_id = admin_id and notification_row.task_id = notification_task_id
     )
   );
 
@@ -207,7 +207,7 @@ begin
   perform pg_catalog.set_config('ceit_connect.task_assignee_writer', '', true);
   insert into batch_c_results(label, passed) values (
     'Admin Event edit may self-select across committees',
-    admin_id = any((select primary_assignees from public.tasks where id = task_id))
+    (select admin_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = task_id)
   );
 
   task_id := pg_temp.batch_c_insert_unassigned(
@@ -220,7 +220,7 @@ begin
   perform pg_catalog.set_config('ceit_connect.task_assignee_writer', '', true);
   insert into batch_c_results(label, passed) values (
     'Admin Board edit may self-select across committees',
-    admin_id = any((select primary_assignees from public.tasks where id = task_id))
+    (select admin_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = task_id)
   );
 
   perform pg_catalog.set_config(
@@ -234,7 +234,7 @@ begin
   );
   insert into batch_c_results(label, passed) values (
     'Co-Admin own-committee INSERT may self-select',
-    coadmin_id = any((select primary_assignees from public.tasks where id = task_id))
+    (select coadmin_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = task_id)
   );
 
   task_id := pg_temp.batch_c_insert_unassigned(
@@ -247,7 +247,7 @@ begin
   perform pg_catalog.set_config('ceit_connect.task_assignee_writer', '', true);
   insert into batch_c_results(label, passed) values (
     'Co-Admin UPDATE accepts matching old and new own committee',
-    coadmin_id = any((select primary_assignees from public.tasks where id = task_id))
+    (select coadmin_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = task_id)
   );
 
   ok := false;
@@ -354,11 +354,11 @@ begin
     );
   exception when others then
     ok := sqlstate = '42501'
-      and sqlerrm = 'Task assignees must be written through an approved function.';
+      and sqlerrm = 'permission denied for table task_volunteers';
   end;
   execute 'reset role';
   insert into batch_c_results(label, passed) values (
-    'Raw authenticated write keeps exact untrusted rejection', ok
+    'Raw authenticated write keeps its existing task_volunteers denial', ok
   );
 
   task_id := pg_temp.batch_c_insert_unassigned(
@@ -372,7 +372,7 @@ begin
   perform * from public.claim_task(task_id);
   insert into batch_c_results(label, passed) values (
     'claim_task keeps its existing self-assignment exception',
-    member_id = any((select primary_assignees from public.tasks where id = task_id))
+    (select member_id = any(task_row.primary_assignees) from public.tasks as task_row where task_row.id = task_id)
   );
 
   perform pg_catalog.set_config(
@@ -385,6 +385,7 @@ begin
     perform pg_catalog.set_config(
       'ceit_connect.task_assignee_writer', 'create_active_event_task', true
     );
+    perform pg_catalog.set_config('ceit_connect.task_access_writer', 'create_active_event_task', true);
     insert into public.tasks(
       event_id, committee_id, title, phase, status, priority, task_type,
       primary_assignees, assist_assignees, is_confidential, allowed_viewers
@@ -395,6 +396,7 @@ begin
   exception when others then
     ok := sqlstate = 'CCP01';
   end;
+  perform pg_catalog.set_config('ceit_connect.task_access_writer', '', true);
   perform pg_catalog.set_config('ceit_connect.task_assignee_writer', '', true);
   insert into batch_c_results(label, passed) values (
     'Actor remains forbidden as both assignee and viewer', ok

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { filterEventAssigneesBySearch } from "@/lib/events/form";
 
 const source = [
   "event-form.tsx",
@@ -9,13 +10,67 @@ const source = [
   .map((file) => readFileSync(`src/components/events/${file}`, "utf8"))
   .join("\n")
   .replaceAll("\r\n", "\n");
+const producerSource = [
+  "src/app/(dashboard)/events/new/page.tsx",
+  "src/app/(dashboard)/events/[eventId]/edit/page.tsx",
+]
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n")
+  .replaceAll("\r\n", "\n");
+const workloadReaderSource = readFileSync(
+  "supabase/migrations/20261022120000_task_claim_backup_volunteers.sql",
+  "utf8",
+).replaceAll("\r\n", "\n");
 
 describe("Event form task-editor parity contract", () => {
   it("keeps every active candidate available to the Event assignee picker", () => {
     expect(source).toContain(
-      "const filtered = assignees.filter(\n      (assignee) => matchesSearch(assignee),\n    )",
+      "const filtered = filterEventAssigneesBySearch(\n      assignees,\n      assigneeSearch,\n      committeeNames,\n    )",
     );
     expect(source).not.toContain("assignee.id !== currentUserId");
+  });
+
+  it("loads the acting Admin or Co-Admin from the active-user producer", () => {
+    expect(
+      producerSource.match(
+        /getActiveProfileForRoles\(\[\s*"Admin",\s*"Co-Admin",?\s*\]\)/g,
+      ),
+    ).toHaveLength(2);
+    expect(
+      producerSource.match(
+        /supabase\.rpc\("list_active_task_assignees_with_workload"\)/g,
+      ),
+    ).toHaveLength(2);
+    expect(workloadReaderSource).toContain("where user_row.is_active is true");
+    expect(workloadReaderSource).not.toContain("user_row.id <> auth.uid()");
+  });
+
+  it.each([
+    ["Admin", "admin", "avery admin"],
+    ["Co-Admin", "coadmin", "casey co-admin"],
+  ])("lets an eligible %s find themselves by name", (role, actorId, search) => {
+    const candidates = [
+      {
+        id: "admin",
+        role: "Admin",
+        full_name: "Avery Admin",
+        committee_id: null,
+      },
+      {
+        id: "coadmin",
+        role: "Co-Admin",
+        full_name: "Casey Co-Admin",
+        committee_id: "committee-a",
+      },
+    ];
+
+    expect(
+      filterEventAssigneesBySearch(
+        candidates,
+        search,
+        new Map([["committee-a", "Committee A"]]),
+      ),
+    ).toContainEqual(expect.objectContaining({ id: actorId, role }));
   });
 
   it("keeps type changes non-destructive and hides Due date for Live Operations", () => {
