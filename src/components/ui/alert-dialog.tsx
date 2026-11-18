@@ -1,10 +1,34 @@
 "use client"
 
+import { useModalHistory } from "@/hooks/use-modal-history"
+
 import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog"
 import { cn } from "@/lib/utils"
 
-const AlertDialog = AlertDialogPrimitive.Root
+function AlertDialog<Payload = unknown>({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: AlertDialogPrimitive.Root.Props<Payload>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen)
+  const open = controlledOpen ?? uncontrolledOpen
+  const handleOpenChange = useModalHistory<
+    Parameters<NonNullable<typeof onOpenChange>>[1]
+  >(open, (nextOpen, details) => {
+    if (controlledOpen === undefined) setUncontrolledOpen(nextOpen)
+    onOpenChange?.(nextOpen, details)
+  })
+
+  return (
+    <AlertDialogPrimitive.Root
+      {...props}
+      open={open}
+      onOpenChange={handleOpenChange}
+    />
+  )
+}
 
 function AlertDialogContent({ className, ...props }: AlertDialogPrimitive.Popup.Props) {
   return (

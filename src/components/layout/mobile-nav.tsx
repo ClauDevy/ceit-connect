@@ -1,5 +1,7 @@
 "use client"
 
+import { closeModalAndWait } from "@/hooks/use-modal-history"
+
 import { useState } from "react"
 import Link from "next/link"
 import { Ellipsis, LogOut } from "lucide-react"
@@ -33,7 +35,7 @@ function BottomTab({ item, active, showWarning }: { item: NavItem; active: boole
   )
 }
 
-function MoreLink({ item, active, onNavigate, showWarning }: { item: NavItem; active: boolean; onNavigate: () => void; showWarning: boolean }) {
+function MoreLink({ item, active, onNavigate, showWarning }: { item: NavItem; active: boolean; onNavigate: () => void | Promise<void>; showWarning: boolean }) {
   const Icon = item.icon
   const onClick = useNavClick(item.href, onNavigate)
   return (
@@ -88,7 +90,9 @@ export function MobileNav({ user }: { user: CurrentUser }) {
                 key={item.href}
                 item={item}
                 active={isNavActive(pathname, item.href)}
-                onNavigate={() => setMoreOpen(false)}
+                 onNavigate={() =>
+                   closeModalAndWait(() => setMoreOpen(false))
+                 }
                 showWarning={Boolean(item.passwordWarning && !user.passwordSet)}
               />
             ))}
@@ -97,10 +101,17 @@ export function MobileNav({ user }: { user: CurrentUser }) {
               <MoreLink
                 item={HELP_NAV_ITEM}
                 active={isNavActive(pathname, HELP_NAV_ITEM.href)}
-                onNavigate={() => setMoreOpen(false)}
+                 onNavigate={() =>
+                   closeModalAndWait(() => setMoreOpen(false))
+                 }
                 showWarning={false}
               />
-              <PushAwareSignOutForm userId={user.id}>
+               <PushAwareSignOutForm
+                 userId={user.id}
+                 beforeSubmit={() =>
+                   closeModalAndWait(() => setMoreOpen(false))
+                 }
+               >
                 <Button
                   type="submit"
                   variant="ghost"

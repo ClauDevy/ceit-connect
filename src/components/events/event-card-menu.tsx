@@ -1,5 +1,7 @@
 "use client";
 
+import { closeModalAndWait } from "@/hooks/use-modal-history";
+
 import { useState } from "react";
 import Link from "next/link";
 import { Archive, Ellipsis, Pencil } from "lucide-react";
@@ -72,7 +74,7 @@ export function EventCardMenu({
         return;
       }
 
-      setOpen(false);
+      await closeModalAndWait(() => setOpen(false));
       router.push("/archives");
       router.refresh();
     } catch {

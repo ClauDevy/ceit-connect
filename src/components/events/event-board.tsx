@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  useIsPhoneModalViewport,
+  useModalHistory,
+} from "@/hooks/use-modal-history";
+
+import {
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
@@ -551,6 +556,11 @@ function BoardContents({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [priorityOpen, committeeOpen]);
+
+  const priorityIsModal = useIsPhoneModalViewport();
+  useModalHistory(priorityOpen, (nextOpen) => {
+    if (!nextOpen) closePriorityFilter();
+  }, priorityIsModal);
 
   function openPriorityFilter() {
     if (committeeOpen) closeCommitteeFilter(false);

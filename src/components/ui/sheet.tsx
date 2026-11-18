@@ -1,10 +1,34 @@
 "use client"
 
+import { useModalHistory } from "@/hooks/use-modal-history"
+
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { cn } from "@/lib/utils"
 
-const Sheet = DialogPrimitive.Root
+function Sheet<Payload = unknown>({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: DialogPrimitive.Root.Props<Payload>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen)
+  const open = controlledOpen ?? uncontrolledOpen
+  const handleOpenChange = useModalHistory<
+    Parameters<NonNullable<typeof onOpenChange>>[1]
+  >(open, (nextOpen, details) => {
+    if (controlledOpen === undefined) setUncontrolledOpen(nextOpen)
+    onOpenChange?.(nextOpen, details)
+  })
+
+  return (
+    <DialogPrimitive.Root
+      {...props}
+      open={open}
+      onOpenChange={handleOpenChange}
+    />
+  )
+}
 const SheetClose = DialogPrimitive.Close
 
 function SheetContent({ className, children, ...props }: DialogPrimitive.Popup.Props) {

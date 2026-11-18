@@ -1,5 +1,7 @@
 "use client";
 
+import { closeModalAndWait } from "@/hooks/use-modal-history";
+
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { X } from "lucide-react";
 import { EventBoardTaskCard } from "@/components/events/event-board-task-card";
@@ -127,8 +129,8 @@ export function EventBoardDialogs({
                 claimBusy={claimingTaskId === task.id}
                 onClaim={handleClaim}
                 canEdit={canShowBoardTaskEdit(viewer, task)}
-                onEdit={() => {
-                  setBacklogOpen(false);
+                 onEdit={async () => {
+                   await closeModalAndWait(() => setBacklogOpen(false));
                   setTaskDialog({ mode: "edit", taskId: task.id });
                 }}
               />
