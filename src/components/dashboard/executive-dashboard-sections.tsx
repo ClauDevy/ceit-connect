@@ -21,6 +21,7 @@ import {
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import { TaskStatusDonut } from "@/components/dashboard/executive-dashboard-charts";
+import { PagedList } from "@/components/dashboard/paged-list";
 
 function SectionError({ label }: { label: string }) {
   return <InlineAlert>{label} could not be loaded. Use Refresh to try again.</InlineAlert>;
@@ -40,11 +41,17 @@ export function OverviewKpis({ section }: { section: DashboardSection<DashboardO
   return (
     <section aria-labelledby="dashboard-kpis-title">
       <h2 id="dashboard-kpis-title" className="sr-only">Dashboard totals</h2>
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
         {cards.map(([label, value, tone]) => (
-          <div key={label} className="rounded-xl border bg-card p-4 shadow-xs">
+          <div
+            key={label}
+            className={cn(
+              "rounded-xl border bg-card px-3.5 py-3 shadow-xs sm:px-4 sm:py-3.5",
+              label === "Overdue" && value > 0 && "border-destructive/40 bg-destructive/5",
+            )}
+          >
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className={cn("mt-1 font-display text-2xl font-semibold tabular-nums", tone)}>{value}</dd>
+            <dd className={cn("mt-0.5 font-display text-2xl font-semibold tabular-nums", tone)}>{value}</dd>
           </div>
         ))}
       </dl>
@@ -106,11 +113,15 @@ export function AttentionCard({ section }: { section: DashboardSection<Attention
       ) : section.data.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing needs attention right now.</p>
       ) : (
-        <ul className="divide-y divide-border/70">
-          {section.data.map((row, index) => (
-            <AttentionItem key={`${row.sourceCreatedAt}:${index}`} row={row} />
-          ))}
-        </ul>
+        <PagedList
+          as="ul"
+          label="items"
+          pageSize={5}
+          className="divide-y divide-border/70"
+          items={section.data.map((row, index) => ({ row, key: `${row.sourceCreatedAt}:${index}` }))}
+          getKey={(entry) => entry.key}
+          renderItem={(entry) => <AttentionItem row={entry.row} />}
+        />
       )}
     </DashboardCard>
   );
@@ -142,7 +153,7 @@ function AttentionItem({ row }: { row: AttentionRow }) {
       {href ? <span aria-hidden className="text-muted-foreground">›</span> : null}
     </div>
   );
-  return <li>{href ? <Link href={href}>{content}</Link> : content}</li>;
+  return href ? <Link href={href}>{content}</Link> : content;
 }
 
 function formatAttentionDeadline(value: string) {
@@ -159,32 +170,58 @@ function formatAttentionDeadline(value: string) {
 
 export function StatusCard({ section, animate }: { section: DashboardSection<DashboardOverview>; animate: boolean }) {
   return (
-    <DashboardCard title="Task status" description="The reader's status split, including completed tasks in Active events.">
+    <DashboardCard title="Task status" description="Where every task stands right now.">
       {section.status !== "ready" ? <SectionError label="Task status" /> : <TaskStatusDonut overview={section.data} animate={animate} />}
     </DashboardCard>
   );
 }
 
 export function FreeMembersCard({ section }: { section: DashboardSection<FreeMember[]> }) {
+  const count = section.status === "ready" ? section.data.length : 0;
   return (
-    <DashboardCard title="Free to take work" description="Active officers and members with two or fewer council-wide open tasks.">
+    <DashboardCard
+      title="Free to take work"
+      description="Active officers and members with two or fewer council-wide open tasks."
+      aside={
+        count > 0 ? (
+          <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success tabular-nums">
+            {count} available
+          </span>
+        ) : null
+      }
+    >
       {section.status !== "ready" ? (
         <SectionError label="Free members" />
       ) : section.data.length === 0 ? (
         <p className="text-sm text-muted-foreground">No members available to take work.</p>
       ) : (
-        <ul className="divide-y divide-border/70">
-          {section.data.map((member) => (
-            <li key={member.memberId} className="flex min-h-11 items-center gap-3 py-2.5">
+        <PagedList
+          as="ul"
+          label="members"
+          pageSize={5}
+          className="divide-y divide-border/70"
+          items={section.data}
+          getKey={(member) => member.memberId}
+          renderItem={(member) => (
+            <div className="flex min-h-11 items-center gap-3 py-2.5">
               <UserAvatar name={member.fullName} src={member.avatarUrl} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{member.fullName}</p>
                 <p className="text-xs text-muted-foreground">{member.role}</p>
               </div>
-              <span className="text-xs font-medium tabular-nums text-muted-foreground">{member.openTaskCount} open</span>
-            </li>
-          ))}
-        </ul>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+                  member.openTaskCount === 0
+                    ? "bg-success/10 text-success"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {member.openTaskCount} open
+              </span>
+            </div>
+          )}
+        />
       )}
     </DashboardCard>
   );
@@ -211,11 +248,24 @@ export function PushAdoptionCard({ section }: { section: DashboardSection<PushAd
   );
 }
 
-export function DashboardCard({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+export function DashboardCard({
+  title,
+  description,
+  aside,
+  children,
+}: {
+  title: string;
+  description: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle>{title}</CardTitle>
+          {aside ? <div className="shrink-0">{aside}</div> : null}
+        </div>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
