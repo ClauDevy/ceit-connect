@@ -356,7 +356,7 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 
 ## Open items
 
-- E1 important email is implemented locally pending review and rollout. It adds default-on own-user preferences, a content-free deduplicated outbox, confirmed-Auth-email claim-time resolution, generic confidential copy, assignment-first database quotas (Dev 10/day, Prod 70/day, 10/run), five bounded attempts, 24-hour staleness, Resend queue-id idempotency, aggregate-only logs/history, and a no-work/no-wake one-minute Prod cron helper. Prod rollout order is Vercel env/deploy Ready, `npx supabase db push`, one-time allowance/capability configuration, Vault, then cron. No Activity Log email or CSV backup is included.
+- E1 important email is implemented locally pending review and rollout. It adds default-on own-user preferences, a content-free deduplicated outbox, confirmed-Auth-email send-time preparation with current task-access/confidentiality projection and a short task-content send guard, generic confidential/masked copy, assignment-first Manila-day plus rolling-24-hour database quotas (Dev 10, Prod 70, 10/run), five bounded attempts, 24-hour staleness, a deletion-resistant 48-hour attempt ledger, Resend queue-id idempotency with exact 409 classification, bounded idle cleanup including abandoned runs, aggregate-only safe logs/history, and a no-work/no-wake one-minute Prod cron helper. Prod rollout order is Vercel env/deploy Ready, `npx supabase db push`, one-time allowance/capability configuration, Vault, then cron. No Activity Log email or CSV backup is included.
 
 - J1 jump-to-comment is implemented locally with migration 80, bounded
   25-comment target pages, task-only fallback for old/deleted comment targets,

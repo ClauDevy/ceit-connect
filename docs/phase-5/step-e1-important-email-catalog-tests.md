@@ -2,7 +2,7 @@
 
 Run after `npx supabase db push`. This paste creates no temp table, is
 self-contained, and intentionally rolls back. Expected final exception:
-`TEST RESULTS 21/21 PASS — transaction intentionally rolled back`.
+`TEST RESULTS 25/25 PASS — transaction intentionally rolled back`.
 
 ```sql
 begin;
@@ -72,7 +72,33 @@ insert into public.e1_catalog_results values
     and pg_catalog.strpos(pg_get_functiondef(oid),
       'run_row.allowance_reached_count = 1')>0
     and pg_catalog.strpos(pg_get_functiondef(oid),
-      'date_trunc(''hour'', v_now)')>0));
+      'date_trunc(''hour'', v_now)')>0)),
+('22 send preparation exists and is anon-capability callable',
+  to_regprocedure('public.prepare_email_delivery(uuid,uuid)') is not null
+  and has_function_privilege('anon','public.prepare_email_delivery(uuid,uuid)','EXECUTE')
+  and not has_function_privilege('service_role','public.prepare_email_delivery(uuid,uuid)','EXECUTE')),
+('23 quota ledger survives queue deletion', not exists(
+  select 1 from pg_catalog.pg_constraint
+  where conrelid='ceit_connect_private.email_send_attempts'::regclass
+    and contype='f')),
+('24 rolling allowance is pinned in claim and kick', exists(
+  select 1 from pg_catalog.pg_proc
+  where oid='public.claim_email_deliveries(integer)'::regprocedure
+    and pg_catalog.strpos(pg_get_functiondef(oid),'''24 hours''')>0)
+  and exists(
+    select 1 from pg_catalog.pg_proc
+    where oid='ceit_connect_private.request_email_kick_if_due()'::regprocedure
+      and pg_catalog.strpos(pg_get_functiondef(oid),'''24 hours''')>0)),
+('25 preparation uses current task access', exists(
+  select 1 from pg_catalog.pg_proc
+  where oid='public.prepare_email_delivery(uuid,uuid)'::regprocedure
+    and pg_catalog.strpos(pg_get_functiondef(oid),'task_content_access_for_user')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),'/workspace')>0)
+  and exists(
+    select 1 from pg_catalog.pg_trigger
+    where tgrelid='public.tasks'::regclass
+      and tgname='tasks_y9_guard_email_send_content'
+      and not tgisinternal));
 
 do $$
 declare
@@ -85,11 +111,11 @@ begin
          string_agg(label, ', ' order by label) filter (where passed is false)
   into v_total, v_failed, v_labels
   from public.e1_catalog_results;
-  if v_total <> 21 or v_failed <> 0 then
-    raise exception 'TEST RESULTS %/21 FAIL — % failed: %; transaction intentionally rolled back',
+  if v_total <> 25 or v_failed <> 0 then
+    raise exception 'TEST RESULTS %/25 FAIL — % failed: %; transaction intentionally rolled back',
       v_total-v_failed, v_failed, coalesce(v_labels, 'count mismatch');
   end if;
-  raise exception 'TEST RESULTS 21/21 PASS — transaction intentionally rolled back';
+  raise exception 'TEST RESULTS 25/25 PASS — transaction intentionally rolled back';
 end;
 $$;
 rollback;

@@ -38,10 +38,25 @@ export function isValidFrom(value: string) {
   return Boolean(match?.[1].trim() && match?.[2] && isValidMailbox(match[2]));
 }
 
-export function classifyResendStatus(status: number): EmailSendOutcome {
+export function classifyResendStatus(status: number, errorName: string | null = null): EmailSendOutcome {
   if (status >= 200 && status < 300) return { outcome: "success", httpStatus: status };
+  if (status === 409 && errorName === "concurrent_idempotent_requests") {
+    return { outcome: "transient", httpStatus: status };
+  }
   if (status === 429 || status >= 500) return { outcome: "transient", httpStatus: status };
   return { outcome: "permanent", httpStatus: status };
+}
+
+function resendErrorName(body: ArrayBuffer) {
+  if (body.byteLength === 0 || body.byteLength > 4_096) return null;
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(body)) as unknown;
+    if (!parsed || typeof parsed !== "object") return null;
+    const name = (parsed as Record<string, unknown>).name;
+    return typeof name === "string" ? name : null;
+  } catch {
+    return null;
+  }
 }
 
 function attachmentPayload(attachment: EmailAttachment) {
@@ -80,8 +95,8 @@ export async function sendResendEmail(
           : {}),
       }),
     });
-    await response.arrayBuffer().catch(() => new ArrayBuffer(0));
-    return classifyResendStatus(response.status);
+    const body = await response.arrayBuffer().catch(() => new ArrayBuffer(0));
+    return classifyResendStatus(response.status, resendErrorName(body));
   } catch {
     return { outcome: "transient", httpStatus: null };
   } finally {

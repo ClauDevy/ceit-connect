@@ -6,6 +6,8 @@ const raw = readFileSync(
   "utf8",
 );
 const migration = raw.replaceAll("\r\n", "\n");
+const worker = readFileSync("src/lib/email/important-email-worker.ts", "utf8").replaceAll("\r\n", "\n");
+const sender = readFileSync("src/lib/email/resend-sender.ts", "utf8").replaceAll("\r\n", "\n");
 
 describe("important email migration contract", () => {
   it("is additive, LF-safe, and avoids forbidden qualified special forms", () => {
@@ -29,6 +31,7 @@ describe("important email migration contract", () => {
     expect(migration).toContain("daily_allowance between 1 and 70");
     expect(migration).toContain("new.created_at + interval '24 hours'");
     expect(migration).toContain("order by queue.priority, queue.created_at, queue.id");
+    expect(migration).toContain("order by leased.priority, leased.created_at, leased.id");
   });
 
   it("keeps seed best-effort and preference missing-as-enabled", () => {
@@ -40,12 +43,27 @@ describe("important email migration contract", () => {
   it("uses confirmed matching Auth email only without storing an address", () => {
     const queue = migration.slice(
       migration.indexOf("create table ceit_connect_private.email_delivery_queue"),
-      migration.indexOf("create table ceit_connect_private.email_send_attempts"),
+      migration.indexOf("create function ceit_connect_private.guard_task_email_send_content"),
     );
     expect(queue).not.toMatch(/\bemail\b/i);
     expect(migration).toContain("auth_user.email_confirmed_at is not null");
     expect(migration).toContain("profile.anonymized_at is null");
     expect(migration).toContain("auth_user.email::text as out_recipient_email");
+    expect(migration).toContain("create function public.prepare_email_delivery");
+    expect(migration).toContain("public.task_content_access_for_user(task_row.id, guarded.user_id) <> 'real'");
+    expect(migration).toContain("create trigger tasks_y9_guard_email_send_content");
+    expect(migration).toContain("queue.send_guard_until > pg_catalog.clock_timestamp()");
+  });
+
+  it("keeps quota reservations after queue deletion and caps both accounting windows", () => {
+    const attempts = migration.slice(
+      migration.indexOf("create table ceit_connect_private.email_send_attempts"),
+      migration.indexOf("create table ceit_connect_private.email_delivery_runs"),
+    );
+    expect(attempts).not.toContain("references ceit_connect_private.email_delivery_queue");
+    expect(migration).toContain("attempt.reserved_at > v_now - interval '24 hours'");
+    expect(migration.match(/attempt\.reserved_at > v_now - interval '24 hours'/g)).toHaveLength(2);
+    expect(migration).toContain("attempt.reserved_at < p_as_of - interval '48 hours'");
   });
 
   it("authenticates claim/ack before validation and locks", () => {
@@ -58,7 +76,9 @@ describe("important email migration contract", () => {
 
   it("pins no-work/no-wake, allowance no-wake, and hourly count throttling", () => {
     expect(migration).toContain("allowance_reached_count integer");
-    expect(migration).toContain("no email delivery is due or the Manila-day allowance is exhausted");
+    expect(migration).toContain(
+      "no email delivery is due or the Manila-day or rolling-24-hour allowance is exhausted",
+    );
     const kick = migration.slice(migration.indexOf("create function ceit_connect_private.request_email_kick_if_due"));
     expect(kick.indexOf("if not exists")).toBeLessThan(kick.indexOf("vault.decrypted_secrets"));
     expect(kick.indexOf("if not exists")).toBeLessThan(kick.indexOf("net.http_post"));
@@ -70,5 +90,30 @@ describe("important email migration contract", () => {
     );
     expect(migration).toContain("pg_catalog.date_trunc('hour', v_now)");
     expect(migration).toContain("run_row.allowance_reached_count = 1");
+    expect(kick.indexOf("purge_email_delivery_history(v_now)")).toBeLessThan(
+      kick.indexOf("if not exists"),
+    );
+  });
+
+  it("cleans abandoned runs without deleting recent unfinished runs", () => {
+    expect(migration).toContain("run_row.finished_at is null");
+    expect(migration).toContain("run_row.started_at < p_as_of - interval '30 days'");
+    expect(migration).toContain("order by coalesce(run_row.finished_at, run_row.started_at)");
+  });
+
+  it("revalidates immediately before send and records run-finalization failures", () => {
+    expect(worker).toContain('client.rpc("prepare_email_delivery"');
+    expect(worker.indexOf("prepareDelivery(client, delivery)")).toBeLessThan(
+      worker.indexOf("sendResendEmail(config.apiKey"),
+    );
+    expect(worker).toContain("finalizationFailures: 0");
+    expect(worker).toContain("if (error || data !== true) counts.finalizationFailures += 1");
+    expect(worker).toContain("const body = await response.arrayBuffer()");
+    expect(worker).toContain("Date.now() + RESEND_TIMEOUT_MS");
+  });
+
+  it("classifies only Resend's concurrent idempotency conflict as retryable", () => {
+    expect(sender).toContain('status === 409 && errorName === "concurrent_idempotent_requests"');
+    expect(sender).toContain("resendErrorName(body)");
   });
 });

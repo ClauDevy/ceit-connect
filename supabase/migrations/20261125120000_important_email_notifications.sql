@@ -78,6 +78,7 @@ create table ceit_connect_private.email_delivery_queue (
   stale_at timestamptz not null,
   lease_token uuid,
   lease_expires_at timestamptz,
+  send_guard_until timestamptz,
   run_id uuid,
   delivered_at timestamptz,
   terminal_at timestamptz,
@@ -92,7 +93,8 @@ create table ceit_connect_private.email_delivery_queue (
   check (
     (state = 'leased' and lease_token is not null and lease_expires_at is not null)
     or (state <> 'leased' and lease_token is null and lease_expires_at is null)
-  )
+  ),
+  check (state = 'leased' or send_guard_until is null)
 );
 
 alter table ceit_connect_private.email_delivery_queue owner to postgres;
@@ -109,9 +111,56 @@ create index email_delivery_queue_user_open_idx
 on ceit_connect_private.email_delivery_queue (user_id, state, id)
 where state in ('pending', 'leased');
 
+create function ceit_connect_private.guard_task_email_send_content()
+returns trigger
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    if new.title is not distinct from old.title
+       and new.committee_id is not distinct from old.committee_id
+       and new.primary_assignees is not distinct from old.primary_assignees
+       and new.assist_assignees is not distinct from old.assist_assignees
+       and new.is_confidential is not distinct from old.is_confidential
+       and new.allowed_viewers is not distinct from old.allowed_viewers then
+      return new;
+    end if;
+  end if;
+
+  if exists (
+    select 1
+    from ceit_connect_private.email_delivery_queue as queue
+    join public.notifications as notification on notification.id = queue.notification_id
+    where notification.task_id = old.id
+      and queue.state = 'leased'
+      and queue.send_guard_until > pg_catalog.clock_timestamp()
+  ) then
+    raise exception using
+      errcode = '55000',
+      message = 'Task content is temporarily being prepared for email. Try again.';
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+alter function ceit_connect_private.guard_task_email_send_content() owner to postgres;
+revoke all on function ceit_connect_private.guard_task_email_send_content()
+from public, anon, authenticated, service_role;
+
+create trigger tasks_y9_guard_email_send_content
+before update or delete on public.tasks
+for each row execute function ceit_connect_private.guard_task_email_send_content();
+
 create table ceit_connect_private.email_send_attempts (
-  delivery_id uuid not null references ceit_connect_private.email_delivery_queue(id)
-    on delete cascade,
+  -- Intentionally not a foreign key: this quota ledger must survive queue-row
+  -- cleanup or notification deletion for the complete accounting window.
+  delivery_id uuid not null,
   attempt_number integer not null check (attempt_number between 1 and 5),
   reserved_at timestamptz not null default pg_catalog.clock_timestamp(),
   primary key (delivery_id, attempt_number)
@@ -531,11 +580,7 @@ returns table (
   out_lease_token uuid,
   out_run_id uuid,
   out_run_token uuid,
-  out_recipient_email text,
   out_notification_type text,
-  out_task_title text,
-  out_target_path text,
-  out_is_confidential boolean,
   out_attempt integer,
   out_lease_expires_at timestamptz
 )
@@ -549,6 +594,8 @@ declare
   v_now timestamptz := pg_catalog.clock_timestamp();
   v_allowance integer;
   v_used integer;
+  v_manila_used integer;
+  v_rolling_used integer;
   v_available integer;
   v_claim_limit integer;
   v_run_id uuid := gen_random_uuid();
@@ -567,12 +614,13 @@ begin
 
   update ceit_connect_private.email_delivery_queue as queue
   set state = 'stale', terminal_at = v_now, terminal_reason = 'stale',
-      lease_token = null, lease_expires_at = null, updated_at = v_now
+      lease_token = null, lease_expires_at = null, send_guard_until = null,
+      updated_at = v_now
   where queue.state in ('pending', 'leased') and queue.stale_at <= v_now;
 
   update ceit_connect_private.email_delivery_queue as queue
   set state = 'pending', lease_token = null, lease_expires_at = null,
-      next_attempt_at = v_now, updated_at = v_now
+      send_guard_until = null, next_attempt_at = v_now, updated_at = v_now
   where queue.state = 'leased'
     and queue.lease_expires_at <= v_now
     and queue.stale_at > v_now
@@ -581,7 +629,7 @@ begin
   update ceit_connect_private.email_delivery_queue as queue
   set state = 'terminal', terminal_at = v_now,
       terminal_reason = 'attempts_exhausted', lease_token = null,
-      lease_expires_at = null, updated_at = v_now
+      lease_expires_at = null, send_guard_until = null, updated_at = v_now
   where queue.state = 'leased'
     and queue.lease_expires_at <= v_now
     and queue.attempt_count >= 5;
@@ -618,10 +666,18 @@ begin
   for update;
 
   select pg_catalog.count(*)::integer
-  into v_used
+  into v_manila_used
   from ceit_connect_private.email_send_attempts as attempt
   where (attempt.reserved_at at time zone 'Asia/Manila')::date =
         (v_now at time zone 'Asia/Manila')::date;
+  select pg_catalog.count(*)::integer
+  into v_rolling_used
+  from ceit_connect_private.email_send_attempts as attempt
+  where attempt.reserved_at > v_now - interval '24 hours';
+  v_used := v_manila_used;
+  if v_rolling_used > v_used then
+    v_used := v_rolling_used;
+  end if;
   v_available := v_allowance - v_used;
   if v_available <= 0 then
     insert into ceit_connect_private.email_delivery_runs (
@@ -682,7 +738,8 @@ begin
     from candidates as candidate
     where queue.id = candidate.id
     returning queue.id, queue.notification_id, queue.notification_type,
-      queue.attempt_count, queue.lease_token, queue.lease_expires_at
+      queue.priority, queue.created_at, queue.attempt_count, queue.lease_token,
+      queue.lease_expires_at
   ),
   reserved as (
     insert into ceit_connect_private.email_send_attempts (
@@ -696,22 +753,12 @@ begin
     leased.lease_token as out_lease_token,
     v_run_id as out_run_id,
     v_run_token as out_run_token,
-    auth_user.email::text as out_recipient_email,
     leased.notification_type::text as out_notification_type,
-    case when task_row.is_confidential then null else task_row.title end::text
-      as out_task_title,
-    case when task_row.is_confidential then '/workspace'
-      else pg_catalog.format('/tasks/%s', task_row.id) end::text
-      as out_target_path,
-    task_row.is_confidential as out_is_confidential,
     leased.attempt_count as out_attempt,
     leased.lease_expires_at as out_lease_expires_at
   from leased
   join reserved on reserved.delivery_id = leased.id
-  join public.notifications as notification on notification.id = leased.notification_id
-  join public.tasks as task_row on task_row.id = notification.task_id
-  join public.users as profile on profile.id = notification.user_id
-  join auth.users as auth_user on auth_user.id = profile.id;
+  order by leased.priority, leased.created_at, leased.id;
 
   get diagnostics v_claimed = row_count;
   if v_claimed = 0 then
@@ -727,6 +774,99 @@ alter function public.claim_email_deliveries(integer) owner to postgres;
 revoke all on function public.claim_email_deliveries(integer)
 from public, authenticated, service_role;
 grant execute on function public.claim_email_deliveries(integer) to anon;
+
+create function public.prepare_email_delivery(
+  p_delivery_id uuid,
+  p_lease_token uuid
+)
+returns table (
+  out_recipient_email text,
+  out_notification_type text,
+  out_task_title text,
+  out_target_path text,
+  out_is_confidential boolean,
+  out_send_guard_expires_at timestamptz
+)
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_generation bigint;
+  v_now timestamptz := pg_catalog.clock_timestamp();
+begin
+  v_generation := ceit_connect_private.authenticate_email_sender();
+  if v_generation is null then
+    raise exception using errcode = '42501', message = 'Email sender authentication failed.';
+  end if;
+  if p_delivery_id is null or p_lease_token is null then
+    raise exception using errcode = '22023', message = 'Email delivery preparation is invalid.';
+  end if;
+
+  -- Content is resolved at send preparation, not claim time. This is the
+  -- confidentiality boundary immediately before the app calls Resend.
+  return query
+  with guarded as (
+    update ceit_connect_private.email_delivery_queue as queue
+    set send_guard_until = v_now + interval '30 seconds',
+        lease_expires_at = case
+          when queue.lease_expires_at < v_now + interval '30 seconds'
+          then v_now + interval '30 seconds'
+          else queue.lease_expires_at
+        end,
+        updated_at = v_now
+    where queue.id = p_delivery_id
+      and queue.state = 'leased'
+      and queue.lease_token = p_lease_token
+      and queue.lease_expires_at > v_now
+    returning queue.id, queue.notification_id, queue.user_id,
+      queue.notification_type, queue.send_guard_until
+  )
+  select
+    auth_user.email::text as out_recipient_email,
+    guarded.notification_type::text as out_notification_type,
+    case
+      when task_row.is_confidential
+        or public.task_content_access_for_user(task_row.id, guarded.user_id) <> 'real'
+      then null else task_row.title
+    end::text as out_task_title,
+    case
+      when task_row.is_confidential
+        or public.task_content_access_for_user(task_row.id, guarded.user_id) <> 'real'
+      then '/workspace'
+      else pg_catalog.format('/tasks/%s', task_row.id)
+    end::text as out_target_path,
+    (
+      task_row.is_confidential
+      or public.task_content_access_for_user(task_row.id, guarded.user_id) <> 'real'
+    ) as out_is_confidential,
+    guarded.send_guard_until as out_send_guard_expires_at
+  from guarded
+  join public.notifications as notification on notification.id = guarded.notification_id
+  join public.tasks as task_row on task_row.id = notification.task_id
+  join public.users as profile on profile.id = guarded.user_id
+  join auth.users as auth_user on auth_user.id = profile.id
+  where notification.user_id = guarded.user_id
+    and profile.is_active is true
+    and profile.anonymized_at is null
+    and auth_user.email_confirmed_at is not null
+    and auth_user.email is not null
+    and pg_catalog.lower(pg_catalog.btrim(auth_user.email)) =
+        pg_catalog.lower(pg_catalog.btrim(profile.email))
+    and not exists (
+      select 1
+      from ceit_connect_private.user_email_preferences as preference
+      where preference.user_id = guarded.user_id
+        and preference.important_updates_enabled is false
+    );
+end;
+$$;
+
+alter function public.prepare_email_delivery(uuid,uuid) owner to postgres;
+revoke all on function public.prepare_email_delivery(uuid,uuid)
+from public, authenticated, service_role;
+grant execute on function public.prepare_email_delivery(uuid,uuid) to anon;
 
 create function public.acknowledge_email_delivery(
   p_delivery_id uuid,
@@ -769,13 +909,13 @@ begin
   if p_outcome = 'success' then
     update ceit_connect_private.email_delivery_queue
     set state = 'delivered', delivered_at = v_now, lease_token = null,
-        lease_expires_at = null, updated_at = v_now
+        lease_expires_at = null, send_guard_until = null, updated_at = v_now
     where id = p_delivery_id;
   elsif p_outcome = 'permanent' then
     update ceit_connect_private.email_delivery_queue
     set state = 'terminal', terminal_at = v_now,
         terminal_reason = 'permanent_failure', lease_token = null,
-        lease_expires_at = null, updated_at = v_now
+        lease_expires_at = null, send_guard_until = null, updated_at = v_now
     where id = p_delivery_id;
   elsif v_queue.attempt_count >= 5 or v_queue.stale_at <= v_now then
     update ceit_connect_private.email_delivery_queue
@@ -783,7 +923,8 @@ begin
         terminal_at = v_now,
         terminal_reason = case when v_queue.stale_at <= v_now then 'stale'
           else 'attempts_exhausted' end,
-        lease_token = null, lease_expires_at = null, updated_at = v_now
+        lease_token = null, lease_expires_at = null, send_guard_until = null,
+        updated_at = v_now
     where id = p_delivery_id;
   else
     v_delay := case v_queue.attempt_count
@@ -794,7 +935,8 @@ begin
     end;
     update ceit_connect_private.email_delivery_queue
     set state = 'pending', next_attempt_at = v_now + v_delay,
-        lease_token = null, lease_expires_at = null, updated_at = v_now
+        lease_token = null, lease_expires_at = null, send_guard_until = null,
+        updated_at = v_now
     where id = p_delivery_id;
   end if;
   return true;
@@ -889,10 +1031,30 @@ begin
   get diagnostics v_deleted = row_count;
 
   with doomed as (
+    select attempt.delivery_id, attempt.attempt_number
+    from ceit_connect_private.email_send_attempts as attempt
+    where attempt.reserved_at < p_as_of - interval '48 hours'
+    order by attempt.reserved_at, attempt.delivery_id, attempt.attempt_number
+    limit 500 for update skip locked
+  )
+  delete from ceit_connect_private.email_send_attempts as attempt
+  using doomed
+  where attempt.delivery_id = doomed.delivery_id
+    and attempt.attempt_number = doomed.attempt_number;
+  get diagnostics v_part = row_count;
+  v_deleted := v_deleted + v_part;
+
+  with doomed as (
     select run_row.id
     from ceit_connect_private.email_delivery_runs as run_row
-    where run_row.finished_at < p_as_of - interval '30 days'
-    order by run_row.finished_at, run_row.id
+    where (
+      run_row.finished_at is not null
+      and run_row.finished_at < p_as_of - interval '30 days'
+    ) or (
+      run_row.finished_at is null
+      and run_row.started_at < p_as_of - interval '30 days'
+    )
+    order by coalesce(run_row.finished_at, run_row.started_at), run_row.id
     limit 500 for update skip locked
   )
   delete from ceit_connect_private.email_delivery_runs as run_row
@@ -918,6 +1080,8 @@ declare
   v_now timestamptz := pg_catalog.clock_timestamp();
   v_allowance integer;
   v_used integer;
+  v_manila_used integer;
+  v_rolling_used integer;
   v_url_name text;
   v_wake_name text;
   v_url text;
@@ -927,6 +1091,10 @@ begin
   if session_user <> 'postgres' then
     raise exception using errcode = '42501', message = 'Postgres session required.';
   end if;
+
+  -- Cleanup remains live even while the sender is idle. This performs no
+  -- Vault read and no HTTP request.
+  perform ceit_connect_private.purge_email_delivery_history(v_now);
 
   -- The one-minute cron performs no Vault read and no HTTP request when no
   -- pending delivery or expired lease is due.
@@ -951,10 +1119,18 @@ begin
   where config.singleton;
 
   select pg_catalog.count(*)::integer
-  into v_used
+  into v_manila_used
   from ceit_connect_private.email_send_attempts as attempt
   where (attempt.reserved_at at time zone 'Asia/Manila')::date =
         (v_now at time zone 'Asia/Manila')::date;
+  select pg_catalog.count(*)::integer
+  into v_rolling_used
+  from ceit_connect_private.email_send_attempts as attempt
+  where attempt.reserved_at > v_now - interval '24 hours';
+  v_used := v_manila_used;
+  if v_rolling_used > v_used then
+    v_used := v_rolling_used;
+  end if;
 
   -- A spent Manila-day allowance is also a no-wake condition: do not read
   -- Vault and do not create an HTTP request that cannot claim any delivery.
@@ -1009,6 +1185,6 @@ revoke all on function ceit_connect_private.request_email_kick_if_due()
 from public, anon, authenticated, service_role;
 
 comment on function ceit_connect_private.request_email_kick_if_due() is
-  'Prod cron wake: returns false without Vault or HTTP work when no email delivery is due or the Manila-day allowance is exhausted.';
+  'Prod cron wake: performs bounded history cleanup, then returns false without Vault or HTTP work when no email delivery is due or the Manila-day or rolling-24-hour allowance is exhausted.';
 comment on table ceit_connect_private.email_delivery_queue is
-  'Content-free email outbox. Recipient addresses and task titles are resolved only by a capability-authenticated claim and are never stored here.';
+  'Content-free email outbox. Recipient addresses and task titles are resolved only by a capability-authenticated send preparation and are never stored here.';

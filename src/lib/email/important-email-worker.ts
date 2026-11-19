@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   isValidFrom,
   isValidMailbox,
+  RESEND_TIMEOUT_MS,
   sendResendEmail,
   type EmailMessage,
   type EmailSendOutcome,
@@ -25,13 +26,17 @@ export type ImportantEmailConfig = {
 export type ClaimedEmailDelivery = {
   out_attempt: number;
   out_delivery_id: string;
-  out_is_confidential: boolean;
   out_lease_expires_at: string;
   out_lease_token: string;
   out_notification_type: "assignment" | "task_due_soon" | "live_operation_prep";
-  out_recipient_email: string;
   out_run_id: string;
   out_run_token: string;
+};
+
+export type PreparedEmailDelivery = ClaimedEmailDelivery & {
+  out_is_confidential: boolean;
+  out_recipient_email: string;
+  out_send_guard_expires_at: string;
   out_target_path: string;
   out_task_title: string | null;
 };
@@ -69,10 +74,21 @@ export function prepareImportantEmailSender(): ImportantEmailConfig {
   };
 }
 
-function databaseFetch(input: RequestInfo | URL, init?: RequestInit) {
+export async function databaseFetch(input: RequestInfo | URL, init?: RequestInit) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), EMAIL_DATABASE_TIMEOUT_MS);
-  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  try {
+    const response = await fetch(input, { ...init, signal: controller.signal });
+    const body = await response.arrayBuffer();
+    const bodyless = [204, 205, 304].includes(response.status);
+    return new Response(bodyless ? null : body, {
+      headers: response.headers,
+      status: response.status,
+      statusText: response.statusText,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function createEmailDatabaseClient(config: ImportantEmailConfig) {
@@ -96,11 +112,21 @@ function isClaimedEmail(value: unknown): value is ClaimedEmailDelivery {
   return typeof row.out_delivery_id === "string" &&
     typeof row.out_lease_token === "string" &&
     typeof row.out_run_id === "string" && typeof row.out_run_token === "string" &&
-    typeof row.out_recipient_email === "string" && isValidMailbox(row.out_recipient_email) &&
+    ["assignment", "task_due_soon", "live_operation_prep"].includes(String(row.out_notification_type)) &&
+    typeof row.out_attempt === "number" && typeof row.out_lease_expires_at === "string";
+}
+
+function isPreparedEmail(value: unknown): value is Omit<PreparedEmailDelivery, keyof ClaimedEmailDelivery> & {
+  out_notification_type: ClaimedEmailDelivery["out_notification_type"];
+} {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.out_recipient_email === "string" && isValidMailbox(row.out_recipient_email) &&
     ["assignment", "task_due_soon", "live_operation_prep"].includes(String(row.out_notification_type)) &&
     typeof row.out_target_path === "string" && typeof row.out_is_confidential === "boolean" &&
     (row.out_task_title === null || typeof row.out_task_title === "string") &&
-    typeof row.out_attempt === "number" && typeof row.out_lease_expires_at === "string";
+    typeof row.out_send_guard_expires_at === "string" &&
+    Number.isFinite(Date.parse(row.out_send_guard_expires_at));
 }
 
 export function escapeEmailHtml(value: string) {
@@ -114,7 +140,7 @@ function safeTitle(value: string | null) {
 
 export function buildImportantEmail(
   config: ImportantEmailConfig,
-  delivery: ClaimedEmailDelivery,
+  delivery: PreparedEmailDelivery,
 ): EmailMessage {
   const title = delivery.out_is_confidential ? null : safeTitle(delivery.out_task_title);
   const targetPath = delivery.out_is_confidential ? "/workspace" : delivery.out_target_path;
@@ -157,9 +183,32 @@ async function acknowledge(
   return !error && data === true;
 }
 
+async function prepareDelivery(
+  client: SupabaseClient,
+  delivery: ClaimedEmailDelivery,
+): Promise<{ delivery: PreparedEmailDelivery | null; outcome: EmailSendOutcome }> {
+  const { data, error } = await client.rpc("prepare_email_delivery", {
+    p_delivery_id: delivery.out_delivery_id,
+    p_lease_token: delivery.out_lease_token,
+  });
+  if (error) {
+    return { delivery: null, outcome: { outcome: "transient", httpStatus: null } };
+  }
+  if (!Array.isArray(data) || data.length !== 1 || !isPreparedEmail(data[0])) {
+    return { delivery: null, outcome: { outcome: "permanent", httpStatus: 400 } };
+  }
+  return { delivery: { ...delivery, ...data[0] }, outcome: { outcome: "success", httpStatus: 200 } };
+}
+
 export async function runImportantEmailDelivery(config: ImportantEmailConfig) {
   const client = createEmailDatabaseClient(config);
-  const counts = { claimed: 0, acknowledged: 0, failedAcknowledgements: 0, sendFailures: 0 };
+  const counts = {
+    claimed: 0,
+    acknowledged: 0,
+    failedAcknowledgements: 0,
+    finalizationFailures: 0,
+    sendFailures: 0,
+  };
   let runId: string | null = null;
   let runToken: string | null = null;
   try {
@@ -174,7 +223,12 @@ export async function runImportantEmailDelivery(config: ImportantEmailConfig) {
       const wave = deliveries.slice(offset, offset + EMAIL_CONCURRENCY);
       const outcomes = await Promise.all(wave.map(async (delivery) => {
         try {
-          return await sendResendEmail(config.apiKey, buildImportantEmail(config, delivery));
+          const prepared = await prepareDelivery(client, delivery);
+          if (!prepared.delivery) return prepared.outcome;
+          if (Date.parse(prepared.delivery.out_send_guard_expires_at) <= Date.now() + RESEND_TIMEOUT_MS) {
+            return { outcome: "transient", httpStatus: null } as EmailSendOutcome;
+          }
+          return await sendResendEmail(config.apiKey, buildImportantEmail(config, prepared.delivery));
         } catch {
           return { outcome: "permanent", httpStatus: 400 } as EmailSendOutcome;
         }
@@ -189,7 +243,11 @@ export async function runImportantEmailDelivery(config: ImportantEmailConfig) {
     return counts;
   } finally {
     if (runId && runToken) {
-      await client.rpc("finish_email_delivery_run", { p_run_id: runId, p_run_token: runToken });
+      const { data, error } = await client.rpc("finish_email_delivery_run", {
+        p_run_id: runId,
+        p_run_token: runToken,
+      });
+      if (error || data !== true) counts.finalizationFailures += 1;
     }
     console.info("Important email delivery finished.", counts);
   }

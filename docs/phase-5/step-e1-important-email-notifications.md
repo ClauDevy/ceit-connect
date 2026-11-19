@@ -4,11 +4,16 @@
 
 E1 emails only `assignment`, `task_due_soon`, and `live_operation_prep`.
 Email is an independent best-effort channel behind the existing bell row and
-push enqueue. The database outbox contains no address or task content. The
-capability-authenticated claim resolves only a confirmed Auth email matching
-the active, non-anonymized profile. Confidential claims return no title and
-only `/workspace`; non-confidential claims return the title and exact task
-path.
+push enqueue. The database outbox contains no address or task content. A claim
+reserves only queue identifiers; a separate capability-authenticated send
+preparation then re-checks the current recipient, access, and confidentiality
+immediately before Resend. It resolves only a confirmed Auth email matching the
+active, non-anonymized profile. Confidential, hidden, or masked preparation
+returns no title and only `/workspace`; preparation returns a title and exact
+task path only when the recipient currently has `real` task-content access. A
+30-second send guard temporarily rejects task deletion or changes to title,
+confidentiality, committee, assignees, or allowed viewers; the worker starts
+Resend only when that guard covers the provider's full timeout.
 
 No Activity Log email, backup, CSV generation, or attachment is part of E1.
 `src/lib/email/resend-sender.ts` accepts optional generic byte attachments so a
@@ -22,11 +27,12 @@ later approved batch can add that feature without changing providers.
 - Constant-body wake route authenticated by a separate wake secret.
 - Two-minute leases, bounded retry, `SKIP LOCKED`, aggregate-only run history,
   and bounded cleanup.
-- Sender configuration is validated before any claim.
+- Sender configuration is validated before any claim; content is revalidated
+  once more immediately before each provider call.
 - Queue/enqueue exceptions cannot roll back the bell row or push work.
 
 Email differs where the provider requires it: one queue row per notification,
-recipient email is resolved only while claiming, Resend receives the queue id
+recipient email is resolved only during send preparation, Resend receives the queue id
 as `Idempotency-Key`, and database attempt reservations enforce the shared
 account allowance.
 
@@ -38,18 +44,24 @@ account allowance.
 - Dev daily allowance: 10.
 - Prod daily allowance: 70.
 - Assignments sort before reminders.
-- Terminal queue retention: 7 days; aggregate run history: 30 days; cleanup
-  is oldest-first and capped at 500 rows per table.
+- Terminal queue retention: 7 days; attempt-ledger retention: 48 hours;
+  aggregate run history: 30 days. Cleanup includes abandoned unfinished runs,
+  is oldest-first, and is capped at 500 rows per table. The minute wake also
+  runs cleanup when no delivery is due.
 
 The assumed shared Resend Free limits are 100/day and 3,000/month, including
 Supabase Auth. E1 therefore reserves at most 80 app-owned attempts per day and
 2,480 in a 31-day month across Dev and Prod. Provider quota responses are still
 possible when Auth uses the remaining allowance and are retried within the
-same bounds.
+same bounds. Each database enforces both its Manila business-day allowance and
+the same allowance over a rolling 24-hour window, preventing a midnight reset
+from producing a double burst. Attempt reservations survive queue or
+notification deletion until that accounting window has safely expired.
 
 `request_email_kick_if_due()` returns `false` before reading Vault or calling
-`net.http_post` when no pending row or expired lease is due, or when the
-configured allowance for the current Manila business day is already spent.
+`net.http_post` when no pending row or expired lease is due, or when either the
+configured Manila-business-day allowance or rolling 24-hour allowance is
+already spent. Its cleanup call occurs before those no-wake returns.
 Claims record at most one aggregate `allowance reached` run row per hour, so a
 one-minute cron cannot grow run history by 1,440 rows per exhausted day.
 
@@ -97,7 +109,8 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
    P1. Expect only `202 {"accepted":true}`.
 8. In Resend's Dev delivery/request detail, verify the request uses the queue
    row UUID as `Idempotency-Key`. Exercise a retry with the same row and confirm
-   Resend does not create a duplicate email.
+   Resend does not create a duplicate email. Also verify a concurrent-
+   idempotency 409 is retried, while an invalid-idempotency 409 is terminal.
 9. Verify confidential copy contains no title/task URL, the footer links to
    `/settings`, preference-off suppresses pending work, assignments precede
    reminders, and the Dev allowance stops at ten reservations.
@@ -147,6 +160,12 @@ that replies are not monitored and links to generic `/settings` with the text
 that the user can turn the emails off there. No email contains a description,
 event name, person name, comment, exact deadline/call time, raw SQL/provider
 error, secret, or timezone label.
+
+The send-preparation RPC is the documented confidentiality timing boundary: it
+does not reuse content returned by the earlier lease claim. The worker must
+prepare each delivery immediately before the bounded Resend request and must
+not send if preparation fails, the current recipient is no longer eligible, or
+the short database send guard cannot cover the complete provider timeout.
 
 ## Catalog follow-up recommendation
 

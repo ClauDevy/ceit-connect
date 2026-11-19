@@ -14,9 +14,15 @@ language plpgsql security definer set search_path='' as $$ begin
  insert into public.e1_behavior_results values(p_label,coalesce(p_passed,false));
 end $$;
 create table public.e1_claimed(seq integer generated always as identity,delivery_id uuid,
- lease_token uuid,run_id uuid,run_token uuid,recipient_email text,notification_type text,
+ lease_token uuid,run_id uuid,run_token uuid,notification_type text,
  task_title text,target_path text,is_confidential boolean,attempt integer);
 revoke all on public.e1_claimed from public,anon,authenticated,service_role;
+
+-- Isolate the rolled-back paste from any existing Dev delivery history. The
+-- rollback restores every pre-existing row.
+delete from ceit_connect_private.email_send_attempts;
+delete from ceit_connect_private.email_delivery_queue;
+delete from ceit_connect_private.email_delivery_runs;
 
 insert into public.committees(id,name) values
 ('e100c000-0000-4000-8000-000000000001','E1 Behavior Committee');
@@ -67,13 +73,25 @@ do $$ begin
  exception when sqlstate '42501' then perform public.e1_record('04 wrong capability denied',true);end;
  perform set_config('request.headers','{"x-ceit-email-capability":"e1-test-capability"}',true);
 end $$;
-insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,recipient_email,
+insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,
  notification_type,task_title,target_path,is_confidential,attempt)
-select out_delivery_id,out_lease_token,out_run_id,out_run_token,out_recipient_email,
- out_notification_type,out_task_title,out_target_path,out_is_confidential,out_attempt
-from public.claim_email_deliveries(10);
+select claim_row.out_delivery_id,claim_row.out_lease_token,claim_row.out_run_id,
+ claim_row.out_run_token,claim_row.out_notification_type,prepared.out_task_title,
+ prepared.out_target_path,prepared.out_is_confidential,claim_row.out_attempt
+from public.claim_email_deliveries(10) as claim_row
+cross join lateral public.prepare_email_delivery(
+ claim_row.out_delivery_id,claim_row.out_lease_token
+) as prepared;
 select public.e1_record('05 assignment claims first',(select notification_type='assignment' from public.e1_claimed order by seq limit 1));
-select public.e1_record('06 confidential payload is generic',exists(select 1 from public.e1_claimed where is_confidential and task_title is null and target_path='/workspace'));
+do $$ declare v_generic boolean;begin
+ select exists(select 1 from public.e1_claimed where is_confidential and task_title is null and target_path='/workspace') into v_generic;
+ begin
+  update public.tasks set title='Must not change during send' where id='e100a000-0000-4000-8000-000000000002';
+  perform public.e1_record('06 confidential payload and send guard',false);
+ exception when sqlstate '55000' then
+  perform public.e1_record('06 confidential payload and send guard',v_generic);
+ end;
+end $$;
 select public.e1_record('07 visible payload has title and direct path',exists(select 1 from public.e1_claimed where not is_confidential and task_title='Visible E1 task' and target_path='/tasks/e100a000-0000-4000-8000-000000000001'));
 select public.e1_record('08 success acknowledgement',public.acknowledge_email_delivery((select delivery_id from public.e1_claimed where notification_type='assignment'),(select lease_token from public.e1_claimed where notification_type='assignment'),'success',200));
 select public.e1_record('09 transient acknowledgement',public.acknowledge_email_delivery((select delivery_id from public.e1_claimed where notification_type='task_due_soon'),(select lease_token from public.e1_claimed where notification_type='task_due_soon'),'transient',429));
@@ -96,8 +114,9 @@ select public.e1_record('13 re-enable does not backfill',not exists(select 1 fro
 insert into public.notifications(id,user_id,type,task_id) select
  ('e1030000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,'e1000000-0000-4000-8000-000000000001','task_due_soon','e100a000-0000-4000-8000-000000000001' from generate_series(1,12) s(i);
 truncate public.e1_claimed restart identity;
-insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,recipient_email,notification_type,task_title,target_path,is_confidential,attempt)
-select out_delivery_id,out_lease_token,out_run_id,out_run_token,out_recipient_email,out_notification_type,out_task_title,out_target_path,out_is_confidential,out_attempt from public.claim_email_deliveries(10);
+insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,notification_type,attempt)
+select out_delivery_id,out_lease_token,out_run_id,out_run_token,out_notification_type,out_attempt
+from public.claim_email_deliveries(10);
 select public.e1_record('14 per-run cap is ten',(select count(*)=10 from public.e1_claimed));
 
 insert into public.notifications(id,user_id,type,task_id) values
@@ -116,8 +135,9 @@ select public.e1_record('16 twenty-four-hour boundary is stale',exists(select 1 
 insert into public.notifications(id,user_id,type,task_id) values('e1060000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','assignment','e100a000-0000-4000-8000-000000000001');
 update ceit_connect_private.email_delivery_queue set attempt_count=4 where notification_id='e1060000-0000-4000-8000-000000000001';
 truncate public.e1_claimed restart identity;
-insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,recipient_email,notification_type,task_title,target_path,is_confidential,attempt)
-select out_delivery_id,out_lease_token,out_run_id,out_run_token,out_recipient_email,out_notification_type,out_task_title,out_target_path,out_is_confidential,out_attempt from public.claim_email_deliveries(1);
+insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,notification_type,attempt)
+select out_delivery_id,out_lease_token,out_run_id,out_run_token,out_notification_type,out_attempt
+from public.claim_email_deliveries(1);
 select public.acknowledge_email_delivery((select delivery_id from public.e1_claimed),(select lease_token from public.e1_claimed),'transient',503);
 select public.e1_record('17 fifth attempt is terminal',exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1060000-0000-4000-8000-000000000001' and state='terminal' and terminal_reason='attempts_exhausted'));
 
@@ -129,7 +149,7 @@ select public.e1_record('20 kick false when allowance spent',ceit_connect_privat
 delete from ceit_connect_private.email_send_attempts;
 update ceit_connect_private.email_delivery_queue
 set state='suppressed',terminal_at=clock_timestamp(),terminal_reason='stale',
-    lease_token=null,lease_expires_at=null
+    lease_token=null,lease_expires_at=null,send_guard_until=null
 where state in('pending','leased');
 select public.e1_record('21 kick false when nothing due',ceit_connect_private.request_email_kick_if_due() is false);
 

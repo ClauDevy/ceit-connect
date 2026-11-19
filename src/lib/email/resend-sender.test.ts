@@ -3,7 +3,7 @@ vi.mock("server-only", () => ({}));
 import {
   buildImportantEmail,
   prepareImportantEmailSender,
-  type ClaimedEmailDelivery,
+  type PreparedEmailDelivery,
 } from "@/lib/email/important-email-worker";
 import { classifyResendStatus, sendResendEmail } from "@/lib/email/resend-sender";
 
@@ -15,7 +15,7 @@ const config = {
   siteUrl: "https://app.ceitconnect.site",
   supabaseUrl: "https://project.supabase.co",
 };
-const base: ClaimedEmailDelivery = {
+const base: PreparedEmailDelivery = {
   out_attempt: 1,
   out_delivery_id: "11111111-1111-4111-8111-111111111111",
   out_is_confidential: false,
@@ -23,6 +23,7 @@ const base: ClaimedEmailDelivery = {
   out_lease_token: "22222222-2222-4222-8222-222222222222",
   out_notification_type: "assignment",
   out_recipient_email: "member@example.edu",
+  out_send_guard_expires_at: "2026-11-19T12:00:30Z",
   out_run_id: "33333333-3333-4333-8333-333333333333",
   out_run_token: "44444444-4444-4444-8444-444444444444",
   out_target_path: "/tasks/55555555-5555-4555-8555-555555555555",
@@ -65,6 +66,24 @@ describe("Resend transport", () => {
     expect(classifyResendStatus(429).outcome).toBe("transient");
     expect(classifyResendStatus(503).outcome).toBe("transient");
     expect(classifyResendStatus(400).outcome).toBe("permanent");
+    expect(classifyResendStatus(409, "concurrent_idempotent_requests").outcome).toBe("transient");
+    expect(classifyResendStatus(409, "invalid_idempotent_request").outcome).toBe("permanent");
+    expect(classifyResendStatus(409).outcome).toBe("permanent");
+  });
+
+  it("uses the Resend 409 error name without exposing the provider body", async () => {
+    const concurrent = vi.fn(async () => new Response(
+      JSON.stringify({ name: "concurrent_idempotent_requests", message: "private provider detail" }),
+      { status: 409 },
+    ));
+    const invalid = vi.fn(async () => new Response(
+      JSON.stringify({ name: "invalid_idempotent_request", message: "private provider detail" }),
+      { status: 409 },
+    ));
+    await expect(sendResendEmail(config.apiKey, buildImportantEmail(config, base), concurrent))
+      .resolves.toEqual({ outcome: "transient", httpStatus: 409 });
+    await expect(sendResendEmail(config.apiKey, buildImportantEmail(config, base), invalid))
+      .resolves.toEqual({ outcome: "permanent", httpStatus: 409 });
   });
 
   it("sends the queue id as Resend Idempotency-Key and omits attachments", async () => {
