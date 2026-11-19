@@ -1,13 +1,17 @@
 "use client";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { MotionPresence } from "@/components/shared/motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Search, SlidersHorizontal } from "lucide-react";
+import { Download, RefreshCw, Save, Search, SlidersHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ActivityLogList } from "@/components/activity-log/activity-log-list";
 import { ListPager } from "@/components/shared/list-pager";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   Select,
   SelectContent,
@@ -17,6 +21,9 @@ import {
 } from "@/components/ui/select";
 import {
   ACTIVITY_ACTION_LABELS,
+  ACTIVITY_LOG_EXPORT_MAX_ROWS,
+  ACTIVITY_LOG_MAX_RETENTION_DAYS,
+  ACTIVITY_LOG_MIN_RETENTION_DAYS,
   ACTIVITY_LOG_STALE_TIME,
   ACTIVITY_SORT_LABELS,
   DEFAULT_ACTIVITY_FILTERS,
@@ -33,7 +40,9 @@ import {
   addKnownActivityCursor,
   createActivityPrefetchController,
   globalActivityLogQueryKey,
+  isValidActivityLogRetentionDays,
   isDefaultActivityFilters,
+  normalizeActivitySearch,
   normalizeActivityResponse,
   prefetchActivityPageChain,
   resetActivityCursorStack,
@@ -45,6 +54,15 @@ import {
   type ActivityFilters,
   type ActivityWindow,
 } from "@/lib/activity-log";
+import {
+  activityExportRpcArgs,
+  activityRowsToCsv,
+  appendExportRows,
+  exportLimitExceeded,
+  normalizeActivityExportPage,
+  normalizeActivityLogRetentionSetting,
+  type ActivityLogRetentionSetting,
+} from "@/lib/activity-log-admin";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +71,8 @@ type Props = {
   initialWindow: ActivityWindow;
   initialLoadFailed: boolean;
   committees: Committee[];
+  canManageActivityLog: boolean;
+  initialRetentionSetting: ActivityLogRetentionSetting | null;
 };
 
 const GLOBAL_QUERY_PREFIX = ["activity-log", "global"] as const;
@@ -61,7 +81,10 @@ export function ActivityLogPageClient({
   initialWindow,
   initialLoadFailed,
   committees,
+  canManageActivityLog,
+  initialRetentionSetting,
 }: Props) {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -81,6 +104,16 @@ export function ActivityLogPageClient({
   const [navigating, setNavigating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [prefetching, setPrefetching] = useState(false);
+  const [retentionInput, setRetentionInput] = useState(
+    initialRetentionSetting?.retentionDays.toString() ?? "",
+  );
+  const [retentionSetting, setRetentionSetting] = useState(initialRetentionSetting);
+  const [savingRetention, setSavingRetention] = useState(false);
+  const [retentionMessage, setRetentionMessage] = useState<string | null>(null);
+  const [retentionError, setRetentionError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const busy = useRef(false);
   const requestGeneration = useRef(0);
   const prefetchController = useRef(createActivityPrefetchController());
@@ -321,9 +354,16 @@ export function ActivityLogPageClient({
     setSearchInput(value);
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
-      resetPaging();
-      setFilters((current) => ({ ...current, search: value }));
+      searchTimer.current = null;
+      applySearch(value);
     }, 300);
+  }
+
+  function applySearch(value: string) {
+    const normalizedSearch = normalizeActivitySearch(value);
+    resetPaging();
+    setFilters((current) => ({ ...current, search: normalizedSearch.value }));
+    return normalizedSearch.value;
   }
 
   function clearFilters() {
@@ -346,6 +386,110 @@ export function ActivityLogPageClient({
     } finally {
       busy.current = false;
       setRefreshing(false);
+    }
+  }
+
+  async function saveRetention(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canManageActivityLog || savingRetention) return;
+    const nextDays = Number(retentionInput);
+    setRetentionMessage(null);
+    setRetentionError(null);
+    if (!isValidActivityLogRetentionDays(nextDays)) {
+      setRetentionError("Enter a whole number from 30 to 730 days.");
+      return;
+    }
+
+    setSavingRetention(true);
+    try {
+      const { data, error } = await supabase.rpc(
+        "set_activity_log_retention_days",
+        { p_retention_days: nextDays },
+      );
+      if (error) throw error;
+      const saved = normalizeActivityLogRetentionSetting(data);
+      if (!saved) throw new Error("invalid retention response");
+      setRetentionSetting(saved);
+      setRetentionInput(saved.retentionDays.toString());
+      setRetentionMessage(
+        "Retention saved. Existing rows are not deleted until a future scheduled purge runs.",
+      );
+      router.refresh();
+    } catch {
+      setRetentionError("The retention setting could not be saved. Try again.");
+    } finally {
+      setSavingRetention(false);
+    }
+  }
+
+  async function exportCsv() {
+    if (!canManageActivityLog || exporting) return;
+    let requestedSearch = filters.search;
+    if (searchTimer.current) {
+      clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+      requestedSearch = applySearch(searchInput);
+    }
+    const requestedFilters = { ...filters, search: requestedSearch };
+    let cursor: ActivityCursor | null = null;
+    let exportedRows: ActivityWindow["rows"] = [];
+    const seenCursors = new Set<string>();
+    setExporting(true);
+    setExportError(null);
+    setExportMessage("Preparing CSV…");
+
+    try {
+      while (true) {
+        const { data, error } = await supabase.rpc(
+          "list_activity_log_export",
+          activityExportRpcArgs(requestedFilters, cursor),
+        );
+        if (error) throw error;
+        const page = normalizeActivityExportPage(data);
+        exportedRows = appendExportRows(exportedRows, page.rows);
+        setExportMessage(
+          `Preparing CSV… ${Math.min(exportedRows.length, ACTIVITY_LOG_EXPORT_MAX_ROWS).toLocaleString()} rows`,
+        );
+
+        if (exportLimitExceeded(exportedRows.length, page.hasMore)) {
+          setExportError(
+            "This export has more than 5,000 rows. Narrow the filters and try again.",
+          );
+          setExportMessage(null);
+          return;
+        }
+        if (!page.hasMore) break;
+        if (!page.cursor) throw new Error("missing export cursor");
+        const cursorKey = `${page.cursor.createdAt}:${page.cursor.id}`;
+        if (seenCursors.has(cursorKey)) throw new Error("repeated export cursor");
+        seenCursors.add(cursorKey);
+        cursor = page.cursor;
+      }
+
+      const csv = activityRowsToCsv(exportedRows);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).formatToParts(new Date());
+      const value = (type: Intl.DateTimeFormatPartTypes) =>
+        parts.find((part) => part.type === type)?.value ?? "00";
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `activity-log-${value("year")}-${value("month")}-${value("day")}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportMessage(
+        `Downloaded ${exportedRows.length.toLocaleString()} activity rows.`,
+      );
+    } catch {
+      setExportError("The CSV could not be prepared. Try again.");
+      setExportMessage(null);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -421,6 +565,83 @@ export function ActivityLogPageClient({
 
   return (
     <div className="space-y-4">
+      {canManageActivityLog ? (
+        <section className="rounded-xl border bg-card p-4" aria-labelledby="activity-log-administration">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl space-y-1">
+              <h2 id="activity-log-administration" className="font-semibold">
+                Retention and export
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Keep activity for 30 to 730 days. About 6 months is 180 days.
+                Saving does not delete rows immediately.
+              </p>
+              {retentionSetting ? (
+                <p className="text-sm text-muted-foreground">
+                  Current setting: {retentionSetting.retentionDays} days.
+                </p>
+              ) : (
+                <p className="text-sm text-destructive">
+                  The current retention setting could not be loaded.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <form onSubmit={saveRetention} className="flex items-end gap-2">
+                <FormField
+                  label="Retention days"
+                  error={retentionError}
+                  hint={retentionError ? undefined : "Whole days only"}
+                  className="w-40"
+                >
+                  {(control) => (
+                    <Input
+                      {...control}
+                      type="number"
+                      min={ACTIVITY_LOG_MIN_RETENTION_DAYS}
+                      max={ACTIVITY_LOG_MAX_RETENTION_DAYS}
+                      step={1}
+                      value={retentionInput}
+                      disabled={savingRetention}
+                      onChange={(event) => {
+                        setRetentionInput(event.target.value);
+                        setRetentionError(null);
+                        setRetentionMessage(null);
+                      }}
+                    />
+                  )}
+                </FormField>
+                <Button type="submit" disabled={savingRetention || !retentionSetting}>
+                  <Save aria-hidden />
+                  {savingRetention ? "Saving…" : "Save"}
+                </Button>
+              </form>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void exportCsv()}
+                disabled={exporting}
+              >
+                <Download aria-hidden />
+                {exporting ? "Exporting…" : "Export CSV"}
+              </Button>
+            </div>
+          </div>
+          <MotionPresence open={Boolean(retentionMessage || exportMessage || exportError)}>
+            {retentionMessage || exportMessage || exportError ? (
+              <div className="mt-3" aria-live="polite">
+                {exportError ? (
+                  <InlineAlert>{exportError}</InlineAlert>
+                ) : (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {retentionMessage ?? exportMessage}
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </MotionPresence>
+        </section>
+      ) : null}
       <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 xl:grid-cols-[minmax(180px,1fr)_140px_130px_170px_145px_145px_auto_44px] xl:items-end">
         <label htmlFor="activity-log-search" className="relative">
           <span className="sr-only">Search activity</span>

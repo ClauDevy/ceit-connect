@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   getActiveProfileForRoles: vi.fn(),
   createClient: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
@@ -29,13 +30,32 @@ beforeEach(() => {
   });
   const order = vi.fn().mockResolvedValue({ data: [], error: null });
   const select = vi.fn(() => ({ order }));
+  mocks.rpc.mockResolvedValue({ data: [], error: null });
   mocks.createClient.mockResolvedValue({
-    rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+    rpc: mocks.rpc,
     from: vi.fn(() => ({ select })),
   });
 });
 
 describe("Activity Log page access", () => {
+  it("loads the saved retention setting only for an Admin", async () => {
+    await ActivityLogPage();
+    expect(mocks.rpc).toHaveBeenCalledWith("get_activity_log_retention_setting");
+  });
+
+  it("does not reveal the retention setting to a Co-Admin", async () => {
+    mocks.getActiveProfileForRoles.mockResolvedValueOnce({
+      role: "Co-Admin",
+      committee_id: "committee-a",
+      is_active: true,
+    });
+    await ActivityLogPage();
+    expect(mocks.rpc).not.toHaveBeenCalledWith(
+      "get_activity_log_retention_setting",
+    );
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
+
   it.each(["Member", "inactive Admin"])(
     "does not load activity for a %s",
     async () => {

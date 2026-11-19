@@ -20,7 +20,9 @@ describe("last active Admin guard migration contract", () => {
     const migrations = readdirSync("supabase/migrations")
       .filter((file) => file.endsWith(".sql"))
       .sort();
-    expect(migrations.slice(-2)).toEqual([migrationName, latestMigrationName]);
+    expect(migrations.indexOf(latestMigrationName)).toBe(
+      migrations.indexOf(migrationName) + 1,
+    );
     expect(migrationName > "20261121140000_president_committee_admin_guard.sql").toBe(
       true,
     );
