@@ -15,6 +15,7 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 - `password_set` = the person has set a password for email/password sign-in. It drives the Settings navigation reminder only and is never an authorization or Google-admission gate.
 - A person always needs **both** an `auth.users` row and a `users` row. The Invite flow creates both together and rolls back the login account if the profile insert fails.
 - Users are never deleted. Deactivate with `is_active = false`.
+- Important-email preference is stored separately in private `user_email_preferences`. It defaults on; the getter treats a missing best-effort seed row as on, and the authenticated setter derives `auth.uid()`, requires an active non-anonymized profile, and creates the row when missing.
 - `anonymized_at timestamptz null` is the terminal former-member marker. A
   marked row stays inactive with its UUID, role, committee, and history
   references preserved; its display identity is fixed to `Former member` and
