@@ -34,4 +34,18 @@ describe("Activity Log Admin controls", () => {
     expect(client).toContain("finally {\n      setExporting(false);");
     expect(client).toContain("<MotionPresence open=");
   });
+
+  it("settles the visible debounced search before fixing export filters", () => {
+    const exportBody = client.slice(
+      client.indexOf("async function exportCsv()"),
+      client.indexOf("async function navigate", client.indexOf("async function exportCsv()")),
+    );
+    expect(client).toContain("searchTimer.current = null;\n      applySearch(value);");
+    expect(client).toContain("const normalizedSearch = normalizeActivitySearch(value);");
+    expect(exportBody).toContain("clearTimeout(searchTimer.current);");
+    expect(exportBody).toContain("requestedSearch = applySearch(searchInput);");
+    expect(exportBody.indexOf("requestedSearch = applySearch(searchInput);")).toBeLessThan(
+      exportBody.indexOf("const requestedFilters = { ...filters, search: requestedSearch }"),
+    );
+  });
 });

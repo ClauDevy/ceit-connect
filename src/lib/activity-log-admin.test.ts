@@ -61,7 +61,7 @@ describe("Activity Log administration helpers", () => {
       .toBeNull();
   });
 
-  it.each(["=SUM(A1:A2)", "+cmd", "-1+2", "@name", "\tformula", "\rformula"])(
+  it.each(["=SUM(A1:A2)", "+cmd", "-1+2", "@name", "\tformula", "\rformula", "\nformula"])(
     "neutralizes the dangerous CSV prefix in %j",
     (value) => {
       expect(escapeActivityCsvCell(value)).toBe(`"'${value}"`);

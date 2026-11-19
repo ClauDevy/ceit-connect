@@ -42,6 +42,7 @@ import {
   globalActivityLogQueryKey,
   isValidActivityLogRetentionDays,
   isDefaultActivityFilters,
+  normalizeActivitySearch,
   normalizeActivityResponse,
   prefetchActivityPageChain,
   resetActivityCursorStack,
@@ -353,9 +354,16 @@ export function ActivityLogPageClient({
     setSearchInput(value);
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
-      resetPaging();
-      setFilters((current) => ({ ...current, search: value }));
+      searchTimer.current = null;
+      applySearch(value);
     }, 300);
+  }
+
+  function applySearch(value: string) {
+    const normalizedSearch = normalizeActivitySearch(value);
+    resetPaging();
+    setFilters((current) => ({ ...current, search: normalizedSearch.value }));
+    return normalizedSearch.value;
   }
 
   function clearFilters() {
@@ -416,7 +424,13 @@ export function ActivityLogPageClient({
 
   async function exportCsv() {
     if (!canManageActivityLog || exporting) return;
-    const requestedFilters = { ...filters };
+    let requestedSearch = filters.search;
+    if (searchTimer.current) {
+      clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+      requestedSearch = applySearch(searchInput);
+    }
+    const requestedFilters = { ...filters, search: requestedSearch };
     let cursor: ActivityCursor | null = null;
     let exportedRows: ActivityWindow["rows"] = [];
     const seenCursors = new Set<string>();

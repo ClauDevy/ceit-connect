@@ -70,7 +70,7 @@ export function exportLimitExceeded(rowCount: number, hasMore: boolean) {
     (rowCount === ACTIVITY_LOG_EXPORT_MAX_ROWS && hasMore);
 }
 
-const DANGEROUS_CSV_PREFIX = /^[=+\-@\t\r]/;
+const DANGEROUS_CSV_PREFIX = /^[=+\-@\t\r\n]/;
 
 export function escapeActivityCsvCell(value: string | null | undefined) {
   let safe = value ?? "";
