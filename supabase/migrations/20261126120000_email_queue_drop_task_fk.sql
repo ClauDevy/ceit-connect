@@ -337,10 +337,124 @@ revoke all on function public.claim_email_deliveries(integer)
 from public, authenticated, service_role;
 grant execute on function public.claim_email_deliveries(integer) to anon;
 
-do $$
+create or replace function ceit_connect_private.request_email_kick_if_due()
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
 declare
-  v_actual_count bigint;
-  v_expected_count bigint;
+  v_now timestamptz := pg_catalog.clock_timestamp();
+  v_allowance integer;
+  v_used integer;
+  v_manila_used integer;
+  v_rolling_used integer;
+  v_url_name text;
+  v_wake_name text;
+  v_url text;
+  v_wake_secret text;
+  v_request_id bigint;
+begin
+  if session_user <> 'postgres' then
+    raise exception using errcode = '42501', message = 'Postgres session required.';
+  end if;
+
+  -- Cleanup remains live even while the sender is idle. This performs no
+  -- Vault read and no HTTP request.
+  perform ceit_connect_private.purge_email_delivery_history(v_now);
+
+  -- The one-minute cron performs no Vault read and no HTTP request when no
+  -- pending delivery or expired lease is due.
+  if not exists (
+    select 1
+    from ceit_connect_private.email_delivery_queue as queue
+    where (
+      queue.state = 'pending'
+      and queue.next_attempt_at <= v_now
+      and queue.stale_at > v_now
+      and queue.attempt_count < 5
+    ) or (
+      queue.state = 'leased' and queue.lease_expires_at <= v_now
+    )
+  ) then
+    return false;
+  end if;
+
+  select config.daily_allowance
+  into v_allowance
+  from ceit_connect_private.email_delivery_config as config
+  where config.singleton;
+
+  select pg_catalog.count(*)::integer
+  into v_manila_used
+  from ceit_connect_private.email_send_attempts as attempt
+  where (attempt.reserved_at at time zone 'Asia/Manila')::date =
+        (v_now at time zone 'Asia/Manila')::date;
+  select pg_catalog.count(*)::integer
+  into v_rolling_used
+  from ceit_connect_private.email_send_attempts as attempt
+  where attempt.reserved_at > v_now - interval '24 hours';
+  v_used := v_manila_used;
+  if v_rolling_used > v_used then
+    v_used := v_rolling_used;
+  end if;
+
+  -- A spent Manila-day allowance is also a no-wake condition: do not read
+  -- Vault and do not create an HTTP request that cannot claim any delivery.
+  if v_used >= v_allowance then
+    return false;
+  end if;
+
+  begin
+    select config.kick_url_secret_name, config.wake_secret_name
+    into v_url_name, v_wake_name
+    from ceit_connect_private.email_delivery_config as config
+    where config.singleton;
+
+    select secret.decrypted_secret into v_url
+    from vault.decrypted_secrets as secret where secret.name = v_url_name;
+    select secret.decrypted_secret into v_wake_secret
+    from vault.decrypted_secrets as secret where secret.name = v_wake_name;
+    if coalesce(v_url, '') = '' or coalesce(v_wake_secret, '') = '' then
+      return false;
+    end if;
+
+    select net.http_post(
+      url := v_url,
+      headers := pg_catalog.jsonb_build_object(
+        'content-type', 'application/json',
+        'x-ceit-email-wake-secret', v_wake_secret
+      ),
+      body := '{}'::jsonb,
+      timeout_milliseconds := 5000
+    ) into v_request_id;
+
+    update ceit_connect_private.email_kick_state
+    set last_requested_at = v_now,
+        request_count = request_count + 1,
+        last_request_id = v_request_id
+    where singleton;
+    return true;
+  exception when others then
+    begin
+      update ceit_connect_private.email_kick_state
+      set last_error_at = pg_catalog.clock_timestamp(),
+          error_count = error_count + 1
+      where singleton;
+    exception when others then
+      null;
+    end;
+    return false;
+  end;
+end;
+$$;
+
+alter function ceit_connect_private.request_email_kick_if_due() owner to postgres;
+revoke all on function ceit_connect_private.request_email_kick_if_due()
+from public, anon, authenticated, service_role;
+
+do $$
 begin
   if not exists (
     select 1
@@ -398,21 +512,58 @@ begin
     raise exception 'Email tables must not reference public events or tasks.';
   end if;
 
-  select pg_catalog.count(*)
-  into v_actual_count
-  from pg_catalog.pg_constraint as constraint_row
-  where constraint_row.contype = 'f'
-    and constraint_row.confrelid in (
-      'public.events'::regclass,
-      'public.tasks'::regclass
-    );
-
-  select pg_catalog.count(*)
-  into v_expected_count
-  from ceit_connect_private.event_delete_fk_lock_list;
-
-  if v_actual_count <> v_expected_count then
-    raise exception 'Event deletion foreign-key inventory count mismatch.';
+  if exists (
+    select
+      constraint_row.conname,
+      source_namespace.nspname,
+      source_class.relname,
+      target_class.relname
+    from pg_catalog.pg_constraint as constraint_row
+    join pg_catalog.pg_class as source_class
+      on source_class.oid = constraint_row.conrelid
+    join pg_catalog.pg_namespace as source_namespace
+      on source_namespace.oid = source_class.relnamespace
+    join pg_catalog.pg_class as target_class
+      on target_class.oid = constraint_row.confrelid
+    where constraint_row.contype = 'f'
+      and constraint_row.confrelid in (
+        'public.events'::regclass,
+        'public.tasks'::regclass
+      )
+    except
+    select
+      lock_row.constraint_name,
+      lock_row.referencing_schema,
+      lock_row.referencing_table,
+      lock_row.referenced_table
+    from ceit_connect_private.event_delete_fk_lock_list as lock_row
+  ) or exists (
+    select
+      lock_row.constraint_name,
+      lock_row.referencing_schema,
+      lock_row.referencing_table,
+      lock_row.referenced_table
+    from ceit_connect_private.event_delete_fk_lock_list as lock_row
+    except
+    select
+      constraint_row.conname,
+      source_namespace.nspname,
+      source_class.relname,
+      target_class.relname
+    from pg_catalog.pg_constraint as constraint_row
+    join pg_catalog.pg_class as source_class
+      on source_class.oid = constraint_row.conrelid
+    join pg_catalog.pg_namespace as source_namespace
+      on source_namespace.oid = source_class.relnamespace
+    join pg_catalog.pg_class as target_class
+      on target_class.oid = constraint_row.confrelid
+    where constraint_row.contype = 'f'
+      and constraint_row.confrelid in (
+        'public.events'::regclass,
+        'public.tasks'::regclass
+      )
+  ) then
+    raise exception 'Event deletion foreign-key inventory identity mismatch.';
   end if;
 end;
 $$;

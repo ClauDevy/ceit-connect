@@ -52,7 +52,7 @@ describe("important email migration contract", () => {
 
   it("ends with no email foreign key to events or tasks", () => {
     expect(correctiveRaw).not.toContain("\r");
-    expect(correctiveMigration.match(/create or replace function/g)).toHaveLength(2);
+    expect(correctiveMigration.match(/create or replace function/g)).toHaveLength(3);
     const beforeReplacements = correctiveMigration.slice(
       0,
       correctiveMigration.indexOf("create or replace function"),
@@ -70,19 +70,31 @@ describe("important email migration contract", () => {
     expect(correctiveMigration).toContain(
       "constraint_row.confrelid = 'public.tasks'::regclass",
     );
-    expect(correctiveMigration).toContain(
-      "constraint_row.confrelid in (\n      'public.events'::regclass,\n      'public.tasks'::regclass\n    )",
+    expect(correctiveMigration).toMatch(
+      /constraint_row\.confrelid in \(\n\s+'public\.events'::regclass,\n\s+'public\.tasks'::regclass\n\s+\)/,
     );
   });
 
-  it("requires the event-delete FK count to equal its exact inventory", () => {
+  it("requires a bidirectional identity match with the event-delete FK inventory", () => {
     expect(correctiveMigration).toContain(
       "from ceit_connect_private.event_delete_fk_lock_list",
     );
-    expect(correctiveMigration).toContain("if v_actual_count <> v_expected_count then");
-    expect(correctiveMigration).toContain(
-      "Event deletion foreign-key inventory count mismatch.",
-    );
+    const proof = correctiveMigration.slice(correctiveMigration.lastIndexOf("do $$"));
+    expect(proof.match(/\bexcept\b/g)).toHaveLength(2);
+    for (const identity of [
+      "constraint_row.conname",
+      "source_namespace.nspname",
+      "source_class.relname",
+      "target_class.relname",
+      "lock_row.constraint_name",
+      "lock_row.referencing_schema",
+      "lock_row.referencing_table",
+      "lock_row.referenced_table",
+    ]) {
+      expect(proof).toContain(identity);
+    }
+    expect(proof).not.toContain("v_actual_count");
+    expect(proof).not.toContain("v_expected_count");
   });
 
   it("changes only the approved stale predicate in the applied claim body", () => {
@@ -143,6 +155,67 @@ describe("important email migration contract", () => {
         + "revoke all on function public.claim_email_deliveries(integer)\n"
         + "from public, authenticated, service_role;\n"
         + "grant execute on function public.claim_email_deliveries(integer) to anon;",
+    );
+  });
+
+  it("moves only wake side effects and their handler into a nested exception block", () => {
+    const oldKick = definition(
+      migration,
+      "create function ceit_connect_private.request_email_kick_if_due",
+      "alter function ceit_connect_private.request_email_kick_if_due",
+    );
+    const newKick = definition(
+      correctiveMigration,
+      "create or replace function ceit_connect_private.request_email_kick_if_due",
+      "alter function ceit_connect_private.request_email_kick_if_due",
+    );
+    const oldSideEffects = oldKick.indexOf(
+      "  select config.kick_url_secret_name, config.wake_secret_name",
+    );
+    const oldHandler = oldKick.indexOf("exception when others then", oldSideEffects);
+    const newInner = newKick.indexOf(
+      "  begin\n    select config.kick_url_secret_name, config.wake_secret_name",
+    );
+    const newHandler = newKick.indexOf("  exception when others then", newInner);
+    expect(oldSideEffects).toBeGreaterThanOrEqual(0);
+    expect(oldHandler).toBeGreaterThan(oldSideEffects);
+    expect(newInner).toBeGreaterThanOrEqual(0);
+    expect(newHandler).toBeGreaterThan(newInner);
+    expect(
+      newKick.slice(0, newInner).replace(
+        "create or replace function",
+        "create function",
+      ),
+    ).toBe(oldKick.slice(0, oldSideEffects));
+    const normalizeInner = (value: string) => value
+      .split("\n")
+      .map((line) => line.startsWith("  ") ? line.slice(2) : line)
+      .join("\n");
+    expect(normalizeInner(newKick.slice(newInner + "  begin\n".length, newHandler)))
+      .toBe(oldKick.slice(oldSideEffects, oldHandler));
+    expect(newKick).toContain(
+      "exception when others then\n    begin\n      update ceit_connect_private.email_kick_state",
+    );
+    const oldFinalEnd = oldKick.lastIndexOf("end;\n$$;");
+    const indentInner = (value: string) => value
+      .split("\n")
+      .map((line) => line.length > 0 ? `  ${line}` : line)
+      .join("\n");
+    const expectedNewKick = (
+      oldKick.slice(0, oldSideEffects)
+      + "  begin\n"
+      + indentInner(oldKick.slice(oldSideEffects, oldFinalEnd))
+      + "  end;\n"
+      + oldKick.slice(oldFinalEnd)
+    ).replace("create function", "create or replace function");
+    expect(newKick).toBe(expectedNewKick);
+    expect(newKick.indexOf("purge_email_delivery_history(v_now)")).toBeLessThan(newInner);
+    expect(newKick.indexOf("if not exists")).toBeLessThan(newInner);
+    expect(newKick.indexOf("if v_used >= v_allowance")).toBeLessThan(newInner);
+    expect(correctiveMigration).toContain(
+      "alter function ceit_connect_private.request_email_kick_if_due() owner to postgres;\n"
+        + "revoke all on function ceit_connect_private.request_email_kick_if_due()\n"
+        + "from public, anon, authenticated, service_role;",
     );
   });
 

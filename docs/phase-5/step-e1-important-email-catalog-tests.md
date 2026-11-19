@@ -2,7 +2,7 @@
 
 Run after `npx supabase db push`. This paste creates no temp table, is
 self-contained, and intentionally rolls back. Expected final exception:
-`TEST RESULTS 30/30 PASS — transaction intentionally rolled back`.
+`TEST RESULTS 31/31 PASS — transaction intentionally rolled back`.
 
 ```sql
 begin;
@@ -104,15 +104,43 @@ insert into public.e1_catalog_results values
     where conrelid='ceit_connect_private.email_delivery_queue'::regclass
       and confrelid='public.notifications'::regclass
       and contype='f' and confdeltype='n')),
-('26 event-delete FK count matches its exact inventory',
-  (select pg_catalog.count(*)
-   from pg_catalog.pg_constraint as constraint_row
-   where constraint_row.contype='f'
-     and constraint_row.confrelid in(
-       'public.events'::regclass,'public.tasks'::regclass
-     )) =
-  (select pg_catalog.count(*)
-   from ceit_connect_private.event_delete_fk_lock_list)),
+('26 event-delete FK identities match their exact inventory',
+  not exists(
+    select constraint_row.conname,source_namespace.nspname,
+      source_class.relname,target_class.relname
+    from pg_catalog.pg_constraint as constraint_row
+    join pg_catalog.pg_class as source_class
+      on source_class.oid=constraint_row.conrelid
+    join pg_catalog.pg_namespace as source_namespace
+      on source_namespace.oid=source_class.relnamespace
+    join pg_catalog.pg_class as target_class
+      on target_class.oid=constraint_row.confrelid
+    where constraint_row.contype='f'
+      and constraint_row.confrelid in(
+        'public.events'::regclass,'public.tasks'::regclass
+      )
+    except
+    select lock_row.constraint_name,lock_row.referencing_schema,
+      lock_row.referencing_table,lock_row.referenced_table
+    from ceit_connect_private.event_delete_fk_lock_list as lock_row
+  ) and not exists(
+    select lock_row.constraint_name,lock_row.referencing_schema,
+      lock_row.referencing_table,lock_row.referenced_table
+    from ceit_connect_private.event_delete_fk_lock_list as lock_row
+    except
+    select constraint_row.conname,source_namespace.nspname,
+      source_class.relname,target_class.relname
+    from pg_catalog.pg_constraint as constraint_row
+    join pg_catalog.pg_class as source_class
+      on source_class.oid=constraint_row.conrelid
+    join pg_catalog.pg_namespace as source_namespace
+      on source_namespace.oid=source_class.relnamespace
+    join pg_catalog.pg_class as target_class
+      on target_class.oid=constraint_row.confrelid
+    where constraint_row.contype='f'
+      and constraint_row.confrelid in(
+        'public.events'::regclass,'public.tasks'::regclass
+      ))),
 ('27 no email table references events or tasks',not exists(
   select 1
   from pg_catalog.pg_constraint as constraint_row
@@ -149,7 +177,23 @@ insert into public.e1_catalog_results values
   where oid='ceit_connect_private.purge_email_delivery_history(timestamptz)'::regprocedure
     and pg_catalog.strpos(pg_get_functiondef(oid),'with orphaned as')>0
     and pg_catalog.strpos(pg_get_functiondef(oid),'from public.tasks as task_row')>0
-    and pg_catalog.strpos(pg_get_functiondef(oid),'order by queue.created_at, queue.id')>0));
+    and pg_catalog.strpos(pg_get_functiondef(oid),'order by queue.created_at, queue.id')>0)),
+('31 wake failures cannot roll back completed maintenance',exists(
+  select 1 from pg_catalog.pg_proc
+  where oid='ceit_connect_private.request_email_kick_if_due()'::regprocedure
+    and pg_catalog.strpos(pg_get_functiondef(oid),
+      'perform ceit_connect_private.purge_email_delivery_history(v_now)')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),
+      'perform ceit_connect_private.purge_email_delivery_history(v_now)')
+      < pg_catalog.strpos(pg_get_functiondef(oid),
+          '  begin'||pg_catalog.chr(10)||
+          '    select config.kick_url_secret_name')
+    and pg_catalog.strpos(pg_get_functiondef(oid),
+      '  exception when others then')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),
+      'net.http_post')
+      < pg_catalog.strpos(pg_get_functiondef(oid),
+          '  exception when others then')));
 
 do $$
 declare
@@ -162,11 +206,11 @@ begin
          string_agg(label, ', ' order by label) filter (where passed is false)
   into v_total, v_failed, v_labels
   from public.e1_catalog_results;
-  if v_total <> 30 or v_failed <> 0 then
-    raise exception 'TEST RESULTS %/30 FAIL — % failed: %; transaction intentionally rolled back',
+  if v_total <> 31 or v_failed <> 0 then
+    raise exception 'TEST RESULTS %/31 FAIL — % failed: %; transaction intentionally rolled back',
       v_total-v_failed, v_failed, coalesce(v_labels, 'count mismatch');
   end if;
-  raise exception 'TEST RESULTS 30/30 PASS — transaction intentionally rolled back';
+  raise exception 'TEST RESULTS 31/31 PASS — transaction intentionally rolled back';
 end;
 $$;
 rollback;

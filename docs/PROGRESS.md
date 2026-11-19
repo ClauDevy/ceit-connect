@@ -353,10 +353,15 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - The old four-argument R2 emitter overload remains as deferred cleanup.
 - The minor Backlog-helper wording difference between the two task editors remains deferred.
 - Older Live Operations may still send due-soon reminders; newer Live Operations have no stored due date.
+- E1 deferred follow-ups: add a retry button to the email Settings control;
+  re-read the preference after an ambiguous save failure; make run-finalization
+  accounting independent of mutable `run_id`; move the send guard after current
+  recipient checks in `prepare_email_delivery`; serialize sender-credential
+  rotations; and refresh the claim clock after the configuration-row lock.
 
 ## Open items
 
-- E1 important email's main migration is applied on Dev; the corrective migration remains to be pushed on Dev and neither E1 migration is applied on Prod. The correction removes the queue-to-task FK that made the exact event-deletion inventory count fail, retains indexed non-null task UUIDs, and proves no email table references events/tasks and the global FK count matches the inventory. It also preserves active stale leases during claim/purge, and gives purge bounded stale and task-orphan finalization so maintenance cannot wake an idle sender for undeliverable work. The 30-check catalog and 34-check behavior pastes cover those corrections plus post-claim confidentiality, every no-row preparation boundary, quota non-consumption, and post-ack guard clearing. Unreadable Resend 409 responses retry with the same idempotency key; readable invalid-idempotency 409 and other unreadable 4xx responses remain terminal. Active-task and Event task editors map `55000` to fixed safe retry copy. Prod still applies both E1 migrations together after the app deploy, then configures allowance/capability, Vault, and cron last. No Activity Log email or CSV backup is included.
+- E1 important email's main migration is applied on Dev; the corrective migration remains to be pushed on Dev and neither E1 migration is applied on Prod. The correction removes the queue-to-task FK that broke the exact event-deletion inventory, retains indexed non-null task UUIDs, and proves bidirectionally by identity that every actual event/task FK is registered and every registered FK exists. It also preserves active stale leases during claim/purge, gives purge bounded stale and task-orphan finalization, and isolates Vault/HTTP wake failures so they cannot roll back completed maintenance. The 31-check catalog and 34-check behavior pastes cover those corrections plus post-claim confidentiality, every no-row preparation boundary, quota non-consumption, and post-ack guard clearing. Unreadable Resend 409 responses retry with the same idempotency key; readable invalid-idempotency 409 and other unreadable 4xx responses remain terminal. Active-task and Event task editors map `55000` to fixed safe retry copy. Prod still applies both E1 migrations together after the app deploy, using a separate Prod script output and capability hash, then configures Vault and cron last. No Activity Log email or CSV backup is included.
 
 - J1 jump-to-comment is implemented locally with migration 80, bounded
   25-comment target pages, task-only fallback for old/deleted comment targets,

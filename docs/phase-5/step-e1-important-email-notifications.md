@@ -30,7 +30,11 @@ stale leased delivery until its lease has expired. Purge first finalizes, in
 two oldest-first 500-row `SKIP LOCKED` batches, stale deliveries whose leases
 are not active and pending deliveries whose task no longer exists. Both use the
 already-allowed `stale` terminal state and reason, after which the unchanged
-retention stages can remove them.
+retention stages can remove them. The wake helper now keeps cleanup outside a
+nested Vault/HTTP exception block, so a provider-side wake failure cannot roll
+back maintenance that already completed. The migration's final proof compares
+every event/task foreign key to the deletion inventory in both directions by
+constraint and table identity, rather than accepting a matching count alone.
 
 The corrective function-body differences are deliberately narrow:
 
@@ -38,9 +42,10 @@ The corrective function-body differences are deliberately narrow:
 | --- | --- | --- | --- |
 | `claim_email_deliveries(integer)` | Finalizes every pending or leased row past `stale_at`. | Finalizes a past-`stale_at` pending row, or a leased row only when both its lease and `stale_at` have expired. | An active lease remains available to its current worker for acknowledgement. |
 | `purge_email_delivery_history(timestamptz)` | Begins with the three retention deletes. | Runs the two bounded stale/orphan finalization stages, then the same three retention deletes. | Stale and task-orphaned pending work cannot keep an otherwise idle wake alive; active leases remain untouched. |
+| `request_email_kick_if_due()` | Its function-level exception handler also rolled back earlier purge work when Vault or HTTP raised. | Leaves the session check, purge, due check, and allowance check in place, then contains Vault reads, HTTP, kick-state success update, and the existing protected error counter in an inner exception block. | Vault or HTTP failure returns `false` and records the safe error count without undoing completed retention cleanup. No-work and allowance-spent paths are unchanged. |
 
-All other statements in both function bodies are identical to migration 88;
-the corrective migration reissues the same owners, revokes, and grant.
+All other statements in the three function bodies are identical to migration
+88; the corrective migration reissues the same owners, revokes, and grant.
 
 No Activity Log email, backup, CSV generation, or attachment is part of E1.
 `src/lib/email/resend-sender.ts` accepts optional generic byte attachments so a
@@ -121,7 +126,7 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
    ```
 
    Never apply the migration through Dashboard or SQL Editor.
-3. Run the updated 30-check catalog and 34-check behavior pastes in the Dev SQL
+3. Run the updated 31-check catalog and 34-check behavior pastes in the Dev SQL
    Editor. Both intentionally roll back.
 4. Run `node scripts/generate-email-secrets.mjs` locally. Save its raw
    capability and wake secret in the password manager. Clear the terminal.
@@ -149,13 +154,18 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
 
 ## Prod owner steps — fixed order
 
-1. In Vercel Production variables, add `RESEND_API_KEY`, `EMAIL_FROM`, the HTTPS
-   `EMAIL_SITE_URL`, the Prod-only `EMAIL_DB_CAPABILITY`, and Prod-only
-   `EMAIL_WAKE_SECRET`.
-2. Redeploy the app and wait until Vercel reports Ready. Before the migration,
+1. Run `node scripts/generate-email-secrets.mjs` again specifically for Prod.
+   Save this new raw capability, wake secret, and generated capability-hash SQL
+   together in the password manager. They must be separate from the Dev values
+   and Dev capability hash; do not copy or rotate the Dev configuration.
+2. In Vercel Production variables, add `RESEND_API_KEY`, `EMAIL_FROM`, the HTTPS
+   `EMAIL_SITE_URL`, the newly generated Prod `EMAIL_DB_CAPABILITY`, and the
+   matching newly generated Prod `EMAIL_WAKE_SECRET`. Scope these values to
+   Production only; do not use them for Preview, Development, or `.env.local`.
+3. Redeploy the app and wait until Vercel reports Ready. Before the migration,
    Settings must show the safe unavailable message and `/api/email/wake` must
    return only the generic 500 for a correct wake secret.
-3. From the repository terminal, target Prod using the owner's established
+4. From the repository terminal, target Prod using the owner's established
    project selection. Run a database-push dry run and confirm it lists both
    `20261125120000_important_email_notifications.sql` and
    `20261126120000_email_queue_drop_task_fk.sql`, in that order. Apply both
@@ -166,24 +176,27 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
    ```
 
    Never apply the migration through Dashboard or SQL Editor.
-4. In Prod SQL Editor, run only the Prod capability-hash call and:
+5. In Prod SQL Editor, paste only the capability-hash call emitted by that same
+   Prod script run. Its raw capability must exactly match the Production-only
+   `EMAIL_DB_CAPABILITY`. Then run:
 
    ```sql
    select public.configure_email_daily_allowance(70);
    ```
 
-5. In Supabase Dashboard Vault, create `email_kick_url` with the deployed
+6. In Supabase Dashboard Vault, create `email_kick_url` with the deployed
    `/api/email/wake` URL and `email_wake_secret` with the matching Prod wake
-   secret. Do not put either value in a query string.
-6. Manually wake once and verify one controlled delivery, generic response,
+   secret from the Prod script run. Do not put either value in a query string,
+   and do not reuse the Dev wake secret.
+7. Manually wake once and verify one controlled delivery, generic response,
    safe logs, and aggregate run history.
-7. Last, in Supabase Dashboard → Integrations → Cron, create one job:
+8. Last, in Supabase Dashboard → Integrations → Cron, create one job:
 
    - Name: `important-email-delivery`
    - Schedule: `* * * * *`
    - Command: `select ceit_connect_private.request_email_kick_if_due();`
 
-8. Verify exactly one active job with that name, schedule, and command. A run
+9. Verify exactly one active job with that name, schedule, and command. A run
    with no due work or a spent daily allowance must return false and create no
    HTTP request.
 

@@ -51,7 +51,7 @@ beforeEach(() => {
     data: { full_name: "Settings User", password_set: true, avatar_url: null },
     error: null,
   })
-  mocks.rpc.mockResolvedValue({ data: true, error: null })
+  mocks.rpc.mockResolvedValue({ data: false, error: null })
 })
 
 describe("Settings sign-out and Terms links", () => {
@@ -64,6 +64,7 @@ describe("Settings sign-out and Terms links", () => {
     expect(html).toContain('data-title="Sign out"')
     expect(html).toContain('data-title="Important emails"')
     expect(html).toContain('data-email-available="true"')
+    expect(html).toContain('data-email-enabled="false"')
     expect(html).toContain('data-motion-index="7"')
     expect(html).toContain("lg:col-span-2")
     expect(html).toContain('data-push-aware-user="settings-user"')
