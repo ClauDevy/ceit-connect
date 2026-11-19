@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 const migrationsDirectory = "supabase/migrations";
 const lineCommentPattern = /--[^\r\n]*/g;
 const blockCommentPattern = /\/\*[\s\S]*?\*\//g;
-const qualifiedCoalescePattern = /\bpg_catalog\.coalesce\s*\(/i;
+const qualifiedSqlSyntaxPattern =
+  /\bpg_catalog\.(?:least|greatest|coalesce|nullif)\s*\(/i;
 const unparenthesizedIfCasePattern = /\bif\s+case\b/i;
 
 function withoutSqlComments(sql: string) {
@@ -17,26 +18,36 @@ describe("migration PL/pgSQL syntax contract", () => {
   for (const filename of readdirSync(migrationsDirectory).filter((name) =>
     name.endsWith(".sql"),
   )) {
+    it(`${filename} leaves SQL syntax constructs unqualified`, () => {
+      const migration = withoutSqlComments(
+        readFileSync(`${migrationsDirectory}/${filename}`, "utf8"),
+      );
+
+      expect(migration).not.toMatch(qualifiedSqlSyntaxPattern);
+    });
+
     it(`${filename} avoids unsupported conditional syntax`, () => {
       const migration = withoutSqlComments(
         readFileSync(`${migrationsDirectory}/${filename}`, "utf8"),
       );
 
-      expect(migration).not.toMatch(qualifiedCoalescePattern);
       expect(migration).not.toMatch(unparenthesizedIfCasePattern);
     });
   }
 
   it("allows a parenthesized CASE condition and ignores comments", () => {
     const allowed = withoutSqlComments(`
+      -- pg_catalog.least(20, value)
+      /* pg_catalog.greatest(value, 0) */
       -- pg_catalog.coalesce(value, false)
+      /* pg_catalog.nullif(value, '') */
       /* if case when value then true else false end then */
       if (case when value then true else false end) then
         null;
       end if;
     `);
 
-    expect(allowed).not.toMatch(qualifiedCoalescePattern);
+    expect(allowed).not.toMatch(qualifiedSqlSyntaxPattern);
     expect(allowed).not.toMatch(unparenthesizedIfCasePattern);
   });
 });

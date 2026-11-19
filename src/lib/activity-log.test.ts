@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ACTIVITY_LOG_RETENTION_DAYS,
+  ACTIVITY_LOG_INITIAL_RETENTION_DAYS,
   ACTIVITY_ACTION_LABELS,
   ACTIVITY_ACTION_PRESENTATION,
   ACTIVITY_PREFETCH_PAGES,
@@ -67,9 +67,13 @@ const page = (rows: ActivityRow[], hasMore = false): ActivityPage => ({
 });
 
 describe("activity log helpers", () => {
-  it("describes the shared 30-day retention window", () => {
-    expect(ACTIVITY_LOG_RETENTION_DAYS).toBe(30);
-    expect(activityLogRetentionNotice()).toBe("Activity is kept for 30 days.");
+  it("describes the saved retention value without a fixed notice", () => {
+    expect(ACTIVITY_LOG_INITIAL_RETENTION_DAYS).toBe(30);
+    expect(activityLogRetentionNotice(30)).toBe("Activity is kept for 30 days.");
+    expect(activityLogRetentionNotice(180)).toBe(
+      "Activity is kept for about 6 months (180 days).",
+    );
+    expect(activityLogRetentionNotice(730)).toBe("Activity is kept for 730 days.");
   });
 
   it("accepts canonical UUIDv7 and UUIDv1 values", () => {

@@ -250,6 +250,8 @@ Done:
 
 ## Decisions log
 
+- **Batch E step 1 is implemented locally, not applied on Dev or Prod:** Activity Log retention now has a private active-Admin-only 30–730-day setting, explicitly seeded at 30 so rollout behavior does not change. Saving records nullable UUID metadata and never purges immediately. The existing postgres-only, 5,000-row rolling purge and DELETE/TRUNCATE guards remain unchanged except that their retained helper reads the saved value. Admin CSV export uses the current filters/sort, delegates masking to `list_activity_log()`, refuses more than 5,000 rows, adds a UTF-8 BOM, and neutralizes spreadsheet-formula prefixes including tab and carriage return. Co-Admins keep the log but receive neither setting nor export. No migration creates the daily purge job, so the setting has no deletion effect until the owner separately creates and verifies the `pg_cron` job on Dev and Prod. Prod remains at 30 until a separate explicit owner confirmation to save 180.
+
 - Invited users may use the invite email link, set their own password, or continue with Google. Google admission requires the verified active matching-profile and allowed-domain callback boundary, not `password_set` or provider metadata; the Settings dot only reminds users to add email/password sign-in.
 - Gmail SMTP (App Password) is the interim email sender; revisit Resend only if the team buys a domain.
 - Invites/user management are Admin-only; users are deactivated, never deleted.

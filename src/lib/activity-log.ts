@@ -5,15 +5,28 @@ export { isCanonicalUuid };
 export const ACTIVITY_LOG_PAGE_SIZE = 20;
 export const GLOBAL_ACTIVITY_LOG_PAGE_SIZE = 20;
 export const TASK_HISTORY_PAGE_SIZE = 10;
-export const ACTIVITY_LOG_RETENTION_DAYS = 30;
+export const ACTIVITY_LOG_INITIAL_RETENTION_DAYS = 30;
+export const ACTIVITY_LOG_RECOMMENDED_RETENTION_DAYS = 180;
+export const ACTIVITY_LOG_MIN_RETENTION_DAYS = 30;
+export const ACTIVITY_LOG_MAX_RETENTION_DAYS = 730;
+export const ACTIVITY_LOG_EXPORT_PAGE_SIZE = 500;
+export const ACTIVITY_LOG_EXPORT_MAX_ROWS = 5_000;
 export const ACTIVITY_PAGE_BLOCK_SIZE = 3;
 export const ACTIVITY_PREFETCH_PAGES = 2;
 export const ACTIVITY_LOG_MAX_SEARCH_LENGTH = 100;
 export const ACTIVITY_LOG_MAX_REPLAY_PAGES = 5;
 export const ACTIVITY_LOG_STALE_TIME = 30_000;
 
-export function activityLogRetentionNotice() {
-  return `Activity is kept for ${ACTIVITY_LOG_RETENTION_DAYS} days.`;
+export function activityLogRetentionNotice(retentionDays: number) {
+  return retentionDays === ACTIVITY_LOG_RECOMMENDED_RETENTION_DAYS
+    ? "Activity is kept for about 6 months (180 days)."
+    : `Activity is kept for ${retentionDays} days.`;
+}
+
+export function isValidActivityLogRetentionDays(value: number) {
+  return Number.isInteger(value) &&
+    value >= ACTIVITY_LOG_MIN_RETENTION_DAYS &&
+    value <= ACTIVITY_LOG_MAX_RETENTION_DAYS;
 }
 
 export const ACTIVITY_SORT_LABELS = {

@@ -15,7 +15,6 @@ import {
   activityErrorCode,
   activityErrorMessage,
   activityFiltersToRpc,
-  activityLogRetentionNotice,
   activityPageBlock,
   activityPagerSlots,
   createTaskHistoryController,
@@ -273,7 +272,7 @@ export function TaskHistory({ taskId }: { taskId: string }) {
         <div id={contentId} className="space-y-3 border-t px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
-              {activityLogRetentionNotice()}
+              Activity is retained according to the council&apos;s policy.
             </p>
             <Button
               variant="ghost"
