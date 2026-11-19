@@ -63,8 +63,9 @@ for each row execute function ceit_connect_private.seed_user_email_preference();
 
 create table ceit_connect_private.email_delivery_queue (
   id uuid primary key default gen_random_uuid(),
-  notification_id uuid not null unique
-    references public.notifications(id) on delete cascade,
+  notification_id uuid unique
+    references public.notifications(id) on delete set null,
+  task_id uuid not null references public.tasks(id) on delete cascade,
   user_id uuid not null references public.users(id) on delete cascade,
   notification_type text not null check (
     notification_type in ('assignment', 'task_due_soon', 'live_operation_prep')
@@ -133,8 +134,7 @@ begin
   if exists (
     select 1
     from ceit_connect_private.email_delivery_queue as queue
-    join public.notifications as notification on notification.id = queue.notification_id
-    where notification.task_id = old.id
+    where queue.task_id = old.id
       and queue.state = 'leased'
       and queue.send_guard_until > pg_catalog.clock_timestamp()
   ) then
@@ -359,9 +359,10 @@ begin
            )
        ) then
       insert into ceit_connect_private.email_delivery_queue (
-        notification_id, user_id, notification_type, priority, stale_at
+        notification_id, task_id, user_id, notification_type, priority, stale_at
       ) values (
         new.id,
+        new.task_id,
         new.user_id,
         new.type,
         case when new.type = 'assignment' then 0 else 1 end,
@@ -640,11 +641,9 @@ begin
   where queue.state = 'pending'
     and not exists (
       select 1
-      from public.notifications as notification
-      join public.users as profile on profile.id = queue.user_id
+      from public.users as profile
       join auth.users as auth_user on auth_user.id = profile.id
-      where notification.id = queue.notification_id
-        and notification.user_id = queue.user_id
+      where profile.id = queue.user_id
         and profile.is_active is true
         and profile.anonymized_at is null
         and auth_user.email_confirmed_at is not null
@@ -705,8 +704,7 @@ begin
   with candidates as materialized (
     select queue.id, gen_random_uuid() as lease_token
     from ceit_connect_private.email_delivery_queue as queue
-    join public.notifications as notification on notification.id = queue.notification_id
-    join public.tasks as task_row on task_row.id = notification.task_id
+    join public.tasks as task_row on task_row.id = queue.task_id
     join public.users as profile on profile.id = queue.user_id
     join auth.users as auth_user on auth_user.id = profile.id
     where queue.state = 'pending'
@@ -737,7 +735,7 @@ begin
         run_id = v_run_id, updated_at = v_now
     from candidates as candidate
     where queue.id = candidate.id
-    returning queue.id, queue.notification_id, queue.notification_type,
+    returning queue.id, queue.task_id, queue.notification_type,
       queue.priority, queue.created_at, queue.attempt_count, queue.lease_token,
       queue.lease_expires_at
   ),
@@ -795,6 +793,7 @@ as $$
 declare
   v_generation bigint;
   v_now timestamptz := pg_catalog.clock_timestamp();
+  v_task_id uuid;
 begin
   v_generation := ceit_connect_private.authenticate_email_sender();
   if v_generation is null then
@@ -803,6 +802,29 @@ begin
   if p_delivery_id is null or p_lease_token is null then
     raise exception using errcode = '22023', message = 'Email delivery preparation is invalid.';
   end if;
+
+  select queue.task_id
+  into v_task_id
+  from ceit_connect_private.email_delivery_queue as queue
+  where queue.id = p_delivery_id
+    and queue.state = 'leased'
+    and queue.lease_token = p_lease_token
+    and queue.lease_expires_at > v_now;
+  if not found then
+    return;
+  end if;
+
+  -- A task UPDATE/DELETE already owns this row before its email-content guard
+  -- runs. Taking the conflicting SHARE lock first gives preparation the same
+  -- task-before-queue order, then the next statement rereads current content.
+  perform 1
+  from public.tasks as task_row
+  where task_row.id = v_task_id
+  for share;
+  if not found then
+    return;
+  end if;
+  v_now := pg_catalog.clock_timestamp();
 
   -- Content is resolved at send preparation, not claim time. This is the
   -- confidentiality boundary immediately before the app calls Resend.
@@ -820,7 +842,7 @@ begin
       and queue.state = 'leased'
       and queue.lease_token = p_lease_token
       and queue.lease_expires_at > v_now
-    returning queue.id, queue.notification_id, queue.user_id,
+    returning queue.id, queue.task_id, queue.user_id,
       queue.notification_type, queue.send_guard_until
   )
   select
@@ -843,12 +865,10 @@ begin
     ) as out_is_confidential,
     guarded.send_guard_until as out_send_guard_expires_at
   from guarded
-  join public.notifications as notification on notification.id = guarded.notification_id
-  join public.tasks as task_row on task_row.id = notification.task_id
+  join public.tasks as task_row on task_row.id = guarded.task_id
   join public.users as profile on profile.id = guarded.user_id
   join auth.users as auth_user on auth_user.id = profile.id
-  where notification.user_id = guarded.user_id
-    and profile.is_active is true
+  where profile.is_active is true
     and profile.anonymized_at is null
     and auth_user.email_confirmed_at is not null
     and auth_user.email is not null

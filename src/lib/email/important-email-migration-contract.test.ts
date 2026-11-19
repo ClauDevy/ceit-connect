@@ -25,7 +25,9 @@ describe("important email migration contract", () => {
   });
 
   it("pins the three types, notification dedupe, priority, caps, and stale limit", () => {
-    expect(migration).toContain("notification_id uuid not null unique");
+    expect(migration).toContain("notification_id uuid unique");
+    expect(migration).toContain("references public.notifications(id) on delete set null");
+    expect(migration).toContain("task_id uuid not null references public.tasks(id) on delete cascade");
     expect(migration).toContain("'assignment', 'task_due_soon', 'live_operation_prep'");
     expect(migration).toContain("p_limit not between 1 and 10");
     expect(migration).toContain("daily_allowance between 1 and 70");
@@ -53,6 +55,7 @@ describe("important email migration contract", () => {
     expect(migration).toContain("public.task_content_access_for_user(task_row.id, guarded.user_id) <> 'real'");
     expect(migration).toContain("create trigger tasks_y9_guard_email_send_content");
     expect(migration).toContain("queue.send_guard_until > pg_catalog.clock_timestamp()");
+    expect(migration).toContain("where queue.task_id = old.id");
   });
 
   it("keeps quota reservations after queue deletion and caps both accounting windows", () => {
@@ -110,6 +113,16 @@ describe("important email migration contract", () => {
     expect(worker).toContain("if (error || data !== true) counts.finalizationFailures += 1");
     expect(worker).toContain("const body = await response.arrayBuffer()");
     expect(worker).toContain("Date.now() + RESEND_TIMEOUT_MS");
+  });
+
+  it("serializes task content before publishing the send guard", () => {
+    const preparation = migration.slice(migration.indexOf("create function public.prepare_email_delivery"));
+    expect(preparation.indexOf("for share")).toBeLessThan(
+      preparation.indexOf("set send_guard_until"),
+    );
+    expect(preparation.indexOf("v_now := pg_catalog.clock_timestamp()"))
+      .toBeLessThan(preparation.indexOf("set send_guard_until"));
+    expect(preparation).toContain("join public.tasks as task_row on task_row.id = guarded.task_id");
   });
 
   it("classifies only Resend's concurrent idempotency conflict as retryable", () => {

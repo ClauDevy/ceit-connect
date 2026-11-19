@@ -13,7 +13,11 @@ returns no title and only `/workspace`; preparation returns a title and exact
 task path only when the recipient currently has `real` task-content access. A
 30-second send guard temporarily rejects task deletion or changes to title,
 confidentiality, committee, assignees, or allowed viewers; the worker starts
-Resend only when that guard covers the provider's full timeout.
+Resend only when that guard covers the provider's full timeout. Preparation
+takes a task-row `FOR SHARE` lock before publishing that guard, matching the
+task-before-queue mutation order and rereading content after any earlier writer
+finishes. Notification deletion nulls only the queue's dedupe reference; the
+task UUID and unexpired guard remain until delivery state cleanup.
 
 No Activity Log email, backup, CSV generation, or attachment is part of E1.
 `src/lib/email/resend-sender.ts` accepts optional generic byte attachments so a

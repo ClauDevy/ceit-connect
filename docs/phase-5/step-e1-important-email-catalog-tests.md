@@ -98,7 +98,12 @@ insert into public.e1_catalog_results values
     select 1 from pg_catalog.pg_trigger
     where tgrelid='public.tasks'::regclass
       and tgname='tasks_y9_guard_email_send_content'
-      and not tgisinternal));
+      and not tgisinternal)
+  and exists(
+    select 1 from pg_catalog.pg_constraint
+    where conrelid='ceit_connect_private.email_delivery_queue'::regclass
+      and confrelid='public.notifications'::regclass
+      and contype='f' and confdeltype='n'));
 
 do $$
 declare

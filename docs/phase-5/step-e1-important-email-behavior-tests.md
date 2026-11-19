@@ -85,12 +85,17 @@ cross join lateral public.prepare_email_delivery(
 select public.e1_record('05 assignment claims first',(select notification_type='assignment' from public.e1_claimed order by seq limit 1));
 do $$ declare v_generic boolean;begin
  select exists(select 1 from public.e1_claimed where is_confidential and task_title is null and target_path='/workspace') into v_generic;
+ delete from public.notifications where id='e1010000-0000-4000-8000-000000000002';
+ perform set_config('ceit_connect.task_assignee_writer','assign_task_people',true);
  begin
-  update public.tasks set title='Must not change during send' where id='e100a000-0000-4000-8000-000000000002';
+  update public.tasks
+  set assist_assignees=array['e1000000-0000-4000-8000-000000000001'::uuid]
+  where id='e100a000-0000-4000-8000-000000000002';
   perform public.e1_record('06 confidential payload and send guard',false);
  exception when sqlstate '55000' then
   perform public.e1_record('06 confidential payload and send guard',v_generic);
  end;
+ perform set_config('ceit_connect.task_assignee_writer','',true);
 end $$;
 select public.e1_record('07 visible payload has title and direct path',exists(select 1 from public.e1_claimed where not is_confidential and task_title='Visible E1 task' and target_path='/tasks/e100a000-0000-4000-8000-000000000001'));
 select public.e1_record('08 success acknowledgement',public.acknowledge_email_delivery((select delivery_id from public.e1_claimed where notification_type='assignment'),(select lease_token from public.e1_claimed where notification_type='assignment'),'success',200));
@@ -123,8 +128,8 @@ insert into public.notifications(id,user_id,type,task_id) values
 ('e1040000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000002','assignment','e100a000-0000-4000-8000-000000000001'),
 ('e1040000-0000-4000-8000-000000000002','e1000000-0000-4000-8000-000000000003','assignment','e100a000-0000-4000-8000-000000000001'),
 ('e1040000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-000000000004','assignment','e100a000-0000-4000-8000-000000000001');
-insert into ceit_connect_private.email_delivery_queue(notification_id,user_id,notification_type,priority,stale_at)
-select id,user_id,type,0,created_at+interval '24 hours' from public.notifications where id::text like 'e104%';
+insert into ceit_connect_private.email_delivery_queue(notification_id,task_id,user_id,notification_type,priority,stale_at)
+select id,task_id,user_id,type,0,created_at+interval '24 hours' from public.notifications where id::text like 'e104%';
 select count(*) from public.claim_email_deliveries(10);
 select public.e1_record('15 invalid recipients are not claimed',not exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id::text like 'e104%' and state='leased'));
 

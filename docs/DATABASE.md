@@ -289,7 +289,11 @@ Preparation sets a 30-second `send_guard_until`. A separate fail-closed task
 trigger temporarily rejects deletion or changes to title, committee,
 assignees, confidentiality, or allowed viewers while that guard is active. The
 app starts Resend only if the remaining guard covers the provider's bounded
-timeout; acknowledgement clears the guard on every outcome.
+timeout; acknowledgement clears the guard on every outcome. Preparation locks
+the task row `FOR SHARE` before setting the queue guard, so a prior task writer
+finishes first and the prepared projection uses a fresh post-wait statement.
+The queue stores the task UUID directly; deleting the source notification uses
+`ON DELETE SET NULL` for its dedupe reference and cannot hide a live task guard.
 
 `email_send_attempts` deliberately has no queue foreign key, so deleting a
 notification or cleaning a terminal queue row cannot reopen quota. Claim and
