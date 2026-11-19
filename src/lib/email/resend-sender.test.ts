@@ -71,7 +71,7 @@ describe("Resend transport", () => {
     expect(classifyResendStatus(409).outcome).toBe("permanent");
   });
 
-  it("uses the Resend 409 error name without exposing the provider body", async () => {
+  it("keeps complete invalid idempotency permanent and concurrent idempotency transient", async () => {
     const concurrent = vi.fn(async () => new Response(
       JSON.stringify({ name: "concurrent_idempotent_requests", message: "private provider detail" }),
       { status: 409 },
@@ -84,6 +84,18 @@ describe("Resend transport", () => {
       .resolves.toEqual({ outcome: "transient", httpStatus: 409 });
     await expect(sendResendEmail(config.apiKey, buildImportantEmail(config, base), invalid))
       .resolves.toEqual({ outcome: "permanent", httpStatus: 409 });
+  });
+
+  it.each([
+    [409, "transient"],
+    [400, "permanent"],
+  ] as const)("classifies unreadable %s without broadening other 4xx retries", async (status, outcome) => {
+    const unreadable = vi.fn(async () => ({
+      status,
+      arrayBuffer: vi.fn().mockRejectedValue(new Error("unreadable provider body")),
+    }) as unknown as Response);
+    await expect(sendResendEmail("secret", buildImportantEmail(config, base), unreadable))
+      .resolves.toEqual({ outcome, httpStatus: status });
   });
 
   it("sends the queue id as Resend Idempotency-Key and omits attachments", async () => {

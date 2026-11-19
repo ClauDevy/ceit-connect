@@ -2,7 +2,7 @@
 
 Run after `npx supabase db push`. This paste creates no temp table, is
 self-contained, and intentionally rolls back. Expected final exception:
-`TEST RESULTS 27/27 PASS — transaction intentionally rolled back`.
+`TEST RESULTS 30/30 PASS — transaction intentionally rolled back`.
 
 ```sql
 begin;
@@ -128,7 +128,28 @@ insert into public.e1_catalog_results values
     )
     and constraint_row.confrelid in(
       'public.events'::regclass,'public.tasks'::regclass
-    )));
+    ))),
+('28 claim stale finalization preserves active leases',exists(
+  select 1 from pg_catalog.pg_proc
+  where oid='public.claim_email_deliveries(integer)'::regprocedure
+    and pg_catalog.strpos(pg_get_functiondef(oid),
+      'where (queue.state = ''pending'' and queue.stale_at <= v_now)')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),
+      'and queue.lease_expires_at <= v_now')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),
+      'where queue.state in (''pending'', ''leased'') and queue.stale_at <= v_now')=0)),
+('29 purge stale finalization is bounded and lock-safe',exists(
+  select 1 from pg_catalog.pg_proc
+  where oid='ceit_connect_private.purge_email_delivery_history(timestamptz)'::regprocedure
+    and pg_catalog.strpos(pg_get_functiondef(oid),'with stale as')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),'order by queue.stale_at, queue.id')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),'limit 500 for update skip locked')>0)),
+('30 purge orphan finalization is bounded and task-aware',exists(
+  select 1 from pg_catalog.pg_proc
+  where oid='ceit_connect_private.purge_email_delivery_history(timestamptz)'::regprocedure
+    and pg_catalog.strpos(pg_get_functiondef(oid),'with orphaned as')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),'from public.tasks as task_row')>0
+    and pg_catalog.strpos(pg_get_functiondef(oid),'order by queue.created_at, queue.id')>0));
 
 do $$
 declare
@@ -141,11 +162,11 @@ begin
          string_agg(label, ', ' order by label) filter (where passed is false)
   into v_total, v_failed, v_labels
   from public.e1_catalog_results;
-  if v_total <> 27 or v_failed <> 0 then
-    raise exception 'TEST RESULTS %/27 FAIL — % failed: %; transaction intentionally rolled back',
+  if v_total <> 30 or v_failed <> 0 then
+    raise exception 'TEST RESULTS %/30 FAIL — % failed: %; transaction intentionally rolled back',
       v_total-v_failed, v_failed, coalesce(v_labels, 'count mismatch');
   end if;
-  raise exception 'TEST RESULTS 27/27 PASS — transaction intentionally rolled back';
+  raise exception 'TEST RESULTS 30/30 PASS — transaction intentionally rolled back';
 end;
 $$;
 rollback;

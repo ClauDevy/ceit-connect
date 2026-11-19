@@ -14,6 +14,10 @@ const correctiveMigration = correctiveRaw.replaceAll("\r\n", "\n");
 const worker = readFileSync("src/lib/email/important-email-worker.ts", "utf8").replaceAll("\r\n", "\n");
 const sender = readFileSync("src/lib/email/resend-sender.ts", "utf8").replaceAll("\r\n", "\n");
 
+function definition(source: string, create: string, alter: string) {
+  return source.slice(source.indexOf(create), source.indexOf(alter));
+}
+
 describe("important email migration contract", () => {
   it("is additive, LF-safe, and avoids forbidden qualified special forms", () => {
     expect(raw).not.toContain("\r");
@@ -48,8 +52,12 @@ describe("important email migration contract", () => {
 
   it("ends with no email foreign key to events or tasks", () => {
     expect(correctiveRaw).not.toContain("\r");
-    expect(correctiveMigration).not.toMatch(/create or replace function/);
-    expect(correctiveMigration).not.toContain("session_user");
+    expect(correctiveMigration.match(/create or replace function/g)).toHaveLength(2);
+    const beforeReplacements = correctiveMigration.slice(
+      0,
+      correctiveMigration.indexOf("create or replace function"),
+    );
+    expect(beforeReplacements).not.toContain("session_user");
     expect(correctiveMigration.slice(0, correctiveMigration.indexOf("do $$", 1))).toContain(
       "current_user <> 'postgres'",
     );
@@ -74,6 +82,67 @@ describe("important email migration contract", () => {
     expect(correctiveMigration).toContain("if v_actual_count <> v_expected_count then");
     expect(correctiveMigration).toContain(
       "Event deletion foreign-key inventory count mismatch.",
+    );
+  });
+
+  it("changes only the approved stale predicate in the applied claim body", () => {
+    const oldClaim = definition(
+      migration,
+      "create function public.claim_email_deliveries",
+      "alter function public.claim_email_deliveries",
+    );
+    const newClaim = definition(
+      correctiveMigration,
+      "create or replace function public.claim_email_deliveries",
+      "alter function public.claim_email_deliveries",
+    );
+    const normalizedClaim = newClaim
+      .replace("create or replace function", "create function")
+      .replace(
+        "where (queue.state = 'pending' and queue.stale_at <= v_now)\n"
+          + "     or (queue.state = 'leased'\n"
+          + "         and queue.lease_expires_at <= v_now\n"
+          + "         and queue.stale_at <= v_now);",
+        "where queue.state in ('pending', 'leased') and queue.stale_at <= v_now;",
+      );
+    expect(normalizedClaim).toBe(oldClaim);
+  });
+
+  it("adds only the two approved bounded stages to the applied purge body", () => {
+    const oldPurge = definition(
+      migration,
+      "create function ceit_connect_private.purge_email_delivery_history",
+      "alter function ceit_connect_private.purge_email_delivery_history",
+    );
+    const newPurge = definition(
+      correctiveMigration,
+      "create or replace function ceit_connect_private.purge_email_delivery_history",
+      "alter function ceit_connect_private.purge_email_delivery_history",
+    );
+    const addedStart = newPurge.indexOf("  with stale as (");
+    const existingDeletes = newPurge.indexOf("  with doomed as (");
+    expect(addedStart).toBeGreaterThanOrEqual(0);
+    expect(existingDeletes).toBeGreaterThan(addedStart);
+    const addedStages = newPurge.slice(addedStart, existingDeletes);
+    expect(addedStages.match(/limit 500 for update skip locked/g)).toHaveLength(2);
+    expect(addedStages).toContain("queue.lease_expires_at <= p_as_of");
+    expect(addedStages).toContain("from public.tasks as task_row");
+    expect(addedStages).toContain("from orphaned where queue.id = orphaned.id");
+    const normalizedPurge = (
+      newPurge.slice(0, addedStart) + newPurge.slice(existingDeletes)
+    ).replace("create or replace function", "create function");
+    expect(normalizedPurge).toBe(oldPurge);
+    expect(correctiveMigration).toContain(
+      "alter function ceit_connect_private.purge_email_delivery_history(timestamptz)\n"
+        + "owner to postgres;\n"
+        + "revoke all on function ceit_connect_private.purge_email_delivery_history(timestamptz)\n"
+        + "from public, anon, authenticated, service_role;",
+    );
+    expect(correctiveMigration).toContain(
+      "alter function public.claim_email_deliveries(integer) owner to postgres;\n"
+        + "revoke all on function public.claim_email_deliveries(integer)\n"
+        + "from public, authenticated, service_role;\n"
+        + "grant execute on function public.claim_email_deliveries(integer) to anon;",
     );
   });
 
@@ -170,8 +239,11 @@ describe("important email migration contract", () => {
     expect(preparation).toContain("join public.tasks as task_row on task_row.id = guarded.task_id");
   });
 
-  it("classifies only Resend's concurrent idempotency conflict as retryable", () => {
-    expect(sender).toContain('status === 409 && errorName === "concurrent_idempotent_requests"');
-    expect(sender).toContain("resendErrorName(body)");
+  it("retries concurrent or unreadable 409 without broadening unreadable 4xx", () => {
+    expect(sender).toContain(
+      'status === 409\n    && (bodyUnreadable || errorName === "concurrent_idempotent_requests")',
+    );
+    expect(sender).toContain("resendErrorName(body), bodyUnreadable");
+    expect(sender).toContain("if (status === 429 || status >= 500)");
   });
 });

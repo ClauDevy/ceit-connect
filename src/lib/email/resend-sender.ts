@@ -38,9 +38,16 @@ export function isValidFrom(value: string) {
   return Boolean(match?.[1].trim() && match?.[2] && isValidMailbox(match[2]));
 }
 
-export function classifyResendStatus(status: number, errorName: string | null = null): EmailSendOutcome {
+export function classifyResendStatus(
+  status: number,
+  errorName: string | null = null,
+  bodyUnreadable = false,
+): EmailSendOutcome {
   if (status >= 200 && status < 300) return { outcome: "success", httpStatus: status };
-  if (status === 409 && errorName === "concurrent_idempotent_requests") {
+  if (
+    status === 409
+    && (bodyUnreadable || errorName === "concurrent_idempotent_requests")
+  ) {
     return { outcome: "transient", httpStatus: status };
   }
   if (status === 429 || status >= 500) return { outcome: "transient", httpStatus: status };
@@ -95,8 +102,12 @@ export async function sendResendEmail(
           : {}),
       }),
     });
-    const body = await response.arrayBuffer().catch(() => new ArrayBuffer(0));
-    return classifyResendStatus(response.status, resendErrorName(body));
+    let bodyUnreadable = false;
+    const body = await response.arrayBuffer().catch(() => {
+      bodyUnreadable = true;
+      return new ArrayBuffer(0);
+    });
+    return classifyResendStatus(response.status, resendErrorName(body), bodyUnreadable);
   } catch {
     return { outcome: "transient", httpStatus: null };
   } finally {

@@ -24,7 +24,23 @@ Migration `20261126120000_email_queue_drop_task_fk.sql` removes the queue's
 FK inventory. `task_id` remains `uuid not null` with a normal lookup index.
 Preparation returns no row when that task has since been deleted, so the app
 can terminate the leased delivery without exposing content or blocking event
-deletion.
+deletion. The same corrective migration replaces the applied claim and purge
+functions without changing their public contracts. Claim no longer finalizes a
+stale leased delivery until its lease has expired. Purge first finalizes, in
+two oldest-first 500-row `SKIP LOCKED` batches, stale deliveries whose leases
+are not active and pending deliveries whose task no longer exists. Both use the
+already-allowed `stale` terminal state and reason, after which the unchanged
+retention stages can remove them.
+
+The corrective function-body differences are deliberately narrow:
+
+| Function | Applied definition | Corrective definition | Behavior difference |
+| --- | --- | --- | --- |
+| `claim_email_deliveries(integer)` | Finalizes every pending or leased row past `stale_at`. | Finalizes a past-`stale_at` pending row, or a leased row only when both its lease and `stale_at` have expired. | An active lease remains available to its current worker for acknowledgement. |
+| `purge_email_delivery_history(timestamptz)` | Begins with the three retention deletes. | Runs the two bounded stale/orphan finalization stages, then the same three retention deletes. | Stale and task-orphaned pending work cannot keep an otherwise idle wake alive; active leases remain untouched. |
+
+All other statements in both function bodies are identical to migration 88;
+the corrective migration reissues the same owners, revokes, and grant.
 
 No Activity Log email, backup, CSV generation, or attachment is part of E1.
 `src/lib/email/resend-sender.ts` accepts optional generic byte attachments so a
@@ -105,7 +121,7 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
    ```
 
    Never apply the migration through Dashboard or SQL Editor.
-3. Run the updated 27-check catalog and 29-check behavior pastes in the Dev SQL
+3. Run the updated 30-check catalog and 34-check behavior pastes in the Dev SQL
    Editor. Both intentionally roll back.
 4. Run `node scripts/generate-email-secrets.mjs` locally. Save its raw
    capability and wake secret in the password manager. Clear the terminal.
@@ -124,7 +140,9 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
 8. In Resend's Dev delivery/request detail, verify the request uses the queue
    row UUID as `Idempotency-Key`. Exercise a retry with the same row and confirm
    Resend does not create a duplicate email. Also verify a concurrent-
-   idempotency 409 is retried, while an invalid-idempotency 409 is terminal.
+   idempotency 409 and a 409 whose body cannot be read are retried, while a
+   readable invalid-idempotency 409 is terminal. Other unreadable 4xx responses
+   remain terminal.
 9. Verify confidential copy contains no title/task URL, the footer links to
    `/settings`, preference-off suppresses pending work, assignments precede
    reminders, and the Dev allowance stops at ten reservations.
