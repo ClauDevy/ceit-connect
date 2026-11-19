@@ -117,11 +117,15 @@ describe("important email migration contract", () => {
 
   it("serializes task content before publishing the send guard", () => {
     const preparation = migration.slice(migration.indexOf("create function public.prepare_email_delivery"));
-    expect(preparation.indexOf("for share")).toBeLessThan(
-      preparation.indexOf("set send_guard_until"),
-    );
-    expect(preparation.indexOf("v_now := pg_catalog.clock_timestamp()"))
-      .toBeLessThan(preparation.indexOf("set send_guard_until"));
+    const shareLock = preparation.indexOf("for share");
+    const refreshedClock = preparation.indexOf("v_now := pg_catalog.clock_timestamp()");
+    const sendGuard = preparation.indexOf("set send_guard_until");
+    expect(shareLock).toBeGreaterThanOrEqual(0);
+    expect(sendGuard).toBeGreaterThanOrEqual(0);
+    expect(shareLock).toBeLessThan(sendGuard);
+    expect(refreshedClock).toBeGreaterThanOrEqual(0);
+    expect(sendGuard).toBeGreaterThanOrEqual(0);
+    expect(refreshedClock).toBeLessThan(sendGuard);
     expect(preparation).toContain("join public.tasks as task_row on task_row.id = guarded.task_id");
   });
 
