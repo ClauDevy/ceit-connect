@@ -537,6 +537,13 @@ function mapRpcError(error: RpcError): ActiveTaskRpcFailure {
   if (error.code === "CCN01") {
     return { ok: false, status: 409, message: "No changes to save." };
   }
+  if (error.code === "55000") {
+    return {
+      ok: false,
+      status: 409,
+      message: "Task content is temporarily being prepared for email. Try again.",
+    };
+  }
   if (error.code === "42501") {
     return { ok: false, status: 403, message: "The task is unavailable." };
   }

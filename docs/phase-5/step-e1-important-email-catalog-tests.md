@@ -2,7 +2,7 @@
 
 Run after `npx supabase db push`. This paste creates no temp table, is
 self-contained, and intentionally rolls back. Expected final exception:
-`TEST RESULTS 25/25 PASS — transaction intentionally rolled back`.
+`TEST RESULTS 27/27 PASS — transaction intentionally rolled back`.
 
 ```sql
 begin;
@@ -103,7 +103,32 @@ insert into public.e1_catalog_results values
     select 1 from pg_catalog.pg_constraint
     where conrelid='ceit_connect_private.email_delivery_queue'::regclass
       and confrelid='public.notifications'::regclass
-      and contype='f' and confdeltype='n'));
+      and contype='f' and confdeltype='n')),
+('26 event-delete FK count matches its exact inventory',
+  (select pg_catalog.count(*)
+   from pg_catalog.pg_constraint as constraint_row
+   where constraint_row.contype='f'
+     and constraint_row.confrelid in(
+       'public.events'::regclass,'public.tasks'::regclass
+     )) =
+  (select pg_catalog.count(*)
+   from ceit_connect_private.event_delete_fk_lock_list)),
+('27 no email table references events or tasks',not exists(
+  select 1
+  from pg_catalog.pg_constraint as constraint_row
+  join pg_catalog.pg_class as source_class
+    on source_class.oid=constraint_row.conrelid
+  join pg_catalog.pg_namespace as source_namespace
+    on source_namespace.oid=source_class.relnamespace
+  where constraint_row.contype='f'
+    and source_namespace.nspname='ceit_connect_private'
+    and (
+      source_class.relname::text like 'email\_%' escape '\'
+      or source_class.relname='user_email_preferences'
+    )
+    and constraint_row.confrelid in(
+      'public.events'::regclass,'public.tasks'::regclass
+    )));
 
 do $$
 declare
@@ -116,11 +141,11 @@ begin
          string_agg(label, ', ' order by label) filter (where passed is false)
   into v_total, v_failed, v_labels
   from public.e1_catalog_results;
-  if v_total <> 25 or v_failed <> 0 then
-    raise exception 'TEST RESULTS %/25 FAIL — % failed: %; transaction intentionally rolled back',
+  if v_total <> 27 or v_failed <> 0 then
+    raise exception 'TEST RESULTS %/27 FAIL — % failed: %; transaction intentionally rolled back',
       v_total-v_failed, v_failed, coalesce(v_labels, 'count mismatch');
   end if;
-  raise exception 'TEST RESULTS 25/25 PASS — transaction intentionally rolled back';
+  raise exception 'TEST RESULTS 27/27 PASS — transaction intentionally rolled back';
 end;
 $$;
 rollback;

@@ -19,6 +19,13 @@ task-before-queue mutation order and rereading content after any earlier writer
 finishes. Notification deletion nulls only the queue's dedupe reference; the
 task UUID and unexpired guard remain until delivery state cleanup.
 
+Migration `20261126120000_email_queue_drop_task_fk.sql` removes the queue's
+`task_id` foreign key after Dev exposed its conflict with the exact event-delete
+FK inventory. `task_id` remains `uuid not null` with a normal lookup index.
+Preparation returns no row when that task has since been deleted, so the app
+can terminate the leased delivery without exposing content or blocking event
+deletion.
+
 No Activity Log email, backup, CSV generation, or attachment is part of E1.
 `src/lib/email/resend-sender.ts` accepts optional generic byte attachments so a
 later approved batch can add that feature without changing providers.
@@ -86,17 +93,20 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
 
 ## Dev owner steps
 
-1. Review the full tracked migration and both rollback-safe test pastes.
+1. Review both tracked E1 migrations and both rollback-safe test pastes. The
+   first migration is already applied on Dev; do not edit or reapply it.
 2. From the repository terminal, target the Dev Supabase project using the
-   owner's established project selection, then run exactly:
+   owner's established project selection. Run a database-push dry run and
+   confirm it lists only
+   `20261126120000_email_queue_drop_task_fk.sql`. Then run exactly:
 
    ```text
    npx supabase db push
    ```
 
    Never apply the migration through Dashboard or SQL Editor.
-3. Run the catalog and behavior pastes in the Dev SQL Editor. Both intentionally
-   roll back.
+3. Run the updated 27-check catalog and 29-check behavior pastes in the Dev SQL
+   Editor. Both intentionally roll back.
 4. Run `node scripts/generate-email-secrets.mjs` locally. Save its raw
    capability and wake secret in the password manager. Clear the terminal.
 5. In Dev SQL Editor, run only the generated capability-hash call and:
@@ -128,7 +138,10 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
    Settings must show the safe unavailable message and `/api/email/wake` must
    return only the generic 500 for a correct wake secret.
 3. From the repository terminal, target Prod using the owner's established
-   project selection and run exactly:
+   project selection. Run a database-push dry run and confirm it lists both
+   `20261125120000_important_email_notifications.sql` and
+   `20261126120000_email_queue_drop_task_fk.sql`, in that order. Apply both
+   together with one command:
 
    ```text
    npx supabase db push

@@ -6,6 +6,11 @@ const raw = readFileSync(
   "utf8",
 );
 const migration = raw.replaceAll("\r\n", "\n");
+const correctiveRaw = readFileSync(
+  "supabase/migrations/20261126120000_email_queue_drop_task_fk.sql",
+  "utf8",
+);
+const correctiveMigration = correctiveRaw.replaceAll("\r\n", "\n");
 const worker = readFileSync("src/lib/email/important-email-worker.ts", "utf8").replaceAll("\r\n", "\n");
 const sender = readFileSync("src/lib/email/resend-sender.ts", "utf8").replaceAll("\r\n", "\n");
 
@@ -27,13 +32,49 @@ describe("important email migration contract", () => {
   it("pins the three types, notification dedupe, priority, caps, and stale limit", () => {
     expect(migration).toContain("notification_id uuid unique");
     expect(migration).toContain("references public.notifications(id) on delete set null");
-    expect(migration).toContain("task_id uuid not null references public.tasks(id) on delete cascade");
+    expect(correctiveMigration).toContain(
+      "drop constraint if exists email_delivery_queue_task_id_fkey",
+    );
+    expect(correctiveMigration).toContain(
+      "create index if not exists email_delivery_queue_task_id_idx",
+    );
     expect(migration).toContain("'assignment', 'task_due_soon', 'live_operation_prep'");
     expect(migration).toContain("p_limit not between 1 and 10");
     expect(migration).toContain("daily_allowance between 1 and 70");
     expect(migration).toContain("new.created_at + interval '24 hours'");
     expect(migration).toContain("order by queue.priority, queue.created_at, queue.id");
     expect(migration).toContain("order by leased.priority, leased.created_at, leased.id");
+  });
+
+  it("ends with no email foreign key to events or tasks", () => {
+    expect(correctiveRaw).not.toContain("\r");
+    expect(correctiveMigration).not.toMatch(/create or replace function/);
+    expect(correctiveMigration).not.toContain("session_user");
+    expect(correctiveMigration.slice(0, correctiveMigration.indexOf("do $$", 1))).toContain(
+      "current_user <> 'postgres'",
+    );
+    expect(correctiveMigration).toContain(
+      "source_namespace.nspname = 'ceit_connect_private'",
+    );
+    expect(correctiveMigration).toContain("source_class.relname = 'email_delivery_queue'");
+    expect(correctiveMigration).toContain("source_class.relname::text like 'email\\_%'");
+    expect(correctiveMigration).toContain("source_class.relname = 'user_email_preferences'");
+    expect(correctiveMigration).toContain(
+      "constraint_row.confrelid = 'public.tasks'::regclass",
+    );
+    expect(correctiveMigration).toContain(
+      "constraint_row.confrelid in (\n      'public.events'::regclass,\n      'public.tasks'::regclass\n    )",
+    );
+  });
+
+  it("requires the event-delete FK count to equal its exact inventory", () => {
+    expect(correctiveMigration).toContain(
+      "from ceit_connect_private.event_delete_fk_lock_list",
+    );
+    expect(correctiveMigration).toContain("if v_actual_count <> v_expected_count then");
+    expect(correctiveMigration).toContain(
+      "Event deletion foreign-key inventory count mismatch.",
+    );
   });
 
   it("keeps seed best-effort and preference missing-as-enabled", () => {

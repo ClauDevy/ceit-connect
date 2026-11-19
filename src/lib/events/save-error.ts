@@ -18,6 +18,9 @@ export function getEventSaveErrorMessage(error: SupabaseSaveError) {
   if (error.code === "CCP01") {
     return "This event already has the maximum of 200 tasks.";
   }
+  if (error.code === "55000") {
+    return "Task content is temporarily being prepared for email. Try again.";
+  }
   if (error.code === "CCT01") {
     return "Only an active Co-Admin can create an event from an Archived template.";
   }

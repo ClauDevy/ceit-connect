@@ -3,7 +3,7 @@
 Run after `npx supabase db push` in Dev. This self-contained transaction creates
 its own fixtures and credential, exercises real trigger/RPC behavior, stores
 results in ordinary in-transaction tables, and intentionally rolls back.
-Expected: `TEST RESULTS 21/21 PASS — transaction intentionally rolled back`.
+Expected: `TEST RESULTS 29/29 PASS — transaction intentionally rolled back`.
 
 ```sql
 begin;
@@ -31,16 +31,19 @@ insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_co
 ('e1000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e1-main@example.invalid','',now(),'{}','{}',now(),now()),
 ('e1000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e1-inactive@example.invalid','',now(),'{}','{}',now(),now()),
 ('e1000000-0000-4000-8000-000000000003','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e1-unconfirmed@example.invalid','',null,'{}','{}',now(),now()),
-('e1000000-0000-4000-8000-000000000004','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e1-auth-mismatch@example.invalid','',now(),'{}','{}',now(),now());
+('e1000000-0000-4000-8000-000000000004','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e1-auth-mismatch@example.invalid','',now(),'{}','{}',now(),now()),
+('e1000000-0000-4000-8000-000000000005','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e1-admin@example.invalid','',now(),'{}','{}',now(),now());
 select set_config('ceit_connect.officer_writer','invite_new_officer',true);
 insert into public.users(id,email,full_name,role,committee_id,is_active) values
 ('e1000000-0000-4000-8000-000000000001','e1-main@example.invalid','E1 Main','Member','e100c000-0000-4000-8000-000000000001',true),
 ('e1000000-0000-4000-8000-000000000002','e1-inactive@example.invalid','E1 Inactive','Member','e100c000-0000-4000-8000-000000000001',false),
 ('e1000000-0000-4000-8000-000000000003','e1-unconfirmed@example.invalid','E1 Unconfirmed','Member','e100c000-0000-4000-8000-000000000001',true),
-('e1000000-0000-4000-8000-000000000004','e1-profile-mismatch@example.invalid','E1 Mismatch','Member','e100c000-0000-4000-8000-000000000001',true);
+('e1000000-0000-4000-8000-000000000004','e1-profile-mismatch@example.invalid','E1 Mismatch','Member','e100c000-0000-4000-8000-000000000001',true),
+('e1000000-0000-4000-8000-000000000005','e1-admin@example.invalid','E1 Admin','Admin',null,true);
 select set_config('ceit_connect.officer_writer','',true);
 insert into public.events(id,name,start_date,end_date,status,created_by) values
 ('e100e000-0000-4000-8000-000000000001','E1 Event',current_date,current_date+1,'Active','e1000000-0000-4000-8000-000000000001');
+select set_config('ceit_connect.task_access_writer','create_active_event_task',true);
 insert into public.tasks(
  id,event_id,committee_id,title,description,phase,status,priority,task_type,
  due_date,call_time,end_time,primary_assignees,assist_assignees,is_confidential,
@@ -48,6 +51,7 @@ insert into public.tasks(
 ) values
 ('e100a000-0000-4000-8000-000000000001','e100e000-0000-4000-8000-000000000001','e100c000-0000-4000-8000-000000000001','Visible E1 task','E1 visible fixture','E1','To Do','Medium','Deliverable',null,null,null,'{}'::uuid[],'{}'::uuid[],false,false,'{}'::uuid[],'e1000000-0000-4000-8000-000000000001',1024,statement_timestamp()),
 ('e100a000-0000-4000-8000-000000000002','e100e000-0000-4000-8000-000000000001','e100c000-0000-4000-8000-000000000001','Secret E1 task','E1 confidential fixture','E1','To Do','High','Deliverable',null,null,null,'{}'::uuid[],'{}'::uuid[],true,false,'{}'::uuid[],'e1000000-0000-4000-8000-000000000001',2048,statement_timestamp());
+select set_config('ceit_connect.task_access_writer','',true);
 
 delete from ceit_connect_private.email_sender_credentials;
 insert into ceit_connect_private.email_sender_credentials(slot,generation,salt,secret_hash)
@@ -107,14 +111,54 @@ do $$ begin
  exception when sqlstate '22023' then perform public.e1_record('11 null acknowledgement outcome rejected',true);end;
 end $$;
 
+insert into public.notifications(id,user_id,type,task_id) values
+('e1070000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','assignment','e100a000-0000-4000-8000-000000000001');
+do $$
+declare
+ v_delivery_id uuid;
+ v_lease_token uuid;
+ v_task_title text;
+ v_target_path text;
+ v_generic boolean;
+ v_acknowledged boolean;
+ v_update_succeeded boolean:=false;
+begin
+ select claimed.out_delivery_id,claimed.out_lease_token
+ into v_delivery_id,v_lease_token
+ from public.claim_email_deliveries(1) as claimed;
+ perform set_config('ceit_connect.task_access_writer','set_task_confidentiality',true);
+ update public.tasks set is_confidential=true
+ where id='e100a000-0000-4000-8000-000000000001';
+ perform set_config('ceit_connect.task_access_writer','',true);
+ select prepared.out_task_title,prepared.out_target_path
+ into v_task_title,v_target_path
+ from public.prepare_email_delivery(v_delivery_id,v_lease_token) as prepared;
+ v_generic:=found and v_task_title is null and v_target_path='/workspace';
+ v_acknowledged:=public.acknowledge_email_delivery(
+  v_delivery_id,v_lease_token,'success',200
+ );
+ begin
+  perform set_config('ceit_connect.task_access_writer','set_task_confidentiality',true);
+  update public.tasks set is_confidential=false
+  where id='e100a000-0000-4000-8000-000000000001';
+  perform set_config('ceit_connect.task_access_writer','',true);
+  v_update_succeeded:=true;
+ exception when others then
+  perform set_config('ceit_connect.task_access_writer','',true);
+ end;
+ perform public.e1_record('12 post-claim confidentiality is generic',v_generic);
+ perform public.e1_record('13 acknowledge clears guard for same task update',
+  v_acknowledged and v_update_succeeded);
+end $$;
+
 select set_config('request.jwt.claim.sub','e1000000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.notifications(id,user_id,type,task_id) values('e1020000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','assignment','e100a000-0000-4000-8000-000000000001');
 select public.set_important_email_updates_enabled(false);
 insert into public.notifications(id,user_id,type,task_id) values('e1020000-0000-4000-8000-000000000002','e1000000-0000-4000-8000-000000000001','assignment','e100a000-0000-4000-8000-000000000001');
 select public.set_important_email_updates_enabled(true);
-select public.e1_record('12 disable suppresses pending',exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1020000-0000-4000-8000-000000000001' and state='suppressed'));
-select public.e1_record('13 re-enable does not backfill',not exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1020000-0000-4000-8000-000000000002'));
+select public.e1_record('14 disable suppresses pending',exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1020000-0000-4000-8000-000000000001' and state='suppressed'));
+select public.e1_record('15 re-enable does not backfill',not exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1020000-0000-4000-8000-000000000002'));
 
 insert into public.notifications(id,user_id,type,task_id) select
  ('e1030000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,'e1000000-0000-4000-8000-000000000001','task_due_soon','e100a000-0000-4000-8000-000000000001' from generate_series(1,12) s(i);
@@ -122,7 +166,7 @@ truncate public.e1_claimed restart identity;
 insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,notification_type,attempt)
 select out_delivery_id,out_lease_token,out_run_id,out_run_token,out_notification_type,out_attempt
 from public.claim_email_deliveries(10);
-select public.e1_record('14 per-run cap is ten',(select count(*)=10 from public.e1_claimed));
+select public.e1_record('16 per-run cap is ten',(select count(*)=10 from public.e1_claimed));
 
 insert into public.notifications(id,user_id,type,task_id) values
 ('e1040000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000002','assignment','e100a000-0000-4000-8000-000000000001'),
@@ -131,11 +175,49 @@ insert into public.notifications(id,user_id,type,task_id) values
 insert into ceit_connect_private.email_delivery_queue(notification_id,task_id,user_id,notification_type,priority,stale_at)
 select id,task_id,user_id,type,0,created_at+interval '24 hours' from public.notifications where id::text like 'e104%';
 select count(*) from public.claim_email_deliveries(10);
-select public.e1_record('15 invalid recipients are not claimed',not exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id::text like 'e104%' and state='leased'));
+select public.e1_record('17 invalid recipients are not claimed',not exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id::text like 'e104%' and state='leased'));
+
+insert into ceit_connect_private.email_delivery_queue(
+ id,task_id,user_id,notification_type,priority,state,attempt_count,
+ next_attempt_at,stale_at,lease_token,lease_expires_at
+) values
+('e1080000-0000-4000-8000-000000000001','e100a000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','assignment',0,'leased',1,clock_timestamp(),clock_timestamp()+interval '24 hours','e1081000-0000-4000-8000-000000000001',clock_timestamp()+interval '2 minutes'),
+('e1080000-0000-4000-8000-000000000002','e100a000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','assignment',0,'leased',1,clock_timestamp(),clock_timestamp()+interval '24 hours','e1081000-0000-4000-8000-000000000002',clock_timestamp()-interval '1 second'),
+('e1080000-0000-4000-8000-000000000003','e100a000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000002','assignment',0,'leased',1,clock_timestamp(),clock_timestamp()+interval '24 hours','e1081000-0000-4000-8000-000000000003',clock_timestamp()+interval '2 minutes'),
+('e1080000-0000-4000-8000-000000000004','e100a000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000003','assignment',0,'leased',1,clock_timestamp(),clock_timestamp()+interval '24 hours','e1081000-0000-4000-8000-000000000004',clock_timestamp()+interval '2 minutes'),
+('e1080000-0000-4000-8000-000000000005','e100a000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000004','assignment',0,'leased',1,clock_timestamp(),clock_timestamp()+interval '24 hours','e1081000-0000-4000-8000-000000000005',clock_timestamp()+interval '2 minutes'),
+('e1080000-0000-4000-8000-000000000006','e100a000-0000-4000-8000-000000000002','e1000000-0000-4000-8000-000000000001','assignment',0,'leased',1,clock_timestamp(),clock_timestamp()+interval '24 hours','e1081000-0000-4000-8000-000000000006',clock_timestamp()+interval '2 minutes');
+select public.e1_record('18 wrong lease token prepares no row',not exists(
+ select 1 from public.prepare_email_delivery(
+  'e1080000-0000-4000-8000-000000000001','e1081000-0000-4000-8000-000000000099')));
+select public.e1_record('19 expired lease prepares no row',not exists(
+ select 1 from public.prepare_email_delivery(
+  'e1080000-0000-4000-8000-000000000002','e1081000-0000-4000-8000-000000000002')));
+select public.e1_record('20 inactive user prepares no row',not exists(
+ select 1 from public.prepare_email_delivery(
+  'e1080000-0000-4000-8000-000000000003','e1081000-0000-4000-8000-000000000003')));
+select public.e1_record('21 unconfirmed user prepares no row',not exists(
+ select 1 from public.prepare_email_delivery(
+  'e1080000-0000-4000-8000-000000000004','e1081000-0000-4000-8000-000000000004')));
+select public.e1_record('22 mismatched email prepares no row',not exists(
+ select 1 from public.prepare_email_delivery(
+  'e1080000-0000-4000-8000-000000000005','e1081000-0000-4000-8000-000000000005')));
+select set_config('request.jwt.claim.sub','e1000000-0000-4000-8000-000000000005',true);
+select count(*) from public.delete_task('e100a000-0000-4000-8000-000000000002');
+select public.e1_record('23 deleted task prepares no row',not exists(
+ select 1 from public.prepare_email_delivery(
+  'e1080000-0000-4000-8000-000000000006','e1081000-0000-4000-8000-000000000006')));
+select set_config('request.jwt.claim.sub','e1000000-0000-4000-8000-000000000001',true);
+select public.acknowledge_email_delivery('e1080000-0000-4000-8000-000000000001','e1081000-0000-4000-8000-000000000001','permanent',400);
+select public.acknowledge_email_delivery('e1080000-0000-4000-8000-000000000002','e1081000-0000-4000-8000-000000000002','permanent',400);
+select public.acknowledge_email_delivery('e1080000-0000-4000-8000-000000000003','e1081000-0000-4000-8000-000000000003','permanent',400);
+select public.acknowledge_email_delivery('e1080000-0000-4000-8000-000000000004','e1081000-0000-4000-8000-000000000004','permanent',400);
+select public.acknowledge_email_delivery('e1080000-0000-4000-8000-000000000005','e1081000-0000-4000-8000-000000000005','permanent',400);
+select public.acknowledge_email_delivery('e1080000-0000-4000-8000-000000000006','e1081000-0000-4000-8000-000000000006','permanent',400);
 
 insert into public.notifications(id,user_id,type,task_id,created_at) values('e1050000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','assignment','e100a000-0000-4000-8000-000000000001',clock_timestamp()-interval '24 hours');
 select count(*) from public.claim_email_deliveries(1);
-select public.e1_record('16 twenty-four-hour boundary is stale',exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1050000-0000-4000-8000-000000000001' and state='stale'));
+select public.e1_record('24 twenty-four-hour boundary is stale',exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1050000-0000-4000-8000-000000000001' and state='stale'));
 
 insert into public.notifications(id,user_id,type,task_id) values('e1060000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','assignment','e100a000-0000-4000-8000-000000000001');
 update ceit_connect_private.email_delivery_queue set attempt_count=4 where notification_id='e1060000-0000-4000-8000-000000000001';
@@ -144,28 +226,28 @@ insert into public.e1_claimed(delivery_id,lease_token,run_id,run_token,notificat
 select out_delivery_id,out_lease_token,out_run_id,out_run_token,out_notification_type,out_attempt
 from public.claim_email_deliveries(1);
 select public.acknowledge_email_delivery((select delivery_id from public.e1_claimed),(select lease_token from public.e1_claimed),'transient',503);
-select public.e1_record('17 fifth attempt is terminal',exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1060000-0000-4000-8000-000000000001' and state='terminal' and terminal_reason='attempts_exhausted'));
+select public.e1_record('25 fifth attempt is terminal',exists(select 1 from ceit_connect_private.email_delivery_queue where notification_id='e1060000-0000-4000-8000-000000000001' and state='terminal' and terminal_reason='attempts_exhausted'));
 
 update ceit_connect_private.email_delivery_config set daily_allowance=(select count(*) from ceit_connect_private.email_send_attempts) where singleton;
-select public.e1_record('18 daily allowance stops claims',not exists(select 1 from public.claim_email_deliveries(10)));
+select public.e1_record('26 daily allowance stops claims',not exists(select 1 from public.claim_email_deliveries(10)));
 select count(*) from public.claim_email_deliveries(10);
-select public.e1_record('19 allowance reached is hourly bounded',(select count(*)=1 from ceit_connect_private.email_delivery_runs where allowance_reached_count=1 and started_at>=date_trunc('hour',clock_timestamp())));
-select public.e1_record('20 kick false when allowance spent',ceit_connect_private.request_email_kick_if_due() is false);
+select public.e1_record('27 allowance reached is hourly bounded',(select count(*)=1 from ceit_connect_private.email_delivery_runs where allowance_reached_count=1 and started_at>=date_trunc('hour',clock_timestamp())));
+select public.e1_record('28 kick false when allowance spent',ceit_connect_private.request_email_kick_if_due() is false);
 delete from ceit_connect_private.email_send_attempts;
 update ceit_connect_private.email_delivery_queue
 set state='suppressed',terminal_at=clock_timestamp(),terminal_reason='stale',
     lease_token=null,lease_expires_at=null,send_guard_until=null
 where state in('pending','leased');
-select public.e1_record('21 kick false when nothing due',ceit_connect_private.request_email_kick_if_due() is false);
+select public.e1_record('29 kick false when nothing due',ceit_connect_private.request_email_kick_if_due() is false);
 
 do $$ declare v_total integer;v_failed integer;v_labels text;begin
  select count(*)::integer,count(*) filter(where passed is false)::integer,
  string_agg(label,', ' order by label) filter(where passed is false)
  into v_total,v_failed,v_labels from public.e1_behavior_results;
- if v_total<>21 or v_failed<>0 then raise exception
- 'TEST RESULTS %/21 FAIL — % failed: %; transaction intentionally rolled back',
+ if v_total<>29 or v_failed<>0 then raise exception
+ 'TEST RESULTS %/29 FAIL — % failed: %; transaction intentionally rolled back',
  v_total-v_failed,v_failed,coalesce(v_labels,'count mismatch');end if;
- raise exception 'TEST RESULTS 21/21 PASS — transaction intentionally rolled back';
+ raise exception 'TEST RESULTS 29/29 PASS — transaction intentionally rolled back';
 end $$;
 rollback;
 ```
