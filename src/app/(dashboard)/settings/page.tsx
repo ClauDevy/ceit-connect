@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, BookOpen, Download, Image as ImageIcon, KeyRound, LogOut, UserRound } from "lucide-react";
+import { BellRing, BookOpen, Download, Image as ImageIcon, KeyRound, LogOut, Mail, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
@@ -13,6 +13,7 @@ import { PushNotificationsControl } from "@/components/settings/push-notificatio
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { PushAwareSignOutForm } from "@/components/layout/push-aware-sign-out-form";
+import { ImportantEmailControl } from "@/components/settings/important-email-control";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -23,6 +24,11 @@ export default async function SettingsPage() {
     .select("full_name, password_set, avatar_url")
     .eq("id", user.id)
     .single();
+  const emailPreference = await supabase.rpc(
+    "get_important_email_updates_enabled",
+  );
+  const emailPreferenceAvailable =
+    !emailPreference.error && typeof emailPreference.data === "boolean";
 
   return (
     <div className="motion-content-ready mx-auto w-full max-w-4xl">
@@ -105,6 +111,18 @@ export default async function SettingsPage() {
 
         <SettingsSection
           motionIndex={5}
+          title="Important emails"
+          description="Choose whether important task updates are sent to your confirmed account email."
+          icon={<Mail aria-hidden />}
+        >
+          <ImportantEmailControl
+            available={emailPreferenceAvailable}
+            initialEnabled={emailPreferenceAvailable ? emailPreference.data : true}
+          />
+        </SettingsSection>
+
+        <SettingsSection
+          motionIndex={6}
           title="Install the app"
           description="Keep CEIT Connect within easy reach on your phone."
           icon={<Download aria-hidden />}
@@ -113,7 +131,7 @@ export default async function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          motionIndex={6}
+          motionIndex={7}
           className="lg:col-span-2"
           title="Sign out"
           description="End your CEIT Connect session on this device."

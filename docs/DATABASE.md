@@ -15,6 +15,7 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 - `password_set` = the person has set a password for email/password sign-in. It drives the Settings navigation reminder only and is never an authorization or Google-admission gate.
 - A person always needs **both** an `auth.users` row and a `users` row. The Invite flow creates both together and rolls back the login account if the profile insert fails.
 - Users are never deleted. Deactivate with `is_active = false`.
+- Important-email preference is stored separately in private `user_email_preferences`. It defaults on; the getter treats a missing best-effort seed row as on, and the authenticated setter derives `auth.uid()`, requires an active non-anonymized profile, and creates the row when missing.
 - `anonymized_at timestamptz null` is the terminal former-member marker. A
   marked row stays inactive with its UUID, role, committee, and history
   references preserved; its display identity is fixed to `Former member` and
@@ -273,6 +274,39 @@ Task Draft visibility is enforced separately from event visibility. `tasks_selec
 - `events_require_task_when_inserted_active` / `tasks_preserve_active_event_task_on_delete` / `tasks_preserve_active_event_task_on_event_move` — deferred constraint triggers that enforce at transaction end that a newly inserted Active event and an Active event affected by task deletion or a real `event_id` change retain at least one task. They do not fire for ordinary event/task updates; Drafts may remain empty, same-transaction replacements work, and event deletion remains compatible.
 - Known, accepted limitation: the raw `tasks` row is not field-masked at the column-grant level. A confidential raw row is available only to an active Admin, active owning Co-Admin, or active non-Draft primary/assist assignee. Restricted RPCs—not raw `SELECT`—serve allowed viewers and any future archive late-share viewers. Permanent direct-`SELECT` regression tests guard this boundary.
 
+### Phase 5 E1 important-email boundary
+
+`ceit_connect_private.email_delivery_queue` is a content-free, notification-
+deduplicated outbox. Claiming reserves a two-minute lease and a quota attempt
+but returns no address or task content. `prepare_email_delivery(uuid,uuid)`
+authenticates the app-owned sender capability again, requires the live lease,
+re-checks the active/non-anonymized profile and confirmed matching Auth email,
+and projects the current task through `task_content_access_for_user`. Only
+`real`, non-confidential access returns a title and `/tasks/<id>`; every other
+current access state returns a null title and `/workspace`.
+
+Preparation sets a 30-second `send_guard_until`. A separate fail-closed task
+trigger temporarily rejects deletion or changes to title, committee,
+assignees, confidentiality, or allowed viewers while that guard is active. The
+app starts Resend only if the remaining guard covers the provider's bounded
+timeout; acknowledgement clears the guard on every outcome. Preparation locks
+the task row `FOR SHARE` before setting the queue guard, so a prior task writer
+finishes first and the prepared projection uses a fresh post-wait statement.
+The queue stores the task UUID directly as a non-null value with a normal
+lookup index, but deliberately has no foreign key to `public.tasks`: adding one
+would fall outside the exact event-deletion FK inventory and stop every event
+deletion with `CCE09`. Deleting the source notification uses `ON DELETE SET
+NULL` for its dedupe reference and cannot hide a live task guard. If the task
+is deleted before preparation, preparation returns no row and the delivery is
+terminated without content.
+
+`email_send_attempts` deliberately has no queue foreign key, so deleting a
+notification or cleaning a terminal queue row cannot reopen quota. Claim and
+the cron wake enforce both the configured Manila-day cap and the same cap over
+a rolling 24-hour window. Attempt rows are retained 48 hours, terminal queue
+rows 7 days, and finished or abandoned run rows 30 days. The minute wake runs
+bounded cleanup even when it returns false because no delivery is due.
+
 ## Storage
 
 Bucket `avatars`: public read, 2 MB limit, MIME types `image/jpeg`, `image/png`, `image/webp`. Files live at `<user_id>/avatar.webp` (one fixed filename, so re-uploading overwrites). Storage RLS: anyone can read; a user can insert/update/delete only inside the folder named after their own `auth.uid()`. **The bucket itself is not created by migrations** — create it by hand in each environment; the migration only creates the policies.
@@ -376,6 +410,8 @@ Known Storage limitation: Postgres and Storage cannot share a transaction. Direc
 85. `20261121140000_president_committee_admin_guard.sql` - Phase 5 V1(b) requires every new President-committee assignment to have role `Admin`, grandfathers legacy invalid rows only while both `role` and `committee_id` remain unchanged, rejects non-Admin President officer-invite reservations, and preserves the existing officer-writer authorization guard ahead of the new trigger. Local only; owner review and Dev verification pending.
 86. `20261122120000_last_active_admin_guard.sql` - Phase 5 Step B serializes protected `public.users` updates on the officer advisory lock and checks the exact confirmed active Admin floor in an AFTER-row trigger, including multi-row and privileged writes. Fixed `CCG02` has no postgres/service-role bypass; zero-to-zero grandfathering and existing `CCO05`, `CCO09`, and hard-delete behavior remain. No existing function is replaced. Local only; Dev/Prod application pending.
 87. `20261123120000_task_editor_self_assignment.sql` - Phase 5 Batch C lets an active Admin select themselves through the five Board/Event task-editor writers and lets an active Co-Admin do so only when the task committee is their own (both old and new committee on UPDATE). A new revoked, read-only helper requires postgres execution and an exact editor marker; the latest assignee guard changes only its self-selection predicate. Raw writes, viewers, dependencies, `assign_task_people`, `claim_task`, caps, policies, and service-role access are unchanged. Local only; Dev/Prod application pending.
+88. `20261125120000_important_email_notifications.sql` - Phase 5 E1 adds default-on own-user email preferences, the private content-free outbox and deletion-resistant attempt ledger, assignment-first bounded leases/retries, Manila-day plus rolling-24-hour allowances, current recipient/access/confidentiality send preparation, aggregate run history, and the bounded Prod wake/cleanup helper. No service-role sender path exists. Applied on Dev; Prod application pending.
+89. `20261126120000_email_queue_drop_task_fk.sql` - removes the E1 queue's task foreign key so the exact event-deletion FK inventory remains complete, retains `task_id` as indexed `uuid not null`, rejects either direction of an identity mismatch between actual event/task FKs and the registered inventory, and still fails if any email table references events/tasks. It also replaces only the applied claim, purge, and wake bodies: stale pending work is finalized immediately, stale leased work only after lease expiry, purge adds two oldest-first 500-row `SKIP LOCKED` stages that finalize eligible stale rows and pending task-orphans with the existing `stale` state/reason before running the byte-identical retention deletes, and wake contains Vault queries plus the `net.http_post` enqueue in an inner exception block so their synchronous exceptions cannot roll back completed purge work. `net.http_post` itself is asynchronous: a later connection or HTTP failure does not raise in the helper and may leave its error counter unchanged, so operators verify the stored `last_request_id` in `net._http_response`. This prevents active-lease theft and stops stale/orphan rows from causing an otherwise idle wake. Owners and privileges are reissued unchanged. Dev/Prod application pending; Prod applies migrations 88 and 89 together in one database push.
 
 The authoritative A/B/D object-to-source mapping and exact Batch 14 assertions are in `docs/phase-4b/step-14-tests.md`. Old Phase 4 aggregate counts remain historical; no new count is recorded until the owner supplies live Dev catalog output. External Prod `pg_cron` jobs are not migration/catalog objects: owner verification on 2026-11-07 found exactly one active `ceit-connect-event-auto-archive` row (jobid 4, `5 16 * * *`, `select * from public.run_event_auto_archive();`, database/username `postgres`). N3a is live on Prod, and exactly one active `ceit-connect-notification-cleanup` job is scheduled at `15 16 * * *` with command `select * from public.run_notification_cleanup();` and username `postgres`; only verification of its first scheduled run is pending. Dev has neither cron job; its runners are manual.
 

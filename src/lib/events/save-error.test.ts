@@ -35,6 +35,17 @@ describe("getEventSaveErrorMessage", () => {
     expect(message).not.toContain("123");
   });
 
+  it("maps the email preparation guard without exposing database text", () => {
+    const message = getEventSaveErrorMessage({
+      code: "55000",
+      message: "private database text",
+    });
+    expect(message).toBe(
+      "Task content is temporarily being prepared for email. Try again.",
+    );
+    expect(message).not.toContain("private");
+  });
+
   it("uses fixed generic copy for unmapped database messages", () => {
     expect(
       getEventSaveErrorMessage({

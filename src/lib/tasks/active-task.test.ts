@@ -411,7 +411,7 @@ describe("active task CCL01 retry helper", () => {
     expect(rpc).toHaveBeenCalledTimes(3);
   });
 
-  it.each(["40001", "40P01", "CCS01", "CCP01", "CCN01", "42501", "XX999"])(
+  it.each(["40001", "40P01", "CCS01", "CCP01", "CCN01", "55000", "42501", "XX999"])(
     "does not retry %s",
     async (code) => {
       const rpc = vi.fn().mockResolvedValue({
@@ -436,6 +436,7 @@ describe("active task CCL01 retry helper", () => {
       ["CCS01", "This task changed after you loaded it. Reload and try again."],
       ["CCP01", "This event already has the maximum of 200 tasks."],
       ["CCN01", "No changes to save."],
+      ["55000", "Task content is temporarily being prepared for email. Try again."],
       ["42501", "The task is unavailable."],
     ]);
     for (const [code, message] of expected) {
