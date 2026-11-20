@@ -31,10 +31,11 @@ two oldest-first 500-row `SKIP LOCKED` batches, stale deliveries whose leases
 are not active and pending deliveries whose task no longer exists. Both use the
 already-allowed `stale` terminal state and reason, after which the unchanged
 retention stages can remove them. The wake helper now keeps cleanup outside a
-nested Vault/HTTP exception block, so a provider-side wake failure cannot roll
-back maintenance that already completed. The migration's final proof compares
-every event/task foreign key to the deletion inventory in both directions by
-constraint and table identity, rather than accepting a matching count alone.
+nested exception block, so a synchronous Vault-query or `net.http_post` enqueue
+exception cannot roll back maintenance that already completed. The migration's
+final proof compares every event/task foreign key to the deletion inventory in
+both directions by constraint and table identity, rather than accepting a
+matching count alone.
 
 The corrective function-body differences are deliberately narrow:
 
@@ -42,7 +43,7 @@ The corrective function-body differences are deliberately narrow:
 | --- | --- | --- | --- |
 | `claim_email_deliveries(integer)` | Finalizes every pending or leased row past `stale_at`. | Finalizes a past-`stale_at` pending row, or a leased row only when both its lease and `stale_at` have expired. | An active lease remains available to its current worker for acknowledgement. |
 | `purge_email_delivery_history(timestamptz)` | Begins with the three retention deletes. | Runs the two bounded stale/orphan finalization stages, then the same three retention deletes. | Stale and task-orphaned pending work cannot keep an otherwise idle wake alive; active leases remain untouched. |
-| `request_email_kick_if_due()` | Its function-level exception handler also rolled back earlier purge work when Vault or HTTP raised. | Leaves the session check, purge, due check, and allowance check in place, then contains Vault reads, HTTP, kick-state success update, and the existing protected error counter in an inner exception block. | Vault or HTTP failure returns `false` and records the safe error count without undoing completed retention cleanup. No-work and allowance-spent paths are unchanged. |
+| `request_email_kick_if_due()` | Its function-level exception handler also rolled back earlier purge work when a Vault query or `net.http_post` enqueue raised synchronously. | Leaves the session check, purge, due check, and allowance check in place, then contains Vault reads, the `net.http_post` enqueue, kick-state success update, and the existing protected error counter in an inner exception block. | A synchronous Vault-query or enqueue exception returns `false` and attempts to increment the safe error count without undoing completed retention cleanup. No-work and allowance-spent paths are unchanged. |
 
 All other statements in the three function bodies are identical to migration
 88; the corrective migration reissues the same owners, revokes, and grant.
@@ -96,6 +97,13 @@ configured Manila-business-day allowance or rolling 24-hour allowance is
 already spent. Its cleanup call occurs before those no-wake returns.
 Claims record at most one aggregate `allowance reached` run row per hour, so a
 one-minute cron cannot grow run history by 1,440 rows per exhausted day.
+
+`net.http_post` only enqueues an asynchronous `pg_net` request. A connection or
+HTTP failure after that enqueue does not raise inside
+`request_email_kick_if_due()` and can therefore leave
+`ceit_connect_private.email_kick_state.error_count` unchanged. Operators must
+verify the most recently enqueued wake through its `last_request_id`, not infer
+delivery from the function's `true` result or the error counter alone.
 
 ## Environment variables
 
@@ -189,7 +197,24 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
    secret from the Prod script run. Do not put either value in a query string,
    and do not reuse the Dev wake secret.
 7. Manually wake once and verify one controlled delivery, generic response,
-   safe logs, and aggregate run history.
+   safe logs, and aggregate run history. After `pg_net` has processed the
+   request, run this read-only SQL Editor paste. It resolves the stored
+   `last_request_id` internally and returns only the response status and safe
+   error message—no URL, headers, body, or secret:
+
+   ```sql
+   select response.status_code as status,
+          response.error_msg as error_message
+   from ceit_connect_private.email_kick_state as kick_state
+   left join net._http_response as response
+     on response.id = kick_state.last_request_id
+   where kick_state.singleton;
+   ```
+
+   A null response means the request is still pending, expired from `pg_net`
+   history, or was not enqueued. A non-success status or non-null error message
+   means the asynchronous wake did not complete successfully; it may not have
+   incremented `email_kick_state.error_count`.
 8. Last, in Supabase Dashboard → Integrations → Cron, create one job:
 
    - Name: `important-email-delivery`
