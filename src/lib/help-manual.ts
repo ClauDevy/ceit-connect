@@ -1,4 +1,5 @@
 import type { Role } from "@/lib/types";
+import { COUNCIL_CONTACT } from "@/lib/council-info";
 
 /**
  * Which little drawing a block shows (see `components/help/help-illustrations.tsx`).
@@ -42,10 +43,12 @@ export type HelpManualFaq = {
 };
 
 export type HelpContactChannel = {
-  id: "email" | "messenger" | "hours" | "office";
+  id: "email" | "facebook" | "office";
   label: string;
   value: string;
   note: string;
+  /** Makes the card tappable: a mailto: or https link. Omit for the office address. */
+  href?: string;
 };
 
 export type HelpContact = {
@@ -459,36 +462,28 @@ const FAQS: readonly HelpManualFaq[] = [
   },
 ];
 
-/**
- * PLACEHOLDER contact details. Replace each `value` with the real council contact.
- * (These are the only lines you need to edit to finish the Contact section.)
- */
 const CONTACT: HelpContact = {
-  summary: "Still stuck? Reach out and a real person will help you.",
+  summary: "Still stuck? Reach out and a real person from the council will help you.",
   channels: [
     {
       id: "email",
       label: "Email",
-      value: "support@your-council-email.example",
+      value: COUNCIL_CONTACT.email,
       note: "Best for questions that are not urgent.",
+      href: `mailto:${COUNCIL_CONTACT.email}`,
     },
     {
-      id: "messenger",
-      label: "Messenger or Facebook page",
-      value: "Add your council page link here",
+      id: "facebook",
+      label: "Facebook page",
+      value: "Message the CEIT Student Council",
       note: "Good for quick questions.",
-    },
-    {
-      id: "hours",
-      label: "Support hours",
-      value: "Add days and times here",
-      note: "When someone is available to reply.",
+      href: COUNCIL_CONTACT.facebookUrl,
     },
     {
       id: "office",
-      label: "Council office",
-      value: "Add the room or building here",
-      note: "Where to find the team in person.",
+      label: "Visit us",
+      value: COUNCIL_CONTACT.office,
+      note: "Drop by and talk to the team in person.",
     },
   ],
   tip: "When you write to us, tell us your name, your committee, and what you were doing when it went wrong. A screenshot helps a lot.",

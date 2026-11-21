@@ -66,7 +66,7 @@ describe("Settings sign-out and Terms links", () => {
     expect(html).toContain('data-email-available="true"')
     expect(html).toContain('data-email-enabled="false"')
     expect(html).toContain('data-motion-index="7"')
-    expect(html).toContain("lg:col-span-2")
+    expect(html).toContain("lg:columns-2")
     expect(html).toContain('data-push-aware-user="settings-user"')
     expect(html.indexOf('data-title="Sign out"')).toBeGreaterThan(html.indexOf('data-title="Install the app"'))
   })

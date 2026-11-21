@@ -1,8 +1,16 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronDown, LockKeyhole, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  Cog,
+  LockKeyhole,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -26,16 +34,12 @@ import {
   activityOpenTaskHref,
   type ActivityRow,
 } from "@/lib/activity-log";
+import { groupActivityByDay, manilaDayKey } from "@/components/activity-log/activity-log-days";
 import { cn } from "@/lib/utils";
 
 const manilaTime = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
   timeStyle: "short",
-  timeZone: "Asia/Manila",
-});
-
-const manilaDate = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
   timeZone: "Asia/Manila",
 });
 
@@ -50,39 +54,19 @@ const actionIcons = {
   trash: Trash2,
 };
 
+// Semantic tokens only. The word (Created / Updated / Deleted) is always shown next to
+// the colour, so colour is never the only signal.
 const actionBadgeClasses = {
   INSERT: "border border-current/30 shadow-xs",
   UPDATE: "border border-primary/30 bg-primary/15 text-primary shadow-xs",
   DELETE: "border border-destructive/30 bg-destructive/15 text-destructive shadow-xs",
 };
 
-const actionAccentVariants = {
-  INSERT: "success",
-  UPDATE: "brand",
-  DELETE: "destructive",
-} as const;
-
-const actionAccentClasses = {
-  INSERT: "",
-  UPDATE: "bg-primary",
-  DELETE: "bg-destructive",
+const actionDotClasses = {
+  INSERT: "bg-success text-white",
+  UPDATE: "bg-primary text-primary-foreground",
+  DELETE: "bg-destructive text-white",
 };
-
-const globalActivityGrid =
-  "grid-cols-[135px_110px_minmax(220px,1fr)_180px_minmax(200px,1fr)]";
-
-function ActionAccent({ action }: Pick<ActivityRow, "action">) {
-  return (
-    <Badge
-      variant={actionAccentVariants[action]}
-      className={cn(
-        "absolute inset-y-0 left-0 w-[3px] rounded-none border-0 p-0",
-        actionAccentClasses[action],
-      )}
-      aria-hidden
-    />
-  );
-}
 
 function ActionBadge({ row, global }: { row: ActivityRow; global: boolean }) {
   if (!global) {
@@ -128,16 +112,27 @@ function RowDetails({ row, global }: { row: ActivityRow; global: boolean }) {
 function ChangeSummary({ row }: { row: ActivityRow }) {
   const taskHref = activityOpenTaskHref(row);
   return (
-    <div className="space-y-3">
-      <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-        {row.changeSummary?.map((change, index) => (
-          <li key={`${row.activityId}-${index}`}>{change}</li>
-        ))}
-      </ul>
+    <div className="grid gap-3">
+      <div>
+        <p className="mb-1.5 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+          What changed
+        </p>
+        <ul className="grid gap-1.5 text-sm text-foreground">
+          {row.changeSummary?.map((change, index) => (
+            <li key={`${row.activityId}-${index}`} className="flex gap-2.5">
+              <span
+                className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-primary"
+                aria-hidden
+              />
+              <span className="min-w-0 break-words">{change}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
       {taskHref ? (
         <Link
           href={taskHref}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-fit")}
         >
           Open task <ArrowUpRight aria-hidden />
         </Link>
@@ -146,85 +141,182 @@ function ChangeSummary({ row }: { row: ActivityRow }) {
   );
 }
 
-function GlobalDate({ value }: { value: string }) {
-  const date = new Date(value);
+/**
+ * Round avatar with initials (or a cog for automatic System changes) and a small
+ * Created / Updated / Deleted marker. Confidential rows show a lock instead of a person.
+ */
+function ActivityAvatar({ row }: { row: ActivityRow }) {
+  const MarkerIcon = actionIcons[ACTIVITY_ACTION_PRESENTATION[row.action].icon];
+  const initials = activityActorInitials(row.actorName);
+  const isSystem = row.actorName === "System";
   return (
-    <span className="block whitespace-nowrap">
-      <span className="block font-medium text-foreground">
-        {manilaDate.format(date)}
+    <span className="relative inline-flex size-10 shrink-0 sm:size-11" aria-hidden>
+      <span className="flex size-full items-center justify-center rounded-full border bg-secondary text-sm font-semibold text-secondary-foreground">
+        {row.isMasked ? (
+          <LockKeyhole className="size-4" />
+        ) : isSystem ? (
+          <Cog className="size-4" />
+        ) : (
+          (initials ?? "?")
+        )}
       </span>
-      <span className="block text-xs text-muted-foreground">
-        {manilaClock.format(date)}
+      <span
+        className={cn(
+          "absolute -right-1 -bottom-1 flex size-[18px] items-center justify-center rounded-full ring-2 ring-card [&_svg]:size-2.5",
+          actionDotClasses[row.action],
+        )}
+      >
+        <MarkerIcon />
       </span>
     </span>
   );
 }
 
-function GlobalTask({ row }: { row: ActivityRow }) {
-  if (row.isMasked) return <RowDetails row={row} global />;
+function GlobalRowMain({ row, expanded }: { row: ActivityRow; expanded: boolean }) {
+  if (row.isMasked) {
+    return (
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <ActionBadge row={row} global />
+        </div>
+        <p className="mt-1.5 flex items-center gap-1.5 font-display font-semibold">
+          <LockKeyhole className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          Confidential Task
+        </p>
+        <p className="text-xs text-muted-foreground">Details are hidden for your role.</p>
+      </div>
+    );
+  }
   return (
     <div className="min-w-0">
-      <p className="truncate font-semibold text-foreground">{row.taskTitle}</p>
-      <div className="mt-0.5 flex min-w-0 items-center gap-2">
-        <span className="truncate text-xs text-muted-foreground">
-          {activityEventLabel(row.eventName)}
-        </span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ActionBadge row={row} global />
         {row.committeeName ? (
-          <Badge variant="neutral" className="max-w-40 truncate py-0 text-[11px] font-medium">
+          <Badge variant="neutral" className="max-w-full truncate py-0.5 text-[11px] font-medium">
             {row.committeeName}
           </Badge>
         ) : null}
       </div>
+      <p
+        className={cn(
+          "mt-1.5 font-display text-[15px] leading-snug font-semibold break-words text-foreground",
+          !expanded && "line-clamp-2",
+        )}
+      >
+        {row.taskTitle}
+      </p>
+      <p className={cn("mt-0.5 text-xs break-words text-muted-foreground", !expanded && "line-clamp-2")}>
+        {activityEventLabel(row.eventName)}
+        {row.actorName ? <> · by {row.actorName}</> : null}
+      </p>
     </div>
   );
 }
 
-function GlobalActor({ name }: { name: string | null }) {
-  const initials = activityActorInitials(name);
-  if (!name || !initials) return <span className="text-muted-foreground">—</span>;
+function GlobalRowPreview({ row }: { row: ActivityRow }) {
+  if (row.isMasked) return null;
+  const first = row.changeSummary?.[0];
+  if (!first) return <span className="text-sm text-muted-foreground">No details</span>;
+  const additional = Math.max((row.changeSummary?.length ?? 0) - 1, 0);
   return (
-    <span className="flex min-w-0 items-center gap-2">
-      <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-full border bg-secondary text-xs font-semibold text-secondary-foreground"
-        aria-hidden
-      >
-        {initials}
-      </span>
-      <span className="truncate text-sm text-foreground">{name}</span>
-    </span>
+    <p className="flex min-w-0 items-baseline gap-2 rounded-lg bg-muted/60 px-2.5 py-1.5 text-sm text-foreground">
+      <span className="min-w-0 flex-1 truncate">{first}</span>
+      {additional > 0 ? (
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+          +{additional} more
+        </span>
+      ) : null}
+    </p>
   );
 }
 
-function GlobalChangePreview({
+function GlobalActivityRow({
   row,
   expandable,
   expanded,
+  onToggle,
+  revealProps,
 }: {
   row: ActivityRow;
   expandable: boolean;
   expanded: boolean;
+  onToggle: () => void;
+  revealProps: {
+    "data-motion-reveal-id": string;
+    ref: (node: HTMLElement | null) => void;
+  };
 }) {
-  if (row.isMasked) {
-    return <span className="text-sm text-muted-foreground">Hidden</span>;
-  }
-  const first = row.changeSummary?.[0] ?? "No details";
-  const additional = Math.max((row.changeSummary?.length ?? 0) - 1, 0);
+  const detailsId = `activity-details-${row.activityId}`;
+  const content = (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2.5 p-3.5 sm:p-4 md:grid-cols-[auto_minmax(0,1.25fr)_minmax(0,1fr)_auto] md:items-center md:gap-x-4">
+      <ActivityAvatar row={row} />
+      <GlobalRowMain row={row} expanded={expanded} />
+      <div className="col-start-3 row-start-1 flex flex-col items-end gap-1.5 text-right md:col-start-4 md:flex-row md:items-center md:gap-3">
+        <time
+          dateTime={row.activityCreatedAt}
+          className="text-xs font-medium whitespace-nowrap text-muted-foreground"
+        >
+          {manilaClock.format(new Date(row.activityCreatedAt))}
+        </time>
+        {expandable ? (
+          <span
+            className="flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground"
+            aria-hidden
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform motion-reduce:transition-none",
+                expanded && "rotate-180",
+              )}
+            />
+          </span>
+        ) : null}
+      </div>
+      {!row.isMasked ? (
+        <div className="col-span-2 col-start-2 min-w-0 md:col-span-1 md:col-start-3 md:row-start-1">
+          <GlobalRowPreview row={row} />
+        </div>
+      ) : null}
+    </div>
+  );
   return (
-    <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
-      <span className="min-w-0 flex-1 truncate">{first}</span>
-      {additional > 0 ? (
-        <span className="shrink-0 text-xs text-muted-foreground">+{additional} more</span>
-      ) : null}
+    <article
+      {...revealProps}
+      className={cn(
+        "overflow-hidden rounded-2xl border bg-card text-card-foreground transition-colors motion-reduce:transition-none",
+        expanded && "border-primary/40",
+      )}
+    >
       {expandable ? (
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none",
-            expanded && "rotate-180",
-          )}
-          aria-hidden
-        />
+        <button
+          type="button"
+          className="block min-h-11 w-full text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none"
+          aria-expanded={expanded}
+          aria-controls={detailsId}
+          onClick={onToggle}
+        >
+          {content}
+        </button>
+      ) : (
+        content
+      )}
+      {expandable ? (
+        // Same grid-row disclosure the shared motion kit's Collapse uses (.motion-collapse),
+        // with the reduced-motion fallback already in globals.css.
+        <div
+          className="motion-collapse"
+          data-open={expanded ? "true" : "false"}
+          aria-hidden={!expanded}
+          inert={!expanded ? true : undefined}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div id={detailsId} className="border-t bg-muted/40 px-4 py-3.5 sm:px-5">
+              <ChangeSummary row={row} />
+            </div>
+          </div>
+        </div>
       ) : null}
-    </span>
+    </article>
   );
 }
 
@@ -302,6 +394,34 @@ function HistoryActivityLogList({
   );
 }
 
+// Returns a Date that only changes when the Manila calendar day changes: it re-checks at the
+// next Manila midnight and when the tab becomes visible again, so "Today" never goes stale.
+function useManilaToday() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function sync() {
+      const current = new Date();
+      setNow((previous) =>
+        manilaDayKey(previous) === manilaDayKey(current) ? previous : current,
+      );
+      if (timer) clearTimeout(timer);
+      const msIntoDay = (current.getTime() + 8 * 3_600_000) % 86_400_000;
+      timer = setTimeout(sync, 86_400_000 - msIntoDay + 1000);
+    }
+    function onVisible() {
+      if (document.visibilityState === "visible") sync();
+    }
+    sync();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  return now;
+}
+
 function GlobalActivityLogList({
   rows,
   settled,
@@ -322,8 +442,10 @@ function GlobalActivityLogList({
     activityId: string | null;
   }>({ resetKey, activityId: null });
   const expandedId = expanded.resetKey === resetKey ? expanded.activityId : null;
-  const global = true;
   const motionState = activityMotionState(reduced);
+  // Day headings only. Row order is exactly what the reader returned.
+  const now = useManilaToday();
+  const groups = groupActivityByDay(rows, now);
 
   function toggle(row: ActivityRow) {
     setExpanded({
@@ -333,134 +455,36 @@ function GlobalActivityLogList({
   }
 
   return (
-    <div data-motion-state={motionState}>
-      <div className="hidden overflow-hidden rounded-2xl border bg-card text-card-foreground md:block">
-        <Table>
-          <TableHeader className="bg-secondary">
-            <TableRow>
-              <TableHead colSpan={5} className="p-0">
-                <div className={cn("grid items-center gap-4 px-4 py-3", globalActivityGrid)}>
-                  <span>Time</span>
-                  <span>Action</span>
-                  <span>Activity</span>
-                  <span>Actor</span>
-                  <span>Changes</span>
-                </div>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => {
-              const expandable =
-                global && !row.isMasked && Boolean(row.changeSummary?.length);
-              const detailsId = `activity-details-${row.activityId}`;
-              const isExpanded = expandedId === row.activityId;
-              const content = (
-                <div
-                  className={cn(
-                    "relative grid w-full items-center gap-4 px-4 py-2.5 text-left",
-                    globalActivityGrid,
-                  )}
-                >
-                  <ActionAccent action={row.action} />
-                  <GlobalDate value={row.activityCreatedAt} />
-                  <ActionBadge row={row} global={global} />
-                  <GlobalTask row={row} />
-                  <GlobalActor name={row.isMasked ? null : row.actorName} />
-                  <GlobalChangePreview
-                    row={row}
-                    expandable={expandable}
-                    expanded={isExpanded}
-                  />
-                </div>
-              );
+    <div data-motion-state={motionState} className="grid gap-5">
+      {groups.map((group) => (
+        <section key={group.key} aria-label={group.heading.title} className="grid gap-2.5">
+          <div className="flex items-baseline gap-2 px-1">
+            <h3 className="font-display text-base font-semibold">{group.heading.title}</h3>
+            {group.heading.subtitle ? (
+              <span className="text-sm text-muted-foreground">{group.heading.subtitle}</span>
+            ) : null}
+            <span className="h-px flex-1 self-center bg-border" aria-hidden />
+            <span className="text-xs font-medium text-muted-foreground">
+              {group.rows.length} {group.rows.length === 1 ? "change" : "changes"}
+            </span>
+          </div>
+          <div className="grid gap-2.5">
+            {group.rows.map((row) => {
+              const expandable = !row.isMasked && Boolean(row.changeSummary?.length);
               return (
-                <Fragment key={row.activityId}>
-                  <TableRow {...getRevealProps(row.activityId)}>
-                    <TableCell colSpan={5} className="p-0">
-                      {expandable ? (
-                        <button
-                          type="button"
-                          className="w-full outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-secondary motion-reduce:transition-none"
-                          aria-expanded={isExpanded}
-                          aria-controls={detailsId}
-                          onClick={() => toggle(row)}
-                        >
-                          {content}
-                        </button>
-                      ) : (
-                        content
-                      )}
-                    </TableCell>
-                  </TableRow>
-                  {expandable && isExpanded ? (
-                    <TableRow id={detailsId}>
-                      <TableCell colSpan={5} className="bg-secondary/60 px-6 py-4">
-                        <ChangeSummary row={row} />
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="space-y-2 md:hidden">
-        {rows.map((row) => {
-          const expandable =
-            global && !row.isMasked && Boolean(row.changeSummary?.length);
-          const detailsId = `activity-card-details-${row.activityId}`;
-          const isExpanded = expandedId === row.activityId;
-          const content = (
-            <>
-              <div className="flex items-start justify-between gap-3">
-                <ActionBadge row={row} global={global} />
-                <GlobalDate value={row.activityCreatedAt} />
-              </div>
-              <div className="mt-1.5">
-                <GlobalTask row={row} />
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <GlobalActor name={row.isMasked ? null : row.actorName} />
-                <GlobalChangePreview
+                <GlobalActivityRow
+                  key={row.activityId}
                   row={row}
                   expandable={expandable}
-                  expanded={isExpanded}
+                  expanded={expandedId === row.activityId}
+                  onToggle={() => toggle(row)}
+                  revealProps={getRevealProps(row.activityId)}
                 />
-              </div>
-            </>
-          );
-          return (
-            <article
-              key={row.activityId}
-              {...getRevealProps(row.activityId)}
-              className="relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
-            >
-              <ActionAccent action={row.action} />
-              {expandable ? (
-                <button
-                  type="button"
-                  className="min-h-11 w-full px-3.5 py-2.5 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-secondary motion-reduce:transition-none"
-                  aria-expanded={isExpanded}
-                  aria-controls={detailsId}
-                  onClick={() => toggle(row)}
-                >
-                  {content}
-                </button>
-              ) : (
-                <div className="px-3.5 py-2.5">{content}</div>
-              )}
-              {expandable && isExpanded ? (
-                <div id={detailsId} className="border-t bg-secondary/60 px-4 py-3">
-                  <ChangeSummary row={row} />
-                </div>
-              ) : null}
-            </article>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

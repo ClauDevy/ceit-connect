@@ -15,12 +15,18 @@ export default async function HelpPage() {
   return (
     <div className="motion-content-ready mx-auto w-full max-w-6xl">
       <HelpManual manual={manual} />
-      <footer className="mt-8 text-center text-sm text-muted-foreground">
+      <footer className="mt-8 flex flex-wrap items-center justify-center gap-x-4 text-center text-sm text-muted-foreground">
         <Link
           href="/terms"
           className="inline-flex min-h-11 items-center rounded-md px-2 underline underline-offset-4 outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:min-h-0"
         >
           Terms of Service
+        </Link>
+        <Link
+          href="/privacy"
+          className="inline-flex min-h-11 items-center rounded-md px-2 underline underline-offset-4 outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:min-h-0"
+        >
+          Privacy Policy
         </Link>
       </footer>
     </div>

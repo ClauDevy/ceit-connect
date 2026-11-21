@@ -47,7 +47,9 @@ export default async function SettingsPage() {
         </InlineAlert>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {/* One column on phones. From lg, two balanced columns that flow top to bottom, so cards of
+          different heights never leave empty gaps. Source order is the phone order. */}
+      <div className="grid gap-5 lg:block lg:columns-2 lg:gap-x-5 lg:[&>*]:mb-5 lg:[&>*]:break-inside-avoid">
         <SettingsSection
           motionIndex={0}
           title="Help & user manual"
@@ -55,11 +57,14 @@ export default async function SettingsPage() {
           icon={<BookOpen aria-hidden />}
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/help" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+            <Link href="/help" className={buttonVariants({ variant: "outline", className: "w-full sm:col-span-2" })}>
               Open user manual
             </Link>
             <Link href="/terms" className={buttonVariants({ variant: "outline", className: "w-full" })}>
               Terms of Service
+            </Link>
+            <Link href="/privacy" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+              Privacy Policy
             </Link>
           </div>
         </SettingsSection>
@@ -132,7 +137,6 @@ export default async function SettingsPage() {
 
         <SettingsSection
           motionIndex={7}
-          className="lg:col-span-2"
           title="Sign out"
           description="End your CEIT Connect session on this device."
           icon={<LogOut aria-hidden />}

@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card"
+import { ActivityListSkeleton } from "@/components/activity-log/activity-log-skeleton"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PageHeaderSkeleton } from "@/components/shared/page-skeleton"
 
@@ -30,23 +31,16 @@ export function WorkspaceSkeleton() {
   )
 }
 
-/** Activity log: filter bar plus a timeline of entries. */
+/** Activity log: toolbar card plus a timeline of entries. */
 export function ActivityLogSkeleton() {
   return (
     <div role="status" aria-label="Loading activity log">
       <PageHeaderSkeleton />
-      <Skeleton className="mb-4 h-11 w-full rounded-xl md:h-10" />
-      <div className="grid gap-3" data-skeleton="activity-entries">
-        {[0, 1, 2, 3, 4].map((row) => (
-          <div key={row} className="flex items-start gap-3 rounded-2xl border bg-card p-3.5">
-            <Skeleton className="size-9 shrink-0 rounded-full" />
-            <div className="grid flex-1 gap-2">
-              <Skeleton className="h-4 w-4/5" />
-              <Skeleton className="h-3 w-1/3" />
-            </div>
-          </div>
-        ))}
+      <div className="mb-4 grid gap-3 rounded-2xl border bg-card p-3 sm:p-4">
+        <Skeleton className="h-11 w-full rounded-xl md:h-10" />
+        <Skeleton className="h-11 w-full rounded-xl sm:w-96 md:h-9" />
       </div>
+      <ActivityListSkeleton />
       <span className="sr-only">Loading activity log…</span>
     </div>
   )
