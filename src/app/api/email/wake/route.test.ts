@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   ready: vi.fn(),
   prepare: vi.fn(),
   run: vi.fn(),
+  runBackup: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({ after: mocks.after }));
@@ -12,6 +13,9 @@ vi.mock("@/lib/email/important-email-worker", () => ({
   emailDatabaseReady: mocks.ready,
   prepareImportantEmailSender: mocks.prepare,
   runImportantEmailDelivery: mocks.run,
+}));
+vi.mock("@/lib/activity-log-backup-worker", () => ({
+  runActivityLogBackupDelivery: mocks.runBackup,
 }));
 
 import { POST } from "./route";
@@ -53,6 +57,17 @@ describe("POST /api/email/wake", () => {
     const response = await POST(request("correct-secret", "not-json"));
     expect(response.status).toBe(202);
     expect(mocks.run).not.toHaveBeenCalled();
+    await scheduled?.();
+    expect(mocks.run).toHaveBeenCalledWith({ ready: true });
+    expect(mocks.runBackup).toHaveBeenCalledWith({ ready: true });
+  });
+
+  it("isolates a missing backup RPC while important email still runs", async () => {
+    let scheduled: (() => unknown) | undefined;
+    mocks.after.mockImplementation((callback) => { scheduled = callback; });
+    mocks.runBackup.mockRejectedValueOnce(new Error("missing RPC"));
+    const response = await POST(request("correct-secret"));
+    expect(response.status).toBe(202);
     await scheduled?.();
     expect(mocks.run).toHaveBeenCalledWith({ ready: true });
   });

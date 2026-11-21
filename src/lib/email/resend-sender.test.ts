@@ -105,6 +105,22 @@ describe("Resend transport", () => {
     const init = calls[0][1];
     expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe(base.out_delivery_id);
     expect(JSON.parse(String(init.body))).not.toHaveProperty("attachments");
+    expect(JSON.parse(String(init.body)).to).toEqual([base.out_recipient_email]);
+  });
+
+  it("keeps one multi-recipient request and its caller-provided idempotency key", async () => {
+    const fetchMock = vi.fn(async () => new Response("", { status: 202 }));
+    const message = {
+      ...buildImportantEmail(config, base),
+      to: ["admin-one@example.com", "admin-two@example.com"],
+      idempotencyKey: "00000000-0000-4000-8000-000000000099",
+    };
+    await sendResendEmail(config.apiKey, message, fetchMock);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const calls = fetchMock.mock.calls as unknown as [RequestInfo | URL, RequestInit][];
+    const init = calls[0][1];
+    expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe(message.idempotencyKey);
+    expect(JSON.parse(String(init.body)).to).toEqual(message.to);
   });
 });
 

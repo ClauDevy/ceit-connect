@@ -11,6 +11,10 @@ const page = readFileSync(
   join(root, "src/app/(dashboard)/activity-log/page.tsx"),
   "utf8",
 ).replace(/\r\n/g, "\n");
+const backupPanel = readFileSync(
+  join(root, "src/components/activity-log/activity-log-backup-panel.tsx"),
+  "utf8",
+).replace(/\r\n/g, "\n");
 
 describe("Activity Log Admin controls", () => {
   it("derives the Admin capability on the guarded server page", () => {
@@ -47,5 +51,18 @@ describe("Activity Log Admin controls", () => {
     expect(exportBody.indexOf("requestedSearch = applySearch(searchInput);")).toBeLessThan(
       exportBody.indexOf("const requestedFilters = { ...filters, search: requestedSearch }"),
     );
+  });
+
+  it("advances backup expiry state and settles manual refresh failures", () => {
+    expect(backupPanel).toContain("window.setInterval(() => setCurrentTime(Date.now()), 1_000)");
+    expect(backupPanel).toContain("Date.parse(backup.delete_expires_at) > currentTime");
+    expect(backupPanel).toContain("async function refresh()");
+    expect(backupPanel).toContain('setError("Backup history could not be refreshed. Try again.")');
+    expect(backupPanel).toContain("await load();\n      setCurrentTime(Date.now());\n      setError(null);");
+    expect(backupPanel).toContain("finally {\n      setBusy(false);\n    }");
+    expect(backupPanel).toContain("const generation = ++loadGeneration.current");
+    expect(backupPanel).toContain("if (generation !== loadGeneration.current) return");
+    expect(backupPanel).toContain("This deletion window expired. Create a fresh snapshot.");
+    expect(backupPanel).toContain("disabled={!allDownloaded || !unexpired}");
   });
 });

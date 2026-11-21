@@ -10,6 +10,7 @@ import { ActivityLogFilterBar } from "@/components/activity-log/activity-log-fil
 import { ActivityLogList } from "@/components/activity-log/activity-log-list";
 import { ActivityListSkeleton } from "@/components/activity-log/activity-log-skeleton";
 import { ActivityLogSummary } from "@/components/activity-log/activity-log-summary";
+import { ActivityLogBackupPanel } from "@/components/activity-log/activity-log-backup-panel";
 import { ListPager } from "@/components/shared/list-pager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -416,7 +417,7 @@ export function ActivityLogPageClient({
       setRetentionSetting(saved);
       setRetentionInput(saved.retentionDays.toString());
       setRetentionMessage(
-        "Retention saved. Existing rows are not deleted until a future scheduled purge runs.",
+        "Retention saved. Existing rows are not deleted until a future backup run completes.",
       );
       router.refresh();
     } catch {
@@ -717,6 +718,8 @@ export function ActivityLogPageClient({
           </div>
         </section>
       ) : null}
+
+      {canManageActivityLog ? <ActivityLogBackupPanel /> : null}
 
       <div className="grid grid-cols-1 gap-3">
         <ActivityLogFilterBar

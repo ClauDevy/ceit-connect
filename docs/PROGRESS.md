@@ -1,8 +1,10 @@
 # CEIT Connect — Progress log
 
-**Last updated:** 2026-11-17. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
+**Last updated:** 2026-11-21. Keep this file current: after any real change, add a line under the right heading and move finished items out of "Open items".
 
 The approved Phase 5 batch map, decisions, gate checks, and release checklist are in `docs/phase-5/PHASE-5-PLAN.md`.
+
+- **Phase 5 E2 CodeRabbit round 3 is implemented locally; the foundation migration is applied on Dev.** The new `20261129120000_activity_log_person_payload_retention_and_cleared.sql` must be pushed on Dev now: it extends the person-payload check so the existing retention-change and clearing writers succeed. Prod receives the foundation, worker, and follow-up migrations in that order after the Vercel deployment is Ready. Storage policy documentation now distinguishes application-role enforcement from service-credential RLS bypass, while the actual worker remains anon-only for blind upload and has no Storage read/delete path. The guarded route still uses the caller's authenticated Admin session. The rollback-safe paste now proves effective Storage visibility for anon, Co-Admin, Member, and Admin and expects 66/66. Rollback pauses new Admin actions, exposes ready-window expiry in the final drain query, and keeps wakes available for admitted work. Multibyte continuation tests prove injected and default five-MiB byte caps preserve every input row exactly once.
 
 - **Phase 5 Batch C task-editor self-selection is implemented locally and is not applied to Dev or Prod.** Board and Event create/edit assignee pickers now include the active leadership actor while Board viewer candidates remain unchanged. Migration `20261123120000_task_editor_self_assignment.sql` adds a revoked read-only helper that requires postgres execution, one of the five exact editor markers, and an active Admin or active own-committee Co-Admin; UPDATE additionally requires both old and new task committees to match. The latest assignee guard is retained with only that helper predicate added after its unchanged raw-write rejection. Policies, writer bodies, viewers, dependencies, `assign_task_people`, `claim_task`, caps, notifications, and service-role access are unchanged. The rollback-only Dev paste and manual checks are in `docs/phase-5/step-c-task-editor-self-assignment.md`; the CodeRabbit follow-up corrects its UUID-array and notification-column checks and pins acting Admin/Co-Admin name search against the unchanged active-user producer. Its Dev run also confirms the existing authenticated raw-task-insert path is preempted by the access trigger's `task_volunteers` permission denial; this unrelated issue remains unfixed.
 
@@ -250,7 +252,13 @@ Done:
 
 ## Decisions log
 
-- **Batch E step 1 is implemented locally, not applied on Dev or Prod:** Activity Log retention now has a private active-Admin-only 30–730-day setting, explicitly seeded at 30 so rollout behavior does not change. Saving records nullable UUID metadata and never purges immediately. The existing postgres-only, 5,000-row rolling purge and DELETE/TRUNCATE guards remain unchanged except that their retained helper reads the saved value. Admin CSV export uses the current filters/sort, delegates masking to `list_activity_log()`, refuses more than 5,000 rows, adds a UTF-8 BOM, and neutralizes spreadsheet-formula prefixes including tab and carriage return. Co-Admins keep the log but receive neither setting nor export. No migration creates the daily purge job, so the setting has no deletion effect until the owner separately creates and verifies the `pg_cron` job on Dev and Prod. Prod remains at 30 until a separate explicit owner confirmation to save 180.
+- **Batch E step 1 is live on Dev and Prod (owner-confirmed):** Activity Log retention has a private active-Admin-only 30–730-day setting, seeded at 30. Admin filtered CSV export retains masking, a 5,000-row refusal, UTF-8 BOM, and formula-safe cells; Co-Admins keep only the ordinary global reader. Prod retention remains 30 until the owner deliberately saves 180.
+
+- **Batch E step 2 Activity Log backup and clearing is implemented locally and is not applied to Dev or Prod:** migrations `20261127120000_activity_log_backup_foundation.sql` and `20261128120000_activity_log_backup_worker.sql` add the private capped CSV bucket, permanent Admin-only history, exact manifests, viewer-independent confidential masking, one-active-backup enforcement, monthly/manual state machine, tracked-download UX gate, typed clearing, mandatory quota-independent email, and a private verified-manifest-only 5,000-row deletion authority. Snapshot retries use a next-attempt time and fail safely after five failures or 24 hours; deletion retries remain active and never fail open; email uses 5/15/60/240-minute spacing before `email_failed`. The monthly checker is idempotent and the Prod owner paste checks days 1–7 for catch-up while retaining seven jobs. The old purge is a postgres-only no-op. Cron and Vault stay out of migrations. App-first Prod rollout, rollback, Dev manual trigger, and rollback-safe type/multi-file/retry/monthly tests are in `docs/phase-5/step-e2-activity-log-backup-clearing.md` and its tests companion.
+
+- **E1 important email is live on Dev and Prod (owner-confirmed):** both migrations are applied in both environments. The Prod cron wake returned `202` with zero errors, and Prod has seven active cron jobs.
+
+- **UI/legal foundation is live:** `/privacy`, shared `src/components/legal/*`, `src/lib/council-info.ts`, updated Terms, Help, and Settings, and the split Activity Log filter, summary, list, skeleton, and page components are present.
 
 - Invited users may use the invite email link, set their own password, or continue with Google. Google admission requires the verified active matching-profile and allowed-domain callback boundary, not `password_set` or provider metadata; the Settings dot only reminds users to add email/password sign-in.
 - Gmail SMTP (App Password) is the interim email sender; revisit Resend only if the team buys a domain.
@@ -353,15 +361,52 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - The old four-argument R2 emitter overload remains as deferred cleanup.
 - The minor Backlog-helper wording difference between the two task editors remains deferred.
 - Older Live Operations may still send due-soon reminders; newer Live Operations have no stored due date.
-- E1 deferred follow-ups: add a retry button to the email Settings control;
+- E1 deferred follow-ups: add email-control retry when the preference read fails;
   re-read the preference after an ambiguous save failure; make run-finalization
-  accounting independent of mutable `run_id`; move the send guard after current
-  recipient checks in `prepare_email_delivery`; serialize sender-credential
-  rotations; and refresh the claim clock after the configuration-row lock.
+  counts use the mutable queue `run_id`; move the `prepare_email_delivery` send
+  guard after current recipient checks; serialize credential-rotation writers;
+  refresh `v_now` after the quota lock in `claim_email_deliveries`; and reconcile
+  Activity Log retention state when another Admin changes it while the page is open.
+- E2 Storage cleanup: an upload that reaches the private bucket but expires
+  before verification can leave an orphan CSV after its reservation metadata is
+  removed. No Storage delete capability ships in E2; add a separately reviewed,
+  manifest-safe cleanup path before orphan volume becomes material.
+- E2 terminal email payload cleanup: `email_failed` intentionally retains its
+  verified private bytes for Admin Retry. Add a separately reviewed age limit
+  and cleanup path for abandoned failures after the retention period is chosen.
+- E2 backup history stops at the newest 20 records; continuation paging needs a
+  separately reviewed UI and RPC contract.
+- E2 Resend idempotency lasts 24 hours. A later retry whose resolved recipient
+  set changed still uses the backup UUID key and needs separate reconciliation.
+- E2 abandoned expired claims are reclaimed without counting the abandoned
+  ownership period as an attempt; attempt accounting currently advances only
+  when the worker explicitly releases or acknowledges the lease.
+- E2 runner counters do not distinguish all successful continuations and email
+  outcomes accurately; they remain diagnostic rather than authoritative.
+- E2 continuation latency: unfinished successful capped work retains its
+  five-minute lease, so the next wave can wait for expiry. Early lease release
+  or a shorter continuation lease needs separate review.
+- E2 wake deadline: prove the 60-second route maximum against a worst-case
+  four-attachment run; a lease expiry currently retries the work.
+- E2 backup panel: separate action failures from refresh failures so a failed
+  follow-up refresh does not replace a successful action result.
+- E2 acknowledgements: return the acknowledged outcome and correct the runner
+  counters, which remain diagnostic rather than authoritative.
+- E2 worker diagnostics: expose a sanitized diagnostic when the claim RPC
+  itself fails.
+- E2 confidentiality history: retroactively protect old Activity Log rows if
+  their task becomes confidential after the row was written.
+- E2 expired email leases: account for abandoned email ownership periods.
+- E2 email retries: persist the original resolved recipient set across retry
+  attempts instead of resolving it again.
+- E2 request-size verification: run a synthetic 5 MiB CSV through both the
+  verify and payload-read calls on Dev and Prod; the request-size limits are not
+  yet proven end to end.
+- E2 projection-version binding: snapshot bytes are not tied to a projection
+  version if a task becomes confidential between projection and verification.
 
 ## Open items
 
-- E1 important email's main migration is applied on Dev; the corrective migration remains to be pushed on Dev and neither E1 migration is applied on Prod. The correction removes the queue-to-task FK that broke the exact event-deletion inventory, retains indexed non-null task UUIDs, and proves bidirectionally by identity that every actual event/task FK is registered and every registered FK exists. It also preserves active stale leases during claim/purge, gives purge bounded stale and task-orphan finalization, and isolates Vault/HTTP wake failures so they cannot roll back completed maintenance. The 31-check catalog and 34-check behavior pastes cover those corrections plus post-claim confidentiality, every no-row preparation boundary, quota non-consumption, and post-ack guard clearing. Unreadable Resend 409 responses retry with the same idempotency key; readable invalid-idempotency 409 and other unreadable 4xx responses remain terminal. Active-task and Event task editors map `55000` to fixed safe retry copy. Prod still applies both E1 migrations together after the app deploy, using a separate Prod script output and capability hash, then configures Vault and cron last. No Activity Log email or CSV backup is included.
 
 - J1 jump-to-comment is implemented locally with migration 80, bounded
   25-comment target pages, task-only fallback for old/deleted comment targets,

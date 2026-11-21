@@ -160,7 +160,11 @@ owner-approved Resend account/key and verified `ceitconnect.site` domain.
    `/settings`, preference-off suppresses pending work, assignments precede
    reminders, and the Dev allowance stops at ten reservations.
 
-## Prod owner steps — fixed order
+## Prod owner steps — completed in fixed order
+
+Owner-confirmed complete on Dev and Prod: both migrations are applied, the
+Prod wake returned `202` with zero errors, and the final Prod inventory contains
+seven active cron jobs.
 
 1. Run `node scripts/generate-email-secrets.mjs` again specifically for Prod.
    Save this new raw capability, wake secret, and generated capability-hash SQL
