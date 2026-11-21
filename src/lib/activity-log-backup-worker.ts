@@ -51,7 +51,7 @@ type CandidateRow = {
   event_name: string | null;
   committee_name: string | null;
   actor_name: string | null;
-  change_summary: string;
+  change_summary: string | null;
 };
 
 type PreparedBackupEmail = {
@@ -108,7 +108,17 @@ function isCandidate(value: unknown): value is CandidateRow {
     (row.event_name === null || typeof row.event_name === "string") &&
     (row.committee_name === null || typeof row.committee_name === "string") &&
     (row.actor_name === null || typeof row.actor_name === "string") &&
-    typeof row.change_summary === "string";
+    (row.change_summary === null || typeof row.change_summary === "string");
+}
+
+export function validateActivityBackupCandidates(value: unknown): CandidateRow[] {
+  if (!Array.isArray(value)) throw new Error("candidate read failed");
+  for (const [index, candidate] of value.entries()) {
+    if (!isCandidate(candidate)) {
+      throw new Error(`activity backup candidate validation failed at index ${index}`);
+    }
+  }
+  return value;
 }
 
 function csvLine(cells: readonly (string | null)[]) {
@@ -134,7 +144,7 @@ export function buildBoundedActivityBackupCsv(
       row.event_name,
       row.committee_name,
       row.actor_name,
-      row.change_summary,
+      row.change_summary ?? "Earlier activity entry",
     ]);
     const lineByteLength = encoder.encode(line).byteLength;
     if (byteLength + lineByteLength > limits.maxBytes) break;
@@ -177,7 +187,7 @@ async function releaseLease(
   });
 }
 
-async function snapshotBackup(
+export async function snapshotBackup(
   client: SupabaseClient,
   claim: ClaimedBackup,
   limits: ActivityBackupLimits,
@@ -188,10 +198,10 @@ async function snapshotBackup(
       p_lease_token: claim.out_lease_token,
       p_limit: limits.maxRows,
     });
-    if (candidatesResult.error || !Array.isArray(candidatesResult.data)) {
+    if (candidatesResult.error) {
       throw new Error("candidate read failed");
     }
-    const candidates = candidatesResult.data.filter(isCandidate);
+    const candidates = validateActivityBackupCandidates(candidatesResult.data);
     if (!candidates.length) {
       const completed = await client.rpc("complete_activity_log_backup_snapshot", {
         p_backup_id: claim.out_backup_id,

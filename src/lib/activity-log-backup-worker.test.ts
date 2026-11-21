@@ -14,6 +14,8 @@ import {
   activityBackupFetch,
   buildBoundedActivityBackupCsv,
   sendBackupEmail,
+  snapshotBackup,
+  validateActivityBackupCandidates,
 } from "@/lib/activity-log-backup-worker";
 
 afterEach(() => {
@@ -118,6 +120,15 @@ describe("Activity Log backup file bounds", () => {
     expect(files.every((file) => file.bytes.byteLength <= 900)).toBe(true);
   });
 
+  it("accepts a null legacy summary and writes the plain fallback label", () => {
+    const legacy = { ...row(1), change_summary: null };
+    const candidates = validateActivityBackupCandidates([legacy]);
+    const csv = new TextDecoder().decode(buildBoundedActivityBackupCsv(candidates).bytes);
+
+    expect(candidates).toEqual([legacy]);
+    expect(csv).toContain("Earlier activity entry");
+  });
+
   it("enforces the default five-MiB cap across multibyte continuation files", () => {
     const rows = Array.from({ length: 3_200 }, (_, index) =>
       row(index + 1, `Gawain ${index + 1} ${"🙂漢字".repeat(200)}`));
@@ -137,9 +148,84 @@ describe("Activity Log backup file bounds", () => {
       change_summary: "Confidential Task activity",
     };
     const csv = new TextDecoder().decode(buildBoundedActivityBackupCsv([confidential]).bytes);
-    expect(csv).toContain("Confidential Task");
+    expect(csv).toContain('"Confidential Task","","","","Confidential Task activity"\r\n');
     expect(csv).not.toContain("Secret title");
     expect(csv).not.toContain("raw changes");
+  });
+});
+
+describe("Activity Log backup candidate validation", () => {
+  it("splits typed and untyped rows by the caps and manifests every row once in order", async () => {
+    const candidates = [
+      row(1),
+      { ...row(2), change_summary: null },
+      row(3),
+      { ...row(4), change_summary: null },
+    ];
+    const oneRowSizes = candidates.map((candidate) =>
+      buildBoundedActivityBackupCsv([candidate]).bytes.byteLength);
+    const manifestIds: string[] = [];
+    let pending = [...candidates];
+    let partNumber = 0;
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "list_activity_log_backup_candidates") {
+        return { data: pending, error: null };
+      }
+      if (name === "reserve_activity_log_backup_file") {
+        const ids = args?.p_activity_ids as string[];
+        manifestIds.push(...ids);
+        pending = pending.filter((candidate) => !ids.includes(candidate.activity_id));
+        partNumber += 1;
+        return {
+          data: [{
+            out_file_id: `00000000-0000-4000-8000-${String(950 + partNumber).padStart(12, "0")}`,
+            out_object_path: `manual/backup/part-${partNumber}.csv`,
+          }],
+          error: null,
+        };
+      }
+      if (name === "verify_activity_log_backup_file" ||
+          name === "complete_activity_log_backup_snapshot") {
+        return { data: true, error: null };
+      }
+      throw new Error(`Unexpected RPC: ${name}`);
+    });
+    const client = { rpc, storage: { from: vi.fn(() => ({ upload })) } };
+
+    await snapshotBackup(client as never, {
+      out_backup_id: "00000000-0000-4000-8000-000000000901",
+      out_kind: "manual_all",
+      out_status: "snapshotting",
+      out_fixed_cutoff_at: "2026-11-21T00:00:00.000Z",
+      out_lease_token: "00000000-0000-4000-8000-000000000902",
+    }, {
+      maxRows: candidates.length,
+      maxBytes: Math.max(...oneRowSizes),
+      maxFilesPerWake: candidates.length + 1,
+      maxAttachmentBytes: ACTIVITY_BACKUP_MAX_BYTES,
+    });
+
+    expect(manifestIds).toEqual(candidates.map((candidate) => candidate.activity_id));
+    expect(new Set(manifestIds).size).toBe(candidates.length);
+    expect(manifestIds).toContain(candidates[1].activity_id);
+    expect(manifestIds).toContain(candidates[3].activity_id);
+    expect(upload).toHaveBeenCalledTimes(candidates.length);
+  });
+
+  it("throws when a returned candidate is invalid instead of dropping it", async () => {
+    const invalid = { ...row(2), action: null };
+    const rpc = vi.fn().mockResolvedValueOnce({ data: [row(1), invalid], error: null });
+    const client = { rpc, storage: { from: vi.fn() } };
+
+    await expect(snapshotBackup(client as never, {
+      out_backup_id: "00000000-0000-4000-8000-000000000901",
+      out_kind: "manual_all",
+      out_status: "snapshotting",
+      out_fixed_cutoff_at: "2026-11-21T00:00:00.000Z",
+      out_lease_token: "00000000-0000-4000-8000-000000000902",
+    }, limits)).rejects.toThrow("activity backup candidate validation failed at index 1");
+    expect(rpc).toHaveBeenCalledOnce();
   });
 });
 

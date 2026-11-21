@@ -195,7 +195,7 @@ order by policyname;
 
 ## Rollback-safe behavior paste
 
-This paste is self-contained and expects **66/66 PASS**. It creates its own
+This paste is self-contained and expects **67/67 PASS**. It creates its own
 confirmed Auth identities and matching Admin, Co-Admin, and Member profiles,
 plus its own committee, event, confidential task, backups, files, manifests,
 and activity rows. It impersonates each application role for authenticated
@@ -1195,6 +1195,109 @@ set status = 'failed', last_error_code = 'e2_test_complete',
     lease_token = null, lease_expires_at = null
 where id = '92000000-0000-4000-8000-000000000427';
 
+-- 34g: a legacy row with no semantic activity type has a NULL catalog summary,
+-- remains a valid candidate, and permits completion after exact manifest coverage.
+set local session_replication_role = replica;
+insert into public.activity_log(
+  id, user_id, actor_kind, action, changes, created_at
+) values (
+  '92000000-0000-4000-8000-000000000432',
+  '92000000-0000-4000-8000-000000000011', 'user', 'UPDATE', '{}'::jsonb,
+  '-infinity'::timestamptz
+);
+set local session_replication_role = origin;
+insert into ceit_connect_private.activity_log_backups(
+  id, kind, status, fixed_cutoff_at, requested_by,
+  lease_token, lease_expires_at
+) values (
+  '92000000-0000-4000-8000-000000000433', 'manual_all', 'snapshotting',
+  '2000-01-01 00:00:00+08'::timestamptz,
+  '92000000-0000-4000-8000-000000000011',
+  '92000000-0000-4000-8000-000000000434',
+  pg_catalog.clock_timestamp() + interval '5 minutes'
+);
+set local role anon;
+select pg_catalog.set_config(
+  'e2.legacy_candidate_has_null_summary',
+  exists (
+    select 1
+    from public.list_activity_log_backup_candidates(
+      '92000000-0000-4000-8000-000000000433',
+      '92000000-0000-4000-8000-000000000434',
+      5000
+    ) as candidate
+    where candidate.activity_id = '92000000-0000-4000-8000-000000000432'
+      and candidate.change_summary is null
+  )::text,
+  true
+);
+reset role;
+insert into ceit_connect_private.activity_log_backup_files(
+  id, backup_id, part_number, object_path, status, reservation_expires_at,
+  row_count, raw_byte_count, sha256_hex, first_created_at,
+  first_activity_id, last_created_at, last_activity_id, verified_at
+)
+select
+  '92000000-0000-4000-8000-000000000435',
+  '92000000-0000-4000-8000-000000000433', 1,
+  'manual/92000000-0000-4000-8000-000000000433/e2-legacy.csv', 'verified',
+  pg_catalog.clock_timestamp(), pg_catalog.count(*)::integer, 100,
+  pg_catalog.repeat('e',64), pg_catalog.min(log_row.created_at),
+  (pg_catalog.array_agg(log_row.id order by log_row.created_at, log_row.id))[1],
+  pg_catalog.max(log_row.created_at),
+  (pg_catalog.array_agg(log_row.id order by log_row.created_at desc, log_row.id desc))[1],
+  pg_catalog.clock_timestamp()
+from public.activity_log as log_row
+where log_row.created_at < '2000-01-01 00:00:00+08'::timestamptz;
+insert into ceit_connect_private.activity_log_backup_rows(
+  backup_id, file_id, activity_id, activity_created_at
+)
+select
+  '92000000-0000-4000-8000-000000000433',
+  '92000000-0000-4000-8000-000000000435',
+  log_row.id, log_row.created_at
+from public.activity_log as log_row
+where log_row.created_at < '2000-01-01 00:00:00+08'::timestamptz;
+update ceit_connect_private.activity_log_backups as backup
+set file_count = 1,
+    row_count = (
+      select pg_catalog.count(*)::integer
+      from ceit_connect_private.activity_log_backup_rows as manifest
+      where manifest.backup_id = backup.id
+    )
+where backup.id = '92000000-0000-4000-8000-000000000433';
+set local role anon;
+select pg_catalog.set_config(
+  'e2.legacy_snapshot_completed',
+  public.complete_activity_log_backup_snapshot(
+    '92000000-0000-4000-8000-000000000433',
+    '92000000-0000-4000-8000-000000000434'
+  )::text,
+  true
+);
+reset role;
+select ceit_connect_private.e2_test_record(
+  '34g legacy NULL summary is covered and completes',
+  pg_catalog.current_setting('e2.legacy_candidate_has_null_summary')::boolean
+  and pg_catalog.current_setting('e2.legacy_snapshot_completed')::boolean
+  and exists (
+    select 1
+    from ceit_connect_private.activity_log_backup_rows as manifest
+    where manifest.backup_id = '92000000-0000-4000-8000-000000000433'
+      and manifest.activity_id = '92000000-0000-4000-8000-000000000432'
+  )
+  and exists (
+    select 1
+    from ceit_connect_private.activity_log_backups as backup
+    where backup.id = '92000000-0000-4000-8000-000000000433'
+      and backup.status = 'ready'
+  )
+);
+update ceit_connect_private.activity_log_backups
+set status = 'failed', last_error_code = 'e2_test_complete',
+    completed_at = pg_catalog.clock_timestamp()
+where id = '92000000-0000-4000-8000-000000000433';
+
 -- 35: confidential task output is viewer-independent and contains no raw text.
 set local session_replication_role = replica;
 insert into public.activity_log(
@@ -1616,7 +1719,7 @@ begin
   perform ceit_connect_private.e2_test_record(
     '47 repeated monthly checker does not duplicate',
     v_first is not null
-    and v_second = v_first
+    and v_first is not distinct from v_second
     and 1 = (select pg_catalog.count(*)
       from ceit_connect_private.activity_log_backups
       where kind = 'monthly_retention' and cycle_month = v_cycle)
@@ -1711,13 +1814,13 @@ begin
       ', ', v_failures, '38-43 fixture error: ' || v_fixture_error
     );
   end if;
-  if v_total <> 66 then
+  if v_total <> 67 then
     v_failures := pg_catalog.concat_ws(
       ', ', v_failures,
-      pg_catalog.format('missing result rows: expected 66, got %s', v_total)
+      pg_catalog.format('missing result rows: expected 67, got %s', v_total)
     );
   end if;
-  raise exception 'TEST RESULTS %/66 PASS; failures: %',
+  raise exception 'TEST RESULTS %/67 PASS; failures: %',
     v_pass, coalesce(v_failures, 'none');
 end;
 $$;
@@ -1732,7 +1835,7 @@ and API-role denial, sole purger-marker setter, absence of API execution on the
 private deletion function, real claim/kick `next_attempt_at` predicates, and
 the email function's 240-minute retry arm.
 
-The **66-check behavior paste** covers effective Storage read access for anon,
+The **67-check behavior paste** covers effective Storage read access for anon,
 Co-Admin, Member, and Admin plus every anon worker capability denial and
 authentication-before-lock/mutation ordering; Admin/Co-Admin/Member RPC
 authorization; real same-value and changed retention saves, valid exact-key
@@ -1741,6 +1844,7 @@ person payloads, and manual clearing completion; one-active,
 expired-ready, download, and typed-confirmation behavior; confidential masking;
 payload hash/size rejection, verified-byte storage, terminal payload cleanup;
 expired snapshot-completion lease rejection and maximum-part allocation;
+legacy NULL-`activity_type` candidate projection and covered completion;
 recipient fallbacks; 5,001-row two-file manifest deletion after deactivating
 the requesting Admin; manifest-only deletion with both pre- and post-cutoff
 non-manifest survival after every batch; both new activity types;
