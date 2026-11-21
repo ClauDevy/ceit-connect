@@ -77,8 +77,10 @@ export function ActivityLogBackupPanel() {
       const listed = await supabase.rpc("list_activity_log_backup_files", {
         p_backup_id: backup.backup_id,
       });
-      return [backup.backup_id, listed.error || !Array.isArray(listed.data)
-        ? [] : listed.data as BackupFile[]] as const;
+        if (listed.error || !Array.isArray(listed.data)) {
+          throw listed.error ?? new Error("invalid backup files");
+        }
+        return [backup.backup_id, listed.data as BackupFile[]] as const;
     }));
     if (generation !== loadGeneration.current) return;
     setBackups(next);

@@ -62,6 +62,8 @@ describe("Activity Log Admin controls", () => {
     expect(backupPanel).toContain("finally {\n      setBusy(false);\n    }");
     expect(backupPanel).toContain("const generation = ++loadGeneration.current");
     expect(backupPanel).toContain("if (generation !== loadGeneration.current) return");
+    expect(backupPanel).toContain('throw listed.error ?? new Error("invalid backup files")');
+    expect(backupPanel).not.toContain("? [] : listed.data as BackupFile[]");
     expect(backupPanel).toContain("This deletion window expired. Create a fresh snapshot.");
     expect(backupPanel).toContain("disabled={!allDownloaded || !unexpired}");
   });

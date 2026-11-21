@@ -201,9 +201,14 @@ Idempotency-Key.
 
 ## Dev owner steps
 
-The foundation migration is already applied on Dev. Apply only
-`20261129120000_activity_log_person_payload_retention_and_cleared.sql` now,
-then create or retrieve this month's record manually:
+All three migrations are already applied on Dev and both SQL pastes passed
+there. The foundation migration establishes the backup schema and activity
+types. The worker migration
+`20261128120000_activity_log_backup_worker.sql` is the prerequisite for the
+follow-up person-payload migration
+`20261129120000_activity_log_person_payload_retention_and_cleared.sql`; that
+worker prerequisite is already applied on Dev. To create or retrieve this
+month's record manually:
 
 ```sql
 select ceit_connect_private.start_monthly_activity_log_backup();
@@ -217,6 +222,15 @@ covered by the rollback-safe SQL fixture and injectable unit caps; no manual
 5,001-row Dev exercise is required.
 
 ## Prod rollout — fixed order
+
+None of the three migrations is applied on Prod yet. Before rollout, the Prod
+dry run must show these three pending migrations in this order:
+
+1. `20261127120000_activity_log_backup_foundation.sql`
+2. `20261128120000_activity_log_backup_worker.sql`
+3. `20261129120000_activity_log_person_payload_retention_and_cleared.sql`
+
+The rollout sequence is:
 
 1. Merge and wait until the Vercel Production deployment is Ready.
 2. During this app-before-database window, a missing backup RPC is an isolated

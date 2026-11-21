@@ -259,4 +259,27 @@ describe("Activity Log backup email outcomes", () => {
       p_http_status: 400,
     });
   });
+
+  it("treats null recipients with prepared files as a permanent outcome", async () => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: [{
+        out_recipients: null,
+        out_file_ids: ["00000000-0000-4000-8000-000000000911"],
+        out_object_paths: ["backup/part-0001.csv"],
+        out_filenames: ["part-0001.csv"],
+      }], error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
+    const client = { rpc, storage: { from: vi.fn() } };
+
+    await sendBackupEmail(client as never, config, claim, limits);
+
+    expect(sendResendEmailMock).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenLastCalledWith("acknowledge_activity_log_backup_email", {
+      p_backup_id: claim.out_backup_id,
+      p_lease_token: claim.out_lease_token,
+      p_outcome: "permanent",
+      p_http_status: 400,
+    });
+  });
 });

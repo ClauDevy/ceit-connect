@@ -6,9 +6,11 @@ const mocks = vi.hoisted(() => ({
   prepare: vi.fn(),
   run: vi.fn(),
   runBackup: vi.fn(),
+  createClient: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({ after: mocks.after }));
+vi.mock("server-only", () => ({}));
 vi.mock("@/lib/email/important-email-worker", () => ({
   emailDatabaseReady: mocks.ready,
   prepareImportantEmailSender: mocks.prepare,
@@ -17,6 +19,7 @@ vi.mock("@/lib/email/important-email-worker", () => ({
 vi.mock("@/lib/activity-log-backup-worker", () => ({
   runActivityLogBackupDelivery: mocks.runBackup,
 }));
+vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 
 import { POST } from "./route";
 
@@ -62,7 +65,7 @@ describe("POST /api/email/wake", () => {
     expect(mocks.runBackup).toHaveBeenCalledWith({ ready: true });
   });
 
-  it("isolates a missing backup RPC while important email still runs", async () => {
+  it("isolates an uncaught backup worker failure while important email still runs", async () => {
     let scheduled: (() => unknown) | undefined;
     mocks.after.mockImplementation((callback) => { scheduled = callback; });
     mocks.runBackup.mockRejectedValueOnce(new Error("missing RPC"));
@@ -70,5 +73,27 @@ describe("POST /api/email/wake", () => {
     expect(response.status).toBe(202);
     await scheduled?.();
     expect(mocks.run).toHaveBeenCalledWith({ ready: true });
+  });
+
+  it("returns 202 when the real backup worker receives a missing-RPC error", async () => {
+    let scheduled: (() => unknown) | undefined;
+    mocks.after.mockImplementation((callback) => { scheduled = callback; });
+    const rpc = vi.fn().mockResolvedValueOnce({
+      data: null,
+      error: { code: "PGRST202", message: "claim_activity_log_backup is unavailable" },
+    });
+    mocks.createClient.mockReturnValue({ rpc });
+    const actual = await vi.importActual<typeof import("@/lib/activity-log-backup-worker")>(
+      "@/lib/activity-log-backup-worker",
+    );
+    mocks.runBackup.mockImplementationOnce(actual.runActivityLogBackupDelivery);
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    const response = await POST(request("correct-secret"));
+    expect(response.status).toBe(202);
+    await scheduled?.();
+
+    expect(mocks.run).toHaveBeenCalledWith({ ready: true });
+    expect(rpc).toHaveBeenCalledWith("claim_activity_log_backup");
   });
 });
