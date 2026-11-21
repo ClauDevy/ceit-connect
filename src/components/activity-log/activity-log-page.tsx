@@ -4,28 +4,21 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { MotionPresence } from "@/components/shared/motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, RefreshCw, Save, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, DatabaseZap, Download, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ActivityLogFilterBar } from "@/components/activity-log/activity-log-filter-bar";
 import { ActivityLogList } from "@/components/activity-log/activity-log-list";
+import { ActivityListSkeleton } from "@/components/activity-log/activity-log-skeleton";
+import { ActivityLogSummary } from "@/components/activity-log/activity-log-summary";
 import { ListPager } from "@/components/shared/list-pager";
 import { Button } from "@/components/ui/button";
-import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ACTIVITY_ACTION_LABELS,
   ACTIVITY_LOG_EXPORT_MAX_ROWS,
   ACTIVITY_LOG_MAX_RETENTION_DAYS,
   ACTIVITY_LOG_MIN_RETENTION_DAYS,
   ACTIVITY_LOG_STALE_TIME,
-  ACTIVITY_SORT_LABELS,
   DEFAULT_ACTIVITY_FILTERS,
   GLOBAL_ACTIVITY_LOG_PAGE_SIZE,
   activityBlockArrowTargets,
@@ -77,6 +70,14 @@ type Props = {
 
 const GLOBAL_QUERY_PREFIX = ["activity-log", "global"] as const;
 
+// Shortcuts that only fill the Retention days box. Nothing is saved until Save is pressed.
+const RETENTION_PRESETS = [
+  { days: 30, label: "1 month" },
+  { days: 90, label: "3 months" },
+  { days: 180, label: "6 months" },
+  { days: 365, label: "1 year" },
+] as const;
+
 export function ActivityLogPageClient({
   initialWindow,
   initialLoadFailed,
@@ -88,6 +89,7 @@ export function ActivityLogPageClient({
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [filters, setFilters] = useState(DEFAULT_ACTIVITY_FILTERS);
   const [searchInput, setSearchInput] = useState("");
   const [knownCursors, setKnownCursors] = useState<ActivityCursorStack>(() =>
@@ -394,6 +396,8 @@ export function ActivityLogPageClient({
     if (!canManageActivityLog || savingRetention) return;
     const nextDays = Number(retentionInput);
     setRetentionMessage(null);
+    setExportMessage(null);
+    setExportError(null);
     setRetentionError(null);
     if (!isValidActivityLogRetentionDays(nextDays)) {
       setRetentionError("Enter a whole number from 30 to 730 days.");
@@ -435,6 +439,7 @@ export function ActivityLogPageClient({
     let exportedRows: ActivityWindow["rows"] = [];
     const seenCursors = new Set<string>();
     setExporting(true);
+    setRetentionMessage(null);
     setExportError(null);
     setExportMessage("Preparing CSV…");
 
@@ -555,27 +560,30 @@ export function ActivityLogPageClient({
   const safeError = navigationError ??
     (query.error ? activityErrorMessage(query.error) : null);
   const listResetKey = JSON.stringify(queryKey);
+  // The Created / Updated / Deleted chips are always visible, so they are not counted here.
   const activeFilterCount = [
     filters.sort !== DEFAULT_ACTIVITY_FILTERS.sort,
-    filters.action,
     filters.committeeId,
     filters.dateFrom,
     filters.dateTo,
   ].filter(Boolean).length;
 
+
   return (
     <div className="space-y-4">
       {canManageActivityLog ? (
-        <section className="rounded-xl border bg-card p-4" aria-labelledby="activity-log-administration">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl space-y-1">
-              <h2 id="activity-log-administration" className="font-semibold">
+        <section className="overflow-hidden rounded-2xl border bg-card" aria-labelledby="activity-log-administration">
+          <div className="flex items-center gap-3 p-3.5 sm:p-4">
+            <span
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-accent-foreground"
+              aria-hidden
+            >
+              <DatabaseZap className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 id="activity-log-administration" className="font-display text-base font-semibold">
                 Retention and export
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Keep activity for 30 to 730 days. About 6 months is 180 days.
-                Saving does not delete rows immediately.
-              </p>
               {retentionSetting ? (
                 <p className="text-sm text-muted-foreground">
                   Current setting: {retentionSetting.retentionDays} days.
@@ -586,226 +594,197 @@ export function ActivityLogPageClient({
                 </p>
               )}
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <form onSubmit={saveRetention} className="flex items-end gap-2">
-                <FormField
-                  label="Retention days"
-                  error={retentionError}
-                  hint={retentionError ? undefined : "Whole days only"}
-                  className="w-40"
+            <Button
+              type="button"
+              variant="outline"
+              className="lg:hidden"
+              aria-expanded={toolsOpen}
+              aria-controls="activity-log-admin-tools"
+              onClick={() => setToolsOpen((open) => !open)}
+            >
+              {toolsOpen ? "Hide" : "Manage"}
+              <ChevronDown
+                className={cn(
+                  "transition-transform motion-reduce:transition-none",
+                  toolsOpen && "rotate-180",
+                )}
+                aria-hidden
+              />
+            </Button>
+          </div>
+          <div
+            id="activity-log-admin-tools"
+            className={cn(
+              "grid gap-4 border-t bg-muted/30 p-3.5 sm:p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start",
+              !toolsOpen && "hidden lg:grid",
+            )}
+          >
+            <form onSubmit={saveRetention} className="grid min-w-0 gap-3">
+              <p className="text-sm text-muted-foreground">
+                Keep activity for 30 to 730 days. About 6 months is 180 days.
+                Saving does not delete rows immediately.
+              </p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Common retention periods">
+                {RETENTION_PRESETS.map((preset) => (
+                  <button
+                    key={preset.days}
+                    type="button"
+                    aria-pressed={retentionInput === String(preset.days)}
+                    disabled={savingRetention}
+                    onClick={() => {
+                      setRetentionInput(String(preset.days));
+                      setRetentionError(null);
+                      setRetentionMessage(null);
+                    }}
+                    className={cn(
+                      "inline-flex min-h-11 items-center rounded-full border px-3.5 text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 motion-reduce:transition-none md:min-h-9",
+                      retentionInput === String(preset.days)
+                        ? "border-primary/50 bg-primary/10 text-accent-foreground"
+                        : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {preset.label}
+                    <span className="ml-1.5 text-xs opacity-70">{preset.days}d</span>
+                  </button>
+                ))}
+              </div>
+              <div className="grid gap-1.5">
+                <label htmlFor="activity-retention-days" className="text-sm font-medium">
+                  Retention days
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="activity-retention-days"
+                    type="number"
+                    inputMode="numeric"
+                    min={ACTIVITY_LOG_MIN_RETENTION_DAYS}
+                    max={ACTIVITY_LOG_MAX_RETENTION_DAYS}
+                    step={1}
+                    value={retentionInput}
+                    disabled={savingRetention}
+                    aria-invalid={retentionError ? true : undefined}
+                    aria-describedby="activity-retention-help"
+                    className="min-w-0 flex-1 sm:max-w-40"
+                    onChange={(event) => {
+                      setRetentionInput(event.target.value);
+                      setRetentionError(null);
+                      setRetentionMessage(null);
+                    }}
+                  />
+                  <Button type="submit" size="lg" disabled={savingRetention || !retentionSetting}>
+                    <Save aria-hidden />
+                    {savingRetention ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+                <p
+                  id="activity-retention-help"
+                  role={retentionError ? "alert" : undefined}
+                  className={cn("text-xs", retentionError ? "text-destructive" : "text-muted-foreground")}
                 >
-                  {(control) => (
-                    <Input
-                      {...control}
-                      type="number"
-                      min={ACTIVITY_LOG_MIN_RETENTION_DAYS}
-                      max={ACTIVITY_LOG_MAX_RETENTION_DAYS}
-                      step={1}
-                      value={retentionInput}
-                      disabled={savingRetention}
-                      onChange={(event) => {
-                        setRetentionInput(event.target.value);
-                        setRetentionError(null);
-                        setRetentionMessage(null);
-                      }}
-                    />
-                  )}
-                </FormField>
-                <Button type="submit" disabled={savingRetention || !retentionSetting}>
-                  <Save aria-hidden />
-                  {savingRetention ? "Saving…" : "Save"}
-                </Button>
-              </form>
+                  {retentionError ?? "Whole days only"}
+                </p>
+              </div>
+            </form>
+            <div className="grid gap-2 rounded-xl border bg-card p-3.5">
+              <p className="text-sm font-semibold">Download a copy</p>
+              <p className="text-xs text-muted-foreground">
+                Saves a spreadsheet of up to 5,000 rows that match your current filters.
+              </p>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => void exportCsv()}
                 disabled={exporting}
+                className="w-full"
               >
                 <Download aria-hidden />
                 {exporting ? "Exporting…" : "Export CSV"}
               </Button>
             </div>
+            <MotionPresence open={Boolean(retentionMessage || exportMessage || exportError)}>
+              {retentionMessage || exportMessage || exportError ? (
+                <div className="lg:col-span-2" aria-live="polite">
+                  {exportError ? (
+                    <InlineAlert>{exportError}</InlineAlert>
+                  ) : (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      {retentionMessage ?? exportMessage}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </MotionPresence>
           </div>
-          <MotionPresence open={Boolean(retentionMessage || exportMessage || exportError)}>
-            {retentionMessage || exportMessage || exportError ? (
-              <div className="mt-3" aria-live="polite">
-                {exportError ? (
-                  <InlineAlert>{exportError}</InlineAlert>
-                ) : (
-                  <p role="status" className="text-sm text-muted-foreground">
-                    {retentionMessage ?? exportMessage}
-                  </p>
-                )}
-              </div>
-            ) : null}
-          </MotionPresence>
         </section>
       ) : null}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 xl:grid-cols-[minmax(180px,1fr)_140px_130px_170px_145px_145px_auto_44px] xl:items-end">
-        <label htmlFor="activity-log-search" className="relative">
-          <span className="sr-only">Search activity</span>
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="activity-log-search"
-            value={searchInput}
-            maxLength={101}
-            onChange={(event) => changeSearch(event.target.value)}
-            placeholder="Search activity"
-            className="pl-9"
-          />
-        </label>
-        <Button
-          type="button"
-          variant="outline"
-          className="xl:hidden"
-          aria-expanded={filtersOpen}
-          aria-controls="activity-log-filters"
-          onClick={() => setFiltersOpen((open) => !open)}
-        >
-          <SlidersHorizontal aria-hidden />
-          Filters
-          {activeFilterCount > 0 ? (
-            <span className="ml-0.5 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-              {activeFilterCount}
-            </span>
-          ) : null}
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="xl:order-last"
-          onClick={() => void refresh()}
-          disabled={refreshing || navigating}
-          aria-label="Refresh activity log"
-          title="Refresh activity log"
-        >
-          <RefreshCw className={refreshing ? "animate-spin motion-reduce:animate-none" : ""} />
-        </Button>
-        <div
-          id="activity-log-filters"
-          className={cn(
-            "col-span-3 grid gap-2 sm:grid-cols-2 xl:contents",
-            !filtersOpen && "hidden",
-          )}
-        >
-        <Select
-          items={ACTIVITY_SORT_LABELS}
-          value={filters.sort}
-          onValueChange={(value) =>
-            value && changeFilter({ sort: value as ActivityFilters["sort"] })
-          }
-        >
-          <SelectTrigger className="w-full" aria-label="Sort order"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {Object.entries(ACTIVITY_SORT_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          items={{ all: "All actions", ...ACTIVITY_ACTION_LABELS }}
-          value={filters.action ?? "all"}
-          onValueChange={(value) =>
-            changeFilter({
-              action: value === "all" ? null : value as ActivityFilters["action"],
-            })
-          }
-        >
-          <SelectTrigger className="w-full" aria-label="Filter by action"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All actions</SelectItem>
-            {Object.entries(ACTIVITY_ACTION_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          items={committeeLabels}
-          value={filters.committeeId ?? "all"}
-          onValueChange={(value) =>
-            changeFilter({ committeeId: value === "all" ? null : value })
-          }
-        >
-          <SelectTrigger className="w-full" aria-label="Filter by committee"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All committees</SelectItem>
-            {committees.map((item) => (
-              <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <label htmlFor="activity-date-from" className="relative">
-          <span className="sr-only">From date</span>
-          {!filters.dateFrom ? (
-            <span className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-sm text-muted-foreground" aria-hidden>
-              From
-            </span>
-          ) : null}
-          <Input
-            id="activity-date-from"
-            type="date"
-            placeholder="From"
-            aria-label="From date"
-            className={!filters.dateFrom ? "text-transparent" : undefined}
-            value={filters.dateFrom ?? ""}
-            onChange={(event) =>
-              changeFilter({ dateFrom: event.target.value || null })
-            }
-          />
-        </label>
-        <label htmlFor="activity-date-to" className="relative">
-          <span className="sr-only">To date</span>
-          {!filters.dateTo ? (
-            <span className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-sm text-muted-foreground" aria-hidden>
-              To
-            </span>
-          ) : null}
-          <Input
-            id="activity-date-to"
-            type="date"
-            placeholder="To"
-            aria-label="To date"
-            className={!filters.dateTo ? "text-transparent" : undefined}
-            value={filters.dateTo ?? ""}
-            onChange={(event) =>
-              changeFilter({ dateTo: event.target.value || null })
-            }
-          />
-        </label>
-        </div>
-        {showClearFilters ? (
-          <Button variant="ghost" className="col-span-3 xl:col-span-1" onClick={clearFilters}>Clear filters</Button>
-        ) : (
-          <span className="hidden xl:block" aria-hidden />
-        )}
+
+      <div className="grid grid-cols-1 gap-3">
+        <ActivityLogFilterBar
+          filters={filters}
+          searchInput={searchInput}
+          committees={committees}
+          committeeLabels={committeeLabels}
+          filtersOpen={filtersOpen}
+          activeFilterCount={activeFilterCount}
+          showClearFilters={showClearFilters}
+          refreshing={refreshing}
+          navigating={navigating}
+          onSearchChange={changeSearch}
+          onFilterChange={changeFilter}
+          onToggleFilters={() => setFiltersOpen((open) => !open)}
+          onClearFilters={clearFilters}
+          onRefresh={() => void refresh()}
+        />
       </div>
 
       {safeError && window && !accessUnavailable ? (
-        <p className="text-sm text-muted-foreground">{safeError}</p>
+        <InlineAlert>{safeError}</InlineAlert>
       ) : null}
 
       {validationError ? (
-        <p className="text-sm text-destructive">{validationError}</p>
+        <InlineAlert>{validationError}</InlineAlert>
       ) : accessUnavailable || window?.unavailable ? (
-        <EmptyState compact pose="oops" title="Activity history is unavailable" />
+        <EmptyState
+          compact
+          pose="oops"
+          title="Activity history is unavailable"
+          description="You may not have access right now. Try again later."
+        />
       ) : query.isPending ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          Loading activity…
-        </p>
+        <div role="status" aria-label="Loading activity">
+          <ActivityListSkeleton />
+          <span className="sr-only">Loading activity…</span>
+        </div>
       ) : safeError && !window ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          {safeError}
-        </p>
+        <EmptyState
+          compact
+          pose="oops"
+          title="We couldn’t load the activity"
+          description={safeError}
+          action={
+            <Button variant="outline" onClick={() => void refresh()} disabled={refreshing}>
+              Try again
+            </Button>
+          }
+        />
       ) : rows.length === 0 && window?.hasMore ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           No visible activity on this page. Continue to the next known page.
         </p>
       ) : rows.length === 0 && activePage === 1 ? (
         <div className="text-center text-sm text-muted-foreground">
-          <EmptyState compact pose={filtered ? "searching" : "sleeping"} title={filtered ? "No activity matches these filters." : "No activity yet."} />
+          <EmptyState
+            compact
+            pose={filtered ? "searching" : "sleeping"}
+            title={filtered ? "No activity matches these filters." : "No activity yet."}
+            description={
+              filtered
+                ? "Try a different search, date range, or action."
+                : "When your council creates or updates tasks and events, the changes will show up here."
+            }
+          />
           {showClearFilters ? (
-            <Button variant="ghost" className="mt-2" onClick={clearFilters}>
+            <Button variant="outline" className="mt-1" onClick={clearFilters}>
               Clear filters
             </Button>
           ) : null}
@@ -815,19 +794,22 @@ export function ActivityLogPageClient({
           No activity on this page.
         </p>
       ) : (
-        <ActivityLogList
-          rows={rows}
-          settled={!query.isFetching && !navigating}
-          mode="global"
-          resetKey={listResetKey}
-        />
+        <div className="grid gap-4">
+          <ActivityLogSummary rows={rows} page={activePage} />
+          <ActivityLogList
+            rows={rows}
+            settled={!query.isFetching && !navigating}
+            mode="global"
+            resetKey={listResetKey}
+          />
+        </div>
       )}
 
       {showPager && !accessUnavailable ? (
         <ListPager
           activePage={activePage}
           ariaLabel="Activity log pages"
-          className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 mx-auto w-fit max-w-full items-center gap-3 rounded-full border bg-card/95 px-2 py-1.5 shadow-md backdrop-blur sm:mx-0 sm:w-full sm:rounded-xl sm:px-4 sm:py-2 md:bottom-3"
+          className="items-center gap-3 rounded-2xl border bg-card px-3 py-2 shadow-xs sm:px-4"
           navigationDisabled={navigating}
           nextBusy={nextArrowBusy}
           nextDisabled={!window?.hasMore || nextCursor === undefined}

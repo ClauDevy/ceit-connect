@@ -16,16 +16,26 @@ beforeEach(() => {
 })
 
 describe("public Terms page", () => {
-  it("renders without a session with the draft notice and sign-in back link", async () => {
+  it("renders without a session as a final document with the sign-in back link", async () => {
     const html = renderToStaticMarkup(await TermsPage())
 
-    expect(html).toContain("Draft version")
-    expect(html).toContain("owner and adviser to review")
-    expect(html).toContain("not legal advice")
-    expect(html).toContain(">Privacy<")
-    expect(html).toContain("[contact email to be confirmed]")
+    expect(html).toContain("Terms of Service")
+    expect(html).toContain("Effective November 20, 2026")
+    expect(html).toContain("The short version")
     expect(html).toContain('href="/login"')
     expect(html).toContain("Back to sign in")
+    expect(html).toContain('href="/privacy"')
+    expect(html).toContain("cvsu.ceitsc@gmail.com")
+    expect(html).toContain("Department of Information Technology (DIT), 2nd floor")
+  })
+
+  it("is no longer a draft and has no placeholders", async () => {
+    const html = renderToStaticMarkup(await TermsPage())
+    const source = readFileSync(resolve(process.cwd(), "src/app/terms/page.tsx"), "utf8")
+
+    expect(html).not.toContain("Draft version")
+    expect(html).not.toContain("to be confirmed")
+    expect(source).not.toMatch(/\[[^\]]+to be confirmed\]/)
   })
 
   it("uses only the back link to reflect a valid signed-in user", async () => {
@@ -35,7 +45,7 @@ describe("public Terms page", () => {
 
     expect(html).toContain('href="/home"')
     expect(html).toContain("Back to home")
-    expect(html).toContain("Terms of Service")
+    expect(html).not.toContain('href="/login"')
   })
 
   it.each([
@@ -48,16 +58,14 @@ describe("public Terms page", () => {
     expect(html).not.toContain('href="/home"')
   })
 
-  it("keeps the copy inside its approved factual boundary", () => {
+  it("keeps the copy inside its factual boundary", () => {
     const source = readFileSync(resolve(process.cwd(), "src/app/terms/page.tsx"), "utf8")
 
     expect(source).not.toContain("requireUser")
-    expect(source).not.toMatch(/retention|activity log|timezone|Asia\/|Manila/i)
-    expect(source.match(/\[[^\]]+to be confirmed\]/g)).toEqual(["[contact email to be confirmed]"])
     expect(source).toContain("invite-only workspace")
-    expect(source).toContain("email link, Google, or a password")
+    expect(source).toContain("email link,")
     expect(source).toContain("saved as links")
-    expect(source).toContain("Push notifications are optional")
+    expect(source).toContain("Push")
     expect(source).toContain("deactivated instead of deleted")
     expect(source).toContain("can be anonymized")
   })

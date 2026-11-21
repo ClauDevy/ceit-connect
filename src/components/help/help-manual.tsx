@@ -11,7 +11,6 @@ import {
   ChevronDown,
   CircleCheck,
   CircleQuestionMark,
-  Clock,
   Headset,
   Lightbulb,
   LayoutGrid,
@@ -20,6 +19,7 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  ArrowUpRight,
   Rocket,
   Search,
   ShieldCheck,
@@ -293,8 +293,7 @@ function FaqList({
 
 const CONTACT_ICONS = {
   email: Mail,
-  messenger: MessageCircle,
-  hours: Clock,
+  facebook: MessageCircle,
   office: MapPin,
 } as const;
 
@@ -302,19 +301,41 @@ function ContactPanel({ contact }: { contact: HelpContact }) {
   return (
     <div className="space-y-6">
       <p className={bodyText}>{contact.summary}</p>
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid gap-3">
         {contact.channels.map((channel) => {
           const Icon = CONTACT_ICONS[channel.id];
-          return (
-            <li key={channel.id} className="flex items-start gap-4 rounded-2xl border bg-card p-4">
+          const external = channel.href?.startsWith("http");
+          const content = (
+            <>
               <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary">
                 <Icon className="size-6" />
               </span>
-              <div className="min-w-0">
-                <p className="font-display text-lg font-semibold">{channel.label}</p>
-                <p className="mt-0.5 text-base font-medium break-words text-foreground">{channel.value}</p>
-                <p className="mt-1 text-[15px] leading-6 text-muted-foreground">{channel.note}</p>
-              </div>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-display text-lg font-semibold">{channel.label}</span>
+                  {channel.href ? (
+                    <ArrowUpRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block text-base font-medium break-words text-foreground">{channel.value}</span>
+                <span className="mt-1 block text-[15px] leading-6 text-muted-foreground">{channel.note}</span>
+              </span>
+            </>
+          );
+          const base = "flex min-h-11 items-start gap-4 rounded-2xl border bg-card p-4";
+          return (
+            <li key={channel.id} className="min-w-0">
+              {channel.href ? (
+                <a
+                  href={channel.href}
+                  {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  className={`${base} h-full outline-none transition-colors hover:border-primary/45 hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none`}
+                >
+                  {content}
+                </a>
+              ) : (
+                <div className={`${base} h-full`}>{content}</div>
+              )}
             </li>
           );
         })}

@@ -102,7 +102,7 @@ export function EventFormAssigneePicker({
         />
       </div>
 
-      <div className="grid max-h-64 gap-3 overflow-y-auto rounded-xl border bg-card p-2">
+      <div className="grid max-h-64 min-w-0 grid-cols-[minmax(0,1fr)] gap-3 overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border bg-card p-2">
         {visibleAssignees.length >= 2 && (
           <AssigneeBulkControls
             committeeName={committeeNames.get(taskEditor.draft.committeeId) ?? "selected committee"}
@@ -174,7 +174,7 @@ function AssigneeGroup({
   onToggle: (assigneeId: string, checked: boolean) => void;
 }) {
   return (
-    <div className="grid gap-1">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
       <p className="px-2 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
         {title}
       </p>
@@ -185,7 +185,7 @@ function AssigneeGroup({
           <label
             key={assignee.id}
             htmlFor={inputId}
-            className={`motion-control-trigger flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 outline-none transition-colors duration-[var(--motion-interaction-duration)] focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none ${
+            className={`motion-control-trigger flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 outline-none transition-colors duration-[var(--motion-interaction-duration)] focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none ${
               selected
                 ? "border-primary/40 bg-primary/10 hover:bg-primary/15"
                 : "border-transparent hover:bg-muted"
@@ -205,7 +205,7 @@ function AssigneeGroup({
               className="size-7 text-[10px]"
             />
             <span className="grid min-w-0 flex-1 leading-tight">
-              <span className="truncate text-sm font-medium">
+              <span className="text-sm font-medium break-words">
                 {assignee.full_name}
               </span>
               <span className="truncate text-xs text-muted-foreground">
@@ -254,9 +254,9 @@ function AssigneeBulkControls({
   }, [partlySelected]);
 
   return (
-    <div className="grid gap-1 border-b bg-card px-2 pb-2">
-      <div className="flex min-h-11 items-center justify-between gap-2">
-        <label className="motion-control-trigger flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1 text-xs font-semibold transition-colors duration-[var(--motion-interaction-duration)] hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none has-disabled:cursor-not-allowed has-disabled:opacity-50">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 border-b bg-card px-2 pb-2">
+      <div className="flex min-h-11 min-w-0 items-center justify-between gap-2">
+        <label className="motion-control-trigger flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-1 text-xs font-semibold transition-colors duration-[var(--motion-interaction-duration)] hover:bg-muted focus-within:ring-3 focus-within:ring-ring/50 active:bg-muted motion-reduce:transition-none has-disabled:cursor-not-allowed has-disabled:opacity-50">
           <input
             ref={selectAllRef}
             type="checkbox"
@@ -267,7 +267,7 @@ function AssigneeBulkControls({
             onChange={(event) => onSelectAll(event.target.checked)}
             className="motion-control-pop size-5 shrink-0 accent-primary"
           />
-          <span className="truncate">Select all shown in {committeeName} ({visibleCount})</span>
+          <span className="min-w-0 leading-tight break-words">Select all shown in {committeeName} ({visibleCount})</span>
         </label>
         <Button
           type="button"
