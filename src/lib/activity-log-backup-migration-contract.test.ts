@@ -305,7 +305,9 @@ describe("Batch E2 Activity Log backup migration contract", () => {
     expect(testPaste).toContain("activity_type = 'activity_log_retention_changed'");
     expect(testPaste).toContain("activity_type = 'activity_log_cleared'");
     expect(testPaste).toContain("40 requesting Admin is inactive before final deletion batch");
-    expect(testPaste).toContain("TEST RESULTS %/66 PASS");
+    expect(testPaste).toContain("candidate.change_summary is null");
+    expect(testPaste).toContain("34g legacy NULL summary is covered and completes");
+    expect(testPaste).toContain("TEST RESULTS %/67 PASS");
     expect(rollout).toContain("'0 0 1-7 * *'");
     expect(rollout).toContain("exactly_seven_prod_jobs");
   });
