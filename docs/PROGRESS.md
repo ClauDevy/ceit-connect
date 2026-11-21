@@ -369,23 +369,23 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
   Activity Log retention state when another Admin changes it while the page is open.
 - E2 Storage cleanup: an upload that reaches the private bucket but expires
   before verification can leave an orphan CSV after its reservation metadata is
-  removed. No Storage delete capability ships in E2; add a separately reviewed,
-  manifest-safe cleanup path before orphan volume becomes material.
+  removed. Its cleanup queue needs a separately authorized, manifest-safe
+  Storage path; no Storage delete capability ships in E2.
 - E2 terminal email payload cleanup: `email_failed` intentionally retains its
   verified private bytes for Admin Retry. Add a separately reviewed age limit
   and cleanup path for abandoned failures after the retention period is chosen.
-- E2 backup history stops at the newest 20 records; continuation paging needs a
+- E2 backup list stops at the newest 20 records; continuation paging needs a
   separately reviewed UI and RPC contract.
-- E2 Resend idempotency lasts 24 hours. A later retry whose resolved recipient
-  set changed still uses the backup UUID key and needs separate reconciliation.
+- E2 email recipient and idempotency reconciliation: Resend idempotency lasts
+  24 hours, while a later retry can resolve a changed recipient set under the
+  same backup UUID key. Persist or otherwise reconcile the original recipients.
 - E2 abandoned expired claims are reclaimed without counting the abandoned
   ownership period as an attempt; attempt accounting currently advances only
   when the worker explicitly releases or acknowledges the lease.
 - E2 runner counters do not distinguish all successful continuations and email
   outcomes accurately; they remain diagnostic rather than authoritative.
-- E2 continuation latency: unfinished successful capped work retains its
-  five-minute lease, so the next wave can wait for expiry. Early lease release
-  or a shorter continuation lease needs separate review.
+- E2 early lease clearing: a successful non-final deletion batch retains its
+  five-minute lease, so the next continuation wave can wait for expiry.
 - E2 wake deadline: prove the 60-second route maximum against a worst-case
   four-attachment run; a lease expiry currently retries the work.
 - E2 backup panel: separate action failures from refresh failures so a failed
@@ -400,8 +400,9 @@ Next up after Batch 2 is manually verified, reviewed, and merged: Phase 4B Batch
 - E2 confidentiality history: retroactively protect old Activity Log rows if
   their task becomes confidential after the row was written.
 - E2 expired email leases: account for abandoned email ownership periods.
-- E2 email retries: persist the original resolved recipient set across retry
-  attempts instead of resolving it again.
+- E2 person-payload constraint rollout: consider `NOT VALID` followed by
+  `VALIDATE CONSTRAINT` for a future large table; this migration is already
+  applied and the current table is small.
 - E2 request-size verification: run a synthetic 5 MiB CSV through both the
   verify and payload-read calls on Dev and Prod; the request-size limits are not
   yet proven end to end.

@@ -928,11 +928,22 @@ select public.e2_test_expect_error(
 select public.record_activity_log_backup_download(
   '92000000-0000-4000-8000-000000000312'
 );
-select public.e2_test_expect_success(
+select public.e2_test_expect_true(
   '33 all downloads allow deletion request',
   'select public.request_activity_log_backup_deletion(''92000000-0000-4000-8000-000000000303'',''DELETE 2 LOG ENTRIES'')'
 );
 reset role;
+select ceit_connect_private.e2_test_record(
+  '33 all downloads allow deletion request',
+  coalesce((select result.passed
+    from ceit_connect_private.e2_test_results as result
+    where result.label = '33 all downloads allow deletion request'), false)
+  and exists (
+    select 1 from ceit_connect_private.activity_log_backups as backup
+    where backup.id = '92000000-0000-4000-8000-000000000303'
+      and backup.status = 'deletion_requested'
+  )
+);
 update ceit_connect_private.activity_log_backups
 set status = 'failed', last_error_code = 'e2_test_complete',
     completed_at = pg_catalog.clock_timestamp(),
@@ -1138,7 +1149,7 @@ insert into public.activity_log(
   'activity_log_retention_changed',
   '92000000-0000-4000-8000-000000000011', 'UPDATE',
   pg_catalog.jsonb_build_object('old_days',30,'new_days',31),
-  pg_catalog.clock_timestamp() - interval '2 hours'
+  '-infinity'::timestamptz
 );
 set local session_replication_role = origin;
 insert into ceit_connect_private.activity_log_backups(
@@ -1146,7 +1157,7 @@ insert into ceit_connect_private.activity_log_backups(
   lease_token, lease_expires_at
 ) values (
   '92000000-0000-4000-8000-000000000427', 'manual_all', 'snapshotting',
-  pg_catalog.clock_timestamp() - interval '1 hour',
+  '2000-01-01 00:00:00+08'::timestamptz,
   '92000000-0000-4000-8000-000000000011',
   '92000000-0000-4000-8000-000000000428',
   pg_catalog.clock_timestamp() + interval '5 minutes'
@@ -1572,11 +1583,40 @@ begin
   v_cycle := pg_catalog.date_trunc(
     'month', pg_catalog.clock_timestamp() at time zone 'Asia/Manila'
   )::date;
+
+  delete from ceit_connect_private.activity_log_backup_downloads
+  where backup_id in (
+    select id from ceit_connect_private.activity_log_backups
+    where kind = 'monthly_retention' and cycle_month = v_cycle
+  );
+  delete from ceit_connect_private.activity_log_backup_rows
+  where backup_id in (
+    select id from ceit_connect_private.activity_log_backups
+    where kind = 'monthly_retention' and cycle_month = v_cycle
+  );
+  delete from ceit_connect_private.activity_log_backup_file_payloads
+  where file_id in (
+    select file.id
+    from ceit_connect_private.activity_log_backup_files as file
+    join ceit_connect_private.activity_log_backups as backup
+      on backup.id = file.backup_id
+    where backup.kind = 'monthly_retention'
+      and backup.cycle_month = v_cycle
+  );
+  delete from ceit_connect_private.activity_log_backup_files
+  where backup_id in (
+    select id from ceit_connect_private.activity_log_backups
+    where kind = 'monthly_retention' and cycle_month = v_cycle
+  );
+  delete from ceit_connect_private.activity_log_backups
+  where kind = 'monthly_retention' and cycle_month = v_cycle;
+
   v_first := ceit_connect_private.start_monthly_activity_log_backup();
   v_second := ceit_connect_private.start_monthly_activity_log_backup();
   perform ceit_connect_private.e2_test_record(
     '47 repeated monthly checker does not duplicate',
-    v_first is not distinct from v_second
+    v_first is not null
+    and v_second = v_first
     and 1 = (select pg_catalog.count(*)
       from ceit_connect_private.activity_log_backups
       where kind = 'monthly_retention' and cycle_month = v_cycle)
