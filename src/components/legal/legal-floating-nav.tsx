@@ -47,7 +47,11 @@ export function LegalFloatingNav() {
     const nav = document.getElementById("legal-contents")
     if (!nav) return
     const details = nav.querySelector("details")
-    if (details) details.open = true
+    if (details) {
+      details.open = true
+      // Move keyboard focus into the opened list so screen reader and keyboard users land there.
+      details.querySelector("summary")?.focus({ preventScroll: true })
+    }
     nav.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" })
   }
 

@@ -205,7 +205,7 @@ function AssigneeGroup({
               className="size-7 text-[10px]"
             />
             <span className="grid min-w-0 flex-1 leading-tight">
-              <span className="text-sm font-medium break-words">
+              <span className="min-w-0 text-sm font-medium break-words">
                 {assignee.full_name}
               </span>
               <span className="truncate text-xs text-muted-foreground">
