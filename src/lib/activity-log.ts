@@ -46,6 +46,13 @@ export const ACTIVITY_ACTION_PRESENTATION = {
   DELETE: { label: "Deleted", variant: "destructive", icon: "trash" },
 } as const;
 
+// These leadership-only semantic rows use the existing broad-action filters:
+// retention changes appear under Updated and manual clearing under Deleted.
+export const ACTIVITY_LOG_ADMIN_ACTIVITY_LABELS = {
+  activity_log_retention_changed: "Activity Log retention changed",
+  activity_log_cleared: "Activity Log cleared",
+} as const;
+
 export function activityCommitteeLabels(
   committees: readonly { id: string; name: string }[],
 ) {

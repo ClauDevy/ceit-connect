@@ -70,7 +70,19 @@ Postgres on Supabase. **Every table has Row-Level Security (RLS) enabled** — t
 
 ### activity_log
 
-`id uuid pk default gen_random_uuid()`, `task_id uuid → tasks.id on delete set null`, `user_id uuid → users.id on delete set null`, `action text not null` (`INSERT` | `UPDATE` | `DELETE`), `changes jsonb`, `created_at timestamptz not null default now()`. Written automatically by triggers; no client role has direct table privileges. `list_activity_log()` is the client read path: active Admins/Co-Admins receive the whole sequence with unavailable content reduced to a fixed minimal masked row, while current primary/assist Members may request only an exact real-access task. The fixed response excludes raw `changes` and uses `(created_at, id)` keyset paging. Batch E adds a private singleton retention setting, seeded at 30 days for rollout and bounded to 30–730; only an active Admin may read or save it through fixed functions. Saving does not purge. `purge_activity_log()` remains postgres-session-only, deletes at most 5,000 oldest rows strictly older than the saved rolling window, and retains the transaction-local DELETE plus absolute TRUNCATE guard. Admin CSV export delegates its filters, sorting, masking, and safe shape to the existing reader and is paged to a 5,000-row application limit. No migration schedules the environment-specific daily `pg_cron` job.
+`id uuid pk default gen_random_uuid()`, nullable `task_id` / `event_id`, `user_id`, semantic type, broad `action` (`INSERT` | `UPDATE` | `DELETE`), validated `changes`, and `created_at`. No client role has direct table privileges. `list_activity_log()` is the client path: active Admins/Co-Admins receive global leadership rows, while Members receive only exact task-scoped History. Batch E stores the active-Admin-only 30–730-day setting and writes an ordinary global row only when its value changes. Private `activity-log-backups` history, file manifests, exact row-ID manifests, tracked downloads, and file payload bytes have RLS plus no API table grants and no event/task FKs; the payload table has only a cascading FK to the private files table and caps each `bytea` at 5 MiB. The download record is a UX gate, not the deletion security boundary. CSV backup projection never returns raw changes and always masks confidential task content, independent of the Admin viewer. Pending/snapshotting retries are spaced and fail safely after five failures or 24 hours; deleting retries remain active and never fail open; email retries use 5/15/60/240-minute spacing before terminal `email_failed`. `purge_activity_log()` is a postgres-only no-op; the sole deletion authority is an ungranted private function that requires a deleting backup with every file verified and deletes only exact manifest IDs in batches of at most 5,000. TRUNCATE and raw DELETE remain blocked. The private Storage bucket allows only reserved anonymous inserts and active-Admin reads; the worker has no Storage read policy. Verification receives the uploaded bytes as base64, checks decoded length against both the stated count and Storage metadata, recomputes SHA-256 in PostgreSQL, and stores the bytes privately. A capability-authenticated one-file RPC serves email attachments only for the leased `email_pending` backup. Payloads survive `email_pending` and `email_failed` for retries and are removed at `completed` or `failed`. Cron and Vault remain environment-specific owner operations, never migrations.
+
+  The Storage policies described above restrict the `anon` and `authenticated`
+  application roles. Supabase service credentials bypass Storage RLS and are not
+  made Admin-only by this migration.
+
+  The person-payload constraint keeps the existing leadership payload validation
+  for prior person types and adds exact-key branches for retention changes
+  (`old_days`, `new_days`, each an integer from 30 through 730) and clearing
+  records (`count`, `backup_id`, `cutoff_at`).
+
+  The guarded Admin backup-download route recomputes SHA-256 before returning the
+CSV or recording its download; a mismatch does neither.
 
 ## Who can do what (RLS summary)
 

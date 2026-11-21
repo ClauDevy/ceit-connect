@@ -16,7 +16,7 @@ export type EmailMessage = {
   idempotencyKey: string;
   subject: string;
   text: string;
-  to: string;
+  to: string | readonly string[];
 };
 
 export type EmailSendOutcome = {
@@ -93,7 +93,7 @@ export async function sendResendEmail(
       },
       body: JSON.stringify({
         from: message.from,
-        to: [message.to],
+        to: typeof message.to === "string" ? [message.to] : [...message.to],
         subject: message.subject,
         text: message.text,
         html: message.html,

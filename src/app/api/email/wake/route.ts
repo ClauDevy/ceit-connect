@@ -5,6 +5,7 @@ import {
   prepareImportantEmailSender,
   runImportantEmailDelivery,
 } from "@/lib/email/important-email-worker";
+import { runActivityLogBackupDelivery } from "@/lib/activity-log-backup-worker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +32,12 @@ export async function POST(request: Request) {
   try {
     const config = prepareImportantEmailSender();
     if (!await emailDatabaseReady(config)) throw new Error("Email database unavailable.");
-    after(() => runImportantEmailDelivery(config));
+    after(async () => {
+      await Promise.allSettled([
+        runImportantEmailDelivery(config),
+        runActivityLogBackupDelivery(config),
+      ]);
+    });
   } catch {
     console.error("Important email wake unavailable.", { claimed: 0 });
     return Response.json({ error: "Email sender unavailable." }, {
