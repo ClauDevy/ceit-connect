@@ -72,12 +72,7 @@ describe("Activity Log Admin controls", () => {
     expect(backupPanel).not.toContain("history.pushState");
   });
 
-  it("keeps the exact deletion and download gates source-pinned", () => {
-    expect(backupPanel).toContain("const expected = `DELETE ${backup.row_count} LOG ENTRIES`");
-    expect(backupPanel).toContain("!allDownloaded(files[backup.backup_id] ?? [])");
-    expect(backupPanel).toContain("confirmation !== expected");
-    expect(backupPanel).toContain("!hasOpenWindow(backup, Date.now())");
-    expect(backupPanel).toContain("disabled={busy || !downloaded || !unexpired || confirmation !== expected}");
+  it("keeps tracked downloads, email retry, and the one-active response source-pinned", () => {
     expect(backupPanel).toContain("/api/activity-log/backups/${backup.backup_id}/files/${file.file_id}/download");
     expect(backupPanel).toContain("retry_activity_log_backup_email");
     expect(backupPanel).toContain("Another Activity Log backup is still in progress. Finish it before starting a new one.");

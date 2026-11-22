@@ -104,6 +104,48 @@ describe("Activity Log backup panel", () => {
     expect(screen.getAllByText("Expired").length).toBeGreaterThan(0);
     expect(screen.queryByText("Needs attention")).toBeNull();
     expect(screen.queryByRole("button", { name: /Continue to delete/i })).toBeNull();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("request_activity_log_backup_deletion", expect.anything());
+  });
+
+  it("does not request deletion before every backup file is downloaded", async () => {
+    const ready = backup({ backup_status: "ready", delete_expires_at: new Date(now + 600_000).toISOString() });
+    const pendingFile = { ...downloadedFile, downloaded_by_caller: false };
+    renderPanel([ready], { "backup-a": [pendingFile] });
+    await screen.findByText(/Current backup:/);
+    fireEvent.click(screen.getByRole("button", { name: "Show backups and clearing" }));
+    const continueButton = screen.getByRole("button", { name: "Continue to delete" });
+    expect(continueButton.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(continueButton);
+    expect(mocks.rpc).not.toHaveBeenCalledWith("request_activity_log_backup_deletion", expect.anything());
+  });
+
+  it("does not request deletion with an incorrect typed confirmation", async () => {
+    const ready = backup({ backup_status: "ready", delete_expires_at: new Date(now + 600_000).toISOString() });
+    renderPanel([ready], { "backup-a": [downloadedFile] });
+    await screen.findByText(/Current backup:/);
+    fireEvent.click(screen.getByRole("button", { name: "Show backups and clearing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to delete" }));
+    fireEvent.change(screen.getByLabelText("Type DELETE 12 LOG ENTRIES"), { target: { value: "DELETE 11 LOG ENTRIES" } });
+    const deleteButton = screen.getByRole("button", { name: "Delete backed-up rows" });
+    expect(deleteButton.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(deleteButton);
+    expect(mocks.rpc).not.toHaveBeenCalledWith("request_activity_log_backup_deletion", expect.anything());
+  });
+
+  it("requests deletion with the backup ID and exact typed confirmation", async () => {
+    const ready = backup({ backup_status: "ready", delete_expires_at: new Date(now + 600_000).toISOString() });
+    renderPanel([ready], { "backup-a": [downloadedFile] });
+    await screen.findByText(/Current backup:/);
+    fireEvent.click(screen.getByRole("button", { name: "Show backups and clearing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to delete" }));
+    fireEvent.change(screen.getByLabelText("Type DELETE 12 LOG ENTRIES"), { target: { value: "DELETE 12 LOG ENTRIES" } });
+    const deleteButton = screen.getByRole("button", { name: "Delete backed-up rows" });
+    expect(deleteButton.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(deleteButton);
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("request_activity_log_backup_deletion", {
+      p_backup_id: "backup-a",
+      p_confirmation: "DELETE 12 LOG ENTRIES",
+    }));
   });
 
   it("renders a completed zero-row backup as a muted non-deletion result", async () => {
