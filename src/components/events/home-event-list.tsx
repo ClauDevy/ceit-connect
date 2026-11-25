@@ -150,7 +150,7 @@ function ActiveEventCard({
             <span>{formatDateRange(event)}</span>
           </p>
           {event.description ? (
-            <p className="mt-2 line-clamp-2 hidden text-sm text-muted-foreground sm:block">
+            <p className="mt-2 hidden text-sm text-muted-foreground sm:line-clamp-2">
               {event.description}
             </p>
           ) : null}

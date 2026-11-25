@@ -183,7 +183,8 @@ export function ActivityLogFilterBar({
         ) : null}
       </div>
 
-      <ResponsiveCollapse open={filtersOpen} openFrom="xl">
+      <ResponsiveCollapse open={filtersOpen} openFrom="xl" className="-mx-1">
+      <div className="px-1 pb-1">
       <div
         id="activity-log-filters"
         className="grid gap-3 border-t pt-3 sm:grid-cols-2 xl:grid-cols-4"
@@ -249,6 +250,7 @@ export function ActivityLogFilterBar({
             onChange={(event) => onFilterChange({ dateTo: event.target.value || null })}
           />
         </div>
+      </div>
       </div>
       </ResponsiveCollapse>
     </div>

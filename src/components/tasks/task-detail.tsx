@@ -471,8 +471,8 @@ function RealTask({
               <LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
                 <strong>Confidential —</strong> Admins and the owning Co-Admin
-                always have access. Assignees and the additional viewers listed
-                under People may also view this task.
+                always have access. Assignees and the viewers listed under
+                Additional viewers may also view this task.
               </span>
             </InlineAlert>
           ) : null}
