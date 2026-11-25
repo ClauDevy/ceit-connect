@@ -12,6 +12,7 @@ type ModalMarker = {
 }
 
 type ModalRegistration = {
+  kind: "modal" | "guard"
   isActive: () => boolean
   requestClose: () => void
 }
@@ -24,6 +25,7 @@ type Waiter = {
 const registrations = new Map<string, ModalRegistration>()
 const stack: string[] = []
 const requestedClosures = new Set<string>()
+const missingGuardMarkers = new Set<string>()
 const waiters = new Set<Waiter>()
 
 let listening = false
@@ -156,8 +158,22 @@ function handlePopState() {
     return
   }
 
-  const id = stack.pop()
-  if (!id) return
+  const id = stack.at(-1)
+  if (!id) {
+    const staleMarker = getMarker(window.history.state)
+    if (staleMarker) discardTopMarkerInPlace(staleMarker.id)
+    return
+  }
+
+  const registration = registrations.get(id)
+  const requested = requestedClosures.has(id)
+  if (registration?.kind === "guard" && !requested) {
+    missingGuardMarkers.add(id)
+    registration.requestClose()
+    return
+  }
+
+  stack.pop()
 
   traversalPending = false
   clearTraversalTimer()
@@ -175,17 +191,27 @@ function handlePopState() {
     return
   }
 
-  const requested = requestedClosures.delete(id)
-  const registration = registrations.get(id)
+  requestedClosures.delete(id)
 
   if (!requested) registration?.requestClose()
 
   setTimeout(() => {
     if (
       registrations.get(id) === registration &&
+      registration?.kind === "modal" &&
       registration?.isActive()
     ) {
       pushMarker(id)
+    }
+    const guardId = stack.at(-1)
+    const guard = guardId ? registrations.get(guardId) : undefined
+    if (
+      guardId &&
+      guard?.kind === "guard" &&
+      guard.isActive() &&
+      missingGuardMarkers.delete(guardId)
+    ) {
+      pushMarker(guardId)
     }
     drainRequestedClosures()
   }, 0)
@@ -202,6 +228,16 @@ function registerModal(id: string, registration: ModalRegistration) {
   ensureListening()
   return () => {
     if (registrations.get(id) === registration) registrations.delete(id)
+    if (registration.kind === "guard") {
+      requestedClosures.delete(id)
+      missingGuardMarkers.delete(id)
+      for (let index = stack.length - 1; index >= 0; index -= 1) {
+        if (stack[index] === id) stack.splice(index, 1)
+      }
+      discardTopMarkerInPlace(id)
+      settleWaiters()
+      return
+    }
     queueMicrotask(() => {
       if (registrations.has(id)) return
 
@@ -310,6 +346,7 @@ export function useModalHistory<TDetails>(
 
   React.useEffect(() => {
     return registerModal(id, {
+      kind: "modal",
       isActive: () => openRef.current && enabledRef.current,
       requestClose: () => requestHistoryCloseRef.current(),
     })
@@ -327,6 +364,56 @@ export function useModalHistory<TDetails>(
     },
     [enabled, id],
   )
+}
+
+export function useBackNavigationGuard(
+  enabled: boolean,
+  onBackAttempt: () => void,
+) {
+  const reactId = React.useId()
+  const id = `guard-${reactId}`
+  const enabledRef = React.useRef(enabled)
+  const releasedRef = React.useRef(false)
+  const onBackAttemptRef = React.useRef(onBackAttempt)
+
+  React.useEffect(() => {
+    enabledRef.current = enabled
+    onBackAttemptRef.current = onBackAttempt
+    if (!enabled) releasedRef.current = false
+  }, [enabled, onBackAttempt])
+
+  React.useEffect(() => {
+    return registerModal(id, {
+      kind: "guard",
+      isActive: () => enabledRef.current && !releasedRef.current,
+      requestClose: () => onBackAttemptRef.current(),
+    })
+  }, [id])
+
+  React.useEffect(() => {
+    if (enabled && !releasedRef.current) openModal(id)
+    else noteModalClosed(id)
+  }, [enabled, id])
+
+  return React.useCallback(async () => {
+    if (releasedRef.current) {
+      await waitForModalHistory()
+      return
+    }
+
+    releasedRef.current = true
+    if (missingGuardMarkers.delete(id)) {
+      requestedClosures.delete(id)
+      for (let index = stack.length - 1; index >= 0; index -= 1) {
+        if (stack[index] === id) stack.splice(index, 1)
+      }
+      settleWaiters()
+      return
+    }
+
+    requestModalClose(id)
+    await waitForModalHistory()
+  }, [id])
 }
 
 const phoneModalQuery = "(max-width: 639px)"
