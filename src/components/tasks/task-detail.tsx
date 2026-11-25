@@ -41,7 +41,8 @@ import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { PanelBlock, TaskPanel, TaskSection } from "@/components/tasks/task-section";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BoardAssignee, BoardCommittee } from "@/lib/events/board";
@@ -83,6 +84,7 @@ import {
   type TaskAssigneeWorkload,
 } from "@/lib/tasks/workload";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type TaskDetailProps = {
@@ -117,11 +119,9 @@ function AssigneeList({
 }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold text-muted-foreground">
-        {label}
-      </p>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">{label}</p>
       {assignees.length > 0 ? (
-        <div className="space-y-2.5">
+        <div className="motion-stagger space-y-2.5">
           {assignees.map((assignee) => {
             const name = assignee.full_name ?? "Former member";
             return (
@@ -219,13 +219,11 @@ function WorkLinksSection({
 }: WorkLinksSectionProps) {
   if (isPending) {
     return (
-      <Card aria-label="Loading work links">
-        <CardContent className="space-y-3 px-4 py-4 sm:px-5 sm:py-5">
-          <Skeleton className="h-5 w-24" />
-          <Skeleton className="h-4 w-72 max-w-full" />
-          <Skeleton className="h-10 w-full" />
-        </CardContent>
-      </Card>
+      <div aria-label="Loading work links" className="space-y-3">
+        <Skeleton className="h-6 w-28" />
+        <Skeleton className="h-4 w-60 max-w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
     );
   }
 
@@ -313,73 +311,57 @@ function RealTask({
   const taskTypeLabel =
     task.task_type === "LiveOperation" ? "Live Operation" : "Deliverable";
 
+  const primaryAssignees = task.primary_assignees;
+  const assignedPeople = [...primaryAssignees, ...task.assist_assignees];
+  const firstAssigneeName =
+    assignedPeople[0]?.full_name ?? (assignedPeople.length ? "Former member" : null);
+  const isLiveOperation = task.task_type === "LiveOperation";
+  const headlineTime = isLiveOperation ? task.call_time : task.due_date;
+  const headlineLabel = isLiveOperation ? "Call time" : "Due";
+  const workLinksData =
+    task.phaseComplete && workLinks.data
+      ? {
+          ...workLinks.data,
+          can_add: false,
+          links: workLinks.data.links.map((link) => ({
+            ...link,
+            can_remove: false,
+          })),
+        }
+      : workLinks.data;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <BackLink task={task} />
 
-      {task.event_status === "Archived" ? (
-        <InlineAlert variant="info" className="flex items-start gap-2.5">
-          <Archive className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>
-            This task belongs to an archived event and is permanently read only.
-          </span>
-        </InlineAlert>
-      ) : null}
-      {task.phaseComplete ? (
-        <InlineAlert variant="info" className="flex items-start gap-2.5">
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>This phase is complete. Task details remain readable, but changes are disabled.</span>
-        </InlineAlert>
-      ) : null}
+      <header className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">{task.status}</Badge>
+          {task.effective_priority ? (
+            <PriorityBadge
+              priority={task.effective_priority}
+              suffix="priority"
+            />
+          ) : null}
+          <Badge variant="neutral">{taskTypeLabel}</Badge>
+          <Badge variant={task.phaseComplete ? "success" : "neutral"}>
+            {task.phaseComplete ? <CheckCircle2 className="size-3.5" aria-hidden /> : null}
+            {task.phase?.trim() || "Unphased"}
+            {task.phaseComplete ? <span className="sr-only"> complete</span> : null}
+          </Badge>
+        </div>
 
-      {task.is_blocked ? (
-        <InlineAlert variant="info" className="flex items-start gap-2.5">
-          <LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>
-            <strong>Blocked —</strong> this task can’t start until{" "}
-            <strong>{dependencyName}</strong> is marked Completed.
-          </span>
-        </InlineAlert>
-      ) : null}
-
-      {task.is_confidential ? (
-        <InlineAlert variant="info" className="flex items-start gap-2.5">
-          <LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>
-            <strong>Confidential —</strong> Admins and the owning Co-Admin
-            always have access. Assignees and the additional viewers shown below
-            may also view this task.
-          </span>
-        </InlineAlert>
-      ) : null}
-
-      <header>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Badge variant="outline">{task.status}</Badge>
-              {task.effective_priority ? (
-                <PriorityBadge
-                  priority={task.effective_priority}
-                  suffix="priority"
-                />
-              ) : null}
-              <Badge variant="neutral">{taskTypeLabel}</Badge>
-              <Badge variant={task.phaseComplete ? "success" : "outline"}>
-                {task.phaseComplete ? <CheckCircle2 className="size-3.5" aria-hidden /> : null}
-                {task.phase?.trim() || "Unphased"}
-                {task.phaseComplete ? <span className="sr-only"> complete</span> : null}
-              </Badge>
-            </div>
             <h1 className="max-w-3xl font-display text-2xl font-semibold tracking-tight sm:text-3xl">
               {task.title}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-sm text-muted-foreground">
               {task.event_name} · {task.committee_name}
             </p>
           </div>
           {!task.phaseComplete && (canEditTask || backup.data?.out_can_toggle_backup) ? (
-            <div className="flex items-center gap-2 sm:shrink-0">
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
               {canEditTask ? (
                 <Button
                   type="button"
@@ -392,55 +374,115 @@ function RealTask({
                 </Button>
               ) : null}
               {backup.data?.out_can_toggle_backup ? (
-              <TaskBackupToggle
-                state={backup.data}
-                busyAction={backup.busyAction}
-                onToggle={backup.onToggle}
-              />
+                <TaskBackupToggle
+                  state={backup.data}
+                  busyAction={backup.busyAction}
+                  onToggle={backup.onToggle}
+                />
               ) : null}
             </div>
           ) : null}
         </div>
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl bg-muted/60 px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <CalendarClock className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <div className="min-w-0 leading-tight">
+              <p className="text-xs text-muted-foreground">{headlineLabel}</p>
+              <p className="text-sm font-semibold">
+                {formatDateSafe(dateTimeFormatter, headlineTime, "Not set")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            {assignedPeople.length > 0 ? (
+              <div className="flex shrink-0 items-center" aria-hidden>
+                {assignedPeople.slice(0, 4).map((person) => (
+                  <UserAvatar
+                    key={person.id}
+                    name={person.full_name ?? "Former member"}
+                    src={person.avatar_url}
+                    size="sm"
+                    className={cn(
+                      "-ml-2 size-7 text-[10px] ring-2 ring-background first:ml-0",
+                      !person.full_name && "bg-muted text-muted-foreground",
+                    )}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            )}
+            <div className="min-w-0 leading-tight">
+              <p className="text-xs text-muted-foreground">Assigned</p>
+              <p className="truncate text-sm font-semibold">
+                {firstAssigneeName
+                  ? assignedPeople.length > 1
+                    ? `${firstAssigneeName} +${assignedPeople.length - 1}`
+                    : firstAssigneeName
+                  : "Unassigned"}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div aria-live="polite" aria-atomic="true">
           {backup.error ? (
-            <InlineAlert className="mt-3">{backup.error}</InlineAlert>
+            <InlineAlert className="mt-1">{backup.error}</InlineAlert>
           ) : null}
           {backup.notice ? (
-            <p role="status" className="mt-3 text-sm text-muted-foreground">
+            <p role="status" className="mt-1 text-sm text-muted-foreground">
               {backup.notice}
             </p>
           ) : null}
         </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 space-y-4">
-          <Card>
-            <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-              <CardTitle className="text-[15px]">Description</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
-              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                {task.description?.trim() || "No description provided."}
-              </p>
-            </CardContent>
-          </Card>
-          <WorkLinksSection {...workLinks} data={task.phaseComplete && workLinks.data ? {
-            ...workLinks.data,
-            can_add: false,
-            links: workLinks.data.links.map((link) => ({ ...link, can_remove: false })),
-          } : workLinks.data} />
-          <TaskComments
-            taskId={task.id}
-            isArchived={task.event_status === "Archived" || task.phaseComplete}
-            onRefreshTask={onRefreshTask}
-          />
-          <TaskHistory key={task.id} taskId={task.id} />
+      {task.event_status === "Archived" ||
+      task.phaseComplete ||
+      task.is_blocked ||
+      task.is_confidential ? (
+        <div className="space-y-2.5">
+          {task.event_status === "Archived" ? (
+            <InlineAlert variant="info" className="flex items-start gap-2.5">
+              <Archive className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                This task belongs to an archived event and is permanently read only.
+              </span>
+            </InlineAlert>
+          ) : null}
+          {task.phaseComplete ? (
+            <InlineAlert variant="info" className="flex items-start gap-2.5">
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>This phase is complete. Task details remain readable, but changes are disabled.</span>
+            </InlineAlert>
+          ) : null}
+          {task.is_blocked ? (
+            <InlineAlert variant="info" className="flex items-start gap-2.5">
+              <LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                <strong>Blocked —</strong> this task can’t start until{" "}
+                <strong>{dependencyName}</strong> is marked Completed.
+              </span>
+            </InlineAlert>
+          ) : null}
+          {task.is_confidential ? (
+            <InlineAlert variant="info" className="flex items-start gap-2.5">
+              <LockKeyhole className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                <strong>Confidential —</strong> Admins and the owning Co-Admin
+                always have access. Assignees and the viewers listed under
+                Additional viewers may also view this task.
+              </span>
+            </InlineAlert>
+          ) : null}
         </div>
+      ) : null}
 
-        <aside className="space-y-4">
-          {!task.phaseComplete ? <TaskLeaveRequests taskId={task.id} /> : null}
-          {!task.phaseComplete && backup.data ? (
+      {!task.phaseComplete ? (
+        <div className="space-y-4 empty:hidden">
+          <TaskLeaveRequests taskId={task.id} />
+          {backup.data ? (
             <TaskBackupRequestedCard
               state={backup.data}
               busyAction={backup.busyAction}
@@ -449,69 +491,91 @@ function RealTask({
               onAccept={backup.onAccept}
             />
           ) : null}
+        </div>
+      ) : null}
 
-          <Card>
-            <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-              <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                <Users className="size-4" aria-hidden /> Assignees
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
-              <AssigneeList
-                label="Primary"
-                assignees={task.primary_assignees}
-              />
-              <AssigneeList label="Assist" assignees={task.assist_assignees} />
-            </CardContent>
-          </Card>
+      {/* Phone order: description, work, discussion, history, then the People/Details panel
+          (the header already shows due date and assignees). Wide screens: one reading column on
+          the left, one sticky details panel on the right. */}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10">
+        <div className="min-w-0 space-y-8">
+          <TaskSection title="Description">
+            <p className="whitespace-pre-line text-[15px] leading-relaxed text-foreground/85">
+              {task.description?.trim() || (
+                <span className="text-muted-foreground">No description provided.</span>
+              )}
+            </p>
+          </TaskSection>
+          <WorkLinksSection {...workLinks} data={workLinksData} />
+          <TaskComments
+            taskId={task.id}
+            isArchived={task.event_status === "Archived" || task.phaseComplete}
+            onRefreshTask={onRefreshTask}
+          />
+          <TaskHistory key={task.id} taskId={task.id} />
+        </div>
 
-          {!task.phaseComplete && editControls.data ? (
-            <>
-              <TaskEditControls
-                viewerId={viewerId}
-                controls={editControls.data}
-                onSaveDependency={editControls.onSaveDependency}
-                onSaveConfidentiality={editControls.onSaveConfidentiality}
-              />
-              <TaskPeopleControls
-                viewerId={viewerId}
-                viewerRole={viewerRole}
-                controls={editControls.data}
-                taskTitle={task.title}
-                onAssignPeople={editControls.onAssignPeople}
-                onDeleteTask={editControls.onDeleteTask}
-                onUnassignSelf={editControls.onUnassignSelf}
-                workloadCounts={editControls.workloadCounts}
-              />
-            </>
-          ) : null}
+        <aside>
+          <TaskPanel>
+            <PanelBlock title="People" icon={<Users />}>
+              <div className="space-y-4">
+                <AssigneeList label="Primary" assignees={task.primary_assignees} />
+                <AssigneeList label="Assist" assignees={task.assist_assignees} />
+              </div>
+            </PanelBlock>
 
-          {task.is_confidential && task.event_status === "Archived" && !task.phaseComplete ? (
-            <ArchivedTaskSharing taskId={task.id} viewers={task.access_list} />
-          ) : task.is_confidential &&
-            !editControls.data?.can_set_confidentiality ? (
-            <Card>
-              <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-                <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                  <LockKeyhole className="size-4" aria-hidden /> Additional
-                  viewers
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+            <PanelBlock title="Details" icon={<CalendarClock />}>
+              <div className="space-y-2.5">
+                {isLiveOperation ? (
+                  <DetailRow
+                    label="End time"
+                    value={formatDateSafe(dateTimeFormatter, task.end_time, "Not set")}
+                  />
+                ) : null}
+                <DetailRow
+                  label="Created"
+                  value={formatTaskMetadataTimestamp(task.created_at!)}
+                />
+                <DetailRow
+                  label="Last updated"
+                  value={formatTaskMetadataTimestamp(task.updated_at!)}
+                />
+              </div>
+            </PanelBlock>
+
+            {!task.phaseComplete && editControls.data ? (
+              <>
+                <TaskEditControls
+                  viewerId={viewerId}
+                  controls={editControls.data}
+                  onSaveDependency={editControls.onSaveDependency}
+                  onSaveConfidentiality={editControls.onSaveConfidentiality}
+                />
+                <TaskPeopleControls
+                  viewerId={viewerId}
+                  viewerRole={viewerRole}
+                  controls={editControls.data}
+                  taskTitle={task.title}
+                  onAssignPeople={editControls.onAssignPeople}
+                  onDeleteTask={editControls.onDeleteTask}
+                  onUnassignSelf={editControls.onUnassignSelf}
+                  workloadCounts={editControls.workloadCounts}
+                />
+              </>
+            ) : null}
+
+            {task.is_confidential && task.event_status === "Archived" ? (
+              <ArchivedTaskSharing taskId={task.id} viewers={task.access_list} />
+            ) : task.is_confidential &&
+              (task.phaseComplete || !editControls.data?.can_set_confidentiality) ? (
+              <PanelBlock title="Additional viewers" icon={<LockKeyhole />}>
                 {task.access_list.length > 0 ? (
-                  <div className="space-y-2.5">
+                  <div className="motion-stagger space-y-2.5">
                     {task.access_list.map((viewer) => {
                       const name = viewer.full_name ?? "Member";
                       return (
-                        <div
-                          key={viewer.id}
-                          className="flex items-center gap-2.5"
-                        >
-                          <UserAvatar
-                            name={name}
-                            src={viewer.avatar_url}
-                            size="sm"
-                          />
+                        <div key={viewer.id} className="flex items-center gap-2.5">
+                          <UserAvatar name={name} src={viewer.avatar_url} size="sm" />
                           <span className="min-w-0 truncate text-sm font-medium">
                             {name}
                           </span>
@@ -524,52 +588,11 @@ function RealTask({
                     No additional viewers.
                   </p>
                 )}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Card>
-            <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-              <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                <CalendarClock className="size-4" aria-hidden /> Schedule
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
-              {task.task_type === "LiveOperation" ? (
-                <>
-                  <DetailRow
-                    label="Call time"
-                    value={
-                      formatDateSafe(dateTimeFormatter, task.call_time, "Not set")
-                    }
-                  />
-                  <DetailRow
-                    label="End time"
-                    value={
-                      formatDateSafe(dateTimeFormatter, task.end_time, "Not set")
-                    }
-                  />
-                </>
-              ) : (
-                <DetailRow
-                  label="Deadline"
-                  value={
-                    formatDateSafe(dateTimeFormatter, task.due_date, "Not set")
-                  }
-                />
-              )}
-              <DetailRow
-                label="Created"
-                value={formatTaskMetadataTimestamp(task.created_at!)}
-              />
-              <DetailRow
-                label="Last updated"
-                value={formatTaskMetadataTimestamp(task.updated_at!)}
-              />
-              <DetailRow label="Associated event" value={task.event_name!} />
-            </CardContent>
-          </Card>
+              </PanelBlock>
+            ) : null}
+          </TaskPanel>
         </aside>
+
       </div>
     </div>
   );

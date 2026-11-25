@@ -16,6 +16,7 @@ import {
   ACTIVITY_SORT_LABELS,
   type ActivityFilters,
 } from "@/lib/activity-log";
+import { ResponsiveCollapse } from "@/components/shared/motion";
 import { cn } from "@/lib/utils";
 
 type Committee = { id: string; name: string };
@@ -182,12 +183,11 @@ export function ActivityLogFilterBar({
         ) : null}
       </div>
 
+      <ResponsiveCollapse open={filtersOpen} openFrom="xl" className="-mx-1">
+      <div className="px-1 pb-1">
       <div
         id="activity-log-filters"
-        className={cn(
-          "grid gap-3 border-t pt-3 sm:grid-cols-2 xl:grid-cols-4",
-          !filtersOpen && "hidden xl:grid",
-        )}
+        className="grid gap-3 border-t pt-3 sm:grid-cols-2 xl:grid-cols-4"
       >
         <div className="grid min-w-0 gap-1.5">
           <FieldLabel>Sort by</FieldLabel>
@@ -251,6 +251,8 @@ export function ActivityLogFilterBar({
           />
         </div>
       </div>
+      </div>
+      </ResponsiveCollapse>
     </div>
   );
 }

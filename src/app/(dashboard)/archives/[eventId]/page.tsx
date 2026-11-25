@@ -1,6 +1,6 @@
 import { formatDateSafe } from "@/lib/safe-date";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, LockKeyhole } from "lucide-react";
+import { Archive, ArrowLeft, CalendarDays, LockKeyhole } from "lucide-react";
 import { redirect } from "next/navigation";
 import {
   ArchivedTaskList,
@@ -11,7 +11,7 @@ import {
 import { EventBanner } from "@/components/events/event-banner";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardProgress } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { getActiveProfileForRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -163,74 +163,104 @@ export default async function ArchivedEventPage({
     assignees.map((assignee) => [assignee.id, assignee] as const),
   );
 
+  const totalTasks = tasks?.length ?? 0;
+  const completedTasks = (tasks ?? []).filter(
+    (task) => task.status === "Completed",
+  ).length;
+  const unfinishedTasks = totalTasks - completedTasks;
+  const completionPercent =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   return (
-    <>
+    <div className="motion-content-ready">
       <Link
         href="/archives"
         className={buttonVariants({
           variant: "ghost",
           size: "sm",
-          className: "mb-4",
+          className: "-ml-2 mb-3",
         })}
       >
         <ArrowLeft aria-hidden />
         Event Archives
       </Link>
 
-      <div className="mb-4 flex items-start gap-2.5 rounded-xl border bg-muted/40 px-3.5 py-2.5">
-        <LockKeyhole
-          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-          aria-hidden
-        />
-        <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
-          <span className="font-semibold text-foreground">
-            Read-only record.
-          </span>{" "}
-          This event and its tasks are permanently frozen as they stood when
-          archived.
-        </p>
-      </div>
-
       <Card className="mb-8 grid max-w-5xl overflow-hidden md:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
         <EventBanner
           src={event.banner_url}
           alt={`${event.name} banner`}
-          className="aspect-video w-full self-center"
+          className="aspect-video w-full md:h-full md:min-h-full"
         />
-        <CardContent className="flex min-w-0 flex-col justify-center gap-3 p-4 sm:p-5 md:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h1 className="min-w-0 font-display text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
+        <CardContent className="flex min-w-0 flex-col justify-center gap-4 p-4 sm:p-5 md:p-6">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="neutral">
+                <Archive aria-hidden /> Archived
+              </Badge>
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <LockKeyhole className="size-3.5" aria-hidden />
+                Read-only record
+              </span>
+            </div>
+            <h1
+              id="archived-event-title"
+              className="font-display text-2xl font-semibold leading-tight tracking-tight sm:text-3xl"
+            >
               {event.name}
             </h1>
-            <Badge variant="neutral">Archived</Badge>
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>{formatEventDateRange(event)}</span>
+            </p>
+            {event.description ? (
+              <p className="whitespace-pre-line text-sm leading-relaxed">
+                {event.description}
+              </p>
+            ) : null}
           </div>
-          <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>{formatEventDateRange(event)}</span>
-          </p>
-          {event.description ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed">
-              {event.description}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No event description.
-            </p>
-          )}
+
+          {totalTasks > 0 ? (
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm font-medium">
+                  {completedTasks} of {totalTasks}{" "}
+                  {totalTasks === 1 ? "task" : "tasks"} completed
+                </p>
+                <p className="font-display text-sm font-semibold tabular-nums">
+                  {completionPercent}%
+                </p>
+              </div>
+              <CardProgress
+                value={completionPercent}
+                label="Archived event task completion"
+                className="h-2"
+              />
+              {unfinishedTasks > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {unfinishedTasks}{" "}
+                  {unfinishedTasks === 1 ? "task was" : "tasks were"} unfinished
+                  when this event was archived. Everything here is frozen as it
+                  stood then.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Everything here is frozen as it stood when archived.
+                </p>
+              )}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
       <section aria-labelledby="archived-tasks-heading" className="max-w-5xl">
-        <div className="mb-4 flex items-baseline gap-2 border-b pb-2.5">
+        <div className="mb-3 flex items-baseline gap-2">
           <h2
             id="archived-tasks-heading"
             className="font-display text-lg font-semibold sm:text-xl"
           >
             Tasks
           </h2>
-          <span className="text-sm text-muted-foreground">
-            {tasks?.length ?? 0}
-          </span>
+          <span className="text-sm text-muted-foreground">{totalTasks}</span>
         </div>
 
         {tasksError || taskContentError || assigneesUnavailable ? (
@@ -257,6 +287,6 @@ export default async function ArchivedEventPage({
           </Card>
         ) : null}
       </section>
-    </>
+    </div>
   );
 }

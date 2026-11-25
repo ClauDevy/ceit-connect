@@ -14,13 +14,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Collapse } from "@/components/shared/motion";
 import { StretchedExternalLink } from "@/components/shared/stretched-link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { TaskSection } from "@/components/tasks/task-section";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -135,14 +129,11 @@ export function YourWorkCard({
   }
 
   return (
-    <Card>
-      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-        <CardTitle className="text-[15px]">Your Work</CardTitle>
-        <CardDescription>
-          Google Drive links stay in Drive; nothing uploads to CEIT Connect.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+    <TaskSection
+      title="Your work"
+      description="Add Google Drive links. Files stay in Drive."
+    >
+      <div className="space-y-4">
         {isAssignee ? (
           <form className="space-y-3" onSubmit={handleSubmit}>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.55fr)_auto]">
@@ -193,7 +184,7 @@ export function YourWorkCard({
         ) : null}
 
         {links.length ? (
-          <div className="space-y-2">
+          <div className="motion-stagger space-y-2">
             {links.map((link) => {
               const parsed = parseGoogleDriveLink(link.url);
               const displayName =
@@ -315,8 +306,8 @@ export function YourWorkCard({
             })}
           </div>
         ) : (
-          <p className="text-sm italic text-muted-foreground">
-            No resources linked yet.
+          <p className="rounded-xl border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
+            No links yet.
           </p>
         )}
         {error && !isAssignee ? (
@@ -324,7 +315,7 @@ export function YourWorkCard({
             {error}
           </p>
         ) : null}
-      </CardContent>
+      </div>
       <ConfirmDialog
         open={removeTarget !== null}
         onOpenChange={(open) => {
@@ -343,6 +334,6 @@ export function YourWorkCard({
           if (removeTarget) void handleRemove(removeTarget.id);
         }}
       />
-    </Card>
+    </TaskSection>
   );
 }

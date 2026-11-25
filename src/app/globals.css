@@ -273,6 +273,18 @@ html.theme-fade *::after {
 .motion-tab-replay [data-motion-reveal-id]:nth-child(6) { animation-delay: 350ms; }
 .motion-tab-replay [data-motion-reveal-id]:nth-child(7) { animation-delay: 420ms; }
 .motion-tab-replay [data-motion-reveal-id]:nth-child(n + 8) { animation-delay: 490ms; }
+/* Shared stagger for static lists (dashboard rows, assignees, work links ...). Same keyframes,
+   duration and 70 ms step as the list reveal kit, so every list stacks the same way. */
+.motion-stagger > * {
+  animation: cc-list-item-enter var(--motion-enter-duration) var(--motion-enter-easing) backwards;
+}
+.motion-stagger > :nth-child(2) { animation-delay: 70ms; }
+.motion-stagger > :nth-child(3) { animation-delay: 140ms; }
+.motion-stagger > :nth-child(4) { animation-delay: 210ms; }
+.motion-stagger > :nth-child(5) { animation-delay: 280ms; }
+.motion-stagger > :nth-child(6) { animation-delay: 350ms; }
+.motion-stagger > :nth-child(7) { animation-delay: 420ms; }
+.motion-stagger > :nth-child(n + 8) { animation-delay: 490ms; }
 .motion-content-ready { animation: none; }
 .motion-content-ready > * {
   animation: cc-panel-enter var(--motion-page-duration) var(--motion-enter-easing) backwards;
@@ -391,6 +403,7 @@ html.theme-fade *::after {
   .motion-content-ready,
   .motion-content-ready > *,
   .motion-tab-replay [data-motion-reveal-id],
+  .motion-stagger > *,
   .motion-success-enter,
   .motion-presence,
   .motion-progress-fill,
@@ -709,4 +722,11 @@ html.theme-fade *::after {
 
 .dark .brand-team-logo {
   background-image: url("/brand/team-logo-dark.svg");
+}
+
+/* The app shell is fixed and scrolls inside one column. Turn off the browser's own overscroll
+   (stretch / rubber-band) so the header never gets pulled down on phones and snaps back. */
+html,
+body {
+  overscroll-behavior: none;
 }

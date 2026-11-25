@@ -270,8 +270,8 @@ function History({ backups, files, busy, now, open, expandedId, onToggle, onTogg
   </section>;
 }
 
-function PanelHeader({ backup, hasEmailFailure, now, open, onToggle }: {
-  backup: Backup | null; hasEmailFailure: boolean; now: number; open: boolean; onToggle: () => void;
+function PanelHeader({ backup, loadState, hasEmailFailure, now, open, onToggle }: {
+  backup: Backup | null; loadState: "loading" | "error" | "ready"; hasEmailFailure: boolean; now: number; open: boolean; onToggle: () => void;
 }) {
   const view = backup ? statusView(backup, now) : null;
   const current = backup ? isPinned(backup, now) : false;
@@ -279,6 +279,8 @@ function PanelHeader({ backup, hasEmailFailure, now, open, onToggle }: {
     <div className="min-w-0 flex-1">
       <h2 id="activity-log-backups" className="font-display font-semibold">Backups and clearing</h2>
       {backup && view ? <p className="text-sm text-muted-foreground">{current ? "Current backup" : "Last backup"}: {formatDate(backup.created_at)} · {rows(backup.row_count)} · {view.label}</p>
+        : loadState === "loading" ? <p className="text-sm text-muted-foreground">Loading backups…</p>
+        : loadState === "error" ? <p role="alert" className="text-sm text-destructive">Backups could not be loaded. Open this panel to retry.</p>
         : <p className="text-sm text-muted-foreground">No backups yet.</p>}
       <div className="mt-2 flex flex-wrap gap-2">
         {backup && PROCESSING.has(backup.backup_status) ? <Badge variant="brand">Backup in progress</Badge> : null}
@@ -308,6 +310,7 @@ export function ActivityLogBackupPanel() {
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const loadGeneration = useRef(0);
 
   const load = useCallback(async () => {
@@ -324,10 +327,18 @@ export function ActivityLogBackupPanel() {
     setBackups(next);
     setFiles(Object.fromEntries(fileResults));
     setLastUpdated(Date.now());
+    setLoadFailed(false);
     return true;
   }, [supabase]);
 
-  useEffect(() => { void load().catch(() => setError("Backup information could not be loaded. Refresh to try again.")); }, [load]);
+  useEffect(() => {
+    const generation = loadGeneration.current + 1; // the load below claims this generation
+    void load().catch(() => {
+      if (generation !== loadGeneration.current) return; // a newer load superseded this one
+      setLoadFailed(true);
+      setError("Backup information could not be loaded. Refresh to try again.");
+    });
+  }, [load]);
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 1_000);
     return () => window.clearInterval(timer);
@@ -340,8 +351,13 @@ export function ActivityLogBackupPanel() {
     if (busy) return;
     setBusy(true);
     try { if (await load()) { setCurrentTime(Date.now()); setError(null); } }
-    catch { setError("Backup information could not be refreshed. Try again."); }
+    catch { setLoadFailed(true); setError("Backup information could not be refreshed. Try again."); }
     finally { setBusy(false); }
+  }
+  // The action already succeeded when this runs, so a failed re-read must not report the action as failed.
+  async function refreshAfterAction() {
+    try { await load(); }
+    catch { setLoadFailed(true); setError("Backup information could not be refreshed. Try again."); }
   }
   async function createBackup(mode: "before_date" | "all") {
     if (busy) return;
@@ -349,7 +365,7 @@ export function ActivityLogBackupPanel() {
     try {
       const result = await supabase.rpc("create_activity_log_manual_backup", { p_mode: mode, p_before_date: mode === "before_date" ? beforeDate : null });
       if (result.error) throw result.error;
-      setMessage("Backup queued. Refresh while the files are being prepared."); await load();
+      setMessage("Backup queued. Refresh while the files are being prepared."); await refreshAfterAction();
     } catch (caught) {
       const code = caught && typeof caught === "object" && "code" in caught ? String(caught.code) : "";
       setError(code === "CAL06" ? "Another Activity Log backup is still in progress. Finish it before starting a new one." : "The backup could not be started. Try again.");
@@ -363,7 +379,7 @@ export function ActivityLogBackupPanel() {
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a"); link.href = url;
       link.download = file.object_path.split("/").at(-1) ?? `activity-log-part-${file.part_number}.csv`;
-      link.click(); URL.revokeObjectURL(url); await load(); setMessage(`Downloaded file ${file.part_number}.`);
+      link.click(); URL.revokeObjectURL(url); setMessage(`Downloaded file ${file.part_number}.`); await refreshAfterAction();
     } catch { setError("The backup file could not be downloaded. Try again."); }
     finally { setBusy(false); }
   }
@@ -381,7 +397,7 @@ export function ActivityLogBackupPanel() {
       const result = await supabase.rpc("request_activity_log_backup_deletion", { p_backup_id: backup.backup_id, p_confirmation: confirmation });
       if (result.error || result.data !== true) throw result.error ?? new Error("delete failed");
       setConfirmation(""); setSelectedId(null);
-      setMessage("Deletion queued. Only rows in the downloaded backup can be removed."); await load();
+      setMessage("Deletion queued. Only rows in the downloaded backup can be removed."); await refreshAfterAction();
     } catch { setError("Deletion was not queued. Check the downloads, expiry, and typed confirmation."); }
     finally { setBusy(false); }
   }
@@ -390,13 +406,13 @@ export function ActivityLogBackupPanel() {
     try {
       const result = await supabase.rpc("retry_activity_log_backup_email", { p_backup_id: backupId });
       if (result.error || result.data !== true) throw result.error ?? new Error("retry failed");
-      setMessage("Backup email queued for retry."); await load();
+      setMessage("Backup email queued for retry."); await refreshAfterAction();
     } catch { setError("The backup email could not be queued for retry."); }
     finally { setBusy(false); }
   }
 
   return <section className="overflow-hidden rounded-2xl border bg-card" aria-labelledby="activity-log-backups">
-    <PanelHeader backup={summary} hasEmailFailure={backups.some((backup) => backup.backup_status === "email_failed")}
+    <PanelHeader backup={summary} loadState={lastUpdated !== null ? "ready" : loadFailed ? "error" : "loading"} hasEmailFailure={backups.some((backup) => backup.backup_status === "email_failed")}
       now={currentTime} open={panelOpen} onToggle={() => setPanelOpen((open) => !open)} />
     <Collapse open={panelOpen}><div id="activity-log-backup-controls" className="grid gap-4 border-t p-3.5 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">

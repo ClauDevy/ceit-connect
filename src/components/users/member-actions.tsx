@@ -3,6 +3,7 @@ import {
   Ellipsis,
   MailX,
   Pencil,
+  Info,
   RotateCcw,
   ShieldCheck,
   UserRoundX,
@@ -191,8 +192,39 @@ export function MemberAction({
   );
 }
 
+// The reason used to print as a six-line paragraph squeezed into the narrow actions column. It is
+// now one short label with an info icon; tapping or pressing it opens the full sentence, so it works
+// without hover on touch and keyboard.
+const SHORT_REASONS: Record<string, string> = {
+  "You cannot deactivate or remove your own account.": "Your account",
+  "At least one active Admin is required.": "Last Admin",
+  "Admin role capacity is currently full.": "Admins full",
+  "Anonymized accounts cannot be reactivated.": "Anonymized",
+  "Checking Admin safeguards…": "Checking…",
+};
+
 function ActionReason({ children }: { children: React.ReactNode }) {
-  return <p className="max-w-48 text-right text-xs text-muted-foreground">{children}</p>;
+  const full = typeof children === "string" ? children : null;
+  const short = full ? SHORT_REASONS[full] : undefined;
+  if (!full || !short) {
+    return (
+      <p className="max-w-48 text-right text-xs text-muted-foreground">
+        {children}
+      </p>
+    );
+  }
+  return (
+    <details className="group max-w-48 text-right text-xs text-muted-foreground">
+      <summary
+        className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-md px-1 whitespace-nowrap outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
+        aria-label={`${short}. Show reason`}
+      >
+        <Info className="size-3.5 shrink-0" aria-hidden />
+        {short}
+      </summary>
+      <p className="mt-1">{full}</p>
+    </details>
+  );
 }
 
 function ActionMenu({

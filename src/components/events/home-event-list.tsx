@@ -44,7 +44,6 @@ const exactTimestampFormatter = new Intl.DateTimeFormat("en-PH", {
   minute: "2-digit",
   second: "2-digit",
   timeZone: "Asia/Manila",
-  timeZoneName: "short",
 });
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
@@ -111,7 +110,7 @@ function ActiveEventCard({
       interactive
       tone="primary"
       {...revealProps}
-      className="group relative isolate overflow-hidden"
+      className="group relative isolate flex flex-col overflow-hidden"
     >
       <StretchedLink
         href={`/events/${event.id}`}
@@ -125,42 +124,42 @@ function ActiveEventCard({
         incompleteTaskCount={event.incompleteTaskCount}
         eventUpdatedAt={event.updated_at}
       />
-      <CardContent className="space-y-3 p-3.5 sm:p-4">
-        <div className="flex items-start gap-3 pr-11 md:pr-10">
-          <EventBanner
-            src={event.banner_url}
-            alt={`${event.name} banner`}
-            compact
-            loading="lazy"
-            decoding="async"
-            className="aspect-video w-24 shrink-0 rounded-xl sm:w-32"
-          />
-          <div className="min-w-0 flex-1">
-            <h3 className="font-display text-base leading-snug font-semibold break-words line-clamp-2 sm:text-lg">
-              {event.name}
-            </h3>
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-              <CalendarDays className="size-3.5 shrink-0" aria-hidden />
-              <span>{formatDateRange(event)}</span>
-            </p>
-            <Badge variant="outline" className="mt-1.5 border-primary/40 bg-primary/10 text-primary">
-              <span className="size-1.5 rounded-full bg-primary" aria-hidden /> Active
-            </Badge>
-          </div>
-        </div>
-        {event.description ? (
-          <p className="line-clamp-1 text-sm text-muted-foreground">
-            {event.description}
-          </p>
-        ) : null}
-        <HomeEventProgressSummary
-          eventName={event.name}
-          progress={event.progress}
+      <div className="relative">
+        <EventBanner
+          src={event.banner_url}
+          alt={`${event.name} banner`}
+          compact
+          loading="lazy"
+          decoding="async"
+          className="aspect-[5/2] w-full transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none sm:aspect-video"
         />
-        <div className="flex items-center justify-end">
-          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors duration-500 group-hover:bg-primary group-hover:text-primary-foreground group-focus-within:bg-primary group-focus-within:text-primary-foreground motion-reduce:transition-none">
-            View board <span className="motion-arrow ml-1 inline-block" aria-hidden>→</span>
-          </span>
+        <Badge
+          variant="neutral"
+          className="absolute bottom-2.5 left-2.5 border border-primary/30 bg-background/90 text-foreground backdrop-blur-sm"
+        >
+          <span className="size-1.5 rounded-full bg-primary" aria-hidden /> Active
+        </Badge>
+      </div>
+      <CardContent className="flex flex-1 flex-col gap-3 p-3.5 sm:gap-4 sm:p-5">
+        <div className="min-w-0">
+          <h3 className="font-display text-base leading-snug font-semibold break-words line-clamp-2 sm:text-xl">
+            {event.name}
+          </h3>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground sm:mt-1 sm:text-sm">
+            <CalendarDays className="size-4 shrink-0" aria-hidden />
+            <span>{formatDateRange(event)}</span>
+          </p>
+          {event.description ? (
+            <p className="mt-2 hidden text-sm text-muted-foreground sm:line-clamp-2">
+              {event.description}
+            </p>
+          ) : null}
+        </div>
+        <div className="mt-auto">
+          <HomeEventProgressSummary
+            eventName={event.name}
+            progress={event.progress}
+          />
         </div>
       </CardContent>
     </Card>
@@ -213,8 +212,8 @@ function DraftEventCard({
               <time
                 suppressHydrationWarning
                 dateTime={lastEdited.iso}
-                title={`${lastEdited.exact} (Philippine time)`}
-                aria-label={`Last edited ${lastEdited.exact}, Philippine time`}
+                title={lastEdited.exact}
+                aria-label={`Last edited ${lastEdited.exact}`}
               >
                 Edited {lastEdited.relative}
               </time>
@@ -388,7 +387,7 @@ export function HomeEventList({
   }
 
   return (
-    <div className="space-y-9">
+    <div className="space-y-10">
       {hasCountWarning ? (
         <InlineAlert>
           Some archive actions are unavailable because incomplete-task counts
@@ -415,7 +414,7 @@ export function HomeEventList({
           <h2 id="active-events-heading" className="sr-only">
             Active events
           </h2>
-          <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
             {activeEvents.map((event) => (
               <ActiveEventCard
                 key={event.id}
@@ -435,7 +434,7 @@ export function HomeEventList({
               id="draft-events-heading"
               className={
                 activeEvents.length
-                  ? "font-display text-base font-semibold"
+                  ? "font-display text-lg font-semibold"
                   : "sr-only"
               }
             >

@@ -28,7 +28,7 @@ import {
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TaskSection } from "@/components/tasks/task-section";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -853,14 +853,8 @@ export function TaskComments({
   const commentsBusy = mutationAction !== null;
 
   return (
-    <Card>
-      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-        <CardTitle className="flex items-center gap-2 text-[15px]">
-          <MessageSquare className="size-5" aria-hidden /> Collaboration &amp;
-          Activity
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+    <TaskSection title="Discussion" icon={<MessageSquare />}>
+      <div className="space-y-4">
         {displayedThreadError ? (
           <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
             <span>{displayedThreadError}</span>
@@ -1057,7 +1051,7 @@ export function TaskComments({
             {loadingOlder ? "Loading…" : "Load older comments"}
           </Button>
         ) : null}
-      </CardContent>
+      </div>
 
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -1071,6 +1065,6 @@ export function TaskComments({
         loading={mutationAction === "delete"}
         onConfirm={() => void deleteComment()}
       />
-    </Card>
+    </TaskSection>
   );
 }

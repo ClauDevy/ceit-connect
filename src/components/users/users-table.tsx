@@ -27,6 +27,13 @@ import { Button } from "@/components/ui/button";
 import { IconInput } from "@/components/ui/icon-input";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useOffsetListPaging } from "@/hooks/use-offset-list-paging";
 import type { OffsetListPage } from "@/lib/list-paging";
 import { preventSearchFormSubmission } from "@/lib/search";
@@ -124,6 +131,8 @@ export function UsersTable({
   const [tabMotionKey, setTabMotionKey] = useState(0);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
+  // Admin-only. "all" or a committee id.
+  const [committeeFilter, setCommitteeFilter] = useState("all");
   const [target, setTarget] = useState<Member | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Member | null>(null);
@@ -217,11 +226,22 @@ export function UsersTable({
     return () => window.clearTimeout(timeout);
   }, [query]);
 
+  // The users search already matches committee names, so picking a committee (with nothing typed)
+  // asks the server for that committee. The exact committee_id check below then removes any
+  // look-alike matches. If something is typed, the typed search wins and the committee filter
+  // narrows the loaded rows.
+  const filterCommitteeName =
+    committeeFilter === "all"
+      ? null
+      : (committees.find((committee) => committee.id === committeeFilter)
+          ?.name ?? null);
+  const serverSearch = search || filterCommitteeName || "";
+
   const fetchPage = useCallback(
     async (offset: number, signal: AbortSignal) => {
       const params = new URLSearchParams({
         offset: String(offset),
-        search,
+        search: serverSearch,
         status,
       });
       const response = await fetch(`/api/users?${params}`, {
@@ -240,14 +260,14 @@ export function UsersTable({
       }
       return (body as { users: Member[] }).users;
     },
-    [search, status],
+    [serverSearch, status],
   );
 
   const paging = useOffsetListPaging({
     active: true,
     fetchPage,
     getId: (member: Member) => member.id,
-    identity: `${status}:${search}`,
+    identity: `${status}:${serverSearch}`,
     initialPage,
     paused: false,
     singularLabel: "user",
@@ -474,10 +494,16 @@ export function UsersTable({
   }));
   const removedLoadedCount =
     status === "deactivated" ? countRemovedMembers(loadedMembers) : 0;
-  const displayedMembers =
+  const roleVisibleMembers =
     status === "deactivated" && !showRemovedMembers
       ? getVisibleMembers(loadedMembers, false)
       : loadedMembers;
+  const displayedMembers =
+    committeeFilter === "all"
+      ? roleVisibleMembers
+      : roleVisibleMembers.filter(
+          (member) => member.committee_id === committeeFilter,
+        );
   const searchDebouncing = isUsersSearchDebouncing(query, search);
   const rosterLoading =
     paging.isIdentityLoading || searchDebouncing || forceRosterSkeleton;
@@ -599,7 +625,37 @@ export function UsersTable({
           onValueChange={selectTab}
           className="w-full sm:w-fit"
         />
-        <div className="w-full sm:max-w-sm">
+        <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
+          {viewerRole === "Admin" && committees.length > 0 ? (
+            <Select
+              items={Object.fromEntries([
+                ["all", "All committees"],
+                ...committees.map((committee) => [committee.id, committee.name]),
+              ])}
+              value={committeeFilter}
+              onValueChange={(value) => {
+                setCommitteeFilter(value ?? "all");
+                setSelectedIds(new Set());
+                setSelectionMessage("");
+              }}
+            >
+              <SelectTrigger
+                className="w-full sm:w-52"
+                aria-label="Filter by committee"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All committees</SelectItem>
+                {committees.map((committee) => (
+                  <SelectItem key={committee.id} value={committee.id}>
+                    {committee.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          <div className="min-w-0 flex-1">
           <IconInput
             icon={Search}
             type="search"
@@ -613,6 +669,7 @@ export function UsersTable({
             placeholder="Search name, email, role, committee…"
             aria-label="Search users"
           />
+          </div>
         </div>
       </div>
 
@@ -715,6 +772,22 @@ export function UsersTable({
                   </Button>
                 }
               />
+            ) : committeeFilter !== "all" &&
+              displayedMembers.length === 0 &&
+              !(roleVisibleMembers.length === 0 && removedLoadedCount > 0) ? (
+              <EmptyState
+                compact
+                title={
+                  search
+                    ? "No loaded users match this search and committee"
+                    : "No loaded users in this committee"
+                }
+                description={
+                  paging.hasMore
+                    ? "Load more to check later results, or pick another committee."
+                    : "Pick another committee or choose All committees."
+                }
+              />
             ) : paging.items.length === 0 ? (
               <EmptyState
                 compact
@@ -732,6 +805,7 @@ export function UsersTable({
                       : "Deactivated accounts will appear here."
                 }
               />
+
             ) : displayedMembers.length === 0 && removedLoadedCount > 0 ? (
               <EmptyState
                 compact
