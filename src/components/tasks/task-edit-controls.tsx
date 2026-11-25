@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Link2, LockKeyhole, Search } from "lucide-react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PanelBlock } from "@/components/tasks/task-section";
 import {
   Dialog,
   DialogContent,
@@ -169,13 +169,8 @@ export function TaskEditControls({
   return (
     <>
       {controls.can_set_dependency ? (
-        <Card>
-          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-            <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              <Link2 className="size-4" aria-hidden /> Dependency
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+        <PanelBlock title="Dependency" icon={<Link2 />}>
+          <div className="space-y-3">
             <div>
               <p className="text-sm font-medium">
                 {controls.depends_on_task_id
@@ -201,18 +196,13 @@ export function TaskEditControls({
             >
               Manage dependency
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </PanelBlock>
       ) : null}
 
       {controls.can_set_confidentiality && controls.is_confidential !== null ? (
-        <Card>
-          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-            <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              <LockKeyhole className="size-4" aria-hidden /> Confidential
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+        <PanelBlock title="Confidential" icon={<LockKeyhole />}>
+          <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <label
@@ -239,9 +229,7 @@ export function TaskEditControls({
             {controls.is_confidential ? (
               <div className="space-y-3 border-t pt-4">
                 <div>
-                  <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                    Additional viewers
-                  </p>
+                  <p className="text-sm font-semibold">Additional viewers</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Assignees always have access.
                   </p>
@@ -281,8 +269,8 @@ export function TaskEditControls({
             {confidentialityError ? (
               <InlineAlert>{confidentialityError}</InlineAlert>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+        </PanelBlock>
       ) : null}
 
       <Dialog open={dependencyOpen} onOpenChange={setDependencyOpen}>

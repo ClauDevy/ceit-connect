@@ -28,6 +28,9 @@ vi.mock("@/lib/timezone", () => ({
   APP_TIME_ZONE: { iana: "Asia/Manila" },
 }));
 vi.mock("@/components/shared/motion", () => ({
+  TabPanel: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
   useListReveal: () => ({
     getRevealProps: (id: string) => ({ "data-motion-reveal-id": id }),
   }),

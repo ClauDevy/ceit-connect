@@ -34,7 +34,7 @@ export function PagedList<T>({
 
   return (
     <div className="space-y-2">
-      <Wrapper className={className}>
+      <Wrapper className={cn("motion-stagger", className)}>
         {shown.map((item) => (
           <PagedItem key={getKey(item)} as={as}>
             {renderItem(item)}

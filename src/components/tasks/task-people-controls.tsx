@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { closeModalAndWait } from "@/hooks/use-modal-history";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PanelBlock } from "@/components/tasks/task-section";
 import {
   Dialog,
   DialogContent,
@@ -203,13 +203,8 @@ export function TaskPeopleControls({
   return (
     <>
       {controls.can_assign_people ? (
-        <Card className="overflow-hidden">
-          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-            <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              <UsersRound className="size-4" aria-hidden /> Assignment
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+        <PanelBlock title="Assignment" icon={<UsersRound />}>
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               {currentPrimaryIds.length} primary · {currentAssistIds.length}{" "}
               assist
@@ -224,18 +219,13 @@ export function TaskPeopleControls({
             >
               Manage assignees
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </PanelBlock>
       ) : null}
 
       {showTaskActions ? (
-        <Card className="overflow-hidden">
-          <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-            <CardTitle className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              Task actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+        <PanelBlock title="Task actions">
+          <div className="space-y-3">
             {controls.can_delete ? (
               <Button
                 type="button"
@@ -276,8 +266,8 @@ export function TaskPeopleControls({
               </div>
             ) : null}
             {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
-          </CardContent>
-        </Card>
+          </div>
+        </PanelBlock>
       ) : null}
 
       <Dialog open={assignmentOpen} onOpenChange={setAssignmentOpen}>

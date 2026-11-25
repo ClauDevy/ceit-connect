@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import { ChevronDown } from "lucide-react";
-import { ChartBarGrow, useVisibilityAnimation } from "@/components/shared/motion";
+import { ChartBarGrow, Collapse, useVisibilityAnimation } from "@/components/shared/motion";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PagedList } from "@/components/dashboard/paged-list";
@@ -251,7 +251,7 @@ function MemberRows({
               className={cn("size-4 text-muted-foreground transition-transform motion-reduce:transition-none", idleOpen && "rotate-180")}
             />
           </button>
-          {idleOpen ? (
+          <Collapse open={idleOpen}>
             <div className="border-t border-border/70 p-2">
               <PagedList
                 as="ul"
@@ -270,7 +270,7 @@ function MemberRows({
                 )}
               />
             </div>
-          ) : null}
+          </Collapse>
         </div>
       ) : null}
     </div>
@@ -287,7 +287,7 @@ function CommitteeSummaryNumbers({ summary }: { summary: CommitteeSummary }) {
     ["Without a bar", summary.tasksWithoutMemberBarCount],
   ] as const;
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <dl className="motion-stagger grid grid-cols-2 gap-2 sm:grid-cols-3">
       {items.map(([label, value]) => (
         <div key={label} className="rounded-lg bg-muted/70 px-3 py-2">
           <dt className="text-[11px] text-muted-foreground">{label}</dt>

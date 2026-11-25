@@ -3,20 +3,16 @@ import { PageHeaderSkeleton } from "@/components/shared/page-skeleton";
 
 function EventCardSkeleton() {
   return (
-    <div className="space-y-3 rounded-2xl border bg-card p-3.5 sm:p-4" aria-hidden>
-      <div className="flex items-start gap-3">
-        <Skeleton className="aspect-video w-24 shrink-0 rounded-xl sm:w-32" />
-        <div className="grid flex-1 gap-2">
-          <Skeleton className="h-5 w-14 rounded-full" />
-          <Skeleton className="h-5 w-2/3" />
-          <Skeleton className="h-3 w-1/2" />
+    <div className="overflow-hidden rounded-2xl border bg-card" aria-hidden>
+      <Skeleton className="aspect-[5/2] w-full rounded-none sm:aspect-video" />
+      <div className="space-y-3 p-3.5 sm:space-y-4 sm:p-5">
+        <div className="grid gap-2">
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
         </div>
-      </div>
-      <div className="grid gap-2 border-t border-border/70 pt-3">
-        <Skeleton className="h-3 w-32" />
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-1.5 flex-1 rounded-full" />
-          <Skeleton className="h-3 w-8" />
+        <div className="grid gap-2">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-2 w-full rounded-full" />
         </div>
       </div>
     </div>
@@ -47,7 +43,7 @@ export default function HomeLoading() {
         </div>
         <Skeleton className="h-5 w-9 rounded-full" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
         <EventCardSkeleton />
         <EventCardSkeleton />
       </div>

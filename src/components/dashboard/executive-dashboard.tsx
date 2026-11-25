@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -322,8 +323,17 @@ export function ExecutiveDashboard({
   const committeeName =
     data.summary.status === "ready" ? data.summary.data?.committeeName ?? "Committee" : "Committee";
 
+  // Opening a committee (or going back to All committees) remounts the content so it enters with
+  // the same panel transition every other view change uses. Not on first load: the page frame
+  // already animates that.
+  const scopeSwitched = seenScopeKeys.size > 0;
+
   return (
-    <div className="space-y-5 md:space-y-6">
+    <div>
+    <div
+      key={activeKey}
+      className={cn("space-y-5 md:space-y-6", scopeSwitched && "motion-panel-enter-a")}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -402,6 +412,7 @@ export function ExecutiveDashboard({
           ) : null}
         </div>
       </div>
+    </div>
     </div>
   );
 }

@@ -17,7 +17,7 @@ describe("AppShell scroll containment", () => {
 
   it("makes the content column the sole bounded vertical scroller", () => {
     expect(shell).toContain(
-      "min-h-0 min-w-0 flex-1 scroll-pt-24 flex-col overflow-x-hidden overflow-y-auto overscroll-contain",
+      "min-h-0 min-w-0 flex-1 scroll-pt-24 flex-col overflow-x-hidden overflow-y-auto overscroll-none",
     );
   });
 });

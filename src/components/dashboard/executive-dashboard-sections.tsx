@@ -41,7 +41,7 @@ export function OverviewKpis({ section }: { section: DashboardSection<DashboardO
   return (
     <section aria-labelledby="dashboard-kpis-title">
       <h2 id="dashboard-kpis-title" className="sr-only">Dashboard totals</h2>
-      <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
+      <dl className="motion-stagger grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
         {cards.map(([label, value, tone]) => (
           <div
             key={label}
@@ -61,7 +61,7 @@ export function OverviewKpis({ section }: { section: DashboardSection<DashboardO
 
 export function DeadlinesCard({ section, animate }: { section: DashboardSection<DeadlineDay[]>; animate: boolean }) {
   return (
-    <DashboardCard title="Deadlines this week" description="Open tasks due across seven Manila calendar days.">
+    <DashboardCard title="Deadlines this week" description="Open tasks due over the next seven days.">
       {section.status !== "ready" ? (
         <SectionError label="Deadlines" />
       ) : (
@@ -77,7 +77,7 @@ function DeadlineRows({ rows, animate }: { rows: DeadlineDay[]; animate: boolean
   return (
     <div className="space-y-3">
       {allZero ? <p className="text-sm text-muted-foreground">No deadlines this week</p> : null}
-      <div className="grid grid-cols-7 gap-1.5" role="img" aria-label={rows.map((row) => `${row.calendarDate}: ${row.openTaskCount}`).join(", ")}>
+      <div className="motion-stagger grid grid-cols-7 gap-1.5" role="img" aria-label={rows.map((row) => `${row.calendarDate}: ${row.openTaskCount}`).join(", ")}>
         {rows.map((row) => {
           const height = barDisplayPercent(row.openTaskCount, values);
           return (

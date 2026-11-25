@@ -3,6 +3,7 @@ import {
   Ellipsis,
   MailX,
   Pencil,
+  Info,
   RotateCcw,
   ShieldCheck,
   UserRoundX,
@@ -191,8 +192,37 @@ export function MemberAction({
   );
 }
 
+// The reason used to print as a six-line paragraph squeezed into the narrow actions column. It is
+// now one short label with an info icon; the full sentence stays in the tooltip and for screen
+// readers (the text is still in the markup).
+const SHORT_REASONS: Record<string, string> = {
+  "You cannot deactivate or remove your own account.": "Your account",
+  "At least one active Admin is required.": "Last Admin",
+  "Admin role capacity is currently full.": "Admins full",
+  "Anonymized accounts cannot be reactivated.": "Anonymized",
+  "Checking Admin safeguards…": "Checking…",
+};
+
 function ActionReason({ children }: { children: React.ReactNode }) {
-  return <p className="max-w-48 text-right text-xs text-muted-foreground">{children}</p>;
+  const full = typeof children === "string" ? children : null;
+  const short = full ? SHORT_REASONS[full] : undefined;
+  if (!full || !short) {
+    return (
+      <p className="max-w-48 text-right text-xs text-muted-foreground">
+        {children}
+      </p>
+    );
+  }
+  return (
+    <p
+      className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"
+      title={full}
+    >
+      <Info className="size-3.5 shrink-0" aria-hidden />
+      <span aria-hidden>{short}</span>
+      <span className="sr-only">{full}</span>
+    </p>
+  );
 }
 
 function ActionMenu({

@@ -246,13 +246,13 @@ export function TaskHistory({ taskId }: { taskId: string }) {
 
   return (
     <section
-      className="overflow-hidden rounded-2xl border bg-card text-card-foreground"
+      className="border-t"
       aria-labelledby="task-history-heading"
     >
       <h2 id="task-history-heading">
         <button
           type="button"
-          className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left font-display text-lg font-semibold outline-none transition-colors hover:bg-muted active:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset motion-reduce:transition-none sm:px-5"
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg py-3 text-left font-display text-lg font-semibold outline-none transition-colors hover:bg-muted/60 active:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
           aria-expanded={expanded}
           aria-controls={contentId}
           onClick={toggleExpanded}
@@ -269,7 +269,7 @@ export function TaskHistory({ taskId }: { taskId: string }) {
       </h2>
 
       <Collapse open={expanded}>
-        <div id={contentId} className="space-y-3 border-t px-4 py-4 sm:px-5">
+        <div id={contentId} className="space-y-3 pb-2 pt-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
               Activity is retained according to the council&apos;s policy.

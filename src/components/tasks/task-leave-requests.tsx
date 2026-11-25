@@ -5,7 +5,7 @@ import { Ellipsis, LogOut, RefreshCw } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TaskCallout } from "@/components/tasks/task-section";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -113,14 +113,12 @@ export function TaskLeaveRequests({ taskId }: { taskId?: string }) {
   if (requests.length === 0 && !error) return null;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="flex-row items-center justify-between gap-3 px-4 py-3 sm:px-5">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <LogOut className="size-4" aria-hidden /> Leave requests
-        </CardTitle>
-        <Badge variant="neutral">{requests.length} pending</Badge>
-      </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-4 sm:px-5">
+    <TaskCallout
+      title="Leave requests"
+      icon={<LogOut />}
+      aside={<Badge variant="neutral">{requests.length} pending</Badge>}
+    >
+      <div className="motion-stagger space-y-2">
         {error ? (
           <InlineAlert className="flex items-center justify-between gap-2">
             <span>{error}</span>
@@ -136,7 +134,7 @@ export function TaskLeaveRequests({ taskId }: { taskId?: string }) {
           </InlineAlert>
         ) : null}
         {requests.map((request) => (
-          <div key={request.out_id} className="flex items-center gap-3 rounded-xl border px-3 py-2.5">
+          <div key={request.out_id} className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{request.out_requester_name}</p>
               <p className="truncate text-xs text-muted-foreground">
@@ -177,7 +175,7 @@ export function TaskLeaveRequests({ taskId }: { taskId?: string }) {
             ) : null}
           </div>
         ))}
-      </CardContent>
+      </div>
       <ConfirmDialog
         open={pendingAction !== null}
         onOpenChange={(open) => { if (!open) setPendingAction(null); }}
@@ -193,6 +191,6 @@ export function TaskLeaveRequests({ taskId }: { taskId?: string }) {
           );
         }}
       />
-    </Card>
+    </TaskCallout>
   );
 }

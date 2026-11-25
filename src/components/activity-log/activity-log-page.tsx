@@ -1,7 +1,7 @@
 "use client";
 
 import { EmptyState } from "@/components/shared/empty-state";
-import { MotionPresence } from "@/components/shared/motion";
+import { MotionPresence, ResponsiveCollapse } from "@/components/shared/motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, DatabaseZap, Download, Save } from "lucide-react";
@@ -613,12 +613,10 @@ export function ActivityLogPageClient({
               />
             </Button>
           </div>
+          <ResponsiveCollapse open={toolsOpen} openFrom="lg">
           <div
             id="activity-log-admin-tools"
-            className={cn(
-              "grid gap-4 border-t bg-muted/30 p-3.5 sm:p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start",
-              !toolsOpen && "hidden lg:grid",
-            )}
+            className="grid gap-4 border-t bg-muted/30 p-3.5 sm:p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start"
           >
             <form onSubmit={saveRetention} className="grid min-w-0 gap-3">
               <p className="text-sm text-muted-foreground">
@@ -716,6 +714,7 @@ export function ActivityLogPageClient({
               ) : null}
             </MotionPresence>
           </div>
+          </ResponsiveCollapse>
         </section>
       ) : null}
 

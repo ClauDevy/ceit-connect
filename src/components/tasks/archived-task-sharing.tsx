@@ -10,7 +10,7 @@ import { LockKeyhole, RefreshCw, Search } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PanelBlock } from "@/components/tasks/task-section";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Input } from "@/components/ui/input";
 import { preventSearchFormSubmission } from "@/lib/search";
@@ -178,13 +178,8 @@ export function ArchivedTaskSharing({
   }
 
   return (
-    <Card>
-      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-        <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-          <LockKeyhole className="size-4" aria-hidden /> Additional viewers
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+    <PanelBlock title="Additional viewers" icon={<LockKeyhole />}>
+      <div className="space-y-4">
         {viewers.length > 0 ? (
           <div className="space-y-2.5">
             {viewers.map((viewer) => {
@@ -325,7 +320,7 @@ export function ArchivedTaskSharing({
             {notice}
           </p>
         ) : null}
-      </CardContent>
+      </div>
 
       <ConfirmDialog
         open={revokeTarget !== null}
@@ -345,6 +340,6 @@ export function ArchivedTaskSharing({
           if (revokeTarget) void runMutation("revoke", revokeTarget);
         }}
       />
-    </Card>
+    </PanelBlock>
   );
 }

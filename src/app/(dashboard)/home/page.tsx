@@ -106,7 +106,7 @@ export default async function HomePage({
     <div className="motion-content-ready">
       <PageHeader
         title="Home"
-        description="Council events visible to you, ordered by their start date."
+        description="What the council is working on."
         actions={
           canEdit ? (
             <Link href="/events/new" className={buttonVariants()}>

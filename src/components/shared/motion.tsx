@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type AnimationEvent,
   type CSSProperties,
   type HTMLAttributes,
@@ -422,6 +423,55 @@ export function Collapse({
     >
       <div className="min-h-0 overflow-hidden">{children}</div>
     </div>
+  );
+}
+
+const OPEN_FROM_QUERY = {
+  md: "(min-width: 768px)",
+  lg: "(min-width: 1024px)",
+  xl: "(min-width: 1280px)",
+} as const;
+// Literal class names so Tailwind can see them. `!` beats the plain .motion-collapse rule, so at
+// the wide breakpoint the panel is simply open (no transition runs on load or resize).
+const OPEN_FROM_CLASS = {
+  md: "md:grid-rows-[1fr]!",
+  lg: "lg:grid-rows-[1fr]!",
+  xl: "xl:grid-rows-[1fr]!",
+} as const;
+
+function useMinWidth(query: string) {
+  return useSyncExternalStore(
+    (notify) => {
+      const media = window.matchMedia(query);
+      media.addEventListener("change", notify);
+      return () => media.removeEventListener("change", notify);
+    },
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
+}
+
+/**
+ * A Collapse for panels that are a toggle on phones but always visible on wide screens
+ * (Activity Log "Manage" and "Filters"). Same motion as Collapse on phones; no toggle
+ * motion on desktop, where the panel is just there.
+ */
+export function ResponsiveCollapse({
+  open,
+  openFrom,
+  className,
+  children,
+}: {
+  open: boolean;
+  openFrom: keyof typeof OPEN_FROM_QUERY;
+  className?: string;
+  children: ReactNode;
+}) {
+  const wide = useMinWidth(OPEN_FROM_QUERY[openFrom]);
+  return (
+    <Collapse open={open || wide} className={cn(OPEN_FROM_CLASS[openFrom], className)}>
+      {children}
+    </Collapse>
   );
 }
 

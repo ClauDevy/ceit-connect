@@ -3,7 +3,7 @@
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TaskCallout } from "@/components/tasks/task-section";
 import type { TaskBackupState } from "@/lib/tasks/backup";
 
 export type BackupBusyAction =
@@ -55,13 +55,8 @@ export function TaskBackupRequestedCard({
   const busy = busyAction !== null;
 
   return (
-    <Card>
-      <CardHeader className="px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
-        <CardTitle className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-          <TriangleAlert className="size-4" aria-hidden /> Backup Requested
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
+    <TaskCallout title="Backup requested" icon={<TriangleAlert />}>
+      <div className="space-y-3">
         {state.out_can_accept ? (
           state.out_volunteers.length > 0 ? (
             <div className="space-y-3">
@@ -140,7 +135,7 @@ export function TaskBackupRequestedCard({
             This task is looking for backup.
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </TaskCallout>
   );
 }
