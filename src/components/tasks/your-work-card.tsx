@@ -199,7 +199,7 @@ export function YourWorkCard({
                   key={link.id}
                   className="overflow-hidden rounded-xl border border-border"
                 >
-                  <div className="relative flex items-center gap-3 px-3.5 py-3">
+                  <div className="relative isolate flex items-center gap-3 px-3.5 py-3">
                     {parsed ? (
                       <StretchedExternalLink
                         href={parsed.openUrl}
@@ -290,7 +290,7 @@ export function YourWorkCard({
                     <Collapse open={isPreviewOpen}>
                       <div
                         id={`work-link-preview-${link.id}`}
-                        className="border-t border-border p-3.5"
+                        className="border-t border-border p-2 sm:p-3.5"
                       >
                         {openedPreviewIds.has(link.id) ? (
                           <DrivePreview

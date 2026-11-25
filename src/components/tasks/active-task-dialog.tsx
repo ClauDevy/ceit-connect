@@ -12,6 +12,7 @@ import { CalendarDays, FileText, LoaderCircle, Search, Users } from "lucide-reac
 import { MotionPresence, SectionEnter } from "@/components/shared/motion";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -198,6 +199,7 @@ function PersonPicker({
   onChange,
   onLimitError,
   bulkCommittee,
+  committeeNames,
   fieldName,
 }: {
   label: string;
@@ -210,6 +212,7 @@ function PersonPicker({
   onChange: (ids: string[]) => void;
   onLimitError: (attemptedCount: number) => void;
   bulkCommittee?: BoardCommittee;
+  committeeNames: ReadonlyMap<string, string>;
   fieldName: "primaryAssignees" | "allowedViewers";
 }) {
   const filtered = people.filter((person) =>
@@ -262,8 +265,95 @@ function PersonPicker({
     onChange(attempt.ids);
   }
 
+  const committeeMembers = bulkCommittee
+    ? filtered.filter((person) => person.committee_id === bulkCommittee.id)
+    : [];
+  const otherPeople = bulkCommittee
+    ? filtered.filter((person) => person.committee_id !== bulkCommittee.id)
+    : filtered;
+
+  function renderPerson(person: PersonOption) {
+    const selected = selectedIds.includes(person.id);
+    const disabled = disabledIds.has(person.id);
+    const id = `${label.replaceAll(" ", "-").toLowerCase()}-${person.id}`;
+    return (
+      <label
+        key={person.id}
+        htmlFor={id}
+        className={cn(
+          "motion-control-trigger flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 text-sm outline-none transition-colors duration-[var(--motion-hover-duration)] focus-within:ring-2 focus-within:ring-ring active:bg-muted motion-reduce:transition-none",
+          selected
+            ? "border-primary/40 bg-primary/10 hover:bg-primary/15"
+            : "border-transparent hover:bg-muted",
+          disabled && "cursor-not-allowed opacity-55",
+        )}
+      >
+        <input
+          id={id}
+          type="checkbox"
+          checked={selected}
+          disabled={disabled}
+          onChange={(event) => {
+            const attempt = buildSinglePersonSelection(
+              selectedIds,
+              person.id,
+              event.target.checked,
+              limit,
+            );
+            if (attempt.exceedsLimit) {
+              onLimitError(attempt.attemptedCount);
+              return;
+            }
+            onChange(attempt.ids);
+          }}
+          className="motion-control-pop size-5 shrink-0 accent-primary"
+        />
+        <UserAvatar
+          name={personName(person)}
+          src={person.avatar_url}
+          size="sm"
+          className="size-7 text-[10px]"
+        />
+        <span className="grid min-w-0 flex-1 leading-tight">
+          <span className="min-w-0 font-medium break-words">
+            {personName(person)}
+          </span>
+          {disabled ? (
+            <span className="truncate text-xs text-muted-foreground">Assist</span>
+          ) : person.active_task_count !== null ? (
+            <span className="truncate text-xs text-muted-foreground">
+              {person.active_task_count} active{" "}
+              {person.active_task_count === 1 ? "task" : "tasks"}
+            </span>
+          ) : null}
+        </span>
+        <Badge
+          variant="neutral"
+          className="max-w-24 shrink-0 truncate px-2 py-0.5 text-[10px]"
+        >
+          {person.committee_id
+            ? (committeeNames.get(person.committee_id) ?? "Unknown committee")
+            : "No committee"}
+        </Badge>
+      </label>
+    );
+  }
+
+  function renderGroup(title: string | null, group: PersonOption[]) {
+    return (
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
+        {title ? (
+          <p className="px-2 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+            {title}
+          </p>
+        ) : null}
+        {group.map(renderPerson)}
+      </div>
+    );
+  }
+
   return (
-    <fieldset className="grid min-w-0 gap-2.5" data-active-task-field={fieldName}>
+    <fieldset className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2.5" data-active-task-field={fieldName}>
       <legend className="text-sm font-semibold">{label}</legend>
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -273,90 +363,57 @@ function PersonPicker({
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           onKeyDown={preventSearchFormSubmission}
+          placeholder="Search members…"
           className="pl-9"
         />
       </div>
-      {bulkCommittee && bulkPresentation?.showControls ? (
-        <div className="flex items-center gap-2 rounded-lg border px-2">
-          <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 px-1 text-sm font-semibold transition-colors hover:text-primary focus-within:ring-2 focus-within:ring-ring active:text-primary motion-reduce:transition-none">
-            <input
-              ref={bulkCheckbox}
-              type="checkbox"
-              checked={allBulkSelected}
-              aria-checked={someBulkSelected ? "mixed" : allBulkSelected}
-              disabled={bulkIds.length === 0}
-              onChange={(event) => updateBulkSelection(event.target.checked)}
-              className="size-4 accent-primary"
-            />
-            <span className="min-w-0 flex-1 truncate">
-              Select all shown in {bulkCommittee.name} ({bulkIds.length})
-            </span>
-          </label>
-          {bulkPresentation.showClear ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-11 shrink-0"
-              onClick={() => updateBulkSelection(false)}
-            >
-              Clear shown
-            </Button>
-          ) : null}
-        </div>
-      ) : bulkCommittee && bulkPresentation?.emptyMessage ? (
-        <p className="px-1 text-xs text-muted-foreground">
-          {bulkPresentation.emptyMessage}
-        </p>
-      ) : null}
-      <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl border bg-card p-1.5">
-        {filtered.map((person) => {
-          const selected = selectedIds.includes(person.id);
-          const disabled = disabledIds.has(person.id);
-          const id = `${label.replaceAll(" ", "-").toLowerCase()}-${person.id}`;
-          return (
-            <label
-              key={person.id}
-              htmlFor={id}
-              className={cn(
-                "flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors duration-[var(--motion-hover-duration)] hover:bg-muted focus-within:ring-2 focus-within:ring-ring active:bg-muted motion-reduce:transition-none",
-                disabled && "cursor-not-allowed opacity-55",
-              )}
-            >
-              <input
-                id={id}
-                type="checkbox"
-                checked={selected}
-                disabled={disabled}
-                onChange={(event) => {
-                  const attempt = buildSinglePersonSelection(
-                    selectedIds,
-                    person.id,
-                    event.target.checked,
-                    limit,
-                  );
-                  if (attempt.exceedsLimit) {
-                    onLimitError(attempt.attemptedCount);
-                    return;
-                  }
-                  onChange(attempt.ids);
-                }}
-                className="size-4 accent-primary"
-              />
-              <UserAvatar name={personName(person)} src={person.avatar_url} size="sm" />
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {personName(person)}
-              </span>
-              {disabled ? (
-                <span className="text-xs text-muted-foreground">Assist</span>
-              ) : person.active_task_count !== null ? (
-                <span className="text-xs text-muted-foreground">
-                  {person.active_task_count} active
+      <div className="grid max-h-64 min-w-0 grid-cols-[minmax(0,1fr)] gap-3 overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border bg-card p-2">
+        {bulkCommittee && bulkPresentation?.showControls ? (
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 border-b bg-card px-2 pb-2">
+            <div className="flex min-h-11 min-w-0 items-center justify-between gap-2">
+              <label className="motion-control-trigger flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-1 text-xs font-semibold transition-colors hover:bg-muted hover:text-primary focus-within:ring-2 focus-within:ring-ring active:bg-muted motion-reduce:transition-none has-disabled:cursor-not-allowed has-disabled:opacity-50">
+                <input
+                  ref={bulkCheckbox}
+                  type="checkbox"
+                  checked={allBulkSelected}
+                  aria-checked={someBulkSelected ? "mixed" : allBulkSelected}
+                  disabled={bulkIds.length === 0}
+                  onChange={(event) => updateBulkSelection(event.target.checked)}
+                  className="motion-control-pop size-5 shrink-0 accent-primary"
+                />
+                <span className="min-w-0 leading-tight break-words">
+                  Select all shown in {bulkCommittee.name} ({bulkIds.length})
                 </span>
+              </label>
+              {bulkPresentation.showClear ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-11 shrink-0"
+                  onClick={() => updateBulkSelection(false)}
+                >
+                  Clear shown
+                </Button>
               ) : null}
-            </label>
-          );
-        })}
+            </div>
+          </div>
+        ) : bulkCommittee && bulkPresentation?.emptyMessage ? (
+          <p className="px-2 py-1 text-xs text-muted-foreground">
+            {bulkPresentation.emptyMessage}
+          </p>
+        ) : null}
+        {bulkCommittee && committeeMembers.length > 0
+          ? renderGroup(`${bulkCommittee.name} members`, committeeMembers)
+          : null}
+        {otherPeople.length > 0
+          ? renderGroup(
+              bulkCommittee && committeeMembers.length > 0
+                ? "Other committees"
+                : null,
+              otherPeople,
+            )
+          : null}
         {filtered.length === 0 ? (
           <p className="px-3 py-4 text-center text-sm text-muted-foreground">
             No people match this search.
@@ -682,6 +739,9 @@ export function ActiveTaskDialog({
   const fixedCommittee = committees.find(
     (committee) => committee.id === draft.committeeId,
   );
+  const committeeNames = new Map(
+    committees.map((committee) => [committee.id, committee.name] as const),
+  );
   const committeeItems = committees.map((committee) => ({
     value: committee.id,
     label: committee.name,
@@ -715,7 +775,7 @@ export function ActiveTaskDialog({
           </div>
         ) : (
           <form onSubmit={submit} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]">
-            <div className="grid min-h-0 gap-5 overflow-y-auto px-4 py-4 sm:px-5 [&_button]:transition-colors [&_button]:duration-[var(--motion-interaction-duration)] [&_button]:hover:border-primary/60 [&_button]:active:bg-muted motion-reduce:[&_button]:transition-none">
+            <div className="grid min-h-0 grid-cols-[minmax(0,1fr)] gap-5 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-5 [&_button]:transition-colors [&_button]:duration-[var(--motion-interaction-duration)] [&_button]:hover:border-primary/60 [&_button]:active:bg-muted motion-reduce:[&_button]:transition-none">
               {error && !ready ? (
                 <div className="grid gap-3">
                   <InlineAlert>{error}</InlineAlert>
@@ -801,7 +861,7 @@ export function ActiveTaskDialog({
                     </MotionPresence>
                   </SectionEnter>
 
-                  <SectionEnter as="section" index={2} className="grid gap-4">
+                  <SectionEnter as="section" index={2} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
                     <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase"><Users className="size-4" aria-hidden /> People</h3>
                     <p className="text-xs text-muted-foreground">{mode === "add" ? "Leave Primary assignees empty to add this task to the Backlog." : "Removing all Primary assignees from an In Progress task returns it to To Do in the Backlog."}</p>
                     <PersonPicker
@@ -822,6 +882,7 @@ export function ActiveTaskDialog({
                         )
                       }
                       bulkCommittee={fixedCommittee}
+                      committeeNames={committeeNames}
                       fieldName="primaryAssignees"
                       onChange={(primaryAssigneeIds) => {
                         clearPickerLimitAttempt();
@@ -855,6 +916,7 @@ export function ActiveTaskDialog({
                               }),
                             )
                           }
+                          committeeNames={committeeNames}
                           fieldName="allowedViewers"
                           onChange={(allowedViewerIds) => { clearPickerLimitAttempt(); updateDraft({ allowedViewerIds }); }}
                         />
