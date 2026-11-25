@@ -772,6 +772,19 @@ export function UsersTable({
                   </Button>
                 }
               />
+            ) : committeeFilter !== "all" &&
+              !search &&
+              displayedMembers.length === 0 &&
+              !(roleVisibleMembers.length === 0 && removedLoadedCount > 0) ? (
+              <EmptyState
+                compact
+                title="No loaded users in this committee"
+                description={
+                  paging.hasMore
+                    ? "Load more to check later results, or pick another committee."
+                    : "Pick another committee or choose All committees."
+                }
+              />
             ) : paging.items.length === 0 ? (
               <EmptyState
                 compact
@@ -789,16 +802,7 @@ export function UsersTable({
                       : "Deactivated accounts will appear here."
                 }
               />
-            ) : displayedMembers.length === 0 && roleVisibleMembers.length > 0 ? (
-              <EmptyState
-                compact
-                title="No loaded users in this committee"
-                description={
-                  paging.hasMore
-                    ? "Load more to check later results, or pick another committee."
-                    : "Pick another committee or choose All committees."
-                }
-              />
+
             ) : displayedMembers.length === 0 && removedLoadedCount > 0 ? (
               <EmptyState
                 compact

@@ -15,9 +15,14 @@ vi.mock("@/components/shared/user-avatar", () => ({
   UserAvatar: ({ name }: { name: string }) => <span>{name}</span>,
 }));
 vi.mock("@/components/shared/motion", () => ({
-  TabPanel: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div className={className}>{children}</div>
-  ),
+  TabPanel: ({
+    children,
+    ...props
+  }: React.ComponentProps<"div"> & { motionKey?: number }) => {
+    const { motionKey, ...domProps } = props;
+    void motionKey;
+    return <div {...domProps}>{children}</div>;
+  },
   useListReveal: () => ({
     getRevealProps: (id: string) => ({ "data-motion-reveal-id": id }),
   }),
@@ -78,6 +83,20 @@ describe("archived task phase tabs", () => {
     fireEvent.click(tabs()[2]);
     expect(tabs().map((t) => t.getAttribute("aria-selected"))).toEqual(["false", "false", "true"]);
     expect(tabs().map((t) => t.tabIndex)).toEqual([-1, -1, 0]);
+  });
+
+  it("links tabs to a labelled tabpanel only when tabs exist", () => {
+    const { unmount } = renderList([task("a", "Phase A"), task("b", "Phase B")]);
+    const panel = screen.getByRole("tabpanel");
+    const selected = tabs()[0];
+    expect(selected.getAttribute("aria-controls")).toBe(panel.id);
+    expect(panel.getAttribute("aria-labelledby")).toBe(selected.id);
+    fireEvent.click(tabs()[1]);
+    expect(tabs()[1].getAttribute("aria-controls")).toBe(panel.id);
+    expect(panel.getAttribute("aria-labelledby")).toBe(tabs()[1].id);
+    unmount();
+    renderList([task("a", "Phase A")]);
+    expect(screen.queryByRole("tabpanel")).toBeNull();
   });
 
   it("supports arrow keys with wrap-around, Home and End", () => {

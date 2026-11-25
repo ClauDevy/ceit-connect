@@ -567,7 +567,7 @@ function RealTask({
             {task.is_confidential && task.event_status === "Archived" ? (
               <ArchivedTaskSharing taskId={task.id} viewers={task.access_list} />
             ) : task.is_confidential &&
-              !editControls.data?.can_set_confidentiality ? (
+              (task.phaseComplete || !editControls.data?.can_set_confidentiality) ? (
               <PanelBlock title="Additional viewers" icon={<LockKeyhole />}>
                 {task.access_list.length > 0 ? (
                   <div className="motion-stagger space-y-2.5">

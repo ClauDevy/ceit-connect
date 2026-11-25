@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { CalendarClock, CheckCircle2, ChevronRight } from "lucide-react";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { StretchedLink } from "@/components/shared/stretched-link";
@@ -119,6 +119,9 @@ export function ArchivedTaskList({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [tabMotionKey, setTabMotionKey] = useState(0);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const baseId = useId();
+  const panelId = `${baseId}-panel`;
+  const tabId = (index: number | null) => `${baseId}-tab-${index ?? "all"}`;
   const activeIndex =
     selectedIndex !== null && selectedIndex < groups.length ? selectedIndex : null;
   const visibleGroups =
@@ -173,6 +176,8 @@ export function ArchivedTaskList({
                 type="button"
                 role="tab"
                 aria-selected={selected}
+                id={tabId(index)}
+                aria-controls={selected ? panelId : undefined}
                 tabIndex={selected ? 0 : -1}
                 title={label}
                 onClick={() => selectPhase(index)}
@@ -201,7 +206,17 @@ export function ArchivedTaskList({
         </div>
       ) : null}
 
-      <TabPanel motionKey={tabMotionKey} className="grid gap-7">
+      <TabPanel
+        motionKey={tabMotionKey}
+        className="grid gap-7"
+        {...(groups.length > 1
+          ? {
+              id: panelId,
+              role: "tabpanel",
+              "aria-labelledby": tabId(activeIndex),
+            }
+          : {})}
+      >
         {visibleGroups.map((group, groupIndex) => {
           const headingId = `archived-phase-${groupIndex}`;
           const showHeading = activeIndex === null;

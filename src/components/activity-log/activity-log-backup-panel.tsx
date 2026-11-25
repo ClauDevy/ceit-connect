@@ -331,7 +331,14 @@ export function ActivityLogBackupPanel() {
     return true;
   }, [supabase]);
 
-  useEffect(() => { void load().catch(() => { setLoadFailed(true); setError("Backup information could not be loaded. Refresh to try again."); }); }, [load]);
+  useEffect(() => {
+    const generation = loadGeneration.current + 1; // the load below claims this generation
+    void load().catch(() => {
+      if (generation !== loadGeneration.current) return; // a newer load superseded this one
+      setLoadFailed(true);
+      setError("Backup information could not be loaded. Refresh to try again.");
+    });
+  }, [load]);
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 1_000);
     return () => window.clearInterval(timer);
