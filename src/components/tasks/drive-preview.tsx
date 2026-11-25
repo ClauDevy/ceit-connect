@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { ExternalLink, RectangleHorizontal, RectangleVertical } from "lucide-react";
+import { useRef, useState, useSyncExternalStore } from "react";
+import {
+  ExternalLink,
+  Maximize2,
+  RectangleHorizontal,
+  RectangleVertical,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { parseGoogleDriveLink, type DriveItemType } from "@/lib/google-drive";
@@ -27,6 +32,14 @@ export function DrivePreview({
   title = "Google Drive preview",
 }: DrivePreviewProps) {
   const [wide, setWide] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Element fullscreen isn't available everywhere (e.g. iPhone Safari), so the
+  // button only shows when the browser supports it.
+  const canFullscreen = useSyncExternalStore(
+    () => () => {},
+    () => document.fullscreenEnabled === true,
+    () => false,
+  );
   const parsed = parseGoogleDriveLink(url);
 
   if (!parsed) {
@@ -43,6 +56,7 @@ export function DrivePreview({
     <div className="min-w-0 max-w-full space-y-2 overflow-hidden">
       {parsed.previewUrl ? (
         <iframe
+          ref={iframeRef}
           className={cn(
             "block w-full max-w-full rounded-xl border border-border bg-muted sm:aspect-[16/10]",
             wide ? "aspect-video" : MOBILE_ASPECT[parsed.type],
@@ -57,22 +71,37 @@ export function DrivePreview({
         />
       ) : null}
 
-      {canToggleShape ? (
-        <div className="sm:hidden">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-pressed={wide}
-            onClick={() => setWide((current) => !current)}
-          >
-            {wide ? (
-              <RectangleVertical aria-hidden="true" />
-            ) : (
-              <RectangleHorizontal aria-hidden="true" />
-            )}
-            {wide ? "Tall view (PDF)" : "Wide view (video)"}
-          </Button>
+      {parsed.previewUrl && (canToggleShape || canFullscreen) ? (
+        <div className="flex flex-wrap gap-2 sm:hidden">
+          {canFullscreen ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void iframeRef.current?.requestFullscreen().catch(() => {});
+              }}
+            >
+              <Maximize2 aria-hidden="true" />
+              Full screen
+            </Button>
+          ) : null}
+          {canToggleShape ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-pressed={wide}
+              onClick={() => setWide((current) => !current)}
+            >
+              {wide ? (
+                <RectangleVertical aria-hidden="true" />
+              ) : (
+                <RectangleHorizontal aria-hidden="true" />
+              )}
+              {wide ? "Tall view (PDF)" : "Wide view (video)"}
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
