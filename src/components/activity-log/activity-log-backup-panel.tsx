@@ -270,8 +270,8 @@ function History({ backups, files, busy, now, open, expandedId, onToggle, onTogg
   </section>;
 }
 
-function PanelHeader({ backup, hasEmailFailure, now, open, onToggle }: {
-  backup: Backup | null; hasEmailFailure: boolean; now: number; open: boolean; onToggle: () => void;
+function PanelHeader({ backup, loadState, hasEmailFailure, now, open, onToggle }: {
+  backup: Backup | null; loadState: "loading" | "error" | "ready"; hasEmailFailure: boolean; now: number; open: boolean; onToggle: () => void;
 }) {
   const view = backup ? statusView(backup, now) : null;
   const current = backup ? isPinned(backup, now) : false;
@@ -279,6 +279,8 @@ function PanelHeader({ backup, hasEmailFailure, now, open, onToggle }: {
     <div className="min-w-0 flex-1">
       <h2 id="activity-log-backups" className="font-display font-semibold">Backups and clearing</h2>
       {backup && view ? <p className="text-sm text-muted-foreground">{current ? "Current backup" : "Last backup"}: {formatDate(backup.created_at)} · {rows(backup.row_count)} · {view.label}</p>
+        : loadState === "loading" ? <p className="text-sm text-muted-foreground">Loading backups…</p>
+        : loadState === "error" ? <p role="alert" className="text-sm text-destructive">Backups could not be loaded. Open this panel to retry.</p>
         : <p className="text-sm text-muted-foreground">No backups yet.</p>}
       <div className="mt-2 flex flex-wrap gap-2">
         {backup && PROCESSING.has(backup.backup_status) ? <Badge variant="brand">Backup in progress</Badge> : null}
@@ -396,7 +398,7 @@ export function ActivityLogBackupPanel() {
   }
 
   return <section className="overflow-hidden rounded-2xl border bg-card" aria-labelledby="activity-log-backups">
-    <PanelHeader backup={summary} hasEmailFailure={backups.some((backup) => backup.backup_status === "email_failed")}
+    <PanelHeader backup={summary} loadState={lastUpdated !== null ? "ready" : error ? "error" : "loading"} hasEmailFailure={backups.some((backup) => backup.backup_status === "email_failed")}
       now={currentTime} open={panelOpen} onToggle={() => setPanelOpen((open) => !open)} />
     <Collapse open={panelOpen}><div id="activity-log-backup-controls" className="grid gap-4 border-t p-3.5 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">

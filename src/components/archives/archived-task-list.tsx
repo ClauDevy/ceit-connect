@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { CalendarClock, CheckCircle2, ChevronRight } from "lucide-react";
 import { PriorityBadge } from "@/components/shared/priority-badge";
 import { StretchedLink } from "@/components/shared/stretched-link";
@@ -114,17 +114,44 @@ export function ArchivedTaskList({
   });
 
   // null = every phase, grouped. Picking a phase shows just that phase, like the live event board.
-  const [selectedPhase, setSelectedPhase] = useState<string | null>(null);
+  // Selection is the group's position (null = all), never its label, so a phase literally named
+  // like a sentinel cannot collide with "All phases" or the unphased bucket.
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [tabMotionKey, setTabMotionKey] = useState(0);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const activeIndex =
+    selectedIndex !== null && selectedIndex < groups.length ? selectedIndex : null;
   const visibleGroups =
-    selectedPhase === null
-      ? groups
-      : groups.filter((group) => group.phase === selectedPhase);
+    activeIndex === null ? groups : [groups[activeIndex]];
+  const tabs: Array<{ index: number | null; label: string; count: number }> = [
+    { index: null, label: "All phases", count: tasks.length },
+    ...groups.map((group, index) => ({
+      index,
+      label: group.phase,
+      count: group.tasks.length,
+    })),
+  ];
 
-  function selectPhase(phase: string | null) {
-    if (phase === selectedPhase) return;
-    setSelectedPhase(phase);
+  function selectPhase(index: number | null) {
+    if (index === activeIndex) return;
+    setSelectedIndex(index);
     setTabMotionKey((current) => current + 1);
+  }
+
+  function handleTabKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    position: number,
+  ) {
+    let next: number;
+    if (event.key === "ArrowRight") next = (position + 1) % tabs.length;
+    else if (event.key === "ArrowLeft")
+      next = (position - 1 + tabs.length) % tabs.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = tabs.length - 1;
+    else return;
+    event.preventDefault();
+    selectPhase(tabs[next].index);
+    tabRefs.current[next]?.focus();
   }
 
   return (
@@ -135,22 +162,21 @@ export function ArchivedTaskList({
           role="tablist"
           aria-label="Archived event phases"
         >
-          {[
-            { phase: null as string | null, count: tasks.length },
-            ...groups.map((group) => ({
-              phase: group.phase as string | null,
-              count: group.tasks.length,
-            })),
-          ].map(({ phase, count }) => {
-            const selected = selectedPhase === phase;
+          {tabs.map(({ index, label, count }, position) => {
+            const selected = activeIndex === index;
             return (
               <button
-                key={phase ?? "__all"}
+                key={index === null ? "all" : `phase-${index}`}
+                ref={(node) => {
+                  tabRefs.current[position] = node;
+                }}
                 type="button"
                 role="tab"
                 aria-selected={selected}
-                title={phase ?? "All phases"}
-                onClick={() => selectPhase(phase)}
+                tabIndex={selected ? 0 : -1}
+                title={label}
+                onClick={() => selectPhase(index)}
+                onKeyDown={(event) => handleTabKeyDown(event, position)}
                 className={cn(
                   "flex h-11 max-w-[75vw] shrink-0 items-center gap-2 rounded-t-md border-b-2 px-1 font-display text-sm font-semibold whitespace-nowrap transition-colors duration-300 hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted motion-reduce:transition-none sm:text-base",
                   selected
@@ -158,7 +184,7 @@ export function ArchivedTaskList({
                     : "border-transparent text-muted-foreground",
                 )}
               >
-                <span className="truncate">{phase ?? "All phases"}</span>
+                <span className="truncate">{label}</span>
                 <span
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
@@ -178,7 +204,7 @@ export function ArchivedTaskList({
       <TabPanel motionKey={tabMotionKey} className="grid gap-7">
         {visibleGroups.map((group, groupIndex) => {
           const headingId = `archived-phase-${groupIndex}`;
-          const showHeading = selectedPhase === null;
+          const showHeading = activeIndex === null;
 
           return (
             <section

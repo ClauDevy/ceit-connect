@@ -564,7 +564,7 @@ function RealTask({
               </>
             ) : null}
 
-            {task.is_confidential && task.event_status === "Archived" && !task.phaseComplete ? (
+            {task.is_confidential && task.event_status === "Archived" ? (
               <ArchivedTaskSharing taskId={task.id} viewers={task.access_list} />
             ) : task.is_confidential &&
               !editControls.data?.can_set_confidentiality ? (
