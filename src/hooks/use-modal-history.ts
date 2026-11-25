@@ -117,6 +117,15 @@ function pushMarker(id: string) {
   }
 }
 
+function restoreMarker(id: string) {
+  try {
+    window.history.pushState(stateWithMarker(id), "", window.location.href)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function drainRequestedClosures() {
   if (traversalPending) return
 
@@ -211,7 +220,7 @@ function handlePopState() {
       guard.isActive() &&
       missingGuardMarkers.delete(guardId)
     ) {
-      pushMarker(guardId)
+      restoreMarker(guardId)
     }
     drainRequestedClosures()
   }, 0)
@@ -229,12 +238,16 @@ function registerModal(id: string, registration: ModalRegistration) {
   return () => {
     if (registrations.get(id) === registration) registrations.delete(id)
     if (registration.kind === "guard") {
-      requestedClosures.delete(id)
       missingGuardMarkers.delete(id)
-      for (let index = stack.length - 1; index >= 0; index -= 1) {
-        if (stack[index] === id) stack.splice(index, 1)
+      const traversalStillOwnsMarker =
+        traversalId === id || timedOutTraversalId === id
+      if (!traversalStillOwnsMarker) {
+        requestedClosures.delete(id)
+        for (let index = stack.length - 1; index >= 0; index -= 1) {
+          if (stack[index] === id) stack.splice(index, 1)
+        }
+        discardTopMarkerInPlace(id)
       }
-      discardTopMarkerInPlace(id)
       settleWaiters()
       return
     }
@@ -308,6 +321,10 @@ export function waitForModalHistory(timeoutMs = DEFAULT_WAIT_MS) {
     }
     waiters.add(waiter)
   })
+}
+
+export function getModalHistoryStackForTest() {
+  return [...stack]
 }
 
 export async function closeModalAndWait(

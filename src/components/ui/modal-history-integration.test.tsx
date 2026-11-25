@@ -12,6 +12,7 @@ import {
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   closeModalAndWait,
+  getModalHistoryStackForTest,
   useBackNavigationGuard,
 } from "@/hooks/use-modal-history"
 
@@ -197,6 +198,7 @@ describe("modal history integration", () => {
 
     render(<Harness />)
     await waitFor(() => expect(window.history.state?.__ceitConnectModal).toBeTruthy())
+    const guardId = window.history.state.__ceitConnectModal.id
     const initialLength = window.history.length
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -208,6 +210,10 @@ describe("modal history integration", () => {
         expect(window.history.state?.__ceitConnectModal).toBeTruthy()
       })
       expect(window.history.length).toBe(initialLength)
+      expect(getModalHistoryStackForTest().filter((id) => id === guardId)).toHaveLength(1)
+      expect(new Set(getModalHistoryStackForTest()).size).toBe(
+        getModalHistoryStackForTest().length,
+      )
     }
   })
 

@@ -92,12 +92,69 @@ vi.mock("@/components/events/event-form-template-picker", () => ({
 }));
 
 vi.mock("@/components/events/event-form-task-phases", () => ({
-  EventFormTaskPhases: () => null,
+  EventFormTaskPhases: ({
+    phaseViews,
+    onOpenNewTask,
+  }: {
+    phaseViews: { editablePhases: { id: string }[] }[];
+    onOpenNewTask: (phaseId: string) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() => onOpenNewTask(phaseViews[0].editablePhases[0].id)}
+    >
+      Open task dialog
+    </button>
+  ),
 }));
 
-vi.mock("@/components/events/event-form-task-dialog", () => ({
-  EventFormTaskDialog: () => null,
-}));
+vi.mock("@/components/events/event-form-task-dialog", async () => {
+  const { Dialog, DialogContent, DialogTitle } = await vi.importActual<
+    typeof import("@/components/ui/dialog")
+  >("@/components/ui/dialog");
+
+  return {
+    EventFormTaskDialog: ({
+      open,
+      taskEditor,
+      onClose,
+      updateTaskDraft,
+      onSaveTask,
+    }: {
+      open: boolean;
+      taskEditor: { draft: { title: string; committeeId: string } } | null;
+      onClose: () => void;
+      updateTaskDraft: (updates: { title?: string; committeeId?: string }) => void;
+      onSaveTask: () => void;
+    }) => (
+      <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+        <DialogContent>
+          <DialogTitle>Rendered task dialog</DialogTitle>
+          {taskEditor ? (
+            <>
+              <label htmlFor="rendered-task-title">Task title</label>
+              <input
+                id="rendered-task-title"
+                value={taskEditor.draft.title}
+                onChange={(event) => updateTaskDraft({ title: event.target.value })}
+              />
+              <label htmlFor="rendered-task-committee">Task committee</label>
+              <select
+                id="rendered-task-committee"
+                value={taskEditor.draft.committeeId}
+                onChange={(event) => updateTaskDraft({ committeeId: event.target.value })}
+              >
+                <option value="">Choose</option>
+                <option value="committee-1">Operations</option>
+              </select>
+              <button type="button" onClick={onSaveTask}>Save rendered task</button>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    ),
+  };
+});
 
 import { EventForm, type InitialEvent } from "@/components/events/event-form";
 
@@ -209,12 +266,19 @@ describe("event form unsaved-work contract", () => {
 
   it("approves discard before closing the confirmation and taking real Back", () => {
     const discard = eventForm.slice(eventForm.indexOf("onDiscardChanges={() =>"));
+    expect(discard).toContain("if (discardChangesInFlightRef.current) return;");
+    expect(discard.indexOf("discardChangesInFlightRef.current = true;")).toBeLessThan(
+      discard.indexOf("clearBackGuard()"),
+    );
     expect(discard.indexOf("approveNavigation();")).toBeLessThan(
       discard.indexOf("window.history.back()"),
     );
     expect(discard.indexOf("clearBackGuard()")).toBeLessThan(
       discard.indexOf("window.history.back()"),
     );
+    expect(discard).toContain(".finally(() => {");
+    expect(discard).toContain("discardChangesInFlightRef.current = false;");
+    expect(confirmations).toContain("loading={leaveConfirmLoading}");
   });
 
   it("keeps the approved English actions and no timezone copy", () => {
@@ -273,5 +337,36 @@ describe("event form unsaved-work behavior", () => {
     expect(screen.getByText("Keep editing")).toBeTruthy();
     expect(screen.getByText("Discard changes")).toBeTruthy();
     expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("arms the guard without opening discard when saving a task closes its dialog", async () => {
+    renderEventForm(initialEvent("Active"));
+    expect(beforeUnloadPrevented()).toBe(false);
+    expect(window.history.state?.__ceitConnectModal).toBeUndefined();
+
+    fireEvent.click(screen.getByText("Tasks (1)"));
+    fireEvent.click(screen.getByText("Open task dialog"));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Task title")).toBeTruthy();
+      expect(window.history.state?.__ceitConnectModal?.id).toMatch(/^modal-/);
+      expect(beforeUnloadPrevented()).toBe(false);
+    });
+
+    fireEvent.change(screen.getByLabelText("Task title"), {
+      target: { value: "New task" },
+    });
+    fireEvent.change(screen.getByLabelText("Task committee"), {
+      target: { value: "committee-1" },
+    });
+    fireEvent.click(screen.getByText("Save rendered task"));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Task title")).toBeNull();
+      expect(window.history.state?.__ceitConnectModal?.id).toMatch(/^guard-/);
+    });
+    expect(screen.queryByText("Discard unsaved changes?")).toBeNull();
+
+    window.history.back();
+    expect(await screen.findByText("Discard unsaved changes?")).toBeTruthy();
   });
 });

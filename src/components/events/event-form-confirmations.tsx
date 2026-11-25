@@ -17,6 +17,7 @@ type EventFormConfirmationsProps = {
   setPhases: Dispatch<SetStateAction<PhaseDraft[]>>;
   importTemplate: (template: ArchivedEventTemplate) => Promise<void>;
   leaveConfirmOpen: boolean;
+  leaveConfirmLoading: boolean;
   onKeepEditing: () => void;
   onDiscardChanges: () => void;
 };
@@ -31,6 +32,7 @@ export function EventFormConfirmations({
   setPhases,
   importTemplate,
   leaveConfirmOpen,
+  leaveConfirmLoading,
   onKeepEditing,
   onDiscardChanges,
 }: EventFormConfirmationsProps) {
@@ -119,6 +121,7 @@ export function EventFormConfirmations({
         cancelLabel="Keep editing"
         confirmLabel="Discard changes"
         destructive
+        loading={leaveConfirmLoading}
         onConfirm={onDiscardChanges}
       />
     </>

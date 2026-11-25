@@ -150,8 +150,10 @@ export function EventForm({
   const taskDialogScrollRef = useRef<HTMLDivElement>(null);
   const previousCompletedDraftPhases = useRef(new Set<string>());
   const navigationApprovedRef = useRef(false);
+  const discardChangesInFlightRef = useRef(false);
   const [navigationApproved, setNavigationApproved] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [leaveConfirmLoading, setLeaveConfirmLoading] = useState(false);
 
   const initialTaskDueDates = useMemo(
     () => new Map((initialEvent?.tasks ?? []).map((task) => [task.id, task.dueDate])),
@@ -1420,12 +1422,20 @@ export function EventForm({
         setPhases={setPhases}
         importTemplate={importTemplate}
         leaveConfirmOpen={leaveConfirmOpen}
+        leaveConfirmLoading={leaveConfirmLoading}
         onKeepEditing={() => setLeaveConfirmOpen(false)}
         onDiscardChanges={() => {
+          if (discardChangesInFlightRef.current) return;
+          discardChangesInFlightRef.current = true;
+          setLeaveConfirmLoading(true);
           approveNavigation();
           void clearBackGuard()
             .then(() => closeModalAndWait(() => setLeaveConfirmOpen(false)))
-            .then(() => window.history.back());
+            .then(() => window.history.back())
+            .finally(() => {
+              discardChangesInFlightRef.current = false;
+              setLeaveConfirmLoading(false);
+            });
         }}
       />
     </div>
