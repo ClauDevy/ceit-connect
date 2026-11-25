@@ -773,12 +773,15 @@ export function UsersTable({
                 }
               />
             ) : committeeFilter !== "all" &&
-              !search &&
               displayedMembers.length === 0 &&
               !(roleVisibleMembers.length === 0 && removedLoadedCount > 0) ? (
               <EmptyState
                 compact
-                title="No loaded users in this committee"
+                title={
+                  search
+                    ? "No loaded users match this search and committee"
+                    : "No loaded users in this committee"
+                }
                 description={
                   paging.hasMore
                     ? "Load more to check later results, or pick another committee."

@@ -351,7 +351,7 @@ export function ActivityLogBackupPanel() {
     if (busy) return;
     setBusy(true);
     try { if (await load()) { setCurrentTime(Date.now()); setError(null); } }
-    catch { setError("Backup information could not be refreshed. Try again."); }
+    catch { setLoadFailed(true); setError("Backup information could not be refreshed. Try again."); }
     finally { setBusy(false); }
   }
   // The action already succeeded when this runs, so a failed re-read must not report the action as failed.

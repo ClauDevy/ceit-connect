@@ -427,9 +427,9 @@ export function Collapse({
 }
 
 const OPEN_FROM_QUERY = {
-  md: "(min-width: 768px)",
-  lg: "(min-width: 1024px)",
-  xl: "(min-width: 1280px)",
+  md: "(min-width: 48rem)",
+  lg: "(min-width: 64rem)",
+  xl: "(min-width: 80rem)",
 } as const;
 // Literal class names so Tailwind can see them. `!` beats the plain .motion-collapse rule, so at
 // the wide breakpoint the panel is simply open (no transition runs on load or resize).
