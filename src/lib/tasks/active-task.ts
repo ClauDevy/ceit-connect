@@ -34,7 +34,10 @@ export type ActiveTaskDraft = {
   allowedViewerIds: string[];
 };
 
-export type CreateActiveTaskRequest = ActiveTaskDraft & { eventId: string };
+export type CreateActiveTaskRequest = ActiveTaskDraft & {
+  eventId: string;
+  dependsOnTaskId: string | null;
+};
 export type EditActiveTaskRequest = ActiveTaskDraft & {
   taskId: string;
   expectedUpdatedAt: string;
@@ -345,15 +348,21 @@ export function validateCreateActiveTaskRequest(
   value: unknown,
 ): ActiveTaskValidationResult<CreateActiveTaskRequest> {
   const requiredKeys = COMMON_KEYS.filter((key) => key !== "endDate");
-  if (!isPlainRecord(value) || !hasExactKeys(value, ["eventId", ...requiredKeys], ["endDate"])) {
+  if (!isPlainRecord(value) || !hasExactKeys(value, ["eventId", ...requiredKeys], ["endDate", "dependsOnTaskId"])) {
     return invalid("form", VALIDATION_MESSAGES.generic);
   }
   if (!isCanonicalUuid(value.eventId)) {
     return invalid("form", VALIDATION_MESSAGES.event);
   }
+  const dependsOnTaskId = Object.prototype.hasOwnProperty.call(value, "dependsOnTaskId")
+    ? value.dependsOnTaskId
+    : null;
+  if (!(dependsOnTaskId === null || isCanonicalUuid(dependsOnTaskId))) {
+    return invalid("form", "Choose an available prerequisite task.");
+  }
   const draft = validateCommonTaskDraft(value);
   return draft.ok
-    ? { ok: true, data: { eventId: value.eventId, ...draft.data } }
+    ? { ok: true, data: { eventId: value.eventId, dependsOnTaskId, ...draft.data } }
     : draft;
 }
 
@@ -489,7 +498,11 @@ function commonRpcArgs(draft: ActiveTaskDraft) {
 }
 
 export function createActiveTaskRpcArgs(request: CreateActiveTaskRequest) {
-  return { p_event_id: request.eventId, ...commonRpcArgs(request) };
+  return {
+    p_event_id: request.eventId,
+    p_depends_on_task_id: request.dependsOnTaskId,
+    ...commonRpcArgs(request),
+  };
 }
 
 export function editActiveTaskRpcArgs(request: EditActiveTaskRequest) {
@@ -572,7 +585,10 @@ function mapRpcError(error: RpcError): ActiveTaskRpcFailure {
 
 export async function runActiveTaskRpc(
   client: RpcClient,
-  name: "create_active_event_task" | "edit_active_event_task",
+  name:
+    | "create_active_event_task"
+    | "create_active_event_task_with_dependency"
+    | "edit_active_event_task",
   args: Record<string, unknown>,
 ): Promise<ActiveTaskRpcFailure | ActiveTaskRpcSuccess> {
   for (let attempt = 1; attempt <= 3; attempt += 1) {

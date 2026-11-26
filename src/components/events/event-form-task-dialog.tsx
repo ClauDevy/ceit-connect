@@ -58,6 +58,8 @@ type EventFormTaskDialogProps = {
   onUpdateVisibleAssignees: (checked: boolean) => void;
   onUpdateSingleAssignee: (assigneeId: string, checked: boolean) => void;
   onSaveTask: () => void;
+  dependencyOptions: { id: string; label: string; persisted: boolean; status: string }[];
+  showDependency: boolean;
 };
 
 export function EventFormTaskDialog({
@@ -86,6 +88,8 @@ export function EventFormTaskDialog({
   onUpdateVisibleAssignees,
   onUpdateSingleAssignee,
   onSaveTask,
+  dependencyOptions,
+  showDependency,
 }: EventFormTaskDialogProps) {
   return (
     <Dialog
@@ -199,6 +203,32 @@ export function EventFormTaskDialog({
                   )}
                 </FormField>
               </div>
+              {showDependency ? (
+                <FormField label="Depends on (optional)">
+                  {(control) => {
+                    const value = taskEditor.draft.dependsOnTaskId ?? taskEditor.draft.dependsOnClientKey ?? "none";
+                    return (
+                      <Select
+                        items={[{ value: "none", label: "No prerequisite" }, ...dependencyOptions.map((option) => ({ value: option.id, label: option.label }))]}
+                        value={value}
+                        onValueChange={(next) => {
+                          const option = dependencyOptions.find((candidate) => candidate.id === next);
+                          updateTaskDraft({
+                            dependsOnTaskId: option?.persisted ? option.id : null,
+                            dependsOnClientKey: option && !option.persisted ? option.id : null,
+                          });
+                        }}
+                      >
+                        <SelectTrigger {...control}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No prerequisite</SelectItem>
+                          {dependencyOptions.map((option) => <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    );
+                  }}
+                </FormField>
+              ) : null}
             </SectionEnter>
 
             <SectionEnter as="section" index={1} className="grid gap-4 border-b pb-5">

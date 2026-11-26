@@ -23,6 +23,8 @@ function task(overrides: Partial<TaskDraft> = {}): TaskDraft {
     endTime: "",
     priority: "Medium",
     assigneeIds: [],
+    dependsOnTaskId: null,
+    dependsOnClientKey: null,
     sourceTemplateTaskId: null,
     templateEditable: true,
     ...overrides,
@@ -111,6 +113,15 @@ describe("event form dirty state", () => {
     const initialState = eventFormSaveState(initial);
     const changed = state({ phases: [phase({ tasks: [task({ priority: "High" })] })] });
     expect(eventFormIsDirty(initialState, changed)).toBe(true);
+    expect(eventFormIsDirty(initialState, state())).toBe(false);
+  });
+
+  it("treats a dependency-only change as dirty and a reverted dependency as clean", () => {
+    const initial = state();
+    const initialState = eventFormSaveState(initial);
+    expect(eventFormIsDirty(initialState, state({
+      phases: [phase({ tasks: [task({ dependsOnTaskId: "task-2" })] })],
+    }))).toBe(true);
     expect(eventFormIsDirty(initialState, state())).toBe(false);
   });
 });

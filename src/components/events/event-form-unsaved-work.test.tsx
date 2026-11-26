@@ -181,6 +181,7 @@ const initialTask = {
   endTime: "",
   priority: "Medium" as const,
   assigneeIds: [],
+  dependsOnTaskId: null,
   status: "To Do" as const,
 };
 

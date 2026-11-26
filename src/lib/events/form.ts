@@ -350,6 +350,8 @@ type TaskPayloadDraft = {
   endTime: string;
   priority: "Low" | "Medium" | "High" | "Critical";
   assigneeIds: string[];
+  dependsOnTaskId?: string | null;
+  dependsOnClientKey?: string | null;
 };
 
 export function getLiveOperationScheduleProblem(
@@ -438,5 +440,50 @@ export function toTaskPayload(
         : null,
     priority: task.priority,
     assignee_ids: task.assigneeIds,
+    depends_on_task_id: task.dependsOnTaskId ?? null,
+    depends_on_client_key: task.dependsOnClientKey ?? null,
   };
+}
+
+export function dependencyBlockingTask<T extends { id: string; title: string; dependsOnTaskId?: string | null; dependsOnClientKey?: string | null }>(
+  tasks: readonly T[],
+  target: { id: string; persisted: boolean },
+  ignoredTaskIds: ReadonlySet<string> = new Set(),
+) {
+  return tasks.find((task) =>
+    task.id !== target.id &&
+    !ignoredTaskIds.has(task.id) &&
+    (target.persisted
+      ? task.dependsOnTaskId === target.id
+      : task.dependsOnClientKey === target.id),
+  ) ?? null;
+}
+
+export function orderTaskAdditionsByDependency<
+  T extends { task: { id: string; dependsOnClientKey?: string | null } },
+>(items: readonly T[]): T[] | null {
+  const byId = new Map(items.map((item) => [item.task.id, item]));
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const ordered: T[] = [];
+
+  function visit(item: T): boolean {
+    if (visited.has(item.task.id)) return true;
+    if (visiting.has(item.task.id)) return false;
+    visiting.add(item.task.id);
+    const prerequisiteId = item.task.dependsOnClientKey;
+    if (prerequisiteId) {
+      const prerequisite = byId.get(prerequisiteId);
+      if (!prerequisite || !visit(prerequisite)) return false;
+    }
+    visiting.delete(item.task.id);
+    visited.add(item.task.id);
+    ordered.push(item);
+    return true;
+  }
+
+  for (const item of items) {
+    if (!visit(item)) return null;
+  }
+  return ordered;
 }

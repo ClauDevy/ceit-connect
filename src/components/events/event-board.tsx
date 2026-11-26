@@ -931,6 +931,7 @@ function BoardContents({
         setBacklogOpen={setBacklogOpen}
         backlogButtonRef={backlogButtonRef}
         backlogTasks={backlogTasks}
+        tasks={tasks}
         boardBusy={boardBusy}
         claimingTaskId={claimingTaskId}
         handleClaim={handleClaim}

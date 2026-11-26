@@ -33,6 +33,8 @@ export type TaskDraft = {
   endTime: string;
   priority: Priority;
   assigneeIds: string[];
+  dependsOnTaskId: string | null;
+  dependsOnClientKey: string | null;
   sourceTemplateTaskId: string | null;
   templateEditable: boolean;
 };
@@ -84,6 +86,7 @@ export type InitialEventTask = {
   endTime: string;
   priority: Priority;
   assigneeIds: string[];
+  dependsOnTaskId: string | null;
   status: TaskStatus;
 };
 
@@ -109,6 +112,13 @@ export type EventFormProps = {
   archivedTemplates?: ArchivedEventTemplate[];
   initialEvent?: InitialEvent;
   bannerNotice?: string;
+  savedDependencyOptions?: Array<{
+    id: string;
+    label: string;
+    status: TaskStatus;
+    dependsOnTaskId: string | null;
+    canEdit: boolean;
+  }>;
 };
 
 export type TemplateImportResult = {

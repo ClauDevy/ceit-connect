@@ -71,6 +71,8 @@ export function makeInitialPhases(tasks: InitialEventTask[]): PhaseDraft[] {
       endTime: task.endTime,
       priority: task.priority,
       assigneeIds: task.assigneeIds,
+      dependsOnTaskId: task.dependsOnTaskId,
+      dependsOnClientKey: null,
       sourceTemplateTaskId: null,
       templateEditable: true,
     });

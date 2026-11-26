@@ -97,7 +97,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const result = await runActiveTaskRpc(
     supabase,
-    "create_active_event_task",
+    "create_active_event_task_with_dependency",
     createActiveTaskRpcArgs(payload),
   );
   return result.ok

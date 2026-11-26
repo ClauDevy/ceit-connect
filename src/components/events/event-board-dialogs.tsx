@@ -32,6 +32,7 @@ type EventBoardDialogsProps = {
   setBacklogOpen: Dispatch<SetStateAction<boolean>>;
   backlogButtonRef: RefObject<HTMLButtonElement | null>;
   backlogTasks: BoardTask[];
+  tasks: BoardTask[];
   boardBusy: boolean;
   claimingTaskId: string | null;
   handleClaim: (task: BoardTask) => void;
@@ -61,6 +62,7 @@ export function EventBoardDialogs({
   setBacklogOpen,
   backlogButtonRef,
   backlogTasks,
+  tasks,
   boardBusy,
   claimingTaskId,
   handleClaim,
@@ -159,6 +161,7 @@ export function EventBoardDialogs({
           defaultPhase={selectedPhase}
           completedPhaseNames={[...completePhases]}
           phaseOptions={phases.filter((phase) => !completePhases.has(phase))}
+          dependencyOptions={taskDialog.mode === "add" ? tasks.map((task) => ({ id: task.id, label: task.is_masked ? "Confidential Task" : task.title, status: task.status })) : []}
           viewer={viewer}
           committees={committees}
           onSettled={refetchBoardAfterTaskSettlement}

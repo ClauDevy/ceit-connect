@@ -12,8 +12,8 @@ const source = [
   .replaceAll("\r\n", "\n");
 
 describe("Event form Archived-template authority contract", () => {
-  it("keeps Admin and scratch creation on the existing RPC", () => {
-    expect(source).toContain('supabase.rpc("create_event_with_tasks"');
+  it("keeps Admin and scratch creation on the dependency-aware RPC", () => {
+    expect(source).toContain('supabase.rpc("create_event_with_task_dependencies"');
     expect(source).toContain('role === "Co-Admin"');
     expect(source).toContain("shouldUseCoAdminTemplateCreate");
     expect(source).not.toMatch(

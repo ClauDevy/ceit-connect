@@ -36,6 +36,7 @@ type EditableTaskMetadata = {
   call_time: string | null;
   end_time: string | null;
   primary_assignees: string[];
+  depends_on_task_id: string | null;
 };
 
 function LoadError() {
@@ -92,7 +93,7 @@ export default async function EditEventPage({
     redirect("/home");
   }
 
-  const [currentProfileResult, committeesResult, assigneesResult, tasksResult, phaseOrderResult] =
+  const [currentProfileResult, committeesResult, assigneesResult, tasksResult, phaseOrderResult, dependencyChoicesResult] =
     await Promise.all([
       supabase
         .from("users")
@@ -104,12 +105,13 @@ export default async function EditEventPage({
       supabase
         .from("tasks")
         .select(
-          "id, committee_id, phase, status, priority, task_type, due_date, call_time, end_time, primary_assignees",
+          "id, committee_id, phase, status, priority, task_type, due_date, call_time, end_time, primary_assignees, depends_on_task_id",
         )
         .eq("event_id", eventId)
         .order("created_at", { ascending: true })
         .returns<EditableTaskMetadata[]>(),
       supabase.rpc("list_event_phase_order", { p_event_id: eventId }),
+      supabase.rpc("list_event_task_dependency_choices", { p_event_id: eventId }),
     ]);
 
   const loadError =
@@ -118,6 +120,7 @@ export default async function EditEventPage({
     assigneesResult.error ??
     tasksResult.error ??
     phaseOrderResult.error;
+  const dependencyChoicesError = dependencyChoicesResult.error;
 
   const workloadRows: unknown = assigneesResult.data;
   const workloadDataInvalid =
@@ -125,7 +128,7 @@ export default async function EditEventPage({
     (!Array.isArray(workloadRows) ||
       !workloadRows.every(isTaskAssigneeWorkload));
 
-  if (loadError || workloadDataInvalid || !currentProfileResult.data) {
+  if (loadError || dependencyChoicesError || workloadDataInvalid || !currentProfileResult.data) {
     console.error("Failed to load Edit Event options:", loadError);
     return <LoadError />;
   }
@@ -188,6 +191,7 @@ export default async function EditEventPage({
         endTime: end.time,
         priority: task.priority,
         assigneeIds: task.primary_assignees,
+        dependsOnTaskId: task.depends_on_task_id,
         status: task.status,
       };
     },
@@ -220,6 +224,13 @@ export default async function EditEventPage({
           ? "The event was saved, but its banner could not be uploaded. Try adding it again here."
           : undefined
       }
+      savedDependencyOptions={(Array.isArray(dependencyChoicesResult.data) ? dependencyChoicesResult.data : []).map((row) => ({
+        id: String((row as { out_task_id: unknown }).out_task_id),
+        label: String((row as { out_label: unknown }).out_label),
+        status: (row as { out_status: "To Do" | "In Progress" | "Completed" }).out_status,
+        dependsOnTaskId: (row as { out_depends_on_task_id: string | null }).out_depends_on_task_id,
+        canEdit: Boolean((row as { out_can_edit: unknown }).out_can_edit),
+      }))}
       initialEvent={{
         id: eventResult.data.id,
         name: eventResult.data.name,

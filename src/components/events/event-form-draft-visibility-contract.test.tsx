@@ -55,6 +55,35 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
     );
   });
 
+  it("keeps Create phase order and ignores dependencies removed with the same phase", () => {
+    expect(eventForm).toContain(
+      "p_tasks_to_add: orderedTaskAdditions.map(({ payload }) => payload)",
+    );
+    expect(eventForm).toContain(
+      "p_tasks: taskAdditions.map(({ payload }) => payload)",
+    );
+    const requestStart = eventForm.indexOf(
+      "function requestRemovePhase(phase: PhaseDraft)",
+    );
+    const requestEnd = eventForm.indexOf(
+      "async function handleSave",
+      requestStart,
+    );
+    const requestBlock = eventForm.slice(requestStart, requestEnd);
+    expect(requestBlock).toContain(
+      "const removedTaskIds = new Set(phase.tasks.map((task) => task.id))",
+    );
+    expect(requestBlock).toMatch(
+      /dependencyBlockingTask\([\s\S]*?task,[\s\S]*?removedTaskIds,[\s\S]*?\)/,
+    );
+  });
+
+  it("removes deleted saved tasks from prerequisite choices", () => {
+    expect(eventForm).toContain(
+      "savedDependencyOptions.filter((task) => !deletedTaskIds.includes(task.id)).map",
+    );
+  });
+
   it("uses a queued rename's original phase name when deletion is confirmed", () => {
     expect(eventForm).toMatch(
       /const queuedRename = current\.find\([\s\S]*?action\.key === phaseToRemove\.id && action\.type === "rename"/,
@@ -75,7 +104,7 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
       "initialEvent ? makeInitialPhases(initialEvent.tasks) : []",
     );
     expect(eventForm).toMatch(
-      /const tasks = phases\.flatMap\(\(phase\) =>[\s\S]*?payload: toTaskPayload\([\s\S]*?getSavableEventPhaseName\(phase\),[\s\S]*?task,[\s\S]*?initialTasksById\.get\(task\.id\)\?\.dueDate \?\? null,[\s\S]*?\)/,
+      /const tasks = phases\.flatMap\(\(phase\) =>[\s\S]*?const fullPayload = \{[\s\S]*?toTaskPayload\([\s\S]*?getSavableEventPhaseName\(phase\),[\s\S]*?task,[\s\S]*?initialTasksById\.get\(task\.id\)\?\.dueDate \?\? null,[\s\S]*?\)/,
     );
     expect(eventForm).not.toMatch(
       /readOnlyTasks[\s\S]{0,120}(setPhases|p_tasks_to_add|p_tasks_to_update|p_task_ids_to_delete)/,
