@@ -179,6 +179,65 @@ describe("modal history integration", () => {
     await screen.findByText("Discard unsaved changes?")
   })
 
+  it("waits for a requested modal close before arming a newly dirty guard", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined)
+
+    function Harness() {
+      const [modalOpen, setModalOpen] = React.useState(true)
+      const [dirty, setDirty] = React.useState(false)
+      const [confirmOpen, setConfirmOpen] = React.useState(false)
+      useBackNavigationGuard(dirty, () => setConfirmOpen(true))
+
+      return (
+        <>
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogContent>
+              <DialogTitle>Task editor</DialogTitle>
+              <button
+                type="button"
+                onClick={() => {
+                  void closeModalAndWait(() => {
+                    setDirty(true)
+                    setModalOpen(false)
+                  })
+                }}
+              >
+                Save task
+              </button>
+            </DialogContent>
+          </Dialog>
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title="Discard unsaved changes?"
+            description="Your changes have not been saved."
+            cancelLabel="Keep editing"
+            confirmLabel="Discard changes"
+            onConfirm={() => undefined}
+          />
+        </>
+      )
+    }
+
+    render(<Harness />)
+    await screen.findByText("Task editor")
+    fireEvent.click(screen.getByText("Save task"))
+
+    expect(back).toHaveBeenCalledOnce()
+    expect(screen.queryByText("Discard unsaved changes?")).toBeNull()
+    expect(getModalHistoryStackForTest()).toHaveLength(1)
+
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    await waitFor(() => {
+      expect(window.history.state?.__ceitConnectModal?.id).toMatch(/^guard-/)
+      expect(getModalHistoryStackForTest()).toHaveLength(1)
+    })
+    expect(screen.queryByText("Discard unsaved changes?")).toBeNull()
+
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    await screen.findByText("Discard unsaved changes?")
+  })
+
   it("repeats Back and Keep editing without growing history", async () => {
     function Harness() {
       const [confirmOpen, setConfirmOpen] = React.useState(false)

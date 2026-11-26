@@ -35,6 +35,15 @@ let traversalId: string | null = null
 let timedOutTraversalId: string | null = null
 let recoveringLateTraversal = false
 
+function modalHistoryIsSettling() {
+  return (
+    traversalPending ||
+    requestedClosures.size > 0 ||
+    timedOutTraversalId !== null ||
+    recoveringLateTraversal
+  )
+}
+
 function getMarker(state: unknown): ModalMarker | null {
   if (!state || typeof state !== "object") return null
 
@@ -68,7 +77,7 @@ function stateWithMarker(id: string) {
 }
 
 function settleWaiters() {
-  if (traversalPending || requestedClosures.size > 0) return
+  if (modalHistoryIsSettling()) return
 
   for (const waiter of waiters) {
     clearTimeout(waiter.timer)
@@ -160,9 +169,11 @@ function handlePopState() {
         window.history.forward()
       } catch {
         recoveringLateTraversal = false
+        settleWaiters()
       }
     } else {
       recoveringLateTraversal = false
+      settleWaiters()
     }
     return
   }
@@ -196,6 +207,7 @@ function handlePopState() {
       window.history.forward()
     } catch {
       recoveringLateTraversal = false
+      settleWaiters()
     }
     return
   }
@@ -304,7 +316,7 @@ function noteModalClosed(id: string) {
 }
 
 export function waitForModalHistory(timeoutMs = DEFAULT_WAIT_MS) {
-  if (!traversalPending && requestedClosures.size === 0) {
+  if (!modalHistoryIsSettling()) {
     return Promise.resolve()
   }
 
@@ -408,8 +420,28 @@ export function useBackNavigationGuard(
   }, [id])
 
   React.useEffect(() => {
-    if (enabled && !releasedRef.current) openModal(id)
+    let cancelled = false
+
+    async function armWhenHistorySettles() {
+      while (
+        !cancelled &&
+        enabledRef.current &&
+        !releasedRef.current &&
+        modalHistoryIsSettling()
+      ) {
+        await waitForModalHistory()
+      }
+      if (!cancelled && enabledRef.current && !releasedRef.current) {
+        openModal(id)
+      }
+    }
+
+    if (enabled && !releasedRef.current) void armWhenHistorySettles()
     else noteModalClosed(id)
+
+    return () => {
+      cancelled = true
+    }
   }, [enabled, id])
 
   return React.useCallback(async () => {
