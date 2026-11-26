@@ -78,7 +78,8 @@ function deleteSavedPosition(key: string) {
 }
 
 function locationKey() {
-  return `${window.location.pathname}${window.location.search}`;
+  const search = new URLSearchParams(window.location.search).toString();
+  return `${window.location.pathname}${search ? `?${search}` : ""}`;
 }
 
 function isScrollKey(event: KeyboardEvent) {
@@ -189,6 +190,7 @@ function AppShellScrollRestoration({
 
     scrollElement.addEventListener("wheel", handleUserScrollIntent, { passive: true });
     scrollElement.addEventListener("touchstart", handleUserScrollIntent, { passive: true });
+    scrollElement.addEventListener("touchmove", handleUserScrollIntent, { passive: true });
     scrollElement.addEventListener("pointerdown", handleUserScrollIntent, { passive: true });
     scrollElement.addEventListener("keydown", handleKeyDown);
     scrollElement.addEventListener("click", handleClick, true);
@@ -197,6 +199,7 @@ function AppShellScrollRestoration({
     return () => {
       scrollElement.removeEventListener("wheel", handleUserScrollIntent);
       scrollElement.removeEventListener("touchstart", handleUserScrollIntent);
+      scrollElement.removeEventListener("touchmove", handleUserScrollIntent);
       scrollElement.removeEventListener("pointerdown", handleUserScrollIntent);
       scrollElement.removeEventListener("keydown", handleKeyDown);
       scrollElement.removeEventListener("click", handleClick, true);

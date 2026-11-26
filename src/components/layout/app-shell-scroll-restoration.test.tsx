@@ -112,6 +112,25 @@ describe("AppShell scroll restoration", () => {
     }
   });
 
+  it("restores Back when the native query uses percent-encoded spaces", async () => {
+    setRoute("/home", "filter=active%20events");
+    const view = renderArea();
+    const area = getScrollArea(view.container);
+    setSize(area, 2_000);
+    await saveUserScroll(area, 720);
+
+    setRoute("/events/event-1");
+    view.rerender(<AppShellScrollArea><main>Event</main></AppShellScrollArea>);
+    area.scrollTop = 0;
+
+    navigation.pathname = "/home";
+    navigation.search = "filter=active%20events";
+    dispatchPop("/home?filter=active%20events");
+    view.rerender(<AppShellScrollArea><main>Filtered Home</main></AppShellScrollArea>);
+
+    expect(area.scrollTop).toBe(720);
+  });
+
   it("clears a stale position when Home is reached by normal navigation", async () => {
     const view = renderArea();
     const area = getScrollArea(view.container);
@@ -293,6 +312,25 @@ describe("AppShell scroll restoration", () => {
     expect(stored.entries).toHaveLength(50);
     expect(stored.entries[0]?.key).toBe("/page-1");
     expect(stored.entries.at(-1)?.key).toBe("/page-50");
+  });
+
+  it("saves a touch drag that continues after the initial session expires", async () => {
+    vi.useFakeTimers();
+    const view = renderArea();
+    const area = getScrollArea(view.container);
+    setSize(area, 2_000);
+
+    fireEvent.touchStart(area);
+    await act(async () => vi.advanceTimersByTime(201));
+    fireEvent.touchMove(area);
+    area.scrollTop = 640;
+    fireEvent.scroll(area);
+    await act(async () => vi.advanceTimersByTime(20));
+
+    const stored = JSON.parse(
+      window.sessionStorage.getItem("ceit-connect:app-shell-scroll:v1")!,
+    ) as { entries: Array<{ key: string; top: number }> };
+    expect(stored.entries).toContainEqual({ key: "/home", top: 640 });
   });
 
   it("cleans up a pending retry when unmounted", async () => {
