@@ -210,6 +210,7 @@ function AppShellScrollRestoration({
   React.useEffect(() => {
     const scrollElement = scrollRef.current;
     currentRouteKeyRef.current = routeKey;
+    endUserScrollSession();
     clearRestoreTimer();
     ownRestoreTargetRef.current = null;
 
@@ -259,7 +260,7 @@ function AppShellScrollRestoration({
       cancelled = true;
       clearRestoreTimer();
     };
-  }, [clearRestoreTimer, routeKey, scrollRef]);
+  }, [clearRestoreTimer, endUserScrollSession, routeKey, scrollRef]);
 
   React.useEffect(
     () => () => {

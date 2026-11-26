@@ -294,6 +294,36 @@ describe("AppShell scroll restoration", () => {
     expect(area.scrollTop).toBe(800);
   });
 
+  it("does not carry departing-page scroll intent into a delayed Back restore", async () => {
+    const view = renderArea();
+    const area = getScrollArea(view.container);
+    setSize(area, 2_000);
+    await saveUserScroll(area, 800);
+
+    setRoute("/events/event-1");
+    view.rerender(<AppShellScrollArea><main>Event</main></AppShellScrollArea>);
+    vi.useFakeTimers();
+    fireEvent.wheel(area);
+    area.scrollTop = 300;
+    fireEvent.scroll(area);
+
+    setSize(area, 700);
+    navigation.pathname = "/home";
+    dispatchPop("/home");
+    view.rerender(<AppShellScrollArea><main>Loading Home</main></AppShellScrollArea>);
+    area.scrollTop = 0;
+    fireEvent.scroll(area);
+
+    setSize(area, 2_000);
+    await act(async () => vi.advanceTimersByTime(50));
+
+    expect(area.scrollTop).toBe(800);
+    const stored = JSON.parse(
+      window.sessionStorage.getItem("ceit-connect:app-shell-scroll:v1")!,
+    ) as { entries: Array<{ key: string; top: number }> };
+    expect(stored.entries).toContainEqual({ key: "/home", top: 800 });
+  });
+
   it("keeps only the 50 most recently scrolled page positions", async () => {
     const view = renderArea();
     const area = getScrollArea(view.container);
