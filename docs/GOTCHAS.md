@@ -84,5 +84,6 @@ When a new environment (e.g. Prod) is set up, each of these must be configured *
 ## 6. Workflow
 - CodeRabbit (VSCode) found real bugs on every branch; run it before each PR and again after fixing.
 - First push of a new branch: VSCode "Publish Branch" (or `git push --set-upstream origin <branch>`).
+- Text files are stored and checked out with LF through `.gitattributes`. After merging that file on Windows, use `git checkout-index --force --all` once to refresh the working copy. This overwrites tracked working-tree files, so run it only when the working tree is clean.
 - Run `npm run build` before a PR; production builds catch type errors dev mode ignores.
 - Unused packages `cn` and `p` in `package.json` are leftovers; remove them.
