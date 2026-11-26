@@ -6,6 +6,13 @@ const shell = readFileSync(
   resolve(process.cwd(), "src/components/layout/app-shell.tsx"),
   "utf8",
 );
+const scrollRestoration = readFileSync(
+  resolve(
+    process.cwd(),
+    "src/components/layout/app-shell-scroll-restoration.tsx",
+  ),
+  "utf8",
+);
 
 describe("AppShell scroll containment", () => {
   it("keeps the viewport shell out of document flow", () => {
@@ -16,8 +23,10 @@ describe("AppShell scroll containment", () => {
   });
 
   it("makes the content column the sole bounded vertical scroller", () => {
-    expect(shell).toContain(
+    expect(shell).toContain("<AppShellScrollArea>");
+    expect(scrollRestoration).toContain(
       "min-h-0 min-w-0 flex-1 scroll-pt-24 flex-col overflow-x-hidden overflow-y-auto overscroll-none",
     );
+    expect(scrollRestoration.match(/overflow-y-auto/g)).toHaveLength(1);
   });
 });
