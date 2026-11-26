@@ -12,6 +12,7 @@ type ModalMarker = {
 }
 
 type ModalRegistration = {
+  kind: "modal" | "guard"
   isActive: () => boolean
   requestClose: () => void
 }
@@ -24,6 +25,7 @@ type Waiter = {
 const registrations = new Map<string, ModalRegistration>()
 const stack: string[] = []
 const requestedClosures = new Set<string>()
+const missingGuardMarkers = new Set<string>()
 const waiters = new Set<Waiter>()
 
 let listening = false
@@ -32,6 +34,15 @@ let traversalTimer: ReturnType<typeof setTimeout> | null = null
 let traversalId: string | null = null
 let timedOutTraversalId: string | null = null
 let recoveringLateTraversal = false
+
+function modalHistoryIsSettling() {
+  return (
+    traversalPending ||
+    requestedClosures.size > 0 ||
+    timedOutTraversalId !== null ||
+    recoveringLateTraversal
+  )
+}
 
 function getMarker(state: unknown): ModalMarker | null {
   if (!state || typeof state !== "object") return null
@@ -66,7 +77,7 @@ function stateWithMarker(id: string) {
 }
 
 function settleWaiters() {
-  if (traversalPending || requestedClosures.size > 0) return
+  if (modalHistoryIsSettling()) return
 
   for (const waiter of waiters) {
     clearTimeout(waiter.timer)
@@ -115,6 +126,15 @@ function pushMarker(id: string) {
   }
 }
 
+function restoreMarker(id: string) {
+  try {
+    window.history.pushState(stateWithMarker(id), "", window.location.href)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function drainRequestedClosures() {
   if (traversalPending) return
 
@@ -149,15 +169,31 @@ function handlePopState() {
         window.history.forward()
       } catch {
         recoveringLateTraversal = false
+        settleWaiters()
       }
     } else {
       recoveringLateTraversal = false
+      settleWaiters()
     }
     return
   }
 
-  const id = stack.pop()
-  if (!id) return
+  const id = stack.at(-1)
+  if (!id) {
+    const staleMarker = getMarker(window.history.state)
+    if (staleMarker) discardTopMarkerInPlace(staleMarker.id)
+    return
+  }
+
+  const registration = registrations.get(id)
+  const requested = requestedClosures.has(id)
+  if (registration?.kind === "guard" && !requested) {
+    missingGuardMarkers.add(id)
+    registration.requestClose()
+    return
+  }
+
+  stack.pop()
 
   traversalPending = false
   clearTraversalTimer()
@@ -171,21 +207,32 @@ function handlePopState() {
       window.history.forward()
     } catch {
       recoveringLateTraversal = false
+      settleWaiters()
     }
     return
   }
 
-  const requested = requestedClosures.delete(id)
-  const registration = registrations.get(id)
+  requestedClosures.delete(id)
 
   if (!requested) registration?.requestClose()
 
   setTimeout(() => {
     if (
       registrations.get(id) === registration &&
+      registration?.kind === "modal" &&
       registration?.isActive()
     ) {
       pushMarker(id)
+    }
+    const guardId = stack.at(-1)
+    const guard = guardId ? registrations.get(guardId) : undefined
+    if (
+      guardId &&
+      guard?.kind === "guard" &&
+      guard.isActive() &&
+      missingGuardMarkers.delete(guardId)
+    ) {
+      restoreMarker(guardId)
     }
     drainRequestedClosures()
   }, 0)
@@ -202,6 +249,20 @@ function registerModal(id: string, registration: ModalRegistration) {
   ensureListening()
   return () => {
     if (registrations.get(id) === registration) registrations.delete(id)
+    if (registration.kind === "guard") {
+      missingGuardMarkers.delete(id)
+      const traversalStillOwnsMarker =
+        traversalId === id || timedOutTraversalId === id
+      if (!traversalStillOwnsMarker) {
+        requestedClosures.delete(id)
+        for (let index = stack.length - 1; index >= 0; index -= 1) {
+          if (stack[index] === id) stack.splice(index, 1)
+        }
+        discardTopMarkerInPlace(id)
+      }
+      settleWaiters()
+      return
+    }
     queueMicrotask(() => {
       if (registrations.has(id)) return
 
@@ -255,7 +316,7 @@ function noteModalClosed(id: string) {
 }
 
 export function waitForModalHistory(timeoutMs = DEFAULT_WAIT_MS) {
-  if (!traversalPending && requestedClosures.size === 0) {
+  if (!modalHistoryIsSettling()) {
     return Promise.resolve()
   }
 
@@ -272,6 +333,10 @@ export function waitForModalHistory(timeoutMs = DEFAULT_WAIT_MS) {
     }
     waiters.add(waiter)
   })
+}
+
+export function getModalHistoryStackForTest() {
+  return [...stack]
 }
 
 export async function closeModalAndWait(
@@ -310,6 +375,7 @@ export function useModalHistory<TDetails>(
 
   React.useEffect(() => {
     return registerModal(id, {
+      kind: "modal",
       isActive: () => openRef.current && enabledRef.current,
       requestClose: () => requestHistoryCloseRef.current(),
     })
@@ -327,6 +393,76 @@ export function useModalHistory<TDetails>(
     },
     [enabled, id],
   )
+}
+
+export function useBackNavigationGuard(
+  enabled: boolean,
+  onBackAttempt: () => void,
+) {
+  const reactId = React.useId()
+  const id = `guard-${reactId}`
+  const enabledRef = React.useRef(enabled)
+  const releasedRef = React.useRef(false)
+  const onBackAttemptRef = React.useRef(onBackAttempt)
+
+  React.useEffect(() => {
+    enabledRef.current = enabled
+    onBackAttemptRef.current = onBackAttempt
+    if (!enabled) releasedRef.current = false
+  }, [enabled, onBackAttempt])
+
+  React.useEffect(() => {
+    return registerModal(id, {
+      kind: "guard",
+      isActive: () => enabledRef.current && !releasedRef.current,
+      requestClose: () => onBackAttemptRef.current(),
+    })
+  }, [id])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function armWhenHistorySettles() {
+      while (
+        !cancelled &&
+        enabledRef.current &&
+        !releasedRef.current &&
+        modalHistoryIsSettling()
+      ) {
+        await waitForModalHistory()
+      }
+      if (!cancelled && enabledRef.current && !releasedRef.current) {
+        openModal(id)
+      }
+    }
+
+    if (enabled && !releasedRef.current) void armWhenHistorySettles()
+    else noteModalClosed(id)
+
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, id])
+
+  return React.useCallback(async () => {
+    if (releasedRef.current) {
+      await waitForModalHistory()
+      return
+    }
+
+    releasedRef.current = true
+    if (missingGuardMarkers.delete(id)) {
+      requestedClosures.delete(id)
+      for (let index = stack.length - 1; index >= 0; index -= 1) {
+        if (stack[index] === id) stack.splice(index, 1)
+      }
+      settleWaiters()
+      return
+    }
+
+    requestModalClose(id)
+    await waitForModalHistory()
+  }, [id])
 }
 
 const phoneModalQuery = "(max-width: 639px)"

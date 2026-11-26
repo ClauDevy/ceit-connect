@@ -16,6 +16,10 @@ type EventFormConfirmationsProps = {
   setDeletedTaskIds: Dispatch<SetStateAction<string[]>>;
   setPhases: Dispatch<SetStateAction<PhaseDraft[]>>;
   importTemplate: (template: ArchivedEventTemplate) => Promise<void>;
+  leaveConfirmOpen: boolean;
+  leaveConfirmLoading: boolean;
+  onKeepEditing: () => void;
+  onDiscardChanges: () => void;
 };
 
 export function EventFormConfirmations({
@@ -27,6 +31,10 @@ export function EventFormConfirmations({
   setDeletedTaskIds,
   setPhases,
   importTemplate,
+  leaveConfirmOpen,
+  leaveConfirmLoading,
+  onKeepEditing,
+  onDiscardChanges,
 }: EventFormConfirmationsProps) {
   return (
     <>
@@ -101,6 +109,20 @@ export function EventFormConfirmations({
           }
           setPhaseToRemove(null);
         }}
+      />
+
+      <ConfirmDialog
+        open={leaveConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) onKeepEditing();
+        }}
+        title="Discard unsaved changes?"
+        description="Your changes have not been saved."
+        cancelLabel="Keep editing"
+        confirmLabel="Discard changes"
+        destructive
+        loading={leaveConfirmLoading}
+        onConfirm={onDiscardChanges}
       />
     </>
   );

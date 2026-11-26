@@ -9,7 +9,12 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { closeModalAndWait } from "@/hooks/use-modal-history"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import {
+  closeModalAndWait,
+  getModalHistoryStackForTest,
+  useBackNavigationGuard,
+} from "@/hooks/use-modal-history"
 
 afterEach(async () => {
   cleanup()
@@ -131,9 +136,158 @@ describe("modal history integration", () => {
 
     window.dispatchEvent(new PopStateEvent("popstate"))
     window.dispatchEvent(new PopStateEvent("popstate"))
+    window.dispatchEvent(new PopStateEvent("popstate"))
     await Promise.resolve()
 
     expect(parentChanges).not.toHaveBeenCalledWith(false)
     expect(screen.getByText("Parent modal")).toBeTruthy()
+  })
+
+  it("closes a modal before asking a dirty form whether to leave", async () => {
+    function Harness() {
+      const [modalOpen, setModalOpen] = React.useState(false)
+      const [confirmOpen, setConfirmOpen] = React.useState(false)
+      useBackNavigationGuard(true, () => setConfirmOpen(true))
+      return (
+        <>
+          <button type="button" onClick={() => setModalOpen(true)}>Open task</button>
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogContent><DialogTitle>Task editor</DialogTitle></DialogContent>
+          </Dialog>
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title="Discard unsaved changes?"
+            description="Your changes have not been saved."
+            cancelLabel="Keep editing"
+            confirmLabel="Discard changes"
+            onConfirm={() => undefined}
+          />
+        </>
+      )
+    }
+
+    render(<Harness />)
+    fireEvent.click(screen.getByText("Open task"))
+    await screen.findByText("Task editor")
+
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    await waitFor(() => expect(screen.queryByText("Task editor")).toBeNull())
+    expect(screen.queryByText("Discard unsaved changes?")).toBeNull()
+
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    await screen.findByText("Discard unsaved changes?")
+  })
+
+  it("waits for a requested modal close before arming a newly dirty guard", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined)
+
+    function Harness() {
+      const [modalOpen, setModalOpen] = React.useState(true)
+      const [dirty, setDirty] = React.useState(false)
+      const [confirmOpen, setConfirmOpen] = React.useState(false)
+      useBackNavigationGuard(dirty, () => setConfirmOpen(true))
+
+      return (
+        <>
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogContent>
+              <DialogTitle>Task editor</DialogTitle>
+              <button
+                type="button"
+                onClick={() => {
+                  void closeModalAndWait(() => {
+                    setDirty(true)
+                    setModalOpen(false)
+                  })
+                }}
+              >
+                Save task
+              </button>
+            </DialogContent>
+          </Dialog>
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title="Discard unsaved changes?"
+            description="Your changes have not been saved."
+            cancelLabel="Keep editing"
+            confirmLabel="Discard changes"
+            onConfirm={() => undefined}
+          />
+        </>
+      )
+    }
+
+    render(<Harness />)
+    await screen.findByText("Task editor")
+    fireEvent.click(screen.getByText("Save task"))
+
+    expect(back).toHaveBeenCalledOnce()
+    expect(screen.queryByText("Discard unsaved changes?")).toBeNull()
+    expect(getModalHistoryStackForTest()).toHaveLength(1)
+
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    await waitFor(() => {
+      expect(window.history.state?.__ceitConnectModal?.id).toMatch(/^guard-/)
+      expect(getModalHistoryStackForTest()).toHaveLength(1)
+    })
+    expect(screen.queryByText("Discard unsaved changes?")).toBeNull()
+
+    window.dispatchEvent(new PopStateEvent("popstate"))
+    await screen.findByText("Discard unsaved changes?")
+  })
+
+  it("repeats Back and Keep editing without growing history", async () => {
+    function Harness() {
+      const [confirmOpen, setConfirmOpen] = React.useState(false)
+      useBackNavigationGuard(true, () => setConfirmOpen(true))
+      return (
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title="Discard unsaved changes?"
+          description="Your changes have not been saved."
+          cancelLabel="Keep editing"
+          confirmLabel="Discard changes"
+          onConfirm={() => undefined}
+        />
+      )
+    }
+
+    render(<Harness />)
+    await waitFor(() => expect(window.history.state?.__ceitConnectModal).toBeTruthy())
+    const guardId = window.history.state.__ceitConnectModal.id
+    const initialLength = window.history.length
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      window.history.back()
+      await screen.findByText("Discard unsaved changes?")
+      fireEvent.click(screen.getByText("Keep editing"))
+      await waitFor(() => {
+        expect(screen.queryByText("Discard unsaved changes?")).toBeNull()
+        expect(window.history.state?.__ceitConnectModal).toBeTruthy()
+      })
+      expect(window.history.length).toBe(initialLength)
+      expect(getModalHistoryStackForTest().filter((id) => id === guardId)).toHaveLength(1)
+      expect(new Set(getModalHistoryStackForTest()).size).toBe(
+        getModalHistoryStackForTest().length,
+      )
+    }
+  })
+
+  it("strips a dirty guard on unmount without navigating Back", async () => {
+    const back = vi.spyOn(window.history, "back")
+    function Harness() {
+      useBackNavigationGuard(true, () => undefined)
+      return null
+    }
+
+    const view = render(<Harness />)
+    await waitFor(() => expect(window.history.state?.__ceitConnectModal).toBeTruthy())
+    view.unmount()
+
+    expect(back).not.toHaveBeenCalled()
+    expect(window.history.state?.__ceitConnectModal).toBeUndefined()
   })
 })

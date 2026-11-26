@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EventFormConfirmations } from "@/components/events/event-form-confirmations";
+import {
+  eventFormIsDirty,
+  eventFormSaveState,
+} from "@/components/events/event-form-dirty-state";
 import { EventFormFundamentals } from "@/components/events/event-form-fundamentals";
 import {
   friendlyDate,
@@ -61,6 +65,10 @@ import {
 } from "@/lib/events/template-import";
 import { getEventSaveErrorMessage } from "@/lib/events/save-error";
 import { activeEventEndDateError } from "@/lib/events/end-date";
+import {
+  closeModalAndWait,
+  useBackNavigationGuard,
+} from "@/hooks/use-modal-history";
 import {
   initializePhaseDisclosure,
   reconcilePhaseDisclosureAfterRefresh,
@@ -141,6 +149,60 @@ export function EventForm({
   >([]);
   const taskDialogScrollRef = useRef<HTMLDivElement>(null);
   const previousCompletedDraftPhases = useRef(new Set<string>());
+  const navigationApprovedRef = useRef(false);
+  const discardChangesInFlightRef = useRef(false);
+  const [navigationApproved, setNavigationApproved] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [leaveConfirmLoading, setLeaveConfirmLoading] = useState(false);
+
+  const initialTaskDueDates = useMemo(
+    () => new Map((initialEvent?.tasks ?? []).map((task) => [task.id, task.dueDate])),
+    [initialEvent],
+  );
+  const [initialSaveState] = useState(() =>
+    eventFormSaveState({
+      name: initialEvent?.name ?? "",
+      description: initialEvent?.description ?? "",
+      startDate: initialEvent?.startDate ?? "",
+      endDate: initialEvent?.endDate ?? "",
+      phases: initialEvent ? makeInitialPhases(initialEvent.tasks) : [],
+      initialTaskDueDates,
+      pendingBanner: null,
+      templateSummary: null,
+      excludedTemplateTaskIds: [],
+    }),
+  );
+  const isDirty = eventFormIsDirty(initialSaveState, {
+    name,
+    description,
+    startDate,
+    endDate,
+    phases,
+    initialTaskDueDates,
+    pendingBanner,
+    templateSummary,
+    excludedTemplateTaskIds,
+  });
+  const clearBackGuard = useBackNavigationGuard(
+    isDirty && !navigationApproved,
+    () => setLeaveConfirmOpen(true),
+  );
+
+  function approveNavigation() {
+    navigationApprovedRef.current = true;
+    setNavigationApproved(true);
+  }
+
+  useEffect(() => {
+    if (!isDirty || navigationApprovedRef.current) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (navigationApprovedRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [isDirty]);
 
   const draftReaderQuery = useQuery({
     queryKey: ["draft-event-editor-tasks", initialEvent?.id],
@@ -1101,6 +1163,9 @@ export function EventForm({
         return;
       }
 
+      approveNavigation();
+      await clearBackGuard();
+
       if (!initialEvent && pendingBanner) {
         const newEventId = saveResult.data;
         if (typeof newEventId !== "string") {
@@ -1356,6 +1421,22 @@ export function EventForm({
         setDeletedTaskIds={setDeletedTaskIds}
         setPhases={setPhases}
         importTemplate={importTemplate}
+        leaveConfirmOpen={leaveConfirmOpen}
+        leaveConfirmLoading={leaveConfirmLoading}
+        onKeepEditing={() => setLeaveConfirmOpen(false)}
+        onDiscardChanges={() => {
+          if (discardChangesInFlightRef.current) return;
+          discardChangesInFlightRef.current = true;
+          setLeaveConfirmLoading(true);
+          approveNavigation();
+          void clearBackGuard()
+            .then(() => closeModalAndWait(() => setLeaveConfirmOpen(false)))
+            .then(() => window.history.back())
+            .finally(() => {
+              discardChangesInFlightRef.current = false;
+              setLeaveConfirmLoading(false);
+            });
+        }}
       />
     </div>
   );

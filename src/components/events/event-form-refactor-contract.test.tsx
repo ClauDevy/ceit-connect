@@ -64,6 +64,8 @@ describe("U3 event form refactor characterization", () => {
       "Launch Event",
       "Replace the current task setup?",
       "Remove this phase?",
+      "Keep editing",
+      "Discard changes",
     ]) {
       expect(source).toContain(text);
     }
