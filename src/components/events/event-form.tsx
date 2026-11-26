@@ -49,9 +49,11 @@ import {
   getEventTaskDueDateForSubmission,
   getEventTaskEndDateInputValue,
   getInitialEventTaskCommitteeId,
+  dependencyBlockingTask,
   getLiveOperationScheduleProblem,
   getSavableEventPhaseName,
   normalizeEventPhaseName,
+  orderTaskAdditionsByDependency,
   toTaskPayload,
   updateEventAssigneeSelection,
 } from "@/lib/events/form";
@@ -91,6 +93,7 @@ export function EventForm({
   archivedTemplates = [],
   initialEvent,
   bannerNotice,
+  savedDependencyOptions = [],
 }: EventFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"fundamentals" | "tasks">("fundamentals");
@@ -526,6 +529,8 @@ export function EventForm({
             endTime: importedTask.endTime,
             priority: importedTask.priority,
             assigneeIds: [],
+            dependsOnTaskId: null,
+            dependsOnClientKey: null,
             sourceTemplateTaskId: importedTask.sourceTaskId,
             templateEditable,
           } satisfies TaskDraft,
@@ -739,6 +744,8 @@ export function EventForm({
         endTime: "",
         priority: "Medium",
         assigneeIds: [],
+        dependsOnTaskId: null,
+        dependsOnClientKey: null,
         sourceTemplateTaskId: null,
         templateEditable: true,
       },
@@ -769,6 +776,8 @@ export function EventForm({
         endTime: task.endTime,
         priority: task.priority,
         assigneeIds: task.assigneeIds,
+        dependsOnTaskId: task.dependsOnTaskId,
+        dependsOnClientKey: task.dependsOnClientKey,
         sourceTemplateTaskId: task.sourceTemplateTaskId,
         templateEditable: task.templateEditable,
       },
@@ -943,6 +952,14 @@ export function EventForm({
       ?.tasks.find((item) => item.id === taskId);
 
     if (!task) return;
+    const blocker = dependencyBlockingTask(
+      phases.flatMap((candidate) => candidate.tasks),
+      task,
+    );
+    if (blocker) {
+      setError(`Clear the dependency for “${blocker.title}” before removing “${task.title}”.`);
+      return;
+    }
     if (task.status !== "To Do") {
       setError(
         `“${task.title}” cannot be deleted because its status is ${task.status}.`,
@@ -976,6 +993,18 @@ export function EventForm({
   }
 
   function requestRemovePhase(phase: PhaseDraft) {
+    const removedTaskIds = new Set(phase.tasks.map((task) => task.id));
+    for (const task of phase.tasks) {
+      const blocker = dependencyBlockingTask(
+        phases.flatMap((candidate) => candidate.tasks),
+        task,
+        removedTaskIds,
+      );
+      if (blocker) {
+        setError(`Clear the dependency for “${blocker.title}” before removing “${task.title}”.`);
+        return;
+      }
+    }
     const progressedTasks = phase.tasks.filter((task) => task.status !== "To Do");
     if (progressedTasks.length > 0) {
       const completedCount = progressedTasks.filter((task) => task.status === "Completed").length;
@@ -1062,15 +1091,35 @@ export function EventForm({
       completedDraftPhases.has(normalizeEventPhaseName(phase.name)) ||
       completedDraftPhases.has(normalizeEventPhaseName(phase.originalName))
         ? []
-        : phase.tasks.map((task) => ({
-            task,
-            payload: toTaskPayload(
+        : phase.tasks.map((task) => {
+            const fullPayload = {
+              ...toTaskPayload(
               getSavableEventPhaseName(phase),
               task,
               initialTasksById.get(task.id)?.dueDate ?? null,
-            ),
-          })),
+              ),
+              client_key: task.persisted ? undefined : task.id,
+            };
+            const initialTask = initialTasksById.get(task.id);
+            if (task.persisted &&
+                initialTask?.dependsOnTaskId === task.dependsOnTaskId &&
+                task.dependsOnClientKey === null) {
+              const payload = { ...fullPayload };
+              Reflect.deleteProperty(payload, "depends_on_task_id");
+              Reflect.deleteProperty(payload, "depends_on_client_key");
+              return { task, payload, fullPayload };
+            }
+            return { task, payload: fullPayload, fullPayload };
+          }),
     );
+    const taskAdditions = tasks.filter(({ task }) => !task.persisted);
+    const orderedTaskAdditions = orderTaskAdditionsByDependency(taskAdditions);
+    if (!orderedTaskAdditions) {
+      setError("Review the selected task prerequisites and try again.");
+      setStatus("idle");
+      setTab("tasks");
+      return;
+    }
 
     try {
       const supabase = createClient();
@@ -1085,7 +1134,7 @@ export function EventForm({
         ? templateSummary
         : null;
       const saveResult = initialEvent
-        ? await supabase.rpc("edit_event_with_tasks", {
+        ? await supabase.rpc("edit_event_with_task_dependencies", {
             p_event_id: initialEvent.id,
             // Keep the exact server string. Converting through Date can lose
             // precision and break the optimistic-concurrency comparison.
@@ -1095,14 +1144,12 @@ export function EventForm({
             p_start_date: startDate,
             p_end_date: endDate || null,
             p_status: targetStatus,
-            p_tasks_to_add: tasks
-              .filter(({ task }) => !task.persisted)
-              .map(({ payload }) => payload),
+            p_tasks_to_add: orderedTaskAdditions.map(({ payload }) => payload),
             p_tasks_to_update: tasks
               .filter(
-                ({ task, payload }) =>
+                ({ task, fullPayload }) =>
                   task.persisted &&
-                  initialTaskPayloads.get(task.id) !== JSON.stringify(payload),
+                  initialTaskPayloads.get(task.id) !== JSON.stringify(fullPayload),
               )
               .map(({ task, payload }) => ({ id: task.id, ...payload })),
             p_task_ids_to_delete: deletedTaskIds.filter((id) =>
@@ -1141,16 +1188,24 @@ export function EventForm({
               p_template_event_id: coAdminTemplateSummary.template.id,
               p_own_tasks: tasks
                 .filter(({ task }) => task.templateEditable)
-                .map(({ payload }) => payload),
+                .map(({ payload }) => {
+                  const legacyPayload = { ...payload };
+                  Reflect.deleteProperty(legacyPayload, "client_key");
+                  Reflect.deleteProperty(legacyPayload, "depends_on_task_id");
+                  Reflect.deleteProperty(legacyPayload, "depends_on_client_key");
+                  return legacyPayload;
+                }),
               p_excluded_template_task_ids: normalizedExclusions,
             })
-          : await supabase.rpc("create_event_with_tasks", {
+          : await supabase.rpc("create_event_with_task_dependencies", {
               p_name: name.trim(),
               p_description: description.trim() || null,
               p_start_date: startDate,
               p_end_date: endDate || null,
               p_status: targetStatus,
-              p_tasks: tasks.map(({ payload }) => payload),
+              // Create preserves the form's phase order; its additive wrapper
+              // orders the insertion plan internally before resolving keys.
+              p_tasks: taskAdditions.map(({ payload }) => payload),
             });
       const saveError = saveResult.error;
 
@@ -1410,6 +1465,11 @@ export function EventForm({
         onUpdateVisibleAssignees={updateVisibleAssignees}
         onUpdateSingleAssignee={updateSingleAssignee}
         onSaveTask={saveTask}
+        dependencyOptions={templateSummary ? [] : [
+          ...savedDependencyOptions.map((task) => ({ id: task.id, label: task.label, persisted: true, status: task.status })),
+          ...phases.flatMap((phase) => phase.tasks).filter((task) => !task.persisted).map((task) => ({ id: task.id, label: task.title, persisted: false, status: task.status })),
+        ].filter((option, index, all) => option.id !== taskEditor?.taskId && all.findIndex((candidate) => candidate.id === option.id) === index)}
+        showDependency={!templateSummary}
       />
 
       <EventFormConfirmations

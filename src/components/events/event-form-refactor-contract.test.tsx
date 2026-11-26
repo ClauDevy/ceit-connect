@@ -92,8 +92,8 @@ describe("U3 event form refactor characterization", () => {
 
     expect(rpcNames).toEqual([
       "create_event_from_archived_template",
-      "create_event_with_tasks",
-      "edit_event_with_tasks",
+      "create_event_with_task_dependencies",
+      "edit_event_with_task_dependencies",
       "get_archived_event_template",
       "list_draft_event_editor_tasks",
     ]);

@@ -163,6 +163,7 @@ describe("active task request contracts", () => {
     expect(parseCreateActiveTaskRequest({ eventId, ...draft })).toEqual({
       eventId,
       ...draft,
+      dependsOnTaskId: null,
       title: "Prepare venue",
       phase: "Preparation",
     });

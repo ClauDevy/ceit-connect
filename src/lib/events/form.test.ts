@@ -15,8 +15,10 @@ import {
   getLiveOperationScheduleProblem,
   getSavableEventPhaseName,
   normalizeEventPhaseName,
+  orderTaskAdditionsByDependency,
   parseImportedDueDate,
   toTaskPayload,
+  dependencyBlockingTask,
   updateEventAssigneeSelection,
 } from "./form";
 
@@ -32,7 +34,64 @@ const taskDraft = {
   endTime: "",
   priority: "Medium" as const,
   assigneeIds: [],
+  dependsOnTaskId: null,
+  dependsOnClientKey: null,
 };
+
+describe("event task dependencies", () => {
+  it("serializes saved and temporary references separately", () => {
+    expect(toTaskPayload("Planning", { ...taskDraft, dependsOnTaskId: "saved" })).toMatchObject({
+      depends_on_task_id: "saved",
+      depends_on_client_key: null,
+    });
+    expect(toTaskPayload("Planning", { ...taskDraft, dependsOnClientKey: "local" })).toMatchObject({
+      depends_on_task_id: null,
+      depends_on_client_key: "local",
+    });
+  });
+
+  it("names the dependent that blocks prerequisite removal", () => {
+    const tasks = [
+      { id: "first", title: "First", dependsOnTaskId: null, dependsOnClientKey: null },
+      { id: "second", title: "Second", dependsOnTaskId: null, dependsOnClientKey: "first" },
+    ];
+    expect(dependencyBlockingTask(tasks, { id: "first", persisted: false })?.title).toBe("Second");
+  });
+
+  it("ignores dependents removed with the same phase but keeps surviving blockers", () => {
+    const tasks = [
+      { id: "prerequisite", title: "Prerequisite", dependsOnTaskId: null, dependsOnClientKey: null },
+      { id: "same-phase", title: "Same phase", dependsOnTaskId: null, dependsOnClientKey: "prerequisite" },
+      { id: "survivor", title: "Survivor", dependsOnTaskId: null, dependsOnClientKey: "prerequisite" },
+    ];
+    const removedIds = new Set(["prerequisite", "same-phase"]);
+    expect(
+      dependencyBlockingTask(
+        tasks,
+        { id: "prerequisite", persisted: false },
+        removedIds,
+      )?.title,
+    ).toBe("Survivor");
+    expect(
+      dependencyBlockingTask(
+        tasks.slice(0, 2),
+        { id: "prerequisite", persisted: false },
+        removedIds,
+      ),
+    ).toBeNull();
+  });
+
+  it("orders unsaved prerequisites before their dependents across form phases", () => {
+    const dependent = { task: { id: "dependent", dependsOnClientKey: "prerequisite" }, payload: "dependent" };
+    const prerequisite = { task: { id: "prerequisite", dependsOnClientKey: null }, payload: "prerequisite" };
+    expect(orderTaskAdditionsByDependency([dependent, prerequisite])?.map((item) => item.payload))
+      .toEqual(["prerequisite", "dependent"]);
+    expect(orderTaskAdditionsByDependency([
+      { task: { id: "first", dependsOnClientKey: "second" } },
+      { task: { id: "second", dependsOnClientKey: "first" } },
+    ])).toBeNull();
+  });
+});
 
 describe("completed Draft phases", () => {
   it("excludes every task mutation in a completed phase without touching other phases", () => {
@@ -87,6 +146,8 @@ describe("event task due dates", () => {
       end_time: "2026-11-01T18:00:00.000Z",
       priority: "Medium",
       assignee_ids: [],
+      depends_on_task_id: null,
+      depends_on_client_key: null,
     });
   });
 

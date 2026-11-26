@@ -112,7 +112,7 @@ describe("/api/active-task", () => {
     }));
     expect(response.status).toBe(200);
     expect(rpc).toHaveBeenCalledWith(
-      "create_active_event_task",
+      "create_active_event_task_with_dependency",
       expect.objectContaining({ p_end_time: "2099-12-31T18:00:00.000Z" }),
     );
   });

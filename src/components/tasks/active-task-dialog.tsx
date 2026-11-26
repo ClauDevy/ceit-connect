@@ -95,6 +95,7 @@ type ActiveTaskDialogProps = {
   defaultPhase?: string | null;
   completedPhaseNames?: readonly string[];
   phaseOptions?: readonly string[];
+  dependencyOptions?: readonly { id: string; label: string; status: string }[];
   viewer: ActiveTaskViewer;
   committees: BoardCommittee[];
   onSettled: () => Promise<void>;
@@ -437,6 +438,7 @@ export function ActiveTaskDialog({
   defaultPhase,
   completedPhaseNames = [],
   phaseOptions = [],
+  dependencyOptions = [],
   viewer,
   committees,
   onSettled,
@@ -444,6 +446,7 @@ export function ActiveTaskDialog({
   const supabase = useMemo(() => createClient(), []);
   const committeesRef = useRef(committees);
   const [draft, setDraft] = useState<ActiveTaskDraft>(EMPTY_DRAFT);
+  const [dependsOnTaskId, setDependsOnTaskId] = useState<string | null>(null);
   const [controls, setControls] = useState<TaskEditControlData | null>(null);
   const [assigneePeople, setAssigneePeople] = useState<PersonOption[]>([]);
   const [viewerPeople, setViewerPeople] = useState<PersonOption[]>([]);
@@ -497,6 +500,7 @@ export function ActiveTaskDialog({
             phase: defaultPhase?.trim() || "Unphased",
             committeeId: fixedCommittee,
           });
+          setDependsOnTaskId(null);
         }
         setControls(null);
         setAssistIds(new Set());
@@ -662,7 +666,7 @@ export function ActiveTaskDialog({
     }
     const body = {
       ...(mode === "add"
-        ? { eventId }
+        ? { eventId, dependsOnTaskId }
         : { taskId, expectedUpdatedAt }),
       ...normalizedDraft,
     };
@@ -863,6 +867,25 @@ export function ActiveTaskDialog({
 
                   <SectionEnter as="section" index={2} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
                     <h3 className="flex items-center gap-2 text-xs font-bold tracking-wide text-muted-foreground uppercase"><Users className="size-4" aria-hidden /> People</h3>
+                    {mode === "add" ? (
+                      <FormField label="Depends on (optional)">
+                        {(control) => (
+                          <Select
+                            items={[{ value: "none", label: "No prerequisite" }, ...dependencyOptions.map((option) => ({ value: option.id, label: option.label }))]}
+                            value={dependsOnTaskId ?? "none"}
+                            onValueChange={(value) => setDependsOnTaskId(value && value !== "none" ? value : null)}
+                          >
+                            <SelectTrigger {...control}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No prerequisite</SelectItem>
+                              {dependencyOptions.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </FormField>
+                    ) : null}
                     <p className="text-xs text-muted-foreground">{mode === "add" ? "Leave Primary assignees empty to add this task to the Backlog." : "Removing all Primary assignees from an In Progress task returns it to To Do in the Backlog."}</p>
                     <PersonPicker
                       label="Primary assignees"
