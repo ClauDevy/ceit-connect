@@ -91,6 +91,34 @@ describe("event task dependencies", () => {
       { task: { id: "second", dependsOnClientKey: "first" } },
     ])).toBeNull();
   });
+
+  it("keeps saved prerequisites and orders only temporary-key references", () => {
+    const savedReference = {
+      task: {
+        id: "dependent-on-saved",
+        dependsOnTaskId: "saved-prerequisite",
+        dependsOnClientKey: null,
+      },
+      payload: "saved-reference",
+    };
+    expect(orderTaskAdditionsByDependency([savedReference])).toEqual([
+      savedReference,
+    ]);
+
+    const dependent = {
+      task: { id: "dependent", dependsOnClientKey: "temporary-prerequisite" },
+      payload: "dependent",
+    };
+    const prerequisite = {
+      task: { id: "temporary-prerequisite", dependsOnClientKey: null },
+      payload: "prerequisite",
+    };
+    expect(
+      orderTaskAdditionsByDependency([dependent, prerequisite])?.map(
+        (item) => item.payload,
+      ),
+    ).toEqual(["prerequisite", "dependent"]);
+  });
 });
 
 describe("completed Draft phases", () => {

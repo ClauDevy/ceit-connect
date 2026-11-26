@@ -58,6 +58,15 @@ describe("task creation dependency migration contract", () => {
     );
   });
 
+  it("normalizes temporary UUID spellings before both map lookups", () => {
+    expect(sql).toContain(
+      "v_map ->> ((v_item ->> 'depends_on_client_key')::uuid)::text",
+    );
+    expect(sql).toContain(
+      "v_map->>(((v_item->>'depends_on_client_key')::uuid)::text)",
+    );
+  });
+
   it("clears every transaction-local plan setting on success and every wrapper failure", () => {
     const clearBody = sql.slice(
       sql.indexOf("create function ceit_connect_private.clear_task_creation_dependency_context()"),

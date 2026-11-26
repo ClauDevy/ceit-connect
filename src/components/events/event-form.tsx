@@ -1466,7 +1466,7 @@ export function EventForm({
         onUpdateSingleAssignee={updateSingleAssignee}
         onSaveTask={saveTask}
         dependencyOptions={templateSummary ? [] : [
-          ...savedDependencyOptions.map((task) => ({ id: task.id, label: task.label, persisted: true, status: task.status })),
+          ...savedDependencyOptions.filter((task) => !deletedTaskIds.includes(task.id)).map((task) => ({ id: task.id, label: task.label, persisted: true, status: task.status })),
           ...phases.flatMap((phase) => phase.tasks).filter((task) => !task.persisted).map((task) => ({ id: task.id, label: task.title, persisted: false, status: task.status })),
         ].filter((option, index, all) => option.id !== taskEditor?.taskId && all.findIndex((candidate) => candidate.id === option.id) === index)}
         showDependency={!templateSummary}

@@ -186,7 +186,7 @@ begin
   if pg_catalog.jsonb_typeof(v_item -> 'depends_on_task_id') = 'string' then
     v_dependency := (v_item ->> 'depends_on_task_id')::uuid;
   elsif pg_catalog.jsonb_typeof(v_item -> 'depends_on_client_key') = 'string' then
-    v_dependency := (v_map ->> (v_item ->> 'depends_on_client_key'))::uuid;
+    v_dependency := (v_map ->> ((v_item ->> 'depends_on_client_key')::uuid)::text)::uuid;
     if v_dependency is null then
       raise exception using errcode = '22023', message = 'The selected temporary prerequisite could not be resolved.';
     end if;
@@ -328,7 +328,7 @@ begin
     if v_item ? 'depends_on_task_id' and pg_catalog.jsonb_typeof(v_item->'depends_on_task_id') = 'string' then
       perform public.set_task_dependency((v_item->>'id')::uuid,(v_item->>'depends_on_task_id')::uuid);
     elsif v_item ? 'depends_on_client_key' and pg_catalog.jsonb_typeof(v_item->'depends_on_client_key') = 'string' then
-      v_dependency := (v_map->>(v_item->>'depends_on_client_key'))::uuid;
+      v_dependency := (v_map->>(((v_item->>'depends_on_client_key')::uuid)::text))::uuid;
       if v_dependency is null then raise exception using errcode='22023',message='The selected temporary prerequisite could not be resolved.'; end if;
       perform public.set_task_dependency((v_item->>'id')::uuid,v_dependency);
     end if;

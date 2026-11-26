@@ -78,6 +78,12 @@ describe("Batch 13c Edit Event Draft visibility contract", () => {
     );
   });
 
+  it("removes deleted saved tasks from prerequisite choices", () => {
+    expect(eventForm).toContain(
+      "savedDependencyOptions.filter((task) => !deletedTaskIds.includes(task.id)).map",
+    );
+  });
+
   it("uses a queued rename's original phase name when deletion is confirmed", () => {
     expect(eventForm).toMatch(
       /const queuedRename = current\.find\([\s\S]*?action\.key === phaseToRemove\.id && action\.type === "rename"/,
