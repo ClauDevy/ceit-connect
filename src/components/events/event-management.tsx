@@ -188,6 +188,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [cleanupMessage, setCleanupMessage] = useState<string | null>(null);
+  const [statusLoadFailed, setStatusLoadFailed] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogEvents, setDialogEvents] = useState<EventDeletionListItem[]>([]);
   const [confirmation, setConfirmation] = useState("");
@@ -265,9 +266,10 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
           setPendingCount(response.pendingCount);
         }
       })
-      .catch(() =>
-        setCleanupMessage("Pending banner cleanup could not be loaded."),
-      );
+      .catch(() => {
+        setStatusLoadFailed(true);
+        setCleanupMessage("Pending banner cleanup could not be loaded.");
+      });
   }, []);
 
   function changeYear(value: string | null) {
@@ -316,6 +318,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
         action: "retry",
       })) as CleanupRetryResponse;
       setPendingCount(value.pendingCount);
+      setStatusLoadFailed(false);
       setCleanupMessage(
         value.timedOut
           ? `Processed ${value.attempted} cleanup jobs before the time limit. Remaining jobs can be retried.`
@@ -456,7 +459,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
 
       {/* Banner clean-up is housekeeping: with nothing pending there is nothing to do, so the
           panel only appears when files are still waiting (or the status could not be loaded). */}
-      {pendingCount !== null && pendingCount > 0 ? (
+      {(pendingCount !== null && pendingCount > 0) || (pendingCount === null && statusLoadFailed) ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-primary/40 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
@@ -464,10 +467,14 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold">
-                {pendingCount} banner cleanup {pendingCount === 1 ? "job" : "jobs"} pending
+                {pendingCount === null
+                  ? "Banner cleanup status unavailable"
+                  : `${pendingCount} banner cleanup ${pendingCount === 1 ? "job" : "jobs"} pending`}
               </p>
               <p className="text-xs text-muted-foreground">
-                Some deleted events still have banner images in storage. Retry to remove them.
+                {pendingCount === null
+                  ? "We could not check for leftover banner images. Retry to check and clean up."
+                  : "Some deleted events still have banner images in storage. Retry to remove them."}
               </p>
             </div>
           </div>
@@ -752,7 +759,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
           {selection.size > 0 ? (
             <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card/95 px-3 py-2 shadow-lg backdrop-blur md:static md:shadow-sm">
               <p className="flex items-center gap-2 text-sm font-semibold">
-                <span aria-hidden className="grid size-7 place-items-center rounded-full bg-primary/15 text-xs text-primary tabular-nums">
+                <span className="grid size-7 place-items-center rounded-full bg-primary/15 text-xs text-primary tabular-nums">
                   {selection.size}
                 </span>
                 selected
