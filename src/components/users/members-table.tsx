@@ -85,7 +85,10 @@ export function MembersTable({
             key={member.id}
             {...getRevealProps?.(member.id)}
             aria-busy={pendingId === member.id}
-            className={cn("motion-card-interaction focus-within:bg-primary/5")}
+            className={cn(
+              "motion-card-interaction focus-within:bg-primary/5",
+              member.id === currentUserId && "bg-primary/[0.06]",
+            )}
           >
             {selectionEnabled ? (
               <TableCell className="w-px py-3 pl-4 pr-0">
@@ -112,8 +115,15 @@ export function MembersTable({
                   className="motion-avatar"
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {member.anonymized_at ? "Former member" : member.full_name}
+                  <p className="flex min-w-0 items-center gap-2 font-medium">
+                    <span className="truncate">
+                      {member.anonymized_at ? "Former member" : member.full_name}
+                    </span>
+                    {member.id === currentUserId ? (
+                      <Badge variant="warning" className="shrink-0 px-2 py-0 text-[11px]">
+                        You
+                      </Badge>
+                    ) : null}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {member.email}

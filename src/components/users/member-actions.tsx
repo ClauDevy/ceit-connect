@@ -14,6 +14,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { Member, PendingOfficerInvite, Role } from "@/lib/types";
 
 export type MemberActionName =
@@ -62,7 +67,7 @@ export function MemberAction({
       return <ActionReason>Anonymized accounts cannot be reactivated.</ActionReason>;
     }
     return (
-      <div className="grid justify-items-end gap-1">
+      <div className="flex items-center justify-end gap-0.5">
         <ActionReason>Anonymized accounts cannot be reactivated.</ActionReason>
         <ActionMenu member={member} pending={pending}>
           <DestructiveItem onClick={() => onAction("retry-former-member-cleanup", member)}>
@@ -102,7 +107,7 @@ export function MemberAction({
         return <ActionReason>{peerAdminBlockedReason}</ActionReason>;
       }
       return (
-        <div className="grid justify-items-end gap-1">
+        <div className="flex items-center justify-end gap-0.5">
           {!member.is_active && peerAdminBlockedReason ? (
             <ActionReason>{peerAdminBlockedReason}</ActionReason>
           ) : null}
@@ -131,7 +136,7 @@ export function MemberAction({
       );
     }
     return (
-      <div className="grid justify-items-end gap-1">
+      <div className="flex items-center justify-end gap-0.5">
         <ActionReason>
           {peerAdminBlockedReason ??
             "You cannot deactivate or remove your own account."}
@@ -213,17 +218,22 @@ function ActionReason({ children }: { children: React.ReactNode }) {
       </p>
     );
   }
+  // A popover (not an inline <details>) so the explanation never stretches the row. On phones only
+  // the info icon shows; from `sm` up the short label sits beside it.
   return (
-    <details className="group max-w-48 text-right text-xs text-muted-foreground">
-      <summary
-        className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-md px-1 whitespace-nowrap outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
+    <Popover>
+      <PopoverTrigger
         aria-label={`${short}. Show reason`}
+        className="inline-flex size-11 items-center justify-center gap-1.5 rounded-xl text-xs font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors duration-300 hover:bg-accent hover:text-accent-foreground focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none sm:h-9 sm:w-auto sm:px-2.5 md:h-8"
       >
-        <Info className="size-3.5 shrink-0" aria-hidden />
-        {short}
-      </summary>
-      <p className="mt-1">{full}</p>
-    </details>
+        <Info className="size-4 shrink-0" aria-hidden />
+        <span className="hidden sm:inline">{short}</span>
+        <span className="sr-only">{full}</span>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 max-w-[calc(100vw-2rem)] p-3 text-sm leading-snug">
+        {full}
+      </PopoverContent>
+    </Popover>
   );
 }
 

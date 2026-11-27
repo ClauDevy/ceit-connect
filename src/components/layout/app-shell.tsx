@@ -22,9 +22,16 @@ export function AppShell({ user, children }: { user: CurrentUser; children: Reac
           <AppShellScrollArea>
             <MobileTopbar user={user} />
             <DesktopHeader user={user} />
-            <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 pb-28 sm:px-6 md:px-10 md:py-8 md:pb-8">
+            <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 shrink-0 px-4 py-6 sm:px-6 md:px-10 md:py-8">
               <RouteEntrance>{children}</RouteEntrance>
             </main>
+            {/* Phones: a real spacer (not padding) so the last card can always scroll clear of the
+                fixed bottom nav, even when the browser shrinks the flex column or toolbars resize. */}
+            <div
+              aria-hidden
+              data-app-shell-bottom-spacer
+              className="h-[calc(6.5rem+env(safe-area-inset-bottom))] w-full shrink-0 md:hidden"
+            />
           </AppShellScrollArea>
           <MobileNav user={user} />
         </div>

@@ -4,7 +4,8 @@ import { closeModalAndWait } from "@/hooks/use-modal-history";
 
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { X } from "lucide-react";
-import { EventBoardTaskCard } from "@/components/events/event-board-task-card";
+import { EventBoardBacklogCard } from "@/components/events/event-board-backlog-card";
+import { Mascot } from "@/components/ui/mascot";
 import { ActiveTaskDialog } from "@/components/tasks/active-task-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,11 +91,11 @@ export function EventBoardDialogs({
           finalFocus={backlogButtonRef}
           className="flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border-t p-0 md:inset-y-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-96 md:rounded-none md:border-t-0 md:border-l md:data-[ending-style]:translate-x-full md:data-[ending-style]:translate-y-0 md:data-[starting-style]:translate-x-full md:data-[starting-style]:translate-y-0 md:motion-reduce:data-[starting-style]:translate-x-0"
         >
-          <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-4 py-3.5">
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-popover px-4 py-2.5">
             <div className="min-w-0 flex-1">
               <SheetTitle
                 id="event-board-backlog-title"
-                className="not-sr-only font-display text-lg font-semibold"
+                className="not-sr-only font-display text-base font-semibold sm:text-lg"
               >
                 Task Backlog
               </SheetTitle>
@@ -121,12 +122,11 @@ export function EventBoardDialogs({
               <X aria-hidden />
             </SheetClose>
           </div>
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain bg-muted/30 p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-4">
             {backlogTasks.map((task) => (
-              <EventBoardTaskCard
+              <EventBoardBacklogCard
                 key={task.id}
                 task={task}
-                backlog
                 busy={boardBusy}
                 claimBusy={claimingTaskId === task.id}
                 onClaim={handleClaim}
@@ -138,11 +138,17 @@ export function EventBoardDialogs({
               />
             ))}
             {backlogTasks.length === 0 ? (
-              <p className="rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                {selectedPriorities.size > 0
-                  ? "No unassigned tasks match this filter."
-                  : "No unassigned tasks."}
-              </p>
+              <div className="flex flex-col items-center gap-1 px-4 py-8 text-center">
+                <Mascot pose={selectedPriorities.size > 0 ? "searching" : "sleeping"} size={76} className="mb-1" />
+                <p className="font-display font-semibold">
+                  {selectedPriorities.size > 0 ? "Nothing matches this filter" : "Backlog is clear"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedPriorities.size > 0
+                    ? "No unassigned tasks match this filter."
+                    : "No unassigned tasks."}
+                </p>
+              </div>
             ) : null}
           </div>
         </SheetContent>
