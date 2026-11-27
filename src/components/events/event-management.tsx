@@ -196,6 +196,9 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [results, setResults] = useState<EventDeletionResult[]>([]);
   const loadedCleanupStatus = useRef(false);
+  // Bumped whenever a deletion/retry writes the pending count, so a slower mount-time status
+  // response can never overwrite that newer value.
+  const pendingCountVersion = useRef(0);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   const reducedMotion = useReducedMotionPreference();
 
@@ -259,14 +262,17 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
   useEffect(() => {
     if (loadedCleanupStatus.current) return;
     loadedCleanupStatus.current = true;
+    const startedAtVersion = pendingCountVersion.current;
     void postJson("/api/event-storage-cleanup", { action: "status" })
       .then((value) => {
+        if (pendingCountVersion.current !== startedAtVersion) return;
         const response = value as CleanupStatusResponse;
         if (typeof response.pendingCount === "number") {
           setPendingCount(response.pendingCount);
         }
       })
       .catch(() => {
+        if (pendingCountVersion.current !== startedAtVersion) return;
         setStatusLoadFailed(true);
         setCleanupMessage("Pending banner cleanup could not be loaded.");
       });
@@ -317,6 +323,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
       const value = (await postJson("/api/event-storage-cleanup", {
         action: "retry",
       })) as CleanupRetryResponse;
+      pendingCountVersion.current += 1;
       setPendingCount(value.pendingCount);
       setStatusLoadFailed(false);
       setCleanupMessage(
@@ -380,8 +387,14 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
         ),
       );
       setSelectionHint(null);
+      pendingCountVersion.current += 1;
       if (typeof value.pendingCount === "number") {
         setPendingCount(value.pendingCount);
+        setStatusLoadFailed(false);
+      } else {
+        // The count could not be refreshed after deleting, so any earlier number is stale.
+        setPendingCount(null);
+        setStatusLoadFailed(true);
       }
       setDialogOpen(false);
       setConfirmation("");
