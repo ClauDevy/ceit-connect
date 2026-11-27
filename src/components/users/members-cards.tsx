@@ -48,7 +48,8 @@ export function MembersCards({
           {...getRevealProps?.(member.id)}
           aria-busy={pendingId === member.id}
           className={cn(
-            "motion-card-interaction grid min-w-0 gap-3 p-3.5 hover:bg-primary/5 focus-within:bg-primary/5 sm:p-4",
+            "motion-card-interaction relative grid min-w-0 gap-2.5 p-3.5 hover:bg-primary/5 focus-within:bg-primary/5 sm:p-4",
+            member.id === currentUserId && "bg-primary/[0.06]",
           )}
         >
           <div className="flex min-w-0 items-start gap-3">
@@ -71,14 +72,21 @@ export function MembersCards({
               className="motion-avatar"
             />
             <div className="min-w-0 flex-1 pt-0.5">
-              <p className="truncate font-semibold leading-tight">
-                {member.anonymized_at ? "Former member" : member.full_name}
+              <p className="flex min-w-0 items-center gap-2 font-semibold leading-tight">
+                <span className="truncate">
+                  {member.anonymized_at ? "Former member" : member.full_name}
+                </span>
+                {member.id === currentUserId ? (
+                  <Badge variant="warning" className="shrink-0 px-2 py-0 text-[11px]">
+                    You
+                  </Badge>
+                ) : null}
               </p>
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 {member.email}
               </p>
             </div>
-            <div className="shrink-0">
+            <div className="-mr-1 -mt-1 shrink-0">
               <MemberAction
                 member={member}
                 isSelf={member.id === currentUserId}

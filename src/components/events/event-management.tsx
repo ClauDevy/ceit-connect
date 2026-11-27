@@ -6,7 +6,7 @@ import {
   AlertTriangle,
   Archive,
   CalendarDays,
-  CircleCheck,
+  Clock,
   FileText,
   Layers,
   RefreshCw,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { ListPager } from "@/components/shared/list-pager";
 import { useListReveal, useReducedMotionPreference } from "@/components/shared/motion";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,6 +88,16 @@ function formatStartDate(value: string | null) {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+function formatUpdated(value: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeZone: "Asia/Manila",
+  }).format(date);
+}
+
 async function postJson(url: string, body: unknown) {
   const response = await fetch(url, {
     method: "POST",
@@ -141,18 +152,20 @@ function StatTile({
   tone: keyof typeof statTones;
 }) {
   return (
-    <div className={`flex min-w-0 flex-col items-start gap-1.5 rounded-xl border px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3 ${statTones[tone].box}`}>
+    <div
+      className={`flex min-w-0 items-center gap-3 rounded-2xl border px-3.5 py-3 ${statTones[tone].box}`}
+    >
       <span
         aria-hidden
-        className={`flex size-7 shrink-0 items-center justify-center rounded-lg sm:size-9 ${statTones[tone].icon}`}
+        className={`hidden size-10 shrink-0 items-center justify-center rounded-xl sm:flex ${statTones[tone].icon}`}
       >
-        <Icon className="size-3.5 sm:size-4" />
+        <Icon className="size-5" />
       </span>
       <div className="min-w-0">
-        <p className="font-display text-xl leading-none font-semibold">
+        <p className="font-display text-2xl leading-none font-semibold tabular-nums">
           {value}
         </p>
-        <p className="mt-1 truncate text-xs text-muted-foreground">{label}</p>
+        <p className="mt-1 truncate text-xs font-medium text-muted-foreground">{label}</p>
       </div>
     </div>
   );
@@ -398,89 +411,80 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
       data-motion-state={eventManagementMotionState(reducedMotion)}
       data-event-count={events.length}
     >
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <StatTile tone="rose" icon={Layers} label="Deletable" value={filteredEvents.length} />
+        <StatTile tone="amber" icon={FileText} label="Drafts" value={draftCount} />
+        <StatTile tone="violet" icon={Archive} label="Archived" value={archivedCount} />
+      </div>
+
       <Card className="overflow-hidden">
-        <CardContent className="space-y-4 p-4 sm:p-5">
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <StatTile tone="rose" icon={Layers} label="Deletable" value={filteredEvents.length} />
-            <StatTile tone="amber" icon={FileText} label="Drafts" value={draftCount} />
-            <StatTile tone="violet" icon={Archive} label="Archived" value={archivedCount} />
-          </div>
-          <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="grid gap-1.5 sm:w-56">
-              <label
-                htmlFor="event-management-year"
-                className="text-sm font-semibold text-secondary-foreground"
-              >
-                Start year
-              </label>
-              <Select
-                items={yearLabels}
-                value={year === "all" ? "all" : String(year)}
-                onValueChange={changeYear}
-              >
-                <SelectTrigger id="event-management-year">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All years</SelectItem>
-                  {years.map((item) => (
-                    <SelectItem key={item} value={String(item)}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              {pendingCount !== null ? (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
-                    pendingCount === 0
-                      ? "bg-secondary text-muted-foreground"
-                      : "bg-primary/10 text-accent-foreground",
-                  )}
-                >
-                  {pendingCount === 0 ? (
-                    <CircleCheck className="size-3.5" aria-hidden />
-                  ) : (
-                    <RefreshCw className="size-3.5" aria-hidden />
-                  )}
-                  {pendingCount === 0
-                    ? "No pending banner cleanup"
-                    : `${pendingCount} cleanup ${pendingCount === 1 ? "job" : "jobs"} pending`}
-                </span>
-              ) : null}
-              {pendingCount !== null && pendingCount > 0 ? (
-                <Button
-                  variant="outline"
-                  onClick={retryCleanup}
-                  disabled={cleanupBusy}
-                >
-                  <RefreshCw
-                    className={
-                      cleanupBusy
-                        ? "animate-spin motion-reduce:animate-none"
-                        : ""
-                    }
-                    aria-hidden
-                  />
-                  {cleanupBusy ? "Retrying…" : "Retry cleanup"}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-          {cleanupMessage ? (
-            <InlineAlert
-              variant={
-                cleanupMessage.includes("could not") ? "error" : "info"
-              }
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
+          <div className="grid gap-1.5 sm:w-60">
+            <label
+              htmlFor="event-management-year"
+              className="text-sm font-semibold text-secondary-foreground"
             >
-              {cleanupMessage}
-            </InlineAlert>
-          ) : null}
+              Start year
+            </label>
+            <Select
+              items={yearLabels}
+              value={year === "all" ? "all" : String(year)}
+              onValueChange={changeYear}
+            >
+              <SelectTrigger id="event-management-year">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All years</SelectItem>
+                {years.map((item) => (
+                  <SelectItem key={item} value={String(item)}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="flex items-start gap-2 text-xs text-muted-foreground sm:max-w-sm sm:justify-end sm:text-right">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-destructive sm:order-last" aria-hidden />
+            <span>
+              Deleting is permanent. Tick one or more events, then confirm with a typed phrase.
+              Pick up to 10 at a time.
+            </span>
+          </p>
         </CardContent>
       </Card>
+
+      {/* Banner clean-up is housekeeping: with nothing pending there is nothing to do, so the
+          panel only appears when files are still waiting (or the status could not be loaded). */}
+      {pendingCount !== null && pendingCount > 0 ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-primary/40 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+              <RefreshCw className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                {pendingCount} banner cleanup {pendingCount === 1 ? "job" : "jobs"} pending
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Some deleted events still have banner images in storage. Retry to remove them.
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={retryCleanup} disabled={cleanupBusy}>
+            <RefreshCw
+              className={cleanupBusy ? "animate-spin motion-reduce:animate-none" : ""}
+              aria-hidden
+            />
+            {cleanupBusy ? "Retrying…" : "Retry cleanup"}
+          </Button>
+        </div>
+      ) : null}
+      {cleanupMessage ? (
+        <InlineAlert variant={cleanupMessage.includes("could not") ? "error" : "info"}>
+          {cleanupMessage}
+        </InlineAlert>
+      ) : null}
 
       {results.length > 0 ? (
         <Card>
@@ -529,17 +533,16 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
       ) : null}
 
       {events.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No Draft or Archived events are available to delete.
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="Nothing to clean up"
+          description="No Draft or Archived events are available to delete."
+        />
       ) : filteredEvents.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No deletable events start in {year}.
-          </CardContent>
-        </Card>
+        <EmptyState
+          pose="searching"
+          title={`No deletable events in ${year}`}
+          description="Try another start year."
+        />
       ) : (
         <div
           className={cn(
@@ -563,7 +566,8 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
                   </TableHead>
                   <TableHead>Event</TableHead>
                   <TableHead className="w-32">Status</TableHead>
-                  <TableHead className="w-48">Start date</TableHead>
+                  <TableHead className="w-44">Start date</TableHead>
+                  <TableHead className="w-44">Last updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -579,7 +583,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
                       }
                       className={cn(
                         "cursor-pointer active:bg-secondary/70 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 has-[:focus-visible]:ring-inset",
-                        selected && "bg-primary/10 hover:bg-primary/15",
+                        selected && "bg-primary/10 shadow-[inset_3px_0_0_var(--primary)] hover:bg-primary/15",
                       )}
                       {...desktopReveal.getRevealProps(
                         `event-management-desktop-${event.id}`,
@@ -596,7 +600,7 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
                           className="size-4 rounded accent-primary focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                         />
                       </TableCell>
-                      <TableCell className="min-w-0 font-medium">
+                      <TableCell className="min-w-0 py-3.5 font-medium">
                         <div className="flex min-w-0 items-center gap-3">
                           <StatusTile status={event.status} />
                           <label
@@ -616,6 +620,12 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
                         <span className="inline-flex items-center gap-1.5">
                           <CalendarDays className="size-3.5" aria-hidden />
                           {formatStartDate(event.start_date)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock className="size-3.5" aria-hidden />
+                          {formatUpdated(event.updated_at)}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -702,6 +712,9 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
                           {formatStartDate(event.start_date)}
                         </span>
                       </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Updated {formatUpdated(event.updated_at)}
+                      </p>
                     </div>
                   </li>
                 );
@@ -738,7 +751,12 @@ export function EventManagement({ events }: { events: EventDeletionListItem[] })
 
           {selection.size > 0 ? (
             <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card/95 px-3 py-2 shadow-lg backdrop-blur md:static md:shadow-sm">
-              <p className="text-sm font-semibold">{selection.size} selected</p>
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <span aria-hidden className="grid size-7 place-items-center rounded-full bg-primary/15 text-xs text-primary tabular-nums">
+                  {selection.size}
+                </span>
+                selected
+              </p>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
